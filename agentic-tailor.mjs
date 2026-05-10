@@ -823,8 +823,7 @@ OUTPUT FORMAT (JSON ONLY):
       COMPANY_NAME: entry.company,
       LANG: 'en',
       YEARS_EXP: `${yearsExp}`,
-      MAX_PAGES: `${maxPages}`,
-      PROFESSIONAL_HEADLINE: profile.narrative?.headline || 'Professional'
+      MAX_PAGES: `${maxPages}`
     };
 
     // 1. GENERATE RESUME - Show ALL experience entries, just limit bullets per job based on page budget

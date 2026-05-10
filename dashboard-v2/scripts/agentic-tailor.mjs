@@ -642,7 +642,6 @@ OUTPUT FORMAT (JSON ONLY):
       ATS_SCORE_BAR: generateATSScoreBar(atsScore.score),
       YEARS_EXP: `${yearsExp}`,
       MAX_PAGES: `${maxPages}`,
-      PROFESSIONAL_HEADLINE: profile.narrative?.headline || 'Professional',
       ATS_BADGE: atsScore.score >= 85 ? '<span class="ats-badge ats-high">High Match</span>' : atsScore.score >= 70 ? '<span class="ats-badge ats-medium">Good Match</span>' : ''
     };
 
