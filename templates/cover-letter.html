@@ -1,73 +1,141 @@
 <!DOCTYPE html>
 <html lang="{{LANG}}">
 <head>
-    <meta charset="UTF-8">
-    <title>Cover Letter - {{NAME}}</title>
-    <style>
-        :root {
-            --primary: #f59e0b; /* amber-500 */
-            --text-main: #111827;
-            --text-muted: #4b5563;
-            --bg: #ffffff;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg);
-            color: var(--text-main);
-            line-height: 1.6;
-            padding: 80px 100px;
-        }
-        .header { margin-bottom: 60px; }
-        .name { font-size: 28px; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; }
-        .contact { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
-        
-        .date { margin-bottom: 40px; font-size: 14px; font-weight: 600; }
-        
-        .recipient { margin-bottom: 40px; }
-        .recipient p { font-size: 14px; color: var(--text-main); font-weight: 600; }
-        .recipient span { color: var(--text-muted); font-weight: 400; }
-
-        .greeting { font-size: 16px; font-weight: 700; margin-bottom: 24px; }
-        
-        .content { font-size: 15px; }
-        .content p { margin-bottom: 20px; }
-        
-        .closing { margin-top: 60px; }
-        .signature { margin-top: 10px; font-size: 18px; font-weight: 700; }
-        
-        .accent-bar {
-            width: 40px;
-            height: 4px;
-            background: var(--primary);
-            margin-bottom: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cover Letter — {{NAME}}</title>
+  <style>
+    :root {
+      --accent: #0f766e;
+      --text: #111827;
+      --text-muted: #4b5563;
+      --paper: #ffffff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--paper);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 11pt;
+    }
+    .top-accent {
+      height: 14px;
+      width: 100%;
+      background: var(--accent);
+    }
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 36px 48px 48px;
+    }
+    .sender {
+      margin-bottom: 28px;
+    }
+    .sender-name {
+      font-size: 16pt;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .sender-details {
+      font-size: 10.5pt;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+    .sender-details a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .date {
+      font-size: 10.5pt;
+      color: var(--text);
+      margin-bottom: 28px;
+      font-weight: 600;
+    }
+    .recipient {
+      margin-bottom: 28px;
+      font-size: 10.5pt;
+      line-height: 1.5;
+    }
+    .recipient-name {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .recipient-co {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .recipient-role {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .salutation {
+      font-size: 11pt;
+      font-weight: 600;
+      margin-bottom: 18px;
+      color: var(--text);
+    }
+    .content {
+      font-size: 11pt;
+      color: var(--text);
+      text-align: left;
+    }
+    .content p {
+      margin-bottom: 14px;
+      text-align: justify;
+      hyphens: auto;
+    }
+    .content p:last-child {
+      margin-bottom: 0;
+    }
+    .closing-block {
+      margin-top: 28px;
+    }
+    .closing-word {
+      font-size: 11pt;
+      margin-bottom: 36px;
+      color: var(--text);
+    }
+    .signature-name {
+      font-size: 14pt;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    @media print {
+      .page { padding: 0.6in 0.75in; max-width: 100%; }
+    }
+  </style>
 </head>
 <body>
-    <div class="header">
-        <div class="accent-bar"></div>
-        <div class="name">{{NAME}}</div>
-        <div class="contact">{{LOCATION}} • {{EMAIL}} • {{PHONE}}</div>
-        <div class="contact">{{LINKEDIN_DISPLAY}} • {{PORTFOLIO_DISPLAY}}</div>
-    </div>
+  <div class="top-accent"></div>
+  <div class="page">
+    <header class="sender">
+      <div class="sender-name">{{NAME}}</div>
+      <div class="sender-details">{{COVER_SENDER_DETAILS}}</div>
+    </header>
 
     <div class="date">{{DATE}}</div>
 
     <div class="recipient">
-        <p>Hiring Team</p>
-        <span>{{COMPANY_NAME}}</span>
+      <div class="recipient-name">Hiring Manager</div>
+      <div class="recipient-co">{{COMPANY_NAME}}</div>
+      <div class="recipient-role">Re: {{JOB_TITLE}}</div>
     </div>
 
-    <div class="greeting">Dear {{COMPANY_NAME}} Team,</div>
+    <div class="salutation">Dear Hiring Manager,</div>
 
     <div class="content">
-        {{COVER_LETTER_TEXT}}
+      {{COVER_LETTER_TEXT}}
     </div>
 
-    <div class="closing">
-        <p>Sincerely,</p>
-        <div class="signature">{{NAME}}</div>
+    <div class="closing-block">
+      <div class="closing-word">Sincerely,</div>
+      <div class="signature-name">{{NAME}}</div>
     </div>
+  </div>
 </body>
 </html>

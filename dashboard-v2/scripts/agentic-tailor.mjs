@@ -191,27 +191,52 @@ function formatResumeSummaryHtml(rawSummary, yearsExp) {
   return escapeHtml(normalizeResumeSummaryPlain(rawSummary, yearsExp));
 }
 
+/**
+ * ATS-style overlap score: distinct resume lines (superpowers, bullets, tailored
+ * competencies) that share a token with the JD. Not comparable to Enhancv-style
+ * grammar/quantification/parse checks.
+ */
 function calculateATSScore(profile, jdText, tailoring) {
-  const skills = profile?.narrative?.superpowers || [];
-  const jdLower = (jdText || '').toLowerCase();
-  let matches = 0;
-  let total = 0;
-  for (const skill of skills) {
-    total++;
-    if (jdLower.includes(skill.toLowerCase())) matches++;
+  if (!jdText || !profile) {
+    return { score: 0, matched: 0, total: 0, totalMatched: 0, matchedSample: [] };
   }
-  // Bonus for tailored competencies
-  const tailoredSkills = tailoring?.core_competencies || [];
-  for (const skill of tailoredSkills) {
-    if (!skills.includes(skill)) {
-      total++;
-      if (jdLower.includes(skill.toLowerCase())) matches++;
-    }
+
+  const jdLower = String(jdText).toLowerCase();
+  const matched = [];
+
+  const rawLines = [
+    ...(profile.narrative?.superpowers || []),
+    ...(profile.experience?.flatMap((e) => e.bullets || []) || []),
+    ...(tailoring?.core_competencies || []),
+  ]
+    .map((s) => String(s || '').trim())
+    .filter(Boolean);
+  const profileSkills = [...new Set(rawLines)];
+
+  for (const skill of profileSkills) {
+    const skillLower = skill.toLowerCase();
+    const keywords = skillLower.split(/[,;\s|/()+]+/).filter((k) => k.length > 2);
+    const tokenHit =
+      keywords.length > 0
+        ? keywords.some((kw) => jdLower.includes(kw))
+        : skillLower.length > 2 && jdLower.includes(skillLower);
+    if (tokenHit) matched.push(skill);
   }
+
+  const uniqueMatches = [...new Set(matched)];
+  const m = uniqueMatches.length;
+  const n = profileSkills.length;
+
+  const tokenScore = n === 0 ? 0 : Math.min(100, m * 5 + 50);
+  const ratioScore = n === 0 ? 0 : Math.round((m / n) * 100);
+  const finalScore = Math.min(100, Math.max(tokenScore, ratioScore));
+
   return {
-    score: total === 0 ? 0 : Math.round((matches / total) * 100),
-    matched: matches,
-    total: total
+    score: finalScore,
+    matched: m,
+    total: n,
+    totalMatched: m,
+    matchedSample: uniqueMatches.slice(0, 10),
   };
 }
 
@@ -401,6 +426,60 @@ function canonicalizeUrl(value) {
   }
 }
 
+function escapeHtmlCl(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildCoverSenderDetails(c) {
+  if (!c || typeof c !== 'object') return '';
+  const parts = [];
+  const street = [c.street_address, c.address_line1].map((x) => String(x || '').trim()).find(Boolean);
+  const cityLine = [c.city_state_zip, c.address_line2, c.city].map((x) => String(x || '').trim()).find(Boolean);
+  const loc = String(c.location || '').trim();
+  if (street) parts.push(escapeHtmlCl(street));
+  if (cityLine) parts.push(escapeHtmlCl(cityLine));
+  else if (loc) parts.push(escapeHtmlCl(loc));
+  const ph = String(c.phone || '').trim();
+  if (ph) parts.push(escapeHtmlCl(ph));
+  const em = String(c.email || '').trim();
+  if (em) {
+    const he = escapeHtmlCl(em);
+    parts.push(`<a href="mailto:${he}">${he}</a>`);
+  }
+  const liRaw = String(c.linkedin || '').trim();
+  if (liRaw) {
+    const href = /^https?:\/\//i.test(liRaw) ? liRaw : `https://${liRaw.replace(/^\/+/, '')}`;
+    parts.push(`<a href="${escapeHtmlCl(href)}">${escapeHtmlCl(liRaw.replace(/^https?:\/\//i, ''))}</a>`);
+  }
+  const webRaw = String(c.portfolio_url || c.github || c.website || '').trim();
+  if (webRaw) {
+    const href = /^https?:\/\//i.test(webRaw) ? webRaw : `https://${webRaw.replace(/^\/+/, '')}`;
+    const label = webRaw.replace(/^https?:\/\//i, '').replace(/\/$/, '') || 'Portfolio';
+    parts.push(`<a href="${escapeHtmlCl(href)}">${escapeHtmlCl(label)}</a>`);
+  }
+  return parts.join('<br>');
+}
+
+function coverLetterBodyToHtml(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  let blocks = raw
+    .split(/\n\s*\n/)
+    .map((b) => b.replace(/\r/g, '').trim())
+    .filter(Boolean);
+  if (blocks.length <= 1) {
+    blocks = raw
+      .split(/\n/)
+      .map((b) => b.replace(/\r/g, '').trim())
+      .filter(Boolean);
+  }
+  return blocks.map((p) => `<p>${escapeHtmlCl(p.replace(/\n+/g, ' '))}</p>`).join('');
+}
+
 async function tailorPackage(jd, profile, companyName) {
   const hfClient = await getHfClient();
   if (hfClient) {
@@ -419,7 +498,15 @@ async function tailorPackage(jd, profile, companyName) {
         core_competencies: (profile?.narrative?.superpowers || []).slice(0, 12),
         experience: (profile?.experience?.[0]?.bullets || []).slice(0, 3),
       },
-      cover_letter: `${companyName}'s ${jd.substring(0, 60).replace(/\n/g, ' ')}... requirements match what I've built: ${(profile?.narrative?.superpowers || []).slice(0, 2).join(', ')}.\n\nI can start contributing immediately. Reach me at ${profile?.candidate?.email || ''} or ${profile?.candidate?.phone || ''} to discuss.`
+      cover_letter: (() => {
+        const em = String(profile?.candidate?.email || '').trim();
+        const ph = String(profile?.candidate?.phone || '').trim();
+        const tail =
+          em || ph
+            ? `I would welcome the opportunity to discuss fit and next steps. You may contact me at ${[em, ph].filter(Boolean).join(' or ')}.`
+            : 'I would welcome the opportunity to discuss fit and next steps.';
+        return `I am writing to express my interest in opportunities with ${companyName} that align with the technical requirements described in the posting. The role emphasizes delivery in production environments; my background includes building and operating backend systems with a focus on reliability and measurable performance.\n\nMy recent work aligns with several themes in the job description, including ${(profile?.narrative?.superpowers || []).slice(0, 3).join(', ') || 'the stacks and outcomes summarized in the profile context below'}. I am prepared to contribute on day one and to collaborate closely with engineering and operations partners.\n\n${tail}`;
+      })()
     };
   }
 
@@ -434,15 +521,13 @@ Superpowers / keywords: ${(profile?.narrative?.superpowers || []).join(', ')}
 Recent roles — fact base for what you worked on (paraphrase; do not fabricate employers or metrics):
 ${experienceDigest}`;
   const prompt = `
-You are a senior technical writer who writes direct, conversational cover letters without corporate fluff.
+You are a senior technical writer who produces concise, professional business correspondence.
 
-RULES:
-- NO salutations (no "Dear", "To whom it may concern")
-- NO closings (no "Best regards", "Sincerely", "Warm regards")
+GLOBAL RULES:
 - NO buzzwords: passion, leveraging, synergies, robust, seamless, cutting-edge, proven track record
 - NO AI-sounding phrases
-- Use short sentences, active voice, specific numbers
-- Lead with impact, not filler
+- Use short sentences, active voice, specific numbers where they appear in the digest
+- Lead with substance, not filler
 
 TASK:
 1. RESUME TAILORING: CRITICAL - Every bullet must include at least ONE specific technology/requirement from the JD:
@@ -458,9 +543,14 @@ TASK:
    - If JD mentions React, say React (not "frontend framework")
    - If JD mentions Kubernetes, say Kubernetes (not "orchestration platform")
 
-2. COVER LETTER: Write 2 tight paragraphs ONLY (no greeting, no sign-off):
-   - Para 1: One sentence hook citing something specific from their JD/company, then 2-3 bullets mapping your experience to their needs with metrics
-   - Para 2: One sentence stating availability + how to reach you
+2. COVER LETTER (body only — the HTML template already prints "Dear Hiring Manager," and "Sincerely,"):
+   - Return ONLY the letter body: NO salutation, NO sign-off, NO "Dear ...", NO "Sincerely", NO "Best regards"
+   - Tone: first person, formal business letter. Do NOT address the reader as "you/your team" or open with "Your [X] team builds...". Prefer "I am writing...", "The posting emphasizes...", "My experience includes..."
+   - Forbidden openings: "Dear [Company] Team", "Dear Hiring Team", "Your team", "You are looking for"
+   - Structure: EXACTLY 3 short paragraphs, separated by blank lines (use \\n\\n between paragraphs in the JSON string)
+   - Para 1: Interest in this opportunity at ${companyName}; reference one concrete requirement or theme from the JD in neutral, professional language
+   - Para 2: Map your verified experience to those requirements with tools and outcomes from the digest — never invent employers or metrics
+   - Para 3: Availability and how to reach you — use the candidate email and phone from My Context exactly if present; NEVER use placeholders like [your email] or [your phone]
 
 JD:
 ${jd.substring(0, 4000)}
@@ -475,7 +565,7 @@ OUTPUT FORMAT (JSON ONLY):
     "core_competencies": ["kw1", "kw2", ...],
     "experience": ["bullet1", "bullet2", "bullet3"]
   },
-  "cover_letter": "..."
+  "cover_letter": "paragraph1\\n\\nparagraph2\\n\\nparagraph3 (body only; template adds greeting and closing)"
 }
   `;
 
@@ -624,7 +714,9 @@ OUTPUT FORMAT (JSON ONLY):
     // Determine max pages based on experience (1 page for 0-5yrs, 2 pages for 6-11yrs, up to 4 for 12-20yrs)
     const maxPages = yearsExp <= 5 ? 1 : yearsExp <= 11 ? 2 : yearsExp <= 20 ? 3 : 4;
     console.log(`[RESUME] ${yearsExp} years experience → ${maxPages} page(s)`);
-    console.log(`[RESUME] ATS Score: ${atsScore.score}/100 (${atsScore.matched}/${atsScore.total} keywords matched)`);
+    console.log(
+      `[RESUME] ATS Score: ${atsScore.score}/100 (${atsScore.totalMatched}/${atsScore.total} resume lines share JD tokens)`
+    );
 
     const commonReps = {
       NAME: c.full_name,
@@ -637,6 +729,7 @@ OUTPUT FORMAT (JSON ONLY):
       PORTFOLIO_DISPLAY: c.github || 'Github',
       DATE: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       COMPANY_NAME: entry.company,
+      JOB_TITLE: entry.title || 'Open role',
       LANG: 'en',
       ATS_SCORE: `${atsScore.score}/100`,
       ATS_SCORE_BAR: generateATSScoreBar(atsScore.score),
@@ -683,7 +776,8 @@ OUTPUT FORMAT (JSON ONLY):
     // 2. GENERATE COVER LETTER
     const clReps = {
       ...commonReps,
-      COVER_LETTER_TEXT: result.cover_letter.split('\n').map(p => p.trim() ? `<p>${p}</p>` : '').join('')
+      COVER_SENDER_DETAILS: buildCoverSenderDetails(c),
+      COVER_LETTER_TEXT: coverLetterBodyToHtml(result.cover_letter)
     };
 
     let clHtml = fs.readFileSync('templates/cover-letter.html', 'utf8');
