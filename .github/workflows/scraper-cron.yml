@@ -56,26 +56,17 @@ jobs:
           RUN_ID: ${{ github.event.inputs.run_id }}
           ACTION_SCRIPT: ${{ github.event.inputs.action_script }}
           ACTION_ARGS: ${{ github.event.inputs.action_args }}
-        run: node .github/scripts/run-scrapers.mjs
-
-      - name: Notify dashboard (completion)
-        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.user_id != '' }}
-        env:
           DASHBOARD_WEBHOOK_URL: ${{ secrets.DASHBOARD_WEBHOOK_URL }}
           WORKER_WEBHOOK_SECRET: ${{ secrets.WORKER_WEBHOOK_SECRET }}
-          USER_ID: ${{ github.event.inputs.user_id }}
-          RUN_ID: ${{ github.event.inputs.run_id }}
-          ACTION_SCRIPT: ${{ github.event.inputs.action_script }}
-          ACTION_ARGS: ${{ github.event.inputs.action_args }}
-          JOB_STATUS: ${{ job.status }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ -z "$DASHBOARD_WEBHOOK_URL" ] || [ -z "$WORKER_WEBHOOK_SECRET" ]; then
-            echo "Dashboard webhook not configured; skipping."
-            exit 0
+          # Allowlist validation — only permit known scripts (CodeRabbit security fix)
+          ALLOWED_SCRIPTS="scratch-scan.mjs agentic-tailor.mjs rank-pipeline.mjs auto-apply.mjs add-job.mjs"
+          SCRIPT="${ACTION_SCRIPT:-scratch-scan.mjs}"
+          # Exact string matching instead of regex-based grep to prevent partial matches (CodeRabbit fix)
+          if ! printf '%s\n' "$ALLOWED_SCRIPTS" | tr ' ' '\n' | grep -Fxq "$SCRIPT"; then
+            echo "Error: action_script '$SCRIPT' is not in the allowlist."
+            exit 1
           fi
-          curl -sS -X POST "$DASHBOARD_WEBHOOK_URL" \
-            -H "content-type: application/json" \
-            -H "x-worker-secret: $WORKER_WEBHOOK_SECRET" \
-            --data "{\"user_id\":\"$USER_ID\",\"run_id\":\"$RUN_ID\",\"action_script\":\"$ACTION_SCRIPT\",\"action_args\":\"$ACTION_ARGS\",\"status\":\"$JOB_STATUS\",\"run_url\":\"$RUN_URL\"}" \
-            && echo "Notified dashboard."
+          node .github/scripts/run-scrapers.mjs
+          # Dashboard completion webhooks are sent from run-scrapers.mjs (per tenant) so
+          # scheduled cron runs still get user_id + action_script — workflow_dispatch inputs are empty on cron.
