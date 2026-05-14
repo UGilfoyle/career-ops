@@ -1,10 +1,20 @@
 'use client';
 
-import { Briefcase, ArrowRight, ShieldCheck, Play, Sparkles, Zap, Target } from 'lucide-react';
+import { Briefcase, ArrowRight, ShieldCheck, Play, Sparkles, Zap, Target, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export default function LandingPage() {
+  const [visitorStats, setVisitorStats] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/view')
+      .then(r => r.json())
+      .then(setVisitorStats)
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#faf9f6] text-[#1c1917] flex flex-col relative overflow-hidden font-sans">
       {/* Background Subtle Organic Glows: Switched to warm, soft tones */}
@@ -93,6 +103,32 @@ export default function LandingPage() {
             desc="Encrypted multi-tenant architecture keeps your career narrative private." 
           />
         </motion.div>
+        
+        {/* Visitor Counter */}
+        {visitorStats && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mb-12 inline-flex items-center gap-4 px-6 py-3 bg-white border border-[#e7e5e4] rounded-2xl shadow-sm text-sm"
+          >
+            <div className="flex items-center gap-2 text-[#78716c] font-medium border-r border-[#e7e5e4] pr-4">
+              <Eye size={16} />
+              Platform Visitors
+            </div>
+            <div className="flex items-center gap-4">
+              <div>
+                <span className="font-bold text-[#1c1917]">{visitorStats.today?.unique_visitors ?? 0}</span>
+                <span className="text-xs text-[#a8a29e] ml-1">Today</span>
+              </div>
+              <div className="w-1 h-1 rounded-full bg-[#d4d4d8]" />
+              <div>
+                <span className="font-bold text-[#1c1917]">{visitorStats.allTime?.unique_visitors ?? 0}</span>
+                <span className="text-xs text-[#a8a29e] ml-1">All Time</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </main>
 
       {/* Footer */}

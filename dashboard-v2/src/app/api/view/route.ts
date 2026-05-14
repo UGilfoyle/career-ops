@@ -74,13 +74,11 @@ export async function GET() {
     // Import auth dynamically to avoid circular deps
     const { auth } = await import('@/auth');
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const isAuthenticated = !!session?.user?.id;
 
     await ensureTable();
 
-    // Today's stats
+    // Today's stats (Publicly accessible)
     const todayRows = await sql`
       SELECT
         COUNT(*)::int AS total_views,
@@ -88,6 +86,24 @@ export async function GET() {
       FROM page_views
       WHERE created_at >= CURRENT_DATE
     `;
+
+    // All time stats (Publicly accessible)
+    const allTimeRows = await sql`
+      SELECT
+        COUNT(*)::int AS total_views,
+        COUNT(DISTINCT visitor_hash)::int AS unique_visitors
+      FROM page_views
+    `;
+
+    if (!isAuthenticated) {
+      // Return limited stats for public landing page
+      return NextResponse.json({
+        today: todayRows[0] || { total_views: 0, unique_visitors: 0 },
+        allTime: allTimeRows[0] || { total_views: 0, unique_visitors: 0 },
+      });
+    }
+
+    // --- Authenticated Only Stats ---
 
     // Last 7 days stats
     const weekRows = await sql`
@@ -105,14 +121,6 @@ export async function GET() {
         COUNT(DISTINCT visitor_hash)::int AS unique_visitors
       FROM page_views
       WHERE created_at >= NOW() - INTERVAL '30 days'
-    `;
-
-    // All time
-    const allTimeRows = await sql`
-      SELECT
-        COUNT(*)::int AS total_views,
-        COUNT(DISTINCT visitor_hash)::int AS unique_visitors
-      FROM page_views
     `;
 
     // Daily breakdown (last 14 days)

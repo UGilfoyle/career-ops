@@ -804,7 +804,7 @@ export default function Dashboard() {
           )}
         </AnimatePresence>
 
-        <section className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5 mb-10 sm:mb-12">
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-10 sm:mb-12">
           <StatCard
             icon={<Clock size={18} className="text-white" />}
             label="Ongoing"
@@ -828,12 +828,6 @@ export default function Dashboard() {
             label="In Pipeline"
             value={data?.pipeline?.length || 0}
             color="amber"
-          />
-          <StatCard
-            icon={<Eye size={18} className="text-white" />}
-            label="Visitors Today"
-            value={visitorStats?.today?.unique_visitors ?? '—'}
-            color="purple"
           />
         </section>
 
