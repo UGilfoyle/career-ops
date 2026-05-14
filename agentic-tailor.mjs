@@ -729,7 +729,14 @@ async function tailorPackage(jd, profile, companyName) {
 
   const yearsExp = calculateYearsOfExperience(profile?.experience);
   const experienceDigest = buildExperienceDigestForPrompt(profile?.experience);
+  const candidateName = profile?.candidate?.full_name || '';
+  const candidateEmail = profile?.candidate?.email || '';
+  const candidatePhone = profile?.candidate?.phone || '';
   const cvContext = `Approximate career span from dated roles below: ~${yearsExp} years (only state a number if it matches these dates; never invent more).
+
+Candidate name: ${candidateName}
+Candidate email: ${candidateEmail}
+Candidate phone: ${candidatePhone}
 
 Headline: ${profile?.narrative?.headline || ''}
 Positioning (from profile): ${profile?.narrative?.exit_story || ''}
@@ -764,7 +771,7 @@ TASK:
    - Structure: EXACTLY 3 short paragraphs, separated by blank lines (use \\n\\n between paragraphs in the JSON string)
    - Para 1: Interest in this opportunity at ${companyName}; reference one concrete requirement or theme from the JD in neutral, professional language
    - Para 2: Map your verified experience to those requirements with tools and outcomes from the digest — never invent employers or metrics
-   - Para 3: Availability and how to reach you — use the candidate email and phone from My Context exactly if present; NEVER use placeholders like [your email] or [your phone]
+   - Para 3: Availability and how to reach you — you MUST use ONLY the EXACT candidate email (${candidateEmail}) and phone (${candidatePhone}) listed in My Context above. NEVER invent, guess, or hallucinate any other email or phone number. If the email or phone is blank, simply say "I welcome the opportunity to discuss" without mentioning contact details.
 
 JD:
 ${jd.substring(0, 4000)}
