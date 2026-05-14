@@ -22,7 +22,10 @@ import {
   ExternalLink,
   Trash2,
   AlertTriangle,
-  MoreVertical
+  MoreVertical,
+  Eye,
+  Globe,
+  TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -64,6 +67,9 @@ export default function Dashboard() {
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
   const [jobDetails, setJobDetails] = useState<any>(null);
   const [jobDetailsError, setJobDetailsError] = useState<string | null>(null);
+
+  // Visitor analytics state
+  const [visitorStats, setVisitorStats] = useState<any>(null);
 
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -407,6 +413,8 @@ export default function Dashboard() {
     fetchData();
     // Poll every 5 seconds to ensure near-instant updates when GitHub Actions finish
     const interval = setInterval(fetchData, 5000); 
+    // Also fetch visitor stats for the stat card
+    fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {});
     return () => clearInterval(interval);
   }, []);
 
@@ -695,6 +703,7 @@ export default function Dashboard() {
             <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} onClick={() => setActiveTab('apps')} />
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} onClick={() => setActiveTab('pipeline')} />
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} onClick={() => setActiveTab('cv')} />
+            <NavItem id="nav-analytics" icon={<Eye size={18}/>} label="Analytics" active={activeTab === 'analytics'} onClick={() => { setActiveTab('analytics'); if (!visitorStats) { fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {}); } }} />
             <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} onClick={() => setActiveTab('terminal')} />
           </nav>
         </div>
@@ -795,7 +804,7 @@ export default function Dashboard() {
           )}
         </AnimatePresence>
 
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-10 sm:mb-12">
+        <section className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5 mb-10 sm:mb-12">
           <StatCard
             icon={<Clock size={18} className="text-white" />}
             label="Ongoing"
@@ -819,6 +828,12 @@ export default function Dashboard() {
             label="In Pipeline"
             value={data?.pipeline?.length || 0}
             color="amber"
+          />
+          <StatCard
+            icon={<Eye size={18} className="text-white" />}
+            label="Visitors Today"
+            value={visitorStats?.today?.unique_visitors ?? '—'}
+            color="purple"
           />
         </section>
 
@@ -1226,6 +1241,103 @@ export default function Dashboard() {
                     )}
                   </div>
                </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <motion.div key="analytics" className="space-y-8">
+              <div>
+                <h2 className="text-2xl font-bold mb-2 text-[#1c1917]">Visitor Analytics</h2>
+                <p className="text-[#a8a29e] font-medium">Track unique visitors to your Career-Ops dashboard</p>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                {[
+                  { label: 'Today', views: visitorStats?.today?.total_views, unique: visitorStats?.today?.unique_visitors },
+                  { label: 'Last 7 Days', views: visitorStats?.week?.total_views, unique: visitorStats?.week?.unique_visitors },
+                  { label: 'Last 30 Days', views: visitorStats?.month?.total_views, unique: visitorStats?.month?.unique_visitors },
+                  { label: 'All Time', views: visitorStats?.allTime?.total_views, unique: visitorStats?.allTime?.unique_visitors },
+                ].map((s) => (
+                  <div key={s.label} className="p-6 bg-white border border-[#e7e5e4] rounded-2xl hover:border-[#1c1917] hover:shadow-lg transition-all">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#a8a29e] mb-3">{s.label}</div>
+                    <div className="text-3xl font-bold text-[#1c1917]">{s.unique ?? '—'}</div>
+                    <div className="text-xs text-[#a8a29e] mt-1">{s.views ?? 0} total views</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Daily Chart */}
+              {visitorStats?.daily && visitorStats.daily.length > 0 && (
+                <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8">
+                  <h3 className="text-lg font-bold text-[#1c1917] mb-6 flex items-center gap-2"><TrendingUp size={18} /> Daily Visitors (Last 14 Days)</h3>
+                  <div className="flex items-end gap-2 h-48">
+                    {[...visitorStats.daily].reverse().map((d: any) => {
+                      const maxVisitors = Math.max(...visitorStats.daily.map((dd: any) => dd.unique_visitors || 1));
+                      const heightPct = Math.max(((d.unique_visitors || 0) / maxVisitors) * 100, 4);
+                      return (
+                        <div key={d.date} className="flex-1 flex flex-col items-center gap-2">
+                          <span className="text-[10px] font-bold text-[#1c1917]">{d.unique_visitors}</span>
+                          <div
+                            className="w-full bg-purple-500 rounded-t-lg transition-all hover:bg-purple-600"
+                            style={{ height: `${heightPct}%` }}
+                            title={`${d.date}: ${d.unique_visitors} unique, ${d.views} total`}
+                          />
+                          <span className="text-[9px] text-[#a8a29e] font-mono">{String(d.date).slice(5)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Top Pages */}
+                {visitorStats?.topPages && visitorStats.topPages.length > 0 && (
+                  <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8">
+                    <h3 className="text-lg font-bold text-[#1c1917] mb-6 flex items-center gap-2"><FileText size={18} /> Top Pages</h3>
+                    <div className="space-y-3">
+                      {visitorStats.topPages.map((p: any, i: number) => (
+                        <div key={p.path} className="flex items-center justify-between p-3 rounded-xl bg-[#faf9f6]">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-[#a8a29e] w-5">{i + 1}.</span>
+                            <span className="text-sm font-bold text-[#1c1917] font-mono">{p.path}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-[#1c1917]">{p.unique_visitors}</span>
+                            <span className="text-xs text-[#a8a29e] ml-1">unique</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top Countries */}
+                {visitorStats?.topCountries && visitorStats.topCountries.length > 0 && (
+                  <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8">
+                    <h3 className="text-lg font-bold text-[#1c1917] mb-6 flex items-center gap-2"><Globe size={18} /> Top Countries</h3>
+                    <div className="space-y-3">
+                      {visitorStats.topCountries.map((c: any, i: number) => (
+                        <div key={c.country} className="flex items-center justify-between p-3 rounded-xl bg-[#faf9f6]">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-[#a8a29e] w-5">{i + 1}.</span>
+                            <span className="text-sm font-bold text-[#1c1917]">{c.country}</span>
+                          </div>
+                          <span className="text-sm font-bold text-[#1c1917]">{c.unique_visitors}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {!visitorStats && (
+                <div className="text-center py-20 text-[#a8a29e]">
+                  <Eye size={48} className="mx-auto mb-4 opacity-30" />
+                  <p className="font-bold">Loading analytics...</p>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -2266,12 +2378,13 @@ function NavItem({ id, icon, label, active, onClick }: { id?: string, icon: any,
   );
 }
 
-function StatCard({ icon, label, value, color = 'stone' }: { icon: any, label: string, value: any, color?: 'stone' | 'emerald' | 'blue' | 'amber' }) {
+function StatCard({ icon, label, value, color = 'stone' }: { icon: any, label: string, value: any, color?: 'stone' | 'emerald' | 'blue' | 'amber' | 'purple' }) {
   const colorClasses = {
     stone: 'bg-[#1c1917]',
     emerald: 'bg-emerald-600',
     blue: 'bg-blue-600',
-    amber: 'bg-amber-500'
+    amber: 'bg-amber-500',
+    purple: 'bg-purple-600'
   };
 
   return (
