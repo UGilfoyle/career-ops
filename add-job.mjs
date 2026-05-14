@@ -199,6 +199,30 @@ async function scrapeJD(url) {
 
     await browser.close();
     const text = jdText.trim();
+
+    // Detect anti-bot block pages (Cloudflare, hCaptcha, Indeed, etc.)
+    const blockSignals = [
+      'request blocked',
+      'you have been blocked',
+      'ray id for this request',
+      'cloudflare',
+      'hcaptcha',
+      'verify you are human',
+      'access denied',
+      'just a moment',
+      'checking your browser',
+      'please complete the security check',
+      'unusual traffic',
+    ];
+    const lower = text.toLowerCase();
+    const isBlocked = blockSignals.some(s => lower.includes(s)) || text.length < 150;
+    if (isBlocked) {
+      throw new Error(
+        `Anti-bot block detected (scraped only ${text.length} chars). ` +
+        `Copy the JD text manually and use: node add-job.mjs "<url>" --file ./jd.txt`
+      );
+    }
+
     const meta = { ...linkedInMeta, text };
     return meta;
   } catch (err) {
