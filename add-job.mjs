@@ -240,17 +240,40 @@ async function main() {
     targeting_keywords: profileRow.targeting_keywords || { positive: [], negative: [] }
   };
 
-  // Scrape JD
-  let scrape;
-  try {
-    scrape = await scrapeJD(url);
-    console.log(`✓ Scraped ${scrape.text.length} characters`);
-  } catch (e) {
-    console.error(`❌ Failed to scrape: ${e.message}`);
-    process.exit(1);
+  // Scrape JD or read from file
+  let jdText = '';
+  let scrape = { text: '', company: null, title: null };
+
+  const fileFlagIndex = process.argv.indexOf('--file');
+  if (fileFlagIndex > -1 && process.argv[fileFlagIndex + 1]) {
+    const filePath = process.argv[fileFlagIndex + 1];
+    console.log(`📄 Reading job description from file: ${filePath}`);
+    import('fs').then(fs => {
+      try {
+        jdText = fs.readFileSync(filePath, 'utf-8');
+        scrape.text = jdText;
+        console.log(`✓ Read ${jdText.length} characters from file`);
+        finishAddingJob(scrape, rawUrl, canonical, jdText, profile);
+      } catch (err) {
+        console.error(`❌ Failed to read file: ${err.message}`);
+        process.exit(1);
+      }
+    });
+  } else {
+    try {
+      scrape = await scrapeJD(url);
+      console.log(`✓ Scraped ${scrape.text.length} characters`);
+      jdText = scrape.text;
+      finishAddingJob(scrape, rawUrl, canonical, jdText, profile);
+    } catch (e) {
+      console.error(`❌ Failed to scrape: ${e.message}`);
+      console.log(`\n💡 Tip: You can bypass scraping blocks (like Cloudflare) by saving the JD to a text file and running:`);
+      console.log(`   node add-job.mjs "${rawUrl}" --file ./jd.txt`);
+      process.exit(1);
+    }
   }
 
-  const jdText = scrape.text;
+  async function finishAddingJob(scrape, rawUrl, canonical, jdText, profile) {
   const li = extractLinkedInCompanyTitle(jdText, rawUrl);
   let company = extractCompanyFromUrl(rawUrl);
   let title = extractTitleFromJd(jdText);
@@ -276,6 +299,7 @@ async function main() {
   console.log(`\n📄 Next steps:`);
   console.log(`   tailor ${inserted.id} --deep    → Generate resume & cover letter`);
   console.log(`   apply ${inserted.id} --deep     → Auto-fill application`);
+  }
 }
 
 main().catch(e => {
