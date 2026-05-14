@@ -266,62 +266,108 @@ function renderProjects(projects) {
   `).join('');
 }
 
-function renderCategorizedSkills(skills) {
-  if (!Array.isArray(skills) || skills.length === 0) return '';
+function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
+  const superpowers = Array.isArray(profileSuperpowers) ? profileSuperpowers : [];
+  const competencies = Array.isArray(tailoredCompetencies) ? tailoredCompetencies : [];
 
-  // Generic professional categories that work for ANY industry
-  const cats = {
-    "Core Competencies": [],
-    "Technical Skills": [],
-    "Tools & Platforms": [],
-    "Methodologies": []
-  };
+  if (superpowers.length === 0 && competencies.length === 0) return '';
 
-  // Keywords to auto-categorize (works for software, marketing, sales, healthcare, finance, etc.)
-  const categoryKeywords = {
-    "Core Competencies": ["management", "leadership", "communication", "analysis", "strategy", "planning", "research", "design", "development", "consulting", "advisory", "operations"],
-    "Technical Skills": ["programming", "coding", "data", "analytics", "engineering", "architecture", "cloud", "database", "automation", "ml", "ai", "statistical", "modeling"],
-    "Tools & Platforms": ["software", "platform", "tool", "system", "framework", "suite", "app", "application", "crm", "erp", "aws", "azure", "gcp", "salesforce", "sap", "excel", "tableau"],
-    "Methodologies": ["agile", "scrum", "kanban", "waterfall", "lean", "six sigma", "process", "workflow", "framework", "standard", "compliance", "iso", "gdpr"]
-  };
+  // Known tech stacks / tools — if a competency looks like an actual technology, it goes to Technical Skills.
+  // This list covers the most common stacks seen in JDs; short tokens matched case-insensitively.
+  const techPatterns = [
+    // Languages
+    /\b(java(?:script)?|python|typescript|go(?:lang)?|rust|ruby|c\+\+|c#|\.net|kotlin|swift|scala|php|perl|elixir|haskell|dart|r\b|sql|graphql|html|css|sass|less)\b/i,
+    // Frameworks & runtimes
+    /\b(react|angular|vue|svelte|next\.?js|nuxt|nest\.?js|express|fastapi|flask|django|spring|rails|laravel|gin|echo|fiber|fastify|hono|remix|gatsby|astro|node\.?js|deno|bun)\b/i,
+    // Databases
+    /\b(postgres|postgresql|mysql|mariadb|mongo(?:db)?|redis|dynamodb|aurora|cockroach|cassandra|elastic|opensearch|sqlite|supabase|neon|firebase|firestore|couchdb|neo4j|memcached|influxdb)\b/i,
+    // Cloud & infra
+    /\b(aws|gcp|azure|cloudflare|vercel|heroku|digital\s?ocean|ecs|ec2|lambda|fargate|s3|cloudfront|route\s?53|iam|vpc|sqs|sns|step\s?functions|api\s?gateway|cloud\s?run|cloud\s?functions|bigquery|pubsub|terraform|pulumi|cdk|cloudformation|ansible)\b/i,
+    // DevOps & containers
+    /\b(docker|kubernetes|k8s|helm|istio|envoy|nginx|haproxy|traefik|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|circle\s?ci|argo\s?cd|flux|buildkite|drone|prometheus|grafana|datadog|new\s?relic|pagerduty|splunk|elk|loki|jaeger|opentelemetry)\b/i,
+    // Data & ML
+    /\b(kafka|rabbitmq|nats|pulsar|flink|spark|airflow|dbt|snowflake|redshift|databricks|mlflow|sagemaker|pytorch|tensorflow|langchain|openai|hugging\s?face|llm|rag|vector\s?db|pinecone|weaviate|qdrant|milvus)\b/i,
+    // Testing & tools
+    /\b(jest|mocha|pytest|cypress|playwright|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack)\b/i,
+    // Patterns that are clearly tech (short tokens)
+    /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet)\b/i,
+  ];
 
-  // Sort skills into categories
-  const categorized = { ...cats };
-  const uncategorized = [];
-
-  for (const skill of skills) {
-    const skillLower = skill.toLowerCase();
-    let matched = false;
-
-    for (const [catName, keywords] of Object.entries(categoryKeywords)) {
-      if (keywords.some(k => skillLower.includes(k))) {
-        categorized[catName].push(skill);
-        matched = true;
-        break;
+  const isTechStack = (text) => {
+    const t = text.trim();
+    // Short items (≤30 chars) that look like tool/tech names (few spaces, no verb phrases)
+    if (t.length <= 30 && (t.split(/\s+/).length <= 3)) {
+      // Check against known patterns
+      if (techPatterns.some(p => p.test(t))) return true;
+      // If it's a very short string (single word or two), treat as tech by default
+      // unless it contains management/leadership style words
+      if (t.split(/\s+/).length <= 2 && !/\b(management|leadership|communication|mentoring|strategy|ownership|reviews)\b/i.test(t)) {
+        return true;
       }
     }
+    // Longer items — check for tech patterns
+    return techPatterns.some(p => p.test(t));
+  };
 
-    if (!matched) {
-      uncategorized.push(skill);
+  // Separate competencies into Core Competencies (broad skills) and Technical Skills (tech stacks)
+  const coreComp = [];
+  const techSkills = [];
+
+  // Process tailored competencies FIRST (JD-aligned, highest priority)
+  for (const item of competencies) {
+    const s = String(item || '').trim();
+    if (!s) continue;
+    if (isTechStack(s)) {
+      techSkills.push(s);
+    } else {
+      coreComp.push(s);
     }
   }
 
-  // Add uncategorized to Core Competencies
-  if (uncategorized.length > 0) {
-    categorized["Core Competencies"].push(...uncategorized);
+  // Then add profile superpowers that aren't already covered
+  const existingLower = new Set([...coreComp, ...techSkills].map(x => x.toLowerCase()));
+  for (const sp of superpowers) {
+    const s = String(sp || '').trim();
+    if (!s || existingLower.has(s.toLowerCase())) continue;
+    // Extract parenthesized tech stacks from superpowers like "AWS platform engineering (ECS, Lambda, Aurora, IAM)"
+    const parenMatch = s.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+      const techs = parenMatch[1].split(',').map(t => t.trim()).filter(Boolean);
+      for (const tech of techs) {
+        if (!existingLower.has(tech.toLowerCase())) {
+          techSkills.push(tech);
+          existingLower.add(tech.toLowerCase());
+        }
+      }
+    }
+    // The superpower phrase itself goes to Core Competencies (without the parenthesized part)
+    const cleanedSp = s.replace(/\s*\([^)]*\)\s*/g, '').trim();
+    if (cleanedSp && !existingLower.has(cleanedSp.toLowerCase())) {
+      coreComp.push(cleanedSp);
+      existingLower.add(cleanedSp.toLowerCase());
+    }
   }
 
-  // Generate HTML - only show categories that have skills
+  // Deduplicate and limit
+  const uniqueCore = [...new Set(coreComp)].slice(0, 10);
+  const uniqueTech = [...new Set(techSkills)].slice(0, 12);
+
+  // Generate HTML
   let html = '';
-  for (const [name, skillList] of Object.entries(categorized)) {
-    if (skillList.length > 0) {
-      // Remove duplicates and limit to reasonable number
-      const unique = [...new Set(skillList)].slice(0, 8);
-      html += `<div class="skill-line"><span class="skill-label">${name}:</span> ${unique.join(', ')}</div>`;
-    }
+  if (uniqueCore.length > 0) {
+    html += `<div class="skill-line"><span class="skill-label">Core Competencies:</span> ${uniqueCore.join(', ')}</div>`;
+  }
+  if (uniqueTech.length > 0) {
+    html += `<div class="skill-line"><span class="skill-label">Technical Skills:</span> ${uniqueTech.join(', ')}</div>`;
   }
 
-  return html || `<div class="skill-line"><span class="skill-label">Skills:</span> ${skills.slice(0, 12).join(', ')}</div>`;
+  // Fallback if somehow both are empty
+  if (!html) {
+    const allItems = [...superpowers, ...competencies].slice(0, 12);
+    html = `<div class="skill-line"><span class="skill-label">Skills:</span> ${allItems.join(', ')}</div>`;
+  }
+
+  return html;
 }
 
 // Calculate years of experience from experience array
@@ -641,6 +687,24 @@ async function tailorPackage(jd, profile, companyName) {
     console.log(`🤖 Using direct Hugging Face API with ${HF_MODEL}...`);
   } else {
     const y = calculateYearsOfExperience(profile?.experience);
+    // Extract tech stacks from JD for the fallback (no-AI) path
+    const jdLower = String(jd || '').toLowerCase();
+    const knownTechs = [
+      'JavaScript', 'TypeScript', 'Python', 'Java', 'Go', 'Rust', 'C#', '.NET', 'Ruby', 'PHP', 'Kotlin', 'Swift', 'Scala',
+      'React', 'Angular', 'Vue.js', 'Next.js', 'NestJS', 'Express', 'FastAPI', 'Django', 'Spring Boot', 'Node.js',
+      'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'DynamoDB', 'Elasticsearch', 'Aurora',
+      'AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD',
+      'ECS', 'Lambda', 'S3', 'EC2', 'CloudFormation', 'IAM', 'VPC', 'SQS', 'SNS',
+      'Kafka', 'RabbitMQ', 'GraphQL', 'REST API', 'gRPC',
+      'Jenkins', 'GitHub Actions', 'GitLab CI', 'Prometheus', 'Grafana', 'Datadog',
+      'Jest', 'Cypress', 'Playwright', 'Webpack', 'Vite',
+      'Git', 'Jira', 'Agile', 'Scrum',
+    ];
+    const jdTechExtract = knownTechs.filter(t => jdLower.includes(t.toLowerCase()));
+    const fallbackCompetencies = [
+      ...jdTechExtract.slice(0, 8),
+      ...(profile?.narrative?.superpowers || []).slice(0, 5),
+    ].slice(0, 12);
     return {
       resume: {
         summary: normalizeResumeSummaryPlain(
@@ -648,7 +712,7 @@ async function tailorPackage(jd, profile, companyName) {
             `Engineer with ${y || 'several'}+ years building production systems and APIs.`,
           y
         ),
-        core_competencies: (profile?.narrative?.superpowers || []).slice(0, 12),
+        core_competencies: fallbackCompetencies,
         experience: (profile?.experience?.[0]?.bullets || []).slice(0, 3),
       },
       cover_letter: (() => {
@@ -685,7 +749,7 @@ GLOBAL RULES:
 TASK:
 1. RESUME TAILORING: CRITICAL - Every bullet must include at least ONE specific technology/requirement from the JD:
    - **Professional summary** (resume.summary): EXACTLY 3–4 lines as ONE JSON string with newline characters \\n between lines (not HTML). Line 1: title/scope plus years of experience grounded in the digest above. Lines 2–4: concrete domains, stacks, systems, and outcomes you have shipped (from digest + superpowers), lightly aligned to the JD — no filler, no soft-skill-only fluff. Total under ~90 words. No bullet characters unless they read naturally in prose.
-   - 8-10 core competencies (skills/tools from JD)
+   - 8-12 core competencies: MUST include ACTUAL technology names and tools mentioned in the JD (e.g., "Node.js", "React", "Docker", "Kubernetes", "PostgreSQL", "AWS Lambda") PLUS 2-3 broader engineering competencies (e.g., "System Design", "Performance Engineering", "CI/CD Pipeline Design"). Prioritize exact tech stack names from the JD — these will populate the Technical Skills section.
    - 3 rewritten bullets for ONE role that maps to JD requirements
 
    BULLET REQUIREMENTS:
@@ -918,7 +982,7 @@ OUTPUT FORMAT (JSON ONLY):
 
     const yearsInline = yearsExp > 0 ? ` • ${yearsExp}+ years` : '';
 
-    const skillsLines = renderCategorizedSkills(profile.narrative?.superpowers || []);
+    const skillsLines = renderCategorizedSkills(profile.narrative?.superpowers || [], tailoring?.core_competencies || []);
     const hasSkills = Boolean(skillsLines && String(skillsLines).trim().length > 0);
 
     const resumeReps = {
