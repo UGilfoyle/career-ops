@@ -766,12 +766,13 @@ TASK:
 
 2. COVER LETTER (body only — the HTML template already prints "Dear Hiring Manager," and "Sincerely,"):
    - Return ONLY the letter body: NO salutation, NO sign-off, NO "Dear ...", NO "Sincerely", NO "Best regards"
+   - CRITICAL LENGTH CONSTRAINT: The ENTIRE cover letter body MUST be under 150 words total. Each paragraph MUST be 2-3 sentences MAX. This is a HARD limit — the letter must fit on ONE page.
    - Tone: first person, formal business letter. Do NOT address the reader as "you/your team" or open with "Your [X] team builds...". Prefer "I am writing...", "The posting emphasizes...", "My experience includes..."
    - Forbidden openings: "Dear [Company] Team", "Dear Hiring Team", "Your team", "You are looking for"
    - Structure: EXACTLY 3 short paragraphs, separated by blank lines (use \\n\\n between paragraphs in the JSON string)
-   - Para 1: Interest in this opportunity at ${companyName}; reference one concrete requirement or theme from the JD in neutral, professional language
-   - Para 2: Map your verified experience to those requirements with tools and outcomes from the digest — never invent employers or metrics
-   - Para 3: Availability and how to reach you — you MUST use ONLY the EXACT candidate email (${candidateEmail}) and phone (${candidatePhone}) listed in My Context above. NEVER invent, guess, or hallucinate any other email or phone number. If the email or phone is blank, simply say "I welcome the opportunity to discuss" without mentioning contact details.
+   - Para 1 (2 sentences max): Interest in this opportunity at ${companyName}; reference one concrete requirement from the JD
+   - Para 2 (2-3 sentences max): Map your verified experience to those requirements with tools and outcomes — never invent employers or metrics
+   - Para 3 (1-2 sentences max): Availability and how to reach you — you MUST use ONLY the EXACT candidate email (${candidateEmail}) and phone (${candidatePhone}) listed in My Context above. NEVER invent, guess, or hallucinate any other email or phone number. If the email or phone is blank, simply say "I welcome the opportunity to discuss" without mentioning contact details.
 
 JD:
 ${jd.substring(0, 4000)}
