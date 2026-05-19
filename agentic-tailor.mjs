@@ -59,7 +59,7 @@ async function callHfChatViaHttp(messages) {
     body: JSON.stringify({
       model: HF_MODEL,
       messages,
-      max_tokens: 2000,
+      max_tokens: 3000,
       temperature: 0.2,
     }),
   });
@@ -141,16 +141,20 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
 
   // Limit bullets per job based on page count
   const maxBulletsPerJob = maxPages >= 3 ? 6 : maxPages >= 2 ? 4 : 3;
-  
-  // Find the most relevant job to apply tailored bullets
-  // Default to most recent (index 0), but if JD is provided, score by relevance
+
+  // tailoredBullets can be:
+  //   (a) a flat array of strings → legacy single-role mode (applied to most-relevant role)
+  //   (b) an object { "0": [...], "1": [...] } → multi-role mode keyed by role index
+  const isMultiRole = tailoredBullets && typeof tailoredBullets === 'object' && !Array.isArray(tailoredBullets);
+  const flatBullets = Array.isArray(tailoredBullets) ? tailoredBullets : null;
+
+  // For legacy flat-array mode: find the most relevant job
   let tailoredJobIndex = 0;
-  if (jdText && tailoredBullets && tailoredBullets.length > 0) {
+  if (flatBullets && flatBullets.length > 0 && jdText) {
     const jdLower = jdText.toLowerCase();
     let bestScore = -1;
     exp.forEach((job, idx) => {
       const jobText = `${job.role} ${job.company} ${(job.bullets || []).join(' ')}`.toLowerCase();
-      // Simple relevance: count JD keywords appearing in job text
       const jdKeywords = jdLower.match(/\b\w{4,}\b/g) || [];
       const score = jdKeywords.filter(kw => jobText.includes(kw)).length;
       if (score > bestScore) {
@@ -159,8 +163,10 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       }
     });
     console.log(`[DEBUG] Selected job #${tailoredJobIndex + 1} (${exp[tailoredJobIndex]?.role} at ${exp[tailoredJobIndex]?.company}) for tailored bullets`);
-  } else {
+  } else if (!isMultiRole) {
     console.log(`[DEBUG] No tailored bullets or JD provided. Using original bullets for all jobs.`);
+  } else {
+    console.log(`[DEBUG] Multi-role tailoring: ${Object.keys(tailoredBullets).length} roles received tailored bullets`);
   }
 
   // Date patterns to aggressively strip from company/role
@@ -176,18 +182,21 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     for (const pattern of datePatterns) {
       cleaned = cleaned.replace(pattern, '').trim();
     }
-    // Clean up leftover separators
     return cleaned.replace(/\s*[|—–-]\s*$/, '').replace(/^\s*[|—–-]\s*/, '').trim();
   };
 
   return exp.map((job, idx) => {
-    // Apply tailored bullets to the most relevant job, original bullets to others
-    const useTailored = (idx === tailoredJobIndex) && tailoredBullets && tailoredBullets.length > 0;
-    if (useTailored) {
-      console.log(`[DEBUG] Applying ${tailoredBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
+    // Multi-role mode: check if AI provided bullets for this role index
+    let roleBullets = null;
+    if (isMultiRole && tailoredBullets[String(idx)]) {
+      roleBullets = tailoredBullets[String(idx)];
+      console.log(`[DEBUG] Applying ${roleBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
+    } else if (flatBullets && flatBullets.length > 0 && idx === tailoredJobIndex) {
+      roleBullets = flatBullets;
+      console.log(`[DEBUG] Applying ${roleBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
     }
-    const bullets = useTailored
-      ? tailoredBullets.slice(0, maxBulletsPerJob)
+    const bullets = roleBullets
+      ? roleBullets.slice(0, maxBulletsPerJob)
       : (job.bullets || []).slice(0, maxBulletsPerJob);
 
     let role = (job.role || '').trim();
@@ -744,6 +753,14 @@ Superpowers / keywords: ${(profile?.narrative?.superpowers || []).join(', ')}
 
 Recent roles — fact base for what you worked on (paraphrase; do not fabricate employers or metrics):
 ${experienceDigest}`;
+  // Determine how many roles to tailor (top 3 most relevant)
+  const rolesToTailor = Math.min(3, (profile?.experience || []).length);
+  const roleDigest = (profile?.experience || []).slice(0, rolesToTailor).map((e, i) => {
+    const role = e?.role || e?.title || 'Role';
+    const company = e?.company || 'Company';
+    return `  Role ${i}: "${role}" at "${company}"`;
+  }).join('\n');
+
   const prompt = `
 You are a senior technical writer who produces concise, professional business correspondence.
 
@@ -754,25 +771,36 @@ GLOBAL RULES:
 - Lead with substance, not filler
 
 TASK:
-1. RESUME TAILORING: CRITICAL - Every bullet must include at least ONE specific technology/requirement from the JD:
-   - **Professional summary** (resume.summary): EXACTLY 3–4 lines as ONE JSON string with newline characters \\n between lines (not HTML). Line 1: title/scope plus years of experience grounded in the digest above. Lines 2–4: concrete domains, stacks, systems, and outcomes you have shipped (from digest + superpowers), lightly aligned to the JD — no filler, no soft-skill-only fluff. Total under ~90 words. No bullet characters unless they read naturally in prose.
-   - 8-12 core competencies: MUST include ACTUAL technology names and tools mentioned in the JD (e.g., "Node.js", "React", "Docker", "Kubernetes", "PostgreSQL", "AWS Lambda") PLUS 2-3 broader engineering competencies (e.g., "System Design", "Performance Engineering", "CI/CD Pipeline Design"). Prioritize exact tech stack names from the JD — these will populate the Technical Skills section.
-   - 3 rewritten bullets for ONE role that maps to JD requirements
+1. RESUME TAILORING — every output field MUST be aligned to the JD below:
 
-   BULLET REQUIREMENTS:
-   - Each bullet MUST include at least one technology/skill from the JD
-   - Use the EXACT terminology from the JD (e.g., if JD says ".NET Core", use ".NET Core" not "backend frameworks")
-   - Connect your experience directly to JD requirements with metrics
+   a) **Professional summary** (resume.summary): EXACTLY 3–4 lines as ONE JSON string with \\n between lines.
+      - Line 1: title/scope + years of experience. MUST mention 2-3 specific technologies from the JD.
+      - Lines 2–4: concrete domains, stacks, systems, and outcomes from the digest, EXPLICITLY MAPPED to JD requirements.
+      - Example: if JD says "React, Node.js, PostgreSQL" → summary MUST mention React, Node.js, PostgreSQL.
+      - Total under ~90 words. No bullet characters.
 
-2. COVER LETTER (body only — the HTML template already prints "Dear Hiring Manager," and "Sincerely,"):
-   - Return ONLY the letter body: NO salutation, NO sign-off, NO "Dear ...", NO "Sincerely", NO "Best regards"
-   - CRITICAL LENGTH CONSTRAINT: The ENTIRE cover letter body MUST be under 150 words total. Each paragraph MUST be 2-3 sentences MAX. This is a HARD limit — the letter must fit on ONE page.
-   - Tone: first person, formal business letter. Do NOT address the reader as "you/your team" or open with "Your [X] team builds...". Prefer "I am writing...", "The posting emphasizes...", "My experience includes..."
-   - Forbidden openings: "Dear [Company] Team", "Dear Hiring Team", "Your team", "You are looking for"
-   - Structure: EXACTLY 3 short paragraphs, separated by blank lines (use \\n\\n between paragraphs in the JSON string)
-   - Para 1 (2 sentences max): Interest in this opportunity at ${companyName}; reference one concrete requirement from the JD
-   - Para 2 (2-3 sentences max): Map your verified experience to those requirements with tools and outcomes — never invent employers or metrics
-   - Para 3 (1-2 sentences max): Availability and how to reach you — you MUST use ONLY the EXACT candidate email (${candidateEmail}) and phone (${candidatePhone}) listed in My Context above. NEVER invent, guess, or hallucinate any other email or phone number. If the email or phone is blank, simply say "I welcome the opportunity to discuss" without mentioning contact details.
+   b) **Core competencies** (resume.core_competencies): 10-14 items.
+      - FIRST 6-8 items: EXACT technology/tool names from the JD (copy them verbatim — e.g. "React.js", "Node.js", "PostgreSQL", "Docker", "Kubernetes", "AWS Lambda"). These are the most important.
+      - NEXT 2-3 items: broader engineering competencies that appear in the JD (e.g. "System Design", "Microservices Architecture", "CI/CD Pipeline Design")
+      - LAST 2-3 items: soft/domain competencies from the JD (e.g. "Agile/Scrum", "Cross-functional Collaboration")
+      - CRITICAL: at least 60% of items must be EXACT terms from the JD. Do NOT genericize.
+
+   c) **Experience bullets** (resume.experience): Rewrite bullets for the top ${rolesToTailor} roles.
+      Return as an OBJECT keyed by role index ("0", "1", "2"), each with 3-4 tailored bullets.
+${roleDigest}
+      BULLET RULES:
+      - Each bullet MUST reference at least one specific technology/requirement from the JD
+      - Use EXACT JD terminology (if JD says ".NET Core", write ".NET Core" not "backend frameworks")
+      - Include metrics from the digest where available; never fabricate numbers
+      - Connect each bullet directly to a JD requirement
+
+2. COVER LETTER (body only — template adds "Dear Hiring Manager," and "Sincerely,"):
+   - Return ONLY the letter body: NO salutation, NO sign-off
+   - Under 150 words total. 3 short paragraphs separated by \\n\\n
+   - Tone: first person, formal. Prefer "I am writing...", "The posting emphasizes..."
+   - Para 1 (2 sentences): Interest at ${companyName}; reference a concrete JD requirement
+   - Para 2 (2-3 sentences): Map experience to JD requirements with tools and outcomes
+   - Para 3 (1-2 sentences): Availability + contact: use ONLY ${candidateEmail} and ${candidatePhone}
 
 JD:
 ${jd.substring(0, 4000)}
@@ -780,14 +808,17 @@ ${jd.substring(0, 4000)}
 My Context:
 ${cvContext}
 
-OUTPUT FORMAT (JSON ONLY):
+OUTPUT FORMAT (JSON ONLY — no markdown fences):
 {
   "resume": {
-    "summary": "...",
-    "core_competencies": ["kw1", "kw2", ...],
-    "experience": ["bullet1", "bullet2", "bullet3"]
+    "summary": "Line1 with JD tech\\nLine2 with JD domains\\nLine3 with outcomes",
+    "core_competencies": ["React.js", "Node.js", "PostgreSQL", "Docker", ...],
+    "experience": {
+      "0": ["bullet for role 0 with JD tech...", "...", "..."],
+      "1": ["bullet for role 1 with JD tech...", "...", "..."]
+    }
   },
-  "cover_letter": "paragraph1\\n\\nparagraph2\\n\\nparagraph3 (body only; template adds greeting and closing)"
+  "cover_letter": "para1\\n\\npara2\\n\\npara3"
 }
   `;
 
@@ -801,7 +832,7 @@ OUTPUT FORMAT (JSON ONLY):
     response = await hfClient.chatCompletion({
       model: HF_MODEL,
       messages,
-      max_tokens: 2000,
+      max_tokens: 3000,
       temperature: 0.2
     });
   } else {
@@ -815,6 +846,16 @@ OUTPUT FORMAT (JSON ONLY):
     const y = calculateYearsOfExperience(profile?.experience);
     if (data?.resume?.summary) {
       data.resume.summary = normalizeResumeSummaryPlain(data.resume.summary, y);
+    }
+    // Normalize experience: AI may return object {"0":[...], "1":[...]} or flat array
+    // renderExperience handles both, so we pass through as-is
+    if (data?.resume?.experience) {
+      const exp = data.resume.experience;
+      if (typeof exp === 'object' && !Array.isArray(exp)) {
+        console.log(`[DEBUG] AI returned multi-role experience: ${Object.keys(exp).length} roles`);
+      } else if (Array.isArray(exp)) {
+        console.log(`[DEBUG] AI returned flat experience array: ${exp.length} bullets (legacy single-role)`);
+      }
     }
     return data;
   } catch (err) {
