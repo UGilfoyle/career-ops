@@ -969,8 +969,25 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     const tailoring = result.resume;
 
     // Debug: Log tailored bullets
-    console.log(`[DEBUG] AI generated ${(tailoring?.experience || []).length} tailored bullets:`);
-    (tailoring?.experience || []).forEach((b, i) => console.log(`  ${i + 1}. ${b?.substring(0, 60)}...`));
+    // Debug: Log tailored bullets (handles both flat array and multi-role object)
+    const expData = tailoring?.experience;
+    if (expData && typeof expData === 'object' && !Array.isArray(expData)) {
+      // Multi-role object: {"0": [...], "1": [...], ...}
+      const roleKeys = Object.keys(expData);
+      const totalBullets = roleKeys.reduce((sum, k) => sum + (Array.isArray(expData[k]) ? expData[k].length : 0), 0);
+      console.log(`[DEBUG] AI generated ${totalBullets} tailored bullets across ${roleKeys.length} roles:`);
+      roleKeys.forEach(k => {
+        const bullets = expData[k] || [];
+        console.log(`  Role ${k}: ${bullets.length} bullets`);
+        bullets.forEach((b, i) => console.log(`    ${i + 1}. ${String(b || '').substring(0, 60)}...`));
+      });
+    } else if (Array.isArray(expData)) {
+      // Legacy flat array
+      console.log(`[DEBUG] AI generated ${expData.length} tailored bullets:`);
+      expData.forEach((b, i) => console.log(`  ${i + 1}. ${String(b || '').substring(0, 60)}...`));
+    } else {
+      console.log(`[DEBUG] No tailored experience bullets returned by AI.`);
+    }
 
     // Calculate ATS Score
     const atsScore = calculateATSScore(profile, jdText, tailoring);
