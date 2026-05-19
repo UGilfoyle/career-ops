@@ -10,7 +10,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 let hf = null;
 let hfUnavailable = false;
 let hfTokenInUse = '';
-const HF_MODEL = 'MiniMaxAI/MiniMax-M2.7';
+const HF_MODEL = process.env.HF_MODEL || 'Qwen/Qwen2.5-72B-Instruct';
 const TARGET_MAP = 'data/current_eval.json';
 const TEMPLATE = 'templates/ats-template-professional.html';
 const require = createRequire(import.meta.url);
