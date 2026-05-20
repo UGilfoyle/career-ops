@@ -150,6 +150,32 @@ async function scrapeJD(url) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(2000);
 
+    // Detect login/sign-in walls
+    const pageUrl = page.url();
+    const pageTitle = await page.title();
+    const pageTitleLower = pageTitle.toLowerCase();
+    
+    const isLoginRedirect = pageUrl.includes('/login') || 
+                            pageUrl.includes('/checkpoint/lg/') || 
+                            pageUrl.includes('/signup');
+    
+    const isLoginTitle = /sign\s*in|log\s*in|login|authwall|join\s*linkedin/i.test(pageTitleLower);
+    
+    const isLoginForm = await page.evaluate(() => {
+      return !!document.querySelector('input[type="password"]') || 
+             !!document.querySelector('form[action*="/login"]') ||
+             !!document.querySelector('.authwall-join-form') ||
+             (document.body.innerText.includes('Sign in to see') && document.body.innerText.includes('Password'));
+    });
+
+    if (isLoginRedirect || isLoginTitle || isLoginForm) {
+      throw new Error(
+        `LinkedIn Login Wall / Private URL detected. The URL requested requires authentication.\n` +
+        `Please copy the Job Description text from your browser manually, save it to a text file, and use the --file option:\n` +
+        `  node add-job.mjs "${url}" --file ./jd.txt`
+      );
+    }
+
     let linkedInMeta = { company: null, title: null };
     try {
       const u = new URL(url);
@@ -232,6 +258,27 @@ async function scrapeJD(url) {
 }
 
 async function main() {
+  // Auto-heal database: clean up existing garbage login-wall entries
+  try {
+    const deletedGarbage = await sql`
+      DELETE FROM jobs
+      WHERE user_id = ${userId}
+        AND (
+          title ILIKE 'Sign in%'
+          OR title ILIKE 'Log in%'
+          OR title ILIKE 'Security Verification%'
+          OR company = 'LinkedIn Job' AND title = 'Sign in'
+        )
+      RETURNING id, company, title;
+    `;
+    if (deletedGarbage.length > 0) {
+      console.log(`🧹 Auto-healed: Deleted ${deletedGarbage.length} garbage login/auth wall job entries from database:`);
+      deletedGarbage.forEach(g => console.log(`   - Deleted: ${g.company} — ${g.title} (ID: ${g.id})`));
+    }
+  } catch (err) {
+    console.warn(`[WARNING] Failed to run garbage cleanup query: ${err.message}`);
+  }
+
   const rawUrl = String(url).trim();
   const canonical = canonicalJobUrl(rawUrl);
   console.log(`➕ Adding job: ${rawUrl}`);
