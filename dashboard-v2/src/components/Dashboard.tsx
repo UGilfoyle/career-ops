@@ -25,13 +25,18 @@ import {
   MoreVertical,
   Eye,
   Globe,
-  TrendingUp
+  TrendingUp,
+  BookOpen,
+  Copy,
+  HelpCircle,
+  Code
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
+  const isAdmin = session?.user?.email === 'admin@career-ops.local';
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -703,8 +708,11 @@ export default function Dashboard() {
             <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} onClick={() => setActiveTab('apps')} />
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} onClick={() => setActiveTab('pipeline')} />
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} onClick={() => setActiveTab('cv')} />
-            <NavItem id="nav-analytics" icon={<Eye size={18}/>} label="Analytics" active={activeTab === 'analytics'} onClick={() => { setActiveTab('analytics'); if (!visitorStats) { fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {}); } }} />
+            {isAdmin && (
+              <NavItem id="nav-analytics" icon={<Eye size={18}/>} label="Analytics" active={activeTab === 'analytics'} onClick={() => { setActiveTab('analytics'); if (!visitorStats) { fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {}); } }} />
+            )}
             <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} onClick={() => setActiveTab('terminal')} />
+            <NavItem id="nav-docs" icon={<BookOpen size={18}/>} label="Tutorial & Docs" active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} />
           </nav>
         </div>
 
@@ -1332,6 +1340,198 @@ export default function Dashboard() {
                   <p className="font-bold">Loading analytics...</p>
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {activeTab === 'docs' && (
+            <motion.div key="docs" className="space-y-10">
+              <div className="flex items-center gap-4 border-b border-[#e7e5e4] pb-6">
+                <div className="h-12 w-12 bg-[#1c1917] rounded-2xl flex items-center justify-center text-white">
+                  <BookOpen size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-[#1c1917]">System Documentation & Tutorial</h2>
+                  <p className="text-[#a8a29e] font-medium">Master Career-Ops: Auto-discover, rank, tailor, and auto-apply to jobs.</p>
+                </div>
+              </div>
+
+              {/* Grid Layout: Intro and Deep Flag */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Intro Card */}
+                <div className="bg-[#f5f5f4] p-8 border border-[#e7e5e4] rounded-[2rem] space-y-6">
+                  <h3 className="text-xl font-bold text-[#1c1917] flex items-center gap-2">
+                    <Zap size={20} className="text-amber-500" />
+                    How Career-Ops Works
+                  </h3>
+                  <p className="text-sm text-[#78716c] leading-relaxed font-medium">
+                    Career-Ops is a fully automated, agentic job search, evaluation, and application pipeline. 
+                    It continuously works in the background to scan job boards, rank them against your profile, 
+                    tailor your materials, and help you apply.
+                  </p>
+                  <div className="space-y-4">
+                    {[
+                      { step: '1', title: 'Identity Setup', text: 'Go to Settings, define your candidate details, previous experiences, education, and target keywords.' },
+                      { step: '2', title: 'Job Discovery', text: 'Scan platforms automatically or add specific job URLs manually via the Terminal.' },
+                      { step: '3', title: 'Dynamic Tailoring', text: 'Tailor your resume and cover letter with extreme semantic accuracy for a specific job.' },
+                      { step: '4', title: 'Form Application', text: 'Record your application details and let the system assist with automated draft filing.' },
+                    ].map((s) => (
+                      <div key={s.step} className="flex gap-4">
+                        <div className="h-8 w-8 rounded-full bg-white border border-[#e7e5e4] text-[#1c1917] flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                          {s.step}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-[#1c1917]">{s.title}</h4>
+                          <p className="text-xs text-[#a8a29e] font-medium mt-0.5">{s.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Deep Flag Card */}
+                <div className="bg-white p-8 border border-[#e7e5e4] rounded-[2rem] space-y-6 shadow-sm">
+                  <h3 className="text-xl font-bold text-[#1c1917] flex items-center gap-2">
+                    <ShieldCheck size={20} className="text-emerald-600" />
+                    Understanding the <code className="bg-[#f5f5f4] px-2 py-0.5 rounded text-xs font-mono font-bold text-emerald-700">--deep</code> Flag
+                  </h3>
+                  <p className="text-sm text-[#78716c] leading-relaxed font-medium">
+                    The <code className="bg-[#f5f5f4] px-1.5 py-0.5 rounded text-xs font-mono font-bold">--deep</code> flag overrides the default, fast heuristic mode to run intensive, highly accurate agent workflows.
+                  </p>
+                  
+                  <div className="space-y-4 text-xs font-medium">
+                    <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100/80 space-y-2">
+                      <h4 className="font-bold text-emerald-800 flex items-center gap-2">
+                        <Code size={14} /> Multi-Role Tailoring (Resumes & CL)
+                      </h4>
+                      <p className="text-emerald-700/80 leading-relaxed">
+                        Instead of flat, legacy tailoring, deep tailoring rewrites experience bullets for the <strong>top 3 roles</strong> in your profile, perfectly adapts the professional summary, and ensures <strong>60%+ verbatim technical terminology matching</strong> from the JD.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-100 space-y-2">
+                      <h4 className="font-bold text-amber-800 flex items-center gap-2">
+                        <Search size={14} /> Broad Scraping & Discovery
+                      </h4>
+                      <p className="text-amber-700/80 leading-relaxed">
+                        Standard scan checks recent lists. Deep scanning searches comprehensively across all major portals (LinkedIn, Naukri, Indeed, Instahyre) and scrapes subpages.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 space-y-2">
+                      <h4 className="font-bold text-blue-800 flex items-center gap-2">
+                        <TerminalIcon size={14} /> Comprehensive Model Context
+                      </h4>
+                      <p className="text-blue-700/80 leading-relaxed">
+                        Deep mode feeds a larger context to high-fidelity LLMs, ensuring detailed applications answers and precise ATS alignments.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Command Cheat Sheet */}
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold text-[#1c1917] flex items-center gap-2">
+                  <TerminalIcon size={20} />
+                  Interactive Command Reference
+                </h3>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {[
+                    {
+                      cmd: 'scan --deep',
+                      desc: 'Auto-discover new job postings matching target keywords across all major boards.',
+                      usage: 'Run this to kick off background scraper tasks and crawl job boards.',
+                      badge: 'Scraper',
+                      badgeColor: 'amber'
+                    },
+                    {
+                      cmd: 'rank --deep',
+                      desc: 'Compare recent jobs in the pipeline against your profile keywords using LLM-scoring.',
+                      usage: 'Updates all matching scores (0-10) to bubble up the best matches.',
+                      badge: 'Ranker',
+                      badgeColor: 'blue'
+                    },
+                    {
+                      cmd: 'tailor <job_id> --deep',
+                      desc: 'Generate a highly-tailored, ATS-optimized PDF Resume and Cover Letter.',
+                      usage: 'Creates your tailored materials inside the Resume Manager instantly.',
+                      badge: 'Tailor',
+                      badgeColor: 'emerald'
+                    },
+                    {
+                      cmd: 'apply <job_id> --deep',
+                      desc: 'Initiate automated form filling and record your application details.',
+                      usage: 'Prepares draft application details and submits them to the active funnel.',
+                      badge: 'Apply',
+                      badgeColor: 'purple'
+                    },
+                    {
+                      cmd: 'add <url>',
+                      desc: 'Directly scrape and add a single, public job URL to your pipeline.',
+                      usage: 'Example: add https://linkedin.com/jobs/view/12345',
+                      badge: 'Direct Scrape',
+                      badgeColor: 'stone'
+                    },
+                    {
+                      cmd: 'help',
+                      desc: 'Print out the full terminal helper menu and list of available scripts.',
+                      usage: 'Shows manual commands and configurations.',
+                      badge: 'Help',
+                      badgeColor: 'stone'
+                    }
+                  ].map((c) => (
+                    <div key={c.cmd} className="bg-white border border-[#e7e5e4] rounded-[2rem] p-6 hover:shadow-lg transition-all flex flex-col justify-between space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <code className="text-sm font-mono font-bold text-[#1c1917] bg-[#f5f5f4] px-2.5 py-1 rounded-xl">
+                            {c.cmd}
+                          </code>
+                          <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-${c.badgeColor}-50 text-${c.badgeColor}-700 border border-${c.badgeColor}-200`}>
+                            {c.badge}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-[#78716c]">{c.desc}</p>
+                        <p className="text-xs text-[#a8a29e] italic font-medium">Usage: {c.usage}</p>
+                      </div>
+
+                      <div className="flex items-center gap-3 border-t border-[#f5f5f4] pt-4">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(c.cmd);
+                            setToast({ show: true, message: `[OK] ✔ Copied: "${c.cmd}"` });
+                            setTimeout(() => setToast({ show: false, message: '' }), 2000);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#e7e5e4] hover:bg-[#f5f5f4] transition-colors rounded-xl text-xs font-bold text-[#1c1917]"
+                        >
+                          <Copy size={13} />
+                          <span>Copy</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCmdInput(c.cmd);
+                            setActiveTab('terminal');
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#e7e5e4] hover:bg-[#f5f5f4] transition-colors rounded-xl text-xs font-bold text-[#1c1917]"
+                        >
+                          <TerminalIcon size={13} />
+                          <span>Populate</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setActiveTab('terminal');
+                            runCommand(c.cmd.replace(' <job_id>', '').replace(' <url>', ''));
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-[#1c1917] text-white hover:bg-[#27272a] transition-all rounded-xl text-xs font-bold"
+                        >
+                          <Play size={13} />
+                          <span>Execute</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </motion.div>
           )}
 

@@ -74,7 +74,7 @@ export async function GET() {
     // Import auth dynamically to avoid circular deps
     const { auth } = await import('@/auth');
     const session = await auth();
-    const isAuthenticated = !!session?.user?.id;
+    const isAdmin = session?.user?.email === "admin@career-ops.local";
 
     await ensureTable();
 
@@ -95,8 +95,8 @@ export async function GET() {
       FROM page_views
     `;
 
-    if (!isAuthenticated) {
-      // Return limited stats for public landing page
+    if (!isAdmin) {
+      // Return limited stats for public landing page / non-admin users
       return NextResponse.json({
         today: todayRows[0] || { total_views: 0, unique_visitors: 0 },
         allTime: allTimeRows[0] || { total_views: 0, unique_visitors: 0 },
