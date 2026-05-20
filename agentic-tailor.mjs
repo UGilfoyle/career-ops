@@ -753,8 +753,8 @@ Superpowers / keywords: ${(profile?.narrative?.superpowers || []).join(', ')}
 
 Recent roles — fact base for what you worked on (paraphrase; do not fabricate employers or metrics):
 ${experienceDigest}`;
-  // Determine how many roles to tailor (top 3 most relevant)
-  const rolesToTailor = Math.min(3, (profile?.experience || []).length);
+  // Determine how many roles to tailor (top 4 most relevant to cover 2022-2026)
+  const rolesToTailor = Math.min(4, (profile?.experience || []).length);
   const roleDigest = (profile?.experience || []).slice(0, rolesToTailor).map((e, i) => {
     const role = e?.role || e?.title || 'Role';
     const company = e?.company || 'Company';
@@ -786,7 +786,7 @@ TASK:
       - CRITICAL: at least 60% of items must be EXACT terms from the JD. Do NOT genericize.
 
    c) **Experience bullets** (resume.experience): Rewrite bullets for the top ${rolesToTailor} roles.
-      Return as an OBJECT keyed by role index ("0", "1", "2"), each with 3-4 tailored bullets.
+      Return as an OBJECT keyed by role index ("0", "1", "2", "3"), each with EXACTLY 4 highly descriptive, impactful tailored bullets (never fewer than 4).
 ${roleDigest}
       BULLET RULES:
       - Each bullet MUST reference at least one specific technology/requirement from the JD
@@ -814,8 +814,10 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     "summary": "Line1 with JD tech\\nLine2 with JD domains\\nLine3 with outcomes",
     "core_competencies": ["React.js", "Node.js", "PostgreSQL", "Docker", ...],
     "experience": {
-      "0": ["bullet for role 0 with JD tech...", "...", "..."],
-      "1": ["bullet for role 1 with JD tech...", "...", "..."]
+      "0": ["bullet 1 with JD tech...", "bullet 2...", "bullet 3...", "bullet 4..."],
+      "1": ["bullet 1 with JD tech...", "bullet 2...", "bullet 3...", "bullet 4..."],
+      "2": ["bullet 1 with JD tech...", "bullet 2...", "bullet 3...", "bullet 4..."],
+      "3": ["bullet 1 with JD tech...", "bullet 2...", "bullet 3...", "bullet 4..."]
     }
   },
   "cover_letter": "para1\\n\\npara2\\n\\npara3"
