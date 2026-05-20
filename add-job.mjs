@@ -47,8 +47,14 @@ function canonicalJobUrl(url) {
     const u = new URL(String(url).trim());
     u.hash = '';
     // LinkedIn: stable id lives in path; strip tracking query params
-    if (u.hostname.includes('linkedin.com') && u.pathname.includes('/jobs/view/')) {
-      u.search = '';
+    if (u.hostname.includes('linkedin.com')) {
+      const currentJobId = u.searchParams.get('currentJobId');
+      if (currentJobId) {
+        return `https://www.linkedin.com/jobs/view/${currentJobId}`;
+      }
+      if (u.pathname.includes('/jobs/view/')) {
+        u.search = '';
+      }
     }
     return u.toString();
   } catch {
@@ -159,14 +165,26 @@ async function scrapeJD(url) {
                             pageUrl.includes('/checkpoint/lg/') || 
                             pageUrl.includes('/signup');
     
-    const isLoginTitle = /sign\s*in|log\s*in|login|authwall|join\s*linkedin/i.test(pageTitleLower);
+    const isLoginTitle = /sign\s*in|log\s*in|login|authwall|security\s*verification|join\s*linkedin/i.test(pageTitleLower);
     
     const isLoginForm = await page.evaluate(() => {
-      return !!document.querySelector('input[type="password"]') || 
-             !!document.querySelector('form[action*="/login"]') ||
-             !!document.querySelector('.authwall-join-form') ||
-             (document.body.innerText.includes('Sign in to see') && document.body.innerText.includes('Password'));
+      const hasPassword = !!document.querySelector('input[type="password"]') || 
+                          !!document.querySelector('form[action*="/login"]') ||
+                          !!document.querySelector('.authwall-join-form') ||
+                          (document.body.innerText.includes('Sign in to see') && document.body.innerText.includes('Password'));
+      
+      const hasJobDescription = !!document.querySelector('[data-testid="job-description"]') || 
+                                 !!document.querySelector('.job-description') || 
+                                 !!document.querySelector('#job-description') ||
+                                 !!document.querySelector('.description__text') ||
+                                 !!document.querySelector('.show-more-less-html__markup') ||
+                                 !!document.querySelector('.jobs-description-content') ||
+                                 !!document.querySelector('.jobs-box__html-content');
+      
+      return hasPassword && !hasJobDescription;
     });
+
+
 
     if (isLoginRedirect || isLoginTitle || isLoginForm) {
       throw new Error(
@@ -332,7 +350,7 @@ async function main() {
     });
   } else {
     try {
-      scrape = await scrapeJD(url);
+      scrape = await scrapeJD(canonical);
       console.log(`✓ Scraped ${scrape.text.length} characters`);
       jdText = scrape.text;
       finishAddingJob(scrape, rawUrl, canonical, jdText, profile);
