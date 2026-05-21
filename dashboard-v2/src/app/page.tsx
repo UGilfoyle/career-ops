@@ -1,13 +1,16 @@
 import { auth } from "@/auth";
 import Dashboard from "@/components/Dashboard";
 import LandingPage from "@/components/LandingPage";
+import { getDashboardData } from "@/lib/data-fetcher";
 
 export default async function Page() {
   const session = await auth();
 
-  if (!session) {
+  if (!session?.user?.id) {
     return <LandingPage />;
   }
 
-  return <Dashboard />;
+  const initialData = await getDashboardData(session.user.id);
+
+  return <Dashboard initialData={initialData} />;
 }

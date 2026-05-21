@@ -34,11 +34,11 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 
-export default function Dashboard() {
+export default function Dashboard({ initialData }: { initialData?: any }) {
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.email === 'admin@career-ops.local';
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(initialData || null);
+  const [loading, setLoading] = useState(!initialData);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [logs, setLogs] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -415,7 +415,9 @@ export default function Dashboard() {
           setLoading(false);
         });
     };
-    fetchData();
+    if (!initialData) {
+      fetchData();
+    }
     // Poll every 5 seconds to ensure near-instant updates when GitHub Actions finish
     const interval = setInterval(fetchData, 5000); 
     // Also fetch visitor stats for the stat card
