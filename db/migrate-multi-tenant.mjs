@@ -98,6 +98,12 @@ async function migrate() {
         ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
       `;
 
+      // Add updated_at to jobs
+      await sql`
+        ALTER TABLE jobs
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+      `;
+
       // Backfill jobs data
       await sql`
         UPDATE jobs SET user_id = ${adminId} WHERE user_id IS NULL;

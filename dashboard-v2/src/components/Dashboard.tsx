@@ -109,6 +109,55 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const pipelineFiltered = filteredPipeline.length;
   const pipelineFilterActive = q.length > 0 && pipelineFiltered < pipelineTotal;
 
+  const pipelineCount = data?.pipeline?.length || 0;
+  const appliedCount = data?.stats?.applied || 0;
+  const interviewCount = data?.stats?.interviews || 0;
+  const offerCount = data?.stats?.offers || 0;
+  const maxCount = Math.max(pipelineCount, appliedCount, interviewCount, offerCount, 1);
+
+  const funnelStages = [
+    {
+      key: 'sourced',
+      label: 'Sourced',
+      count: pipelineCount,
+      height: pipelineCount > 0 ? `${Math.max(12, (pipelineCount / maxCount) * 100)}%` : '6px',
+      gradient: 'from-amber-400 to-amber-600',
+      textColor: 'text-amber-600',
+      tooltipTitle: `${pipelineCount} Sourced Jobs`,
+      tooltipDesc: 'Discovered in live pipeline'
+    },
+    {
+      key: 'applied',
+      label: 'Applied',
+      count: appliedCount,
+      height: appliedCount > 0 ? `${Math.max(12, (appliedCount / maxCount) * 100)}%` : '6px',
+      gradient: 'from-stone-500 to-stone-800',
+      textColor: 'text-stone-800',
+      tooltipTitle: `${appliedCount} Applications`,
+      tooltipDesc: 'Submitted & active tracking'
+    },
+    {
+      key: 'interviews',
+      label: 'Interviews',
+      count: interviewCount,
+      height: interviewCount > 0 ? `${Math.max(12, (interviewCount / maxCount) * 100)}%` : '6px',
+      gradient: 'from-emerald-400 to-emerald-600',
+      textColor: 'text-emerald-600',
+      tooltipTitle: `${interviewCount} Interviews`,
+      tooltipDesc: 'Active dialogue & test loops'
+    },
+    {
+      key: 'offers',
+      label: 'Offers',
+      count: offerCount,
+      height: offerCount > 0 ? `${Math.max(12, (offerCount / maxCount) * 100)}%` : '6px',
+      gradient: 'from-purple-500 to-purple-700',
+      textColor: 'text-purple-600',
+      tooltipTitle: `${offerCount} Offers Secured`,
+      tooltipDesc: 'Job offers received'
+    }
+  ];
+
   useEffect(() => {
     if (!isSearchOpen) return;
     const t = setTimeout(() => searchInputRef.current?.focus(), 50);
@@ -873,17 +922,62 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
                <div className="grid grid-cols-2 gap-12">
                   <div className="bg-[#f5f5f4] p-10 rounded-[2.5rem] border border-[#e7e5e4] aspect-video flex flex-col justify-between">
-                     <div>
-                       <h3 className="text-2xl font-bold mb-2 text-[#1c1917]">Application Funnel</h3>
-                       <p className="text-[#a8a29e] font-medium">Real-time status tracking</p>
-                     </div>
-                     <div className="flex items-end gap-5 h-32">
-                       <div className="flex-1 bg-[#1c1917] rounded-xl h-[80%]" />
-                       <div className="flex-1 bg-[#1c1917]/60 rounded-xl h-[50%]" />
-                       <div className="flex-1 bg-[#1c1917]/30 rounded-xl h-[20%]" />
-                       <div className="flex-1 bg-[#1c1917]/10 rounded-xl h-[5%]" />
-                     </div>
-                  </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-2xl font-bold mb-1 text-[#1c1917]">Application Funnel</h3>
+                          <p className="text-[#a8a29e] font-medium text-xs flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Real-time status tracking
+                          </p>
+                        </div>
+                        <div className="text-[10px] font-mono text-[#78716c] uppercase tracking-wider bg-white/60 px-2.5 py-1 rounded-full border border-[#e7e5e4]/50">
+                          Auto-Refresh
+                        </div>
+                      </div>
+
+                      <div className="flex items-end justify-between gap-1 sm:gap-2 h-44 mt-4 px-2">
+                        {funnelStages.map((stage, i) => (
+                          <div key={stage.key} className="flex-1 flex items-stretch gap-1 sm:gap-2 h-full">
+                            <div className="flex-1 flex flex-col justify-end items-center group relative h-full">
+                              {/* Custom Interactive Tooltip */}
+                              <div className="absolute bottom-full mb-3 opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 bg-[#1c1917] text-[#faf9f6] text-[10px] font-bold px-3 py-2 rounded-xl shadow-xl whitespace-nowrap z-30 flex flex-col items-center border border-[#44403c]">
+                                <span>{stage.tooltipTitle}</span>
+                                <span className="text-[#a8a29e] text-[9px] font-medium mt-0.5">{stage.tooltipDesc}</span>
+                                <div className="w-2 h-2 bg-[#1c1917] rotate-45 mt-1 -mb-2 border-r border-b border-[#44403c]"></div>
+                              </div>
+
+                              {/* Value badge */}
+                              <div className={`mb-1.5 text-lg font-extrabold tracking-tight ${stage.textColor}`}>
+                                {stage.count}
+                              </div>
+
+                              {/* Interactive dynamic bar */}
+                              <div className="w-full bg-white border border-[#e7e5e4] rounded-2xl overflow-hidden flex items-end h-24 shadow-inner relative">
+                                <motion.div
+                                  initial={{ height: 0 }}
+                                  animate={{ height: stage.height }}
+                                  transition={{ duration: 0.8, delay: i * 0.1, ease: 'easeOut' }}
+                                  className={`w-full rounded-2xl bg-gradient-to-t ${stage.gradient} shadow-lg`}
+                                />
+                                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                              </div>
+
+                              {/* Label */}
+                              <div className="mt-2 text-[10px] font-extrabold text-[#78716c] uppercase tracking-widest text-center">
+                                {stage.label}
+                              </div>
+                            </div>
+                            
+                            {/* Visual directional arrow to indicate progression */}
+                            {i < 3 && (
+                              <div className="flex items-center justify-center text-[#d6d3d1] self-center pb-6">
+                                <ChevronRight size={14} className="opacity-60 shrink-0" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                   </div>
                   <div className="bg-white p-10 rounded-[2.5rem] border border-[#e7e5e4]">
                      <h3 className="text-2xl font-bold mb-8 text-[#1c1917]">Recent Activity</h3>
                      <div className="space-y-6 text-sm">

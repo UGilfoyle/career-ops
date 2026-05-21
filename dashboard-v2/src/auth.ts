@@ -71,6 +71,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                  ON CONFLICT (user_id) DO NOTHING`,
                 [userId]
               );
+
+              // Store GitHub OAuth account credentials in accounts table
+              await client.query(
+                `INSERT INTO accounts (user_id, type, provider, provider_account_id, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 ON CONFLICT (provider, provider_account_id) DO UPDATE SET
+                   refresh_token = EXCLUDED.refresh_token,
+                   access_token = EXCLUDED.access_token,
+                   expires_at = EXCLUDED.expires_at,
+                   token_type = EXCLUDED.token_type,
+                   scope = EXCLUDED.scope,
+                   id_token = EXCLUDED.id_token,
+                   session_state = EXCLUDED.session_state`,
+                [
+                  parseInt(userId),
+                  account.type || 'oauth',
+                  account.provider,
+                  account.providerAccountId,
+                  account.refresh_token || null,
+                  account.access_token || null,
+                  account.expires_at ? BigInt(account.expires_at) : null,
+                  account.token_type || null,
+                  account.scope || null,
+                  account.id_token || null,
+                  account.session_state || null
+                ]
+              );
             }
 
             if (!emailVerified) {
