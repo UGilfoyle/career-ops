@@ -830,16 +830,71 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   ];
 
   let response;
-  if (hfClient) {
-    response = await hfClient.chatCompletion({
-      model: HF_MODEL,
-      messages,
-      max_tokens: 3000,
-      temperature: 0.2
-    });
+  let hfError = null;
+
+  if (hfClient || hfTokenInUse) {
+    try {
+      if (hfClient) {
+        response = await hfClient.chatCompletion({
+          model: HF_MODEL,
+          messages,
+          max_tokens: 3000,
+          temperature: 0.2
+        });
+      } else {
+        response = await callHfChatViaHttp(messages);
+      }
+    } catch (err) {
+      console.warn(`⚠️ Hugging Face API failed: ${err.message}`);
+      hfError = err;
+    }
   } else {
-    response = await callHfChatViaHttp(messages);
+    hfError = new Error("No Hugging Face token configured.");
   }
+
+  const fallbackApiKey = process.env.FALLBACK_API_KEY || process.env.MODELSCOPE_API_KEY || process.env.MODELSCOPE_TOKEN;
+  if (hfError && fallbackApiKey) {
+    let fallbackBaseUrl = process.env.FALLBACK_BASE_URL || 'https://api-inference.modelscope.cn/v1';
+    if (!fallbackBaseUrl.endsWith('/chat/completions')) {
+      fallbackBaseUrl = fallbackBaseUrl.replace(/\/$/, '') + '/chat/completions';
+    }
+    const fallbackModel = process.env.FALLBACK_MODEL || process.env.MODELSCOPE_MODEL || 'Qwen/Qwen2.5-72B-Instruct';
+    
+    console.log(`🔄 [Fallback LLM] Falling back to custom provider API: ${fallbackBaseUrl} using model: ${fallbackModel}...`);
+    try {
+      const headers = {
+        'Authorization': `Bearer ${fallbackApiKey}`,
+        'Content-Type': 'application/json',
+      };
+      if (fallbackBaseUrl.includes('models.github.ai')) {
+        headers['Accept'] = 'application/vnd.github+json';
+        headers['X-GitHub-Api-Version'] = '2022-11-28';
+      }
+      const msResponse = await fetch(fallbackBaseUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: fallbackModel,
+          messages,
+          max_tokens: 3000,
+          temperature: 0.2,
+        }),
+      });
+      if (!msResponse.ok) {
+        const body = await msResponse.text();
+        throw new Error(`Fallback API error ${msResponse.status}: ${body.slice(0, 200)}`);
+      }
+      response = await msResponse.json();
+      console.log(`✅ [Fallback LLM] Successfully generated tailored CV using fallback provider.`);
+    } catch (msErr) {
+      console.error(`❌ [Fallback LLM] Fallback failed: ${msErr.message}`);
+      throw new Error(`Both Hugging Face and Fallback LLM failed. HF Error: ${hfError.message}. Fallback Error: ${msErr.message}`);
+    }
+  } else if (hfError) {
+    throw hfError;
+  }
+
+
 
   try {
     const content = response.choices[0].message.content;

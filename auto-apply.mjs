@@ -276,9 +276,15 @@ async function scanFormFields(frame) {
 
 async function reasonFieldMappings(fields, profile, companyName) {
   const hfClient = await getHfClient();
-  if (!hfClient) return null;
+  const hfToken = process.env.HUGGINGFACE_TOKEN;
+  const fallbackApiKey = process.env.FALLBACK_API_KEY || process.env.MODELSCOPE_API_KEY || process.env.MODELSCOPE_TOKEN;
 
-  console.log(`🤖 Consulting MiniMax-M2.7 for form reasoning...`);
+  if (!hfClient && !hfToken && !fallbackApiKey) {
+    console.warn("⚠️ No AI inference providers configured. Skipping form reasoning.");
+    return null;
+  }
+
+  console.log(`🤖 Consulting AI for form reasoning...`);
   
   const fieldList = fields.map((f, i) => `${i}: "${f.label}" (Context: ${f.context}) [Type: ${f.type}]`).join('\n');
   const profileSummary = `Name: ${profile.candidate.full_name}\nHeadline: ${profile.narrative.headline}\nSummary: ${profile.narrative.exit_story}\nLegal: Auth=${profile.legal.work_authorization}, Notice=${profile.legal.notice_period}`;
@@ -309,19 +315,96 @@ async function reasonFieldMappings(fields, profile, companyName) {
     }
   `;
 
-  try {
-    const response = await hfClient.chatCompletion({
-      model: "MiniMaxAI/MiniMax-M2.7",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 2000,
-      temperature: 0.1
-    });
+  let response;
+  let hfError = null;
 
+  if (hfClient || hfToken) {
+    try {
+      if (hfClient) {
+        response = await hfClient.chatCompletion({
+          model: "MiniMaxAI/MiniMax-M2.7",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 2000,
+          temperature: 0.1
+        });
+      } else {
+        const hfRes = await fetch('https://router.huggingface.co/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${hfToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: "MiniMaxAI/MiniMax-M2.7",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 2000,
+            temperature: 0.1,
+          }),
+        });
+        if (!hfRes.ok) {
+          const body = await hfRes.text();
+          throw new Error(`HuggingFace API error ${hfRes.status}: ${body.slice(0, 200)}`);
+        }
+        response = await hfRes.json();
+      }
+    } catch (err) {
+      console.warn(`⚠️ Hugging Face form reasoning failed: ${err.message}`);
+      hfError = err;
+    }
+  } else {
+    hfError = new Error("No Hugging Face token configured.");
+  }
+
+  if (hfError && fallbackApiKey) {
+    let fallbackBaseUrl = process.env.FALLBACK_BASE_URL || 'https://api-inference.modelscope.cn/v1';
+    if (!fallbackBaseUrl.endsWith('/chat/completions')) {
+      fallbackBaseUrl = fallbackBaseUrl.replace(/\/$/, '') + '/chat/completions';
+    }
+    const fallbackModel = process.env.FALLBACK_MODEL || process.env.MODELSCOPE_MODEL || 'Qwen/Qwen2.5-72B-Instruct';
+    
+    console.log(`🔄 [Fallback LLM] Falling back to custom provider API for form reasoning: ${fallbackBaseUrl} using model: ${fallbackModel}...`);
+    try {
+      const headers = {
+        'Authorization': `Bearer ${fallbackApiKey}`,
+        'Content-Type': 'application/json',
+      };
+      if (fallbackBaseUrl.includes('models.github.ai')) {
+        headers['Accept'] = 'application/vnd.github+json';
+        headers['X-GitHub-Api-Version'] = '2022-11-28';
+      }
+      const msResponse = await fetch(fallbackBaseUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: fallbackModel,
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 2000,
+          temperature: 0.1,
+        }),
+      });
+      if (!msResponse.ok) {
+        const body = await msResponse.text();
+        throw new Error(`Fallback API error ${msResponse.status}: ${body.slice(0, 200)}`);
+      }
+      response = await msResponse.json();
+      console.log(`✅ [Fallback LLM] Successfully reasoned form fields using fallback provider.`);
+      hfError = null;
+    } catch (msErr) {
+      console.error(`❌ [Fallback LLM] Form reasoning fallback failed: ${msErr.message}`);
+    }
+  }
+
+  if (hfError) {
+    console.warn("⚠ AI Reasoning failed, falling back to keyword matching.", hfError.message);
+    return null;
+  }
+
+  try {
     const content = response.choices[0].message.content;
     const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
     return JSON.parse(jsonStr).mappings;
   } catch (err) {
-    console.warn("⚠ AI Reasoning failed, falling back to keyword matching.", err.message);
+    console.warn("⚠ AI Reasoning JSON parsing failed, falling back to keyword matching.", err.message);
     return null;
   }
 }
