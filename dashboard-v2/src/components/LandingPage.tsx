@@ -132,15 +132,28 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="z-10 p-12 border-t border-[#e7e5e4] flex flex-col md:flex-row items-center justify-between gap-6 bg-[#f5f5f4]">
-        <div className="text-[10px] font-bold text-[#78716c] uppercase tracking-[0.2em] flex items-center gap-2">
-          <Play size={10} className="fill-[#78716c] text-[#78716c]" />
-          Initialized v2.0-modern-beige
+      <footer className="z-10 border-t border-[#e7e5e4] bg-[#f5f5f4]">
+        <div className="p-12 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="text-[10px] font-bold text-[#78716c] uppercase tracking-[0.2em] flex items-center gap-2">
+            <Play size={10} className="fill-[#78716c] text-[#78716c]" />
+            Initialized v2.0-modern-beige
+          </div>
+          <div className="flex gap-8 text-[#a8a29e] text-[11px] font-bold uppercase tracking-widest">
+            <Link href="/docs" className="hover:text-[#1c1917] transition-colors">Documentation</Link>
+            <Link href="/privacy" className="hover:text-[#1c1917] transition-colors">Privacy Core</Link>
+            <Link href="/status" className="hover:text-[#1c1917] transition-colors">Infra Status</Link>
+          </div>
         </div>
-        <div className="flex gap-8 text-[#a8a29e] text-[11px] font-bold uppercase tracking-widest">
-          <Link href="/docs" className="hover:text-[#1c1917] transition-colors">Documentation</Link>
-          <Link href="/privacy" className="hover:text-[#1c1917] transition-colors">Privacy Core</Link>
-          <Link href="/status" className="hover:text-[#1c1917] transition-colors">Infra Status</Link>
+        <div className="pb-6 pt-2 text-center text-xs text-[#a8a29e]">
+          Made with <span className="text-red-400">❤️</span> by{' '}
+          <a
+            href="https://github.com/UGilfoyle"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#78716c] hover:text-[#1c1917] underline decoration-dotted underline-offset-2 transition-colors"
+          >
+            Akash Kaintura
+          </a>
         </div>
       </footer>
     </div>
