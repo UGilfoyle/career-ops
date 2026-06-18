@@ -1102,6 +1102,11 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     console.log(
       `📊 ATS Score: ${atsScore.score}/100 (${atsScore.totalMatched}/${atsScore.total} resume lines share JD tokens)`
     );
+    if (atsScore.totalMatched === 0) {
+      console.warn(`\n⚠️  WARNING: 0 resume lines matched the job description.`);
+      console.warn(`   This usually happens when the target site is a JavaScript-rendered SPA (like BambooHR or Greenhouse) and Playwright is unavailable in this runtime.`);
+      console.warn(`👉 To scrape dynamic content accurately and calculate a true ATS score, run with the --deep flag (e.g., tailor <id> --deep).\n`);
+    }
 
     // Calculate Years of Experience
     const yearsExp = calculateYearsOfExperience(profile.experience);
