@@ -24,13 +24,9 @@ fs.mkdirSync(runtimeRoot, { recursive: true });
 copyFileIfExists(path.join(repoRoot, 'portals.yml'), path.join(runtimeRoot, 'portals.yml'));
 copyDirIfExists(path.join(repoRoot, 'portals', 'scrapers'), path.join(runtimeRoot, 'portals', 'scrapers'));
 copyFileIfExists(path.join(repoRoot, 'generate-pdf.mjs'), path.join(runtimeRoot, 'generate-pdf.mjs'));
-copyFileIfExists(
-  path.join(repoRoot, 'templates', 'ats-template.html'),
-  path.join(runtimeRoot, 'templates', 'ats-template.html')
-);
-copyFileIfExists(
-  path.join(repoRoot, 'templates', 'cover-letter.html'),
-  path.join(runtimeRoot, 'templates', 'cover-letter.html')
+copyDirIfExists(
+  path.join(repoRoot, 'templates'),
+  path.join(runtimeRoot, 'templates')
 );
 
 console.log('Prepared runtime-assets bundle for serverless execution.');

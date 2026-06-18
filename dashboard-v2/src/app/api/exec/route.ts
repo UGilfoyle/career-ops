@@ -193,23 +193,14 @@ export async function GET(req: NextRequest) {
         if (portalsYmlPath) {
           fs.copyFileSync(portalsYmlPath, path.join(userTmpDir, 'portals.yml'));
         }
-        const atsTemplatePath = resolveExistingPath([
-          path.join(process.cwd(), 'runtime-assets', 'templates', 'ats-template.html'),
-          path.join(process.cwd(), '..', 'templates', 'ats-template.html'),
-          path.join(process.cwd(), 'templates', 'ats-template.html'),
-          '/var/task/templates/ats-template.html',
+        const templatesSrcDir = resolveExistingPath([
+          path.join(process.cwd(), 'runtime-assets', 'templates'),
+          path.join(process.cwd(), '..', 'templates'),
+          path.join(process.cwd(), 'templates'),
+          '/var/task/templates',
         ]);
-        if (atsTemplatePath) {
-          fs.copyFileSync(atsTemplatePath, path.join(templatesDir, 'ats-template.html'));
-        }
-        const coverLetterTemplatePath = resolveExistingPath([
-          path.join(process.cwd(), 'runtime-assets', 'templates', 'cover-letter.html'),
-          path.join(process.cwd(), '..', 'templates', 'cover-letter.html'),
-          path.join(process.cwd(), 'templates', 'cover-letter.html'),
-          '/var/task/templates/cover-letter.html',
-        ]);
-        if (coverLetterTemplatePath) {
-          fs.copyFileSync(coverLetterTemplatePath, path.join(templatesDir, 'cover-letter.html'));
+        if (templatesSrcDir) {
+          copyRecursiveIfExists(templatesSrcDir, templatesDir);
         }
         const scrapersDir = resolveExistingPath([
           path.join(process.cwd(), 'runtime-assets', 'portals', 'scrapers'),
