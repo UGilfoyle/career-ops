@@ -15,6 +15,31 @@ const TARGET_MAP = 'data/current_eval.json';
 const TEMPLATE = 'templates/ats-template-professional.html';
 const require = createRequire(import.meta.url);
 
+function robustJsonParse(str) {
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    try {
+      let inString = false;
+      const charArray = Array.from(str);
+      for (let i = 0; i < charArray.length; i++) {
+        if (charArray[i] === '"' && (i === 0 || charArray[i - 1] !== '\\')) {
+          inString = !inString;
+        }
+        if (inString && charArray[i] === '\n') {
+          charArray[i] = '\\n';
+        }
+        if (inString && charArray[i] === '\r') {
+          charArray[i] = '\\r';
+        }
+      }
+      return JSON.parse(charArray.join(''));
+    } catch (e2) {
+      throw new Error(`Failed to parse AI response: ${str}. Parse error: ${e2.message}`);
+    }
+  }
+}
+
 const idOrUrl = process.argv[2];
 const rawUserId = process.env.SCAN_USER_ID || 1;
 const userId = Number.parseInt(String(rawUserId), 10);
@@ -925,7 +950,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   try {
     const content = response.choices[0].message.content;
     const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
-    const data = JSON.parse(jsonStr);
+    const data = robustJsonParse(jsonStr);
     const y = calculateYearsOfExperience(profile?.experience);
     if (data?.resume?.summary) {
       data.resume.summary = normalizeResumeSummaryPlain(data.resume.summary, y);
