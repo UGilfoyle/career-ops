@@ -100,7 +100,15 @@ async function getChromium() {
   try {
     const mod = await import('playwright');
     return mod.chromium;
-  } catch {
+  } catch (err) {
+    console.warn(`⚠ Playwright import failed: ${err.message}`);
+    // Try playwright-core as fallback (installed separately in some setups)
+    try {
+      const coreMod = await import('playwright-core');
+      return coreMod.chromium;
+    } catch {
+      // Neither available
+    }
     return null;
   }
 }
@@ -505,10 +513,24 @@ function calculateATSScore(profile, jdText, tailoring) {
   const jdLower = String(jdText).toLowerCase();
   const matched = [];
 
+  // Collect tailored experience bullets (multi-role object or flat array)
+  const tailoredBullets = [];
+  const expData = tailoring?.experience;
+  if (expData && typeof expData === 'object' && !Array.isArray(expData)) {
+    // Multi-role object: {"0": [...], "1": [...], ...}
+    Object.values(expData).forEach(bullets => {
+      if (Array.isArray(bullets)) tailoredBullets.push(...bullets);
+    });
+  } else if (Array.isArray(expData)) {
+    tailoredBullets.push(...expData);
+  }
+
   const rawLines = [
     ...(profile.narrative?.superpowers || []),
     ...(profile.experience?.flatMap((e) => e.bullets || []) || []),
     ...(tailoring?.core_competencies || []),
+    ...tailoredBullets,
+    ...(tailoring?.summary ? [tailoring.summary] : []),
   ]
     .map((s) => String(s || '').trim())
     .filter(Boolean);
@@ -606,6 +628,177 @@ async function scrapeJD(url) {
 
   const targetUrl = normalizeUrl(url);
   console.log(`🌐 Scraping job description from: ${targetUrl}`);
+
+  // Intercept BambooHR URLs to fetch clean JSON details directly
+  let bhrSubdomain = null;
+  let bhrJobId = null;
+  try {
+    const parsedUrl = new URL(targetUrl);
+    if (parsedUrl.hostname.endsWith('bamboohr.com')) {
+      bhrSubdomain = parsedUrl.hostname.split('.')[0];
+      if (parsedUrl.pathname.startsWith('/careers/')) {
+        const parts = parsedUrl.pathname.split('/');
+        bhrJobId = parts[2];
+      } else if (parsedUrl.pathname === '/jobs/view.php') {
+        bhrJobId = parsedUrl.searchParams.get('id');
+      }
+    }
+  } catch (err) {
+    // Ignore URL parsing errors
+  }
+
+  if (bhrSubdomain && bhrJobId) {
+    const detailUrl = `https://${bhrSubdomain}.bamboohr.com/careers/${bhrJobId}/detail`;
+    console.log(`🎯 BambooHR URL detected. Fetching JSON detail from: ${detailUrl}`);
+    try {
+      const res = await fetch(detailUrl, { 
+        headers: { 
+          'User-Agent': 'career-ops-tailor/1.0',
+          'Accept': 'application/json'
+        } 
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const title = json.result?.jobOpening?.jobOpeningName || '';
+        const department = json.result?.jobOpening?.departmentLabel || '';
+        const descriptionHtml = json.result?.jobOpening?.description || '';
+        
+        // Convert descriptionHtml to clean plain text
+        const descriptionText = descriptionHtml
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n\n')
+          .replace(/<\/li>/gi, '\n')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/\n\s*\n/g, '\n\n')
+          .trim();
+          
+        const text = `Job Title: ${title}\nDepartment: ${department}\n\nDescription:\n${descriptionText}`;
+        console.log(`✅ Successfully extracted job description via BambooHR detail API (${text.length} chars).`);
+        return text;
+      } else {
+        console.warn(`⚠️ BambooHR detail API returned status ${res.status}. Falling back to default scraper.`);
+      }
+    } catch (err) {
+      console.warn(`⚠️ BambooHR detail API request failed: ${err.message}. Falling back to default scraper.`);
+    }
+  }
+
+  // Intercept Greenhouse Board URLs to fetch clean JSON details
+  let ghBoardToken = null;
+  let ghJobId = null;
+  try {
+    const parsedUrl = new URL(targetUrl);
+    // Matches boards.greenhouse.io/<board_token>/jobs/<job_id>
+    // and job-boards.greenhouse.io/.../<job_id>
+    if (parsedUrl.hostname.endsWith('greenhouse.io')) {
+      const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+      // Pattern: /<board_token>/jobs/<job_id>
+      if (pathParts.length >= 3 && pathParts[1] === 'jobs') {
+        ghBoardToken = pathParts[0];
+        ghJobId = pathParts[2];
+      }
+    }
+  } catch (err) {
+    // Ignore URL parsing errors
+  }
+
+  if (ghBoardToken && ghJobId) {
+    const ghApiUrl = `https://boards-api.greenhouse.io/v1/boards/${ghBoardToken}/jobs/${ghJobId}`;
+    console.log(`🎯 Greenhouse URL detected. Fetching JSON from: ${ghApiUrl}`);
+    try {
+      const res = await fetch(ghApiUrl, {
+        headers: {
+          'User-Agent': 'career-ops-tailor/1.0',
+          'Accept': 'application/json'
+        }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const title = json.title || '';
+        const location = json.location?.name || '';
+        const contentHtml = json.content || '';
+
+        const contentText = contentHtml
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n\n')
+          .replace(/<\/li>/gi, '\n')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/\n\s*\n/g, '\n\n')
+          .trim();
+
+        const text = `Job Title: ${title}\nLocation: ${location}\n\nDescription:\n${contentText}`;
+        console.log(`✅ Successfully extracted job description via Greenhouse Board API (${text.length} chars).`);
+        return text;
+      } else {
+        console.warn(`⚠️ Greenhouse Board API returned status ${res.status}. Falling back to default scraper.`);
+      }
+    } catch (err) {
+      console.warn(`⚠️ Greenhouse Board API request failed: ${err.message}. Falling back to default scraper.`);
+    }
+  }
+
+  // Intercept Lever URLs to fetch clean JSON details
+  let leverPostingId = null;
+  try {
+    const parsedUrl = new URL(targetUrl);
+    // Matches jobs.lever.co/<company>/<posting_id>
+    if (parsedUrl.hostname === 'jobs.lever.co') {
+      const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+      if (pathParts.length >= 2) {
+        leverPostingId = targetUrl; // Use full URL as the posting endpoint
+      }
+    }
+  } catch (err) {
+    // Ignore URL parsing errors
+  }
+
+  if (leverPostingId) {
+    console.log(`🎯 Lever URL detected. Fetching from Lever postings API...`);
+    try {
+      // Lever's public postings API: just append /json to the posting URL
+      const leverUrl = leverPostingId.replace(/\/$/, '');
+      const res = await fetch(leverUrl, {
+        headers: {
+          'User-Agent': 'career-ops-tailor/1.0',
+          'Accept': 'text/html'
+        }
+      });
+      if (res.ok) {
+        const html = await res.text();
+        // Lever pages have structured content in the HTML even without JS
+        const stripped = html
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<header[\s\S]*?<\/header>/gi, ' ')
+          .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
+          .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n\n')
+          .replace(/<\/li>/gi, '\n')
+          .replace(/<\/div>/gi, '\n')
+          .replace(/<\/h[1-6]>/gi, '\n\n')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/\n\s*\n/g, '\n\n')
+          .replace(/[ \t]+/g, ' ')
+          .trim();
+        if (stripped.length > 200) {
+          console.log(`✅ Successfully extracted job description from Lever page (${stripped.length} chars).`);
+          return stripped.slice(0, 15000);
+        }
+      }
+      console.warn(`⚠️ Lever page fetch returned insufficient content. Falling back to default scraper.`);
+    } catch (err) {
+      console.warn(`⚠️ Lever page request failed: ${err.message}. Falling back to default scraper.`);
+    }
+  }
+
   const chromium = await getChromium();
   if (chromium) {
     const browser = await chromium.launch({ headless: true });
@@ -622,20 +815,135 @@ async function scrapeJD(url) {
     }
   }
 
-  console.warn('⚠ Playwright unavailable in this runtime. Falling back to basic HTML fetch.');
+  console.warn('⚠ Playwright unavailable in this runtime. Falling back to enhanced HTML fetch.');
   try {
-    const res = await fetch(targetUrl, { headers: { 'User-Agent': 'career-ops-tailor/1.0' } });
+    const res = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
     const html = await res.text();
+
+    // Strategy 1: Extract JSON-LD structured data (most job boards embed this for SEO)
+    const jsonLdMatches = html.match(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+    for (const block of jsonLdMatches) {
+      try {
+        const jsonStr = block.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '').trim();
+        const data = JSON.parse(jsonStr);
+        // Handle both single object and array of objects
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          if (item['@type'] === 'JobPosting' || item['@type']?.includes?.('JobPosting')) {
+            const parts = [];
+            if (item.title) parts.push(`Job Title: ${item.title}`);
+            if (item.hiringOrganization?.name) parts.push(`Company: ${item.hiringOrganization.name}`);
+            if (item.jobLocation?.address?.addressLocality) parts.push(`Location: ${item.jobLocation.address.addressLocality}`);
+            if (item.description) {
+              const descText = item.description
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<\/p>/gi, '\n\n')
+                .replace(/<\/li>/gi, '\n')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/&nbsp;/g, ' ')
+                .replace(/&amp;/g, '&')
+                .replace(/\n\s*\n/g, '\n\n')
+                .trim();
+              parts.push(`\nDescription:\n${descText}`);
+            }
+            if (item.qualifications) parts.push(`\nQualifications:\n${item.qualifications}`);
+            if (item.skills) parts.push(`\nSkills:\n${item.skills}`);
+            if (item.responsibilities) parts.push(`\nResponsibilities:\n${item.responsibilities}`);
+            const text = parts.join('\n');
+            if (text.length > 100) {
+              console.log(`✅ Extracted job description from JSON-LD structured data (${text.length} chars).`);
+              return text;
+            }
+          }
+        }
+      } catch {
+        // Invalid JSON-LD, continue
+      }
+    }
+
+    // Strategy 2: Extract from Next.js/React __NEXT_DATA__ or similar embedded JSON
+    const nextDataMatch = html.match(/<script[^>]*id\s*=\s*["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+    if (nextDataMatch) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const pageProps = nextData?.props?.pageProps;
+        if (pageProps) {
+          // Look for common job data patterns in pageProps
+          const jobData = pageProps.job || pageProps.jobPosting || pageProps.listing || pageProps.data;
+          if (jobData && (jobData.description || jobData.content || jobData.body)) {
+            const desc = jobData.description || jobData.content || jobData.body || '';
+            const title = jobData.title || jobData.name || '';
+            const descText = String(desc)
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (descText.length > 100) {
+              const text = `Job Title: ${title}\n\nDescription:\n${descText}`;
+              console.log(`✅ Extracted job description from __NEXT_DATA__ (${text.length} chars).`);
+              return text;
+            }
+          }
+        }
+      } catch {
+        // Invalid JSON, continue
+      }
+    }
+
+    // Strategy 3: Smart HTML stripping with noise removal
     const stripped = html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+      .replace(/<header[\s\S]*?<\/header>/gi, ' ')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/h[1-6]>/gi, '\n\n')
       .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\n\s*\n/g, '\n\n')
+      .replace(/[ \t]+/g, ' ')
       .trim();
-    return stripped.slice(0, 15000);
+
+    if (stripped.length > 200) {
+      console.log(`📄 Extracted job description from HTML content (${stripped.length} chars).`);
+      return stripped.slice(0, 15000);
+    }
+
+    // Strategy 4: If all else fails, try meta description
+    const metaDesc = html.match(/<meta[^>]*name\s*=\s*["']description["'][^>]*content\s*=\s*["']([^"']+)["']/i);
+    const ogDesc = html.match(/<meta[^>]*property\s*=\s*["']og:description["'][^>]*content\s*=\s*["']([^"']+)["']/i);
+    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const fallbackParts = [];
+    if (titleMatch) fallbackParts.push(`Job Title: ${titleMatch[1].trim()}`);
+    if (metaDesc) fallbackParts.push(`Description: ${metaDesc[1]}`);
+    if (ogDesc && ogDesc[1] !== metaDesc?.[1]) fallbackParts.push(`Details: ${ogDesc[1]}`);
+    if (fallbackParts.length > 0) {
+      const text = fallbackParts.join('\n');
+      console.warn(`⚠️ Could only extract meta description (${text.length} chars). JD content may be limited.`);
+      return text;
+    }
+
+    throw new Error('Page returned no extractable job content (likely a client-rendered SPA with no SSR or JSON-LD).');
   } catch (err) {
     throw new Error(`Fallback fetch failed: ${err.message}`);
   }
