@@ -150,6 +150,64 @@ function extractTitleFromJd(jdText) {
 // Scrape JD using Playwright
 async function scrapeJD(url) {
   console.log(`🌐 Scraping job description from: ${url}`);
+
+  // Intercept BambooHR URLs to fetch clean JSON details directly
+  let bhrSubdomain = null;
+  let bhrJobId = null;
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.hostname.endsWith('bamboohr.com')) {
+      bhrSubdomain = parsedUrl.hostname.split('.')[0];
+      if (parsedUrl.pathname.startsWith('/careers/')) {
+        const parts = parsedUrl.pathname.split('/');
+        bhrJobId = parts[2];
+      } else if (parsedUrl.pathname === '/jobs/view.php') {
+        bhrJobId = parsedUrl.searchParams.get('id');
+      }
+    }
+  } catch (err) {
+    // Ignore URL parsing errors
+  }
+
+  if (bhrSubdomain && bhrJobId) {
+    const detailUrl = `https://${bhrSubdomain}.bamboohr.com/careers/${bhrJobId}/detail`;
+    console.log(`🎯 BambooHR URL detected. Fetching JSON detail from: ${detailUrl}`);
+    try {
+      const res = await fetch(detailUrl, { 
+        headers: { 
+          'User-Agent': 'career-ops-tailor/1.0',
+          'Accept': 'application/json'
+        } 
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const title = json.result?.jobOpening?.jobOpeningName || '';
+        const department = json.result?.jobOpening?.departmentLabel || '';
+        const descriptionHtml = json.result?.jobOpening?.description || '';
+        
+        // Convert descriptionHtml to clean plain text
+        const descriptionText = descriptionHtml
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n\n')
+          .replace(/<\/li>/gi, '\n')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/\n\s*\n/g, '\n\n')
+          .trim();
+          
+        const text = `Job Title: ${title}\nDepartment: ${department}\n\nDescription:\n${descriptionText}`;
+        console.log(`✅ Successfully extracted job description via BambooHR detail API (${text.length} chars).`);
+        return {
+          company: bhrSubdomain,
+          title: title,
+          text: text
+        };
+      }
+    } catch (err) {
+      console.warn(`⚠️ BambooHR detail API request failed: ${err.message}. Falling back to default Playwright scraper.`);
+    }
+  }
+
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   try {

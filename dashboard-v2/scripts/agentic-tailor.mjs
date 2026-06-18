@@ -835,7 +835,6 @@ async function scrapeJD(url) {
       try {
         const jsonStr = block.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '').trim();
         const data = JSON.parse(jsonStr);
-        // Handle both single object and array of objects
         const items = Array.isArray(data) ? data : [data];
         for (const item of items) {
           if (item['@type'] === 'JobPosting' || item['@type']?.includes?.('JobPosting')) {
@@ -877,7 +876,6 @@ async function scrapeJD(url) {
         const nextData = JSON.parse(nextDataMatch[1]);
         const pageProps = nextData?.props?.pageProps;
         if (pageProps) {
-          // Look for common job data patterns in pageProps
           const jobData = pageProps.job || pageProps.jobPosting || pageProps.listing || pageProps.data;
           if (jobData && (jobData.description || jobData.content || jobData.body)) {
             const desc = jobData.description || jobData.content || jobData.body || '';
@@ -1164,45 +1162,96 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   ];
 
   let response;
-  let targetModel = HF_MODEL;
-  try {
-    if (hfClient) {
-      response = await hfClient.chatCompletion({
-        model: targetModel,
-        messages,
-        max_tokens: 3000,
-        temperature: 0.2
-      });
-    } else {
-      response = await callHfChatViaHttp(messages, targetModel);
-    }
-  } catch (err) {
-    console.warn(`⚠️ Hugging Face API failed for ${targetModel}: ${err.message}`);
-    
-    // If the primary model fails (e.g. quota or rate limit), try falling back to Qwen
-    if (targetModel === 'MiniMaxAI/MiniMax-M2.7') {
-      const fallbackModel = 'Qwen/Qwen2.5-72B-Instruct';
-      console.log(`🔄 [Quota/Rate-Limit Fallback] Attempting fallback to: ${fallbackModel}...`);
-      try {
-        if (hfClient) {
-          response = await hfClient.chatCompletion({
-            model: fallbackModel,
-            messages,
-            max_tokens: 3000,
-            temperature: 0.2
-          });
-        } else {
-          response = await callHfChatViaHttp(messages, fallbackModel);
-        }
-        console.log(`✅ Fallback to ${fallbackModel} succeeded.`);
-      } catch (fallbackErr) {
-        console.warn(`⚠️ Fallback to ${fallbackModel} also failed: ${fallbackErr.message}`);
-        throw fallbackErr;
+  let hfError = null;
+
+  if (hfClient || hfTokenInUse) {
+    let targetModel = HF_MODEL;
+    try {
+      if (hfClient) {
+        response = await hfClient.chatCompletion({
+          model: targetModel,
+          messages,
+          max_tokens: 3000,
+          temperature: 0.2
+        });
+      } else {
+        response = await callHfChatViaHttp(messages, targetModel);
       }
-    } else {
-      throw err;
+    } catch (err) {
+      console.warn(`⚠️ Hugging Face API failed for ${targetModel}: ${err.message}`);
+      
+      // If the primary model fails (e.g. quota or rate limit), try falling back to Qwen
+      if (targetModel === 'MiniMaxAI/MiniMax-M2.7') {
+        const fallbackModel = 'Qwen/Qwen2.5-72B-Instruct';
+        console.log(`🔄 [Quota/Rate-Limit Fallback] Attempting fallback to: ${fallbackModel}...`);
+        try {
+          if (hfClient) {
+            response = await hfClient.chatCompletion({
+              model: fallbackModel,
+              messages,
+              max_tokens: 3000,
+              temperature: 0.2
+            });
+          } else {
+            response = await callHfChatViaHttp(messages, fallbackModel);
+          }
+          console.log(`✅ Fallback to ${fallbackModel} succeeded.`);
+          hfError = null;
+        } catch (fallbackErr) {
+          console.warn(`⚠️ Fallback to ${fallbackModel} also failed: ${fallbackErr.message}`);
+          hfError = fallbackErr;
+        }
+      } else {
+        hfError = err;
+      }
     }
+  } else {
+    hfError = new Error("No Hugging Face token configured.");
   }
+
+  const fallbackApiKey = process.env.FALLBACK_API_KEY || process.env.MODELSCOPE_API_KEY || process.env.MODELSCOPE_TOKEN;
+  if (hfError && fallbackApiKey) {
+    let fallbackBaseUrl = process.env.FALLBACK_BASE_URL || 'https://api-inference.modelscope.cn/v1';
+    if (!fallbackBaseUrl.endsWith('/chat/completions')) {
+      fallbackBaseUrl = fallbackBaseUrl.replace(/\/$/, '') + '/chat/completions';
+    }
+    const fallbackModel = process.env.FALLBACK_MODEL || process.env.MODELSCOPE_MODEL || 'Qwen/Qwen2.5-72B-Instruct';
+    
+    console.log(`🔄 [Fallback LLM] Falling back to custom provider API: ${fallbackBaseUrl} using model: ${fallbackModel}...`);
+    try {
+      const headers = {
+        'Authorization': `Bearer ${fallbackApiKey}`,
+        'Content-Type': 'application/json',
+      };
+      if (fallbackBaseUrl.includes('models.github.ai')) {
+        headers['Accept'] = 'application/vnd.github+json';
+        headers['X-GitHub-Api-Version'] = '2022-11-28';
+      }
+      const msResponse = await fetch(fallbackBaseUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: fallbackModel,
+          messages,
+          max_tokens: 3000,
+          temperature: 0.2,
+        }),
+      });
+      if (!msResponse.ok) {
+        const body = await msResponse.text();
+        throw new Error(`Fallback API error ${msResponse.status}: ${body.slice(0, 200)}`);
+      }
+      response = await msResponse.json();
+      console.log(`✅ [Fallback LLM] Successfully generated tailored CV using fallback provider.`);
+    } catch (msErr) {
+      console.error(`❌ [Fallback LLM] Fallback failed: ${msErr.message}`);
+      throw new Error(`Both Hugging Face and Fallback LLM failed. HF Error: ${hfError.message}. Fallback Error: ${msErr.message}`);
+    }
+  } else if (hfError) {
+    throw hfError;
+  }
+
+
 
   try {
     const content = response.choices[0].message.content;
@@ -1234,20 +1283,34 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   try {
     await checkSync();
 
+    let jobId = null;
     let entry = { url: '', company: 'Direct Application', title: 'Job via URL' };
 
     if (/^https?:\/\//.test(idOrUrl)) {
-      console.log("🔗 Direct URL detected. Bypassing database lookup...");
+      console.log("🔗 Direct URL detected. Searching database...");
       entry.url = idOrUrl;
       try {
-        const domain = new URL(idOrUrl).hostname;
-        const parts = domain.split('.');
-        if (parts.length >= 2) {
-          entry.company = parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1);
+        const [jobRecord] = await sql`
+          SELECT id, user_id, url, company, title
+          FROM jobs
+          WHERE url = ${idOrUrl} AND user_id = ${userId}
+          LIMIT 1
+        `;
+        if (jobRecord) {
+          entry = jobRecord;
+          console.log(`📎 Found existing job in DB: id=${entry.id}, company=${entry.company}`);
+        } else {
+          const domain = new URL(idOrUrl).hostname;
+          const parts = domain.split('.');
+          if (parts.length >= 2) {
+            entry.company = parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1);
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('DB lookup failed for URL:', e.message);
+      }
     } else {
-      let jobId = Number.parseInt(String(idOrUrl), 10);
+      jobId = Number.parseInt(String(idOrUrl), 10);
       if (!Number.isFinite(jobId)) {
         throw new Error(`Invalid job id: ${idOrUrl}`);
       }
@@ -1477,7 +1540,49 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
           ADD COLUMN IF NOT EXISTS jd_text TEXT;
       `;
       
-      // We assume entry.id exists if it came from DB, else we try to find it by URL
+      // Extract job title from JD text if available
+      let inferredTitle = entry.title || 'Job via URL';
+      if (jdText) {
+        const titleLine = jdText.split('\n').find(l => l.toLowerCase().startsWith('job title:'));
+        if (titleLine) {
+          inferredTitle = titleLine.substring(titleLine.indexOf(':') + 1).trim();
+        }
+      }
+
+      // We assume entry.id exists if it came from DB, else we try to find it by URL or insert it
+      if (!entry.id) {
+        const [existing] = await sql`
+          SELECT id FROM jobs WHERE url = ${entry.url} AND user_id = ${userId} LIMIT 1
+        `;
+        if (existing) {
+          entry.id = existing.id;
+          console.log(`📎 Found existing job ID ${entry.id} via URL search.`);
+        } else {
+          // INSERT a new job!
+          const [inserted] = await sql`
+            INSERT INTO jobs (user_id, url, canonical_url, company, title, source, score, jd_text, resume_html, cover_letter_html, created_at)
+            VALUES (
+              ${userId}, 
+              ${entry.url}, 
+              ${canonicalUrl || entry.url}, 
+              ${entry.company || 'Direct Application'}, 
+              ${inferredTitle}, 
+              'Direct', 
+              ${atsScore ? Math.round(atsScore.score / 10) : 5}, 
+              ${String(jdText || '').slice(0, 25000)}, 
+              ${resumeHtml}, 
+              ${clHtml}, 
+              NOW()
+            )
+            RETURNING id
+          `;
+          if (inserted) {
+            entry.id = inserted.id;
+            console.log(`🆕 Created new job record in database: id=${entry.id}`);
+          }
+        }
+      }
+
       if (entry.id) {
         await sql`
           UPDATE jobs
@@ -1488,18 +1593,10 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
             jd_text = COALESCE(${String(jdText || '').slice(0, 25000)}, jd_text)
           WHERE id = ${entry.id} AND user_id = ${userId}
         `;
+        console.log(`💾 HTML assets persisted to database for job ID ${entry.id}. You can view/print them from the dashboard!`);
       } else {
-        await sql`
-          UPDATE jobs
-          SET
-            resume_html = ${resumeHtml},
-            cover_letter_html = ${clHtml},
-            canonical_url = COALESCE(${canonicalUrl}, canonical_url),
-            jd_text = COALESCE(${String(jdText || '').slice(0, 25000)}, jd_text)
-          WHERE url = ${entry.url} AND user_id = ${userId}
-        `;
+        console.warn(`⚠ Could not resolve or create job record, skipping HTML persistence.`);
       }
-      console.log(`💾 HTML assets persisted to database. You can view/print them from the dashboard!`);
     } catch (dbErr) {
       console.warn(`⚠ Could not save HTML to database: ${dbErr.message}`);
     }
@@ -1549,16 +1646,10 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
                   cover_letter_pdf_key = COALESCE(${clUploaded ? clKey : null}, cover_letter_pdf_key)
                 WHERE id = ${entry.id} AND user_id = ${userId}
               `;
+              console.log('💾 PDFs uploaded to R2 and keys persisted to database.');
             } else {
-              await sql`
-                UPDATE jobs
-                SET
-                  resume_pdf_key = COALESCE(${resumeUploaded ? resumeKey : null}, resume_pdf_key),
-                  cover_letter_pdf_key = COALESCE(${clUploaded ? clKey : null}, cover_letter_pdf_key)
-                WHERE url = ${entry.url} AND user_id = ${userId}
-              `;
+              console.warn('⚠ Skipping PDF key persistence as job ID is missing.');
             }
-            console.log('💾 PDFs uploaded to R2 and keys persisted to database.');
           } else {
             console.warn('⚠ No PDFs were uploaded to R2 (check credentials/bucket).');
           }

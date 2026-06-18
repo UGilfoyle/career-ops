@@ -1283,20 +1283,34 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   try {
     await checkSync();
 
+    let jobId = null;
     let entry = { url: '', company: 'Direct Application', title: 'Job via URL' };
 
     if (/^https?:\/\//.test(idOrUrl)) {
-      console.log("🔗 Direct URL detected. Bypassing database lookup...");
+      console.log("🔗 Direct URL detected. Searching database...");
       entry.url = idOrUrl;
       try {
-        const domain = new URL(idOrUrl).hostname;
-        const parts = domain.split('.');
-        if (parts.length >= 2) {
-          entry.company = parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1);
+        const [jobRecord] = await sql`
+          SELECT id, user_id, url, company, title
+          FROM jobs
+          WHERE url = ${idOrUrl} AND user_id = ${userId}
+          LIMIT 1
+        `;
+        if (jobRecord) {
+          entry = jobRecord;
+          console.log(`📎 Found existing job in DB: id=${entry.id}, company=${entry.company}`);
+        } else {
+          const domain = new URL(idOrUrl).hostname;
+          const parts = domain.split('.');
+          if (parts.length >= 2) {
+            entry.company = parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1);
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('DB lookup failed for URL:', e.message);
+      }
     } else {
-      let jobId = Number.parseInt(String(idOrUrl), 10);
+      jobId = Number.parseInt(String(idOrUrl), 10);
       if (!Number.isFinite(jobId)) {
         throw new Error(`Invalid job id: ${idOrUrl}`);
       }
@@ -1526,7 +1540,49 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
           ADD COLUMN IF NOT EXISTS jd_text TEXT;
       `;
       
-      // We assume entry.id exists if it came from DB, else we try to find it by URL
+      // Extract job title from JD text if available
+      let inferredTitle = entry.title || 'Job via URL';
+      if (jdText) {
+        const titleLine = jdText.split('\n').find(l => l.toLowerCase().startsWith('job title:'));
+        if (titleLine) {
+          inferredTitle = titleLine.substring(titleLine.indexOf(':') + 1).trim();
+        }
+      }
+
+      // We assume entry.id exists if it came from DB, else we try to find it by URL or insert it
+      if (!entry.id) {
+        const [existing] = await sql`
+          SELECT id FROM jobs WHERE url = ${entry.url} AND user_id = ${userId} LIMIT 1
+        `;
+        if (existing) {
+          entry.id = existing.id;
+          console.log(`📎 Found existing job ID ${entry.id} via URL search.`);
+        } else {
+          // INSERT a new job!
+          const [inserted] = await sql`
+            INSERT INTO jobs (user_id, url, canonical_url, company, title, source, score, jd_text, resume_html, cover_letter_html, created_at)
+            VALUES (
+              ${userId}, 
+              ${entry.url}, 
+              ${canonicalUrl || entry.url}, 
+              ${entry.company || 'Direct Application'}, 
+              ${inferredTitle}, 
+              'Direct', 
+              ${atsScore ? Math.round(atsScore.score / 10) : 5}, 
+              ${String(jdText || '').slice(0, 25000)}, 
+              ${resumeHtml}, 
+              ${clHtml}, 
+              NOW()
+            )
+            RETURNING id
+          `;
+          if (inserted) {
+            entry.id = inserted.id;
+            console.log(`🆕 Created new job record in database: id=${entry.id}`);
+          }
+        }
+      }
+
       if (entry.id) {
         await sql`
           UPDATE jobs
@@ -1537,18 +1593,10 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
             jd_text = COALESCE(${String(jdText || '').slice(0, 25000)}, jd_text)
           WHERE id = ${entry.id} AND user_id = ${userId}
         `;
+        console.log(`💾 HTML assets persisted to database for job ID ${entry.id}. You can view/print them from the dashboard!`);
       } else {
-        await sql`
-          UPDATE jobs
-          SET
-            resume_html = ${resumeHtml},
-            cover_letter_html = ${clHtml},
-            canonical_url = COALESCE(${canonicalUrl}, canonical_url),
-            jd_text = COALESCE(${String(jdText || '').slice(0, 25000)}, jd_text)
-          WHERE url = ${entry.url} AND user_id = ${userId}
-        `;
+        console.warn(`⚠ Could not resolve or create job record, skipping HTML persistence.`);
       }
-      console.log(`💾 HTML assets persisted to database. You can view/print them from the dashboard!`);
     } catch (dbErr) {
       console.warn(`⚠ Could not save HTML to database: ${dbErr.message}`);
     }
@@ -1598,16 +1646,10 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
                   cover_letter_pdf_key = COALESCE(${clUploaded ? clKey : null}, cover_letter_pdf_key)
                 WHERE id = ${entry.id} AND user_id = ${userId}
               `;
+              console.log('💾 PDFs uploaded to R2 and keys persisted to database.');
             } else {
-              await sql`
-                UPDATE jobs
-                SET
-                  resume_pdf_key = COALESCE(${resumeUploaded ? resumeKey : null}, resume_pdf_key),
-                  cover_letter_pdf_key = COALESCE(${clUploaded ? clKey : null}, cover_letter_pdf_key)
-                WHERE url = ${entry.url} AND user_id = ${userId}
-              `;
+              console.warn('⚠ Skipping PDF key persistence as job ID is missing.');
             }
-            console.log('💾 PDFs uploaded to R2 and keys persisted to database.');
           } else {
             console.warn('⚠ No PDFs were uploaded to R2 (check credentials/bucket).');
           }
