@@ -1161,56 +1161,68 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     { role: "user", content: prompt }
   ];
 
-  let response;
-  let hfError = null;
+  let data = null;
+  let lastError = null;
+  let response = null;
 
+  // Helper function to call Hugging Face and parse the JSON response
+  async function tryHfModel(modelName) {
+    let rawResponse;
+    if (hfClient) {
+      rawResponse = await hfClient.chatCompletion({
+        model: modelName,
+        messages,
+        max_tokens: 3000,
+        temperature: 0.2
+      });
+    } else {
+      rawResponse = await callHfChatViaHttp(messages, modelName);
+    }
+    
+    if (!rawResponse || !rawResponse.choices || !rawResponse.choices[0] || !rawResponse.choices[0].message) {
+      throw new Error(`Empty or malformed response from Hugging Face model: ${modelName}`);
+    }
+    
+    const content = rawResponse.choices[0].message.content;
+    const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
+    const parsed = robustJsonParse(jsonStr);
+    return { data: parsed, response: rawResponse };
+  }
+
+  // Phase 1: Try Hugging Face (Primary model)
   if (hfClient || hfTokenInUse) {
-    let targetModel = HF_MODEL;
     try {
-      if (hfClient) {
-        response = await hfClient.chatCompletion({
-          model: targetModel,
-          messages,
-          max_tokens: 3000,
-          temperature: 0.2
-        });
-      } else {
-        response = await callHfChatViaHttp(messages, targetModel);
-      }
+      const result = await tryHfModel(HF_MODEL);
+      data = result.data;
+      response = result.response;
+      console.log(`✅ Successfully generated tailored CV using primary model: ${HF_MODEL}`);
     } catch (err) {
-      console.warn(`⚠️ Hugging Face API failed for ${targetModel}: ${err.message}`);
+      console.warn(`⚠️ Primary model ${HF_MODEL} failed (or returned invalid/truncated JSON): ${err.message}`);
+      lastError = err;
       
-      // If the primary model fails (e.g. quota or rate limit), try falling back to Qwen
-      if (targetModel === 'MiniMaxAI/MiniMax-M2.7') {
-        const fallbackModel = 'Qwen/Qwen2.5-72B-Instruct';
-        console.log(`🔄 [Quota/Rate-Limit Fallback] Attempting fallback to: ${fallbackModel}...`);
+      // Phase 2: Try Hugging Face Fallback model
+      if (HF_MODEL === 'MiniMaxAI/MiniMax-M2.7') {
+        const hfFallback = 'Qwen/Qwen2.5-72B-Instruct';
+        console.log(`🔄 [Quota/Rate-Limit Fallback] Attempting fallback to: ${hfFallback}...`);
         try {
-          if (hfClient) {
-            response = await hfClient.chatCompletion({
-              model: fallbackModel,
-              messages,
-              max_tokens: 3000,
-              temperature: 0.2
-            });
-          } else {
-            response = await callHfChatViaHttp(messages, fallbackModel);
-          }
-          console.log(`✅ Fallback to ${fallbackModel} succeeded.`);
-          hfError = null;
-        } catch (fallbackErr) {
-          console.warn(`⚠️ Fallback to ${fallbackModel} also failed: ${fallbackErr.message}`);
-          hfError = fallbackErr;
+          const result = await tryHfModel(hfFallback);
+          data = result.data;
+          response = result.response;
+          console.log(`✅ Fallback to ${hfFallback} succeeded.`);
+          lastError = null; // cleared
+        } catch (fbErr) {
+          console.warn(`⚠️ Fallback to ${hfFallback} also failed: ${fbErr.message}`);
+          lastError = fbErr;
         }
-      } else {
-        hfError = err;
       }
     }
   } else {
-    hfError = new Error("No Hugging Face token configured.");
+    lastError = new Error("No Hugging Face token configured.");
   }
 
+  // Phase 3: Try Custom Provider Fallback (if HF failed/truncated or is unconfigured)
   const fallbackApiKey = process.env.FALLBACK_API_KEY || process.env.MODELSCOPE_API_KEY || process.env.MODELSCOPE_TOKEN;
-  if (hfError && fallbackApiKey) {
+  if ((!data || lastError) && fallbackApiKey) {
     let fallbackBaseUrl = process.env.FALLBACK_BASE_URL || 'https://api-inference.modelscope.cn/v1';
     if (!fallbackBaseUrl.endsWith('/chat/completions')) {
       fallbackBaseUrl = fallbackBaseUrl.replace(/\/$/, '') + '/chat/completions';
@@ -1241,41 +1253,42 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
         const body = await msResponse.text();
         throw new Error(`Fallback API error ${msResponse.status}: ${body.slice(0, 200)}`);
       }
-      response = await msResponse.json();
+      const msData = await msResponse.json();
+      if (!msData || !msData.choices || !msData.choices[0] || !msData.choices[0].message) {
+        throw new Error("Empty or malformed response from Custom Fallback API");
+      }
+      const content = msData.choices[0].message.content;
+      const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
+      data = robustJsonParse(jsonStr);
+      response = msData;
       console.log(`✅ [Fallback LLM] Successfully generated tailored CV using fallback provider.`);
+      lastError = null; // cleared
     } catch (msErr) {
       console.error(`❌ [Fallback LLM] Fallback failed: ${msErr.message}`);
-      throw new Error(`Both Hugging Face and Fallback LLM failed. HF Error: ${hfError.message}. Fallback Error: ${msErr.message}`);
+      throw new Error(`Both Hugging Face and Fallback LLM failed.\nHF Error: ${lastError ? lastError.message : 'unconfigured'}.\nFallback Error: ${msErr.message}`);
     }
-  } else if (hfError) {
-    throw hfError;
   }
 
-
-
-  try {
-    const content = response.choices[0].message.content;
-    const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
-    const data = robustJsonParse(jsonStr);
-    const y = calculateYearsOfExperience(profile?.experience);
-    if (data?.resume?.summary) {
-      data.resume.summary = normalizeResumeSummaryPlain(data.resume.summary, y);
-    }
-    // Normalize experience: AI may return object {"0":[...], "1":[...]} or flat array
-    // renderExperience handles both, so we pass through as-is
-    if (data?.resume?.experience) {
-      const exp = data.resume.experience;
-      if (typeof exp === 'object' && !Array.isArray(exp)) {
-        console.log(`[DEBUG] AI returned multi-role experience: ${Object.keys(exp).length} roles`);
-      } else if (Array.isArray(exp)) {
-        console.log(`[DEBUG] AI returned flat experience array: ${exp.length} bullets (legacy single-role)`);
-      }
-    }
-    return data;
-  } catch (err) {
-    console.error("Failed to parse AI response:", response.choices[0].message.content);
-    throw new Error("AI output was not valid JSON");
+  // If we still don't have data, throw the last error
+  if (!data) {
+    throw lastError || new Error("Failed to generate tailored CV from all providers.");
   }
+
+  const y = calculateYearsOfExperience(profile?.experience);
+  if (data?.resume?.summary) {
+    data.resume.summary = normalizeResumeSummaryPlain(data.resume.summary, y);
+  }
+  // Normalize experience: AI may return object {"0":[...], "1":[...]} or flat array
+  // renderExperience handles both, so we pass through as-is
+  if (data?.resume?.experience) {
+    const exp = data.resume.experience;
+    if (typeof exp === 'object' && !Array.isArray(exp)) {
+      console.log(`[DEBUG] AI returned multi-role experience: ${Object.keys(exp).length} roles`);
+    } else if (Array.isArray(exp)) {
+      console.log(`[DEBUG] AI returned flat experience array: ${exp.length} bullets (legacy single-role)`);
+    }
+  }
+  return data;
 }
 
 // Main Logic
