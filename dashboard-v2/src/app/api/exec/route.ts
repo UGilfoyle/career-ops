@@ -273,9 +273,28 @@ export async function GET(req: NextRequest) {
   });
 }
 async function triggerGitHubAction(send: any, controller: any, userId: string, script: string, args: string) {
-  const pat = process.env.GITHUB_PAT;
+  let pat = process.env.GITHUB_PAT;
+  let repo = 'UGilfoyle/career-ops';
+
+  try {
+    const profileRows = await sql`
+      SELECT resume_context FROM user_profiles WHERE user_id = ${userId}
+    `;
+    if (profileRows && profileRows.length > 0) {
+      const resumeContext = profileRows[0].resume_context || {};
+      if (resumeContext.github_settings?.pat) {
+        pat = resumeContext.github_settings.pat;
+      }
+      if (resumeContext.github_settings?.repo) {
+        repo = resumeContext.github_settings.repo;
+      }
+    }
+  } catch (dbErr) {
+    console.error('Failed to fetch user profile for GITHUB_PAT:', dbErr);
+  }
+
   if (!pat) {
-    send({ type: 'stderr', content: '⚠ GITHUB_PAT not configured.\nPlease set your GitHub Personal Access Token in Vercel environment variables to enable deep actions.\n' });
+    send({ type: 'stderr', content: '⚠ GITHUB_PAT not configured.\nPlease set your GitHub Personal Access Token in Settings or Vercel environment variables to enable deep actions.\n' });
     send({ type: 'done', code: 1 });
     controller.close();
     return;
@@ -305,7 +324,7 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
       ON CONFLICT (id) DO NOTHING
     `;
 
-    const res = await fetch('https://api.github.com/repos/UGilfoyle/career-ops/actions/workflows/scraper-cron.yml/dispatches', {
+    const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/scraper-cron.yml/dispatches`, {
       method: 'POST',
       headers: {
         'Accept': 'application/vnd.github.v3+json',

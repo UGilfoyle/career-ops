@@ -51,7 +51,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     experience: [],
     education: [],
     targeting_keywords: { positive: [], negative: [] },
-    search: { portals: ['linkedin', 'naukri', 'indeed', 'instahyre', 'flexiple', 'greenhouse', 'lever', 'japan-dev'] }
+    search: { portals: ['linkedin', 'naukri', 'indeed', 'instahyre', 'flexiple', 'greenhouse', 'lever', 'japan-dev'] },
+    github_settings: { pat: '', repo: 'UGilfoyle/career-ops' }
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -485,7 +486,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             experience: d.resume_context?.experience || [],
             education: d.resume_context?.education || [],
             targeting_keywords: d.targeting_keywords || { positive: [], negative: [] },
-            search: d.resume_context?.search || { portals: ['linkedin', 'naukri', 'indeed', 'instahyre', 'flexiple', 'greenhouse', 'lever', 'japan-dev'] }
+            search: d.resume_context?.search || { portals: ['linkedin', 'naukri', 'indeed', 'instahyre', 'flexiple', 'greenhouse', 'lever', 'japan-dev'] },
+            github_settings: d.resume_context?.github_settings || { pat: '', repo: 'UGilfoyle/career-ops' }
           });
           setAccountInfo(prev => ({ ...prev, email: d.email || '' }));
         });
@@ -508,9 +510,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           resume_context: {
             candidate: profileFormData.candidate,
             narrative: profileFormData.narrative,
-              experience: profileFormData.experience,
-              education: profileFormData.education,
-            search: profileFormData.search
+            experience: profileFormData.experience,
+            education: profileFormData.education,
+            search: profileFormData.search,
+            github_settings: profileFormData.github_settings
           },
           targeting_keywords: profileFormData.targeting_keywords,
           email: accountInfo.email,
@@ -2292,6 +2295,32 @@ System Initialized — v2.0`}
                     <p className="text-xs text-[#78716c] font-medium">
                       Multi-tenant: every user should configure their own basics once in Settings.
                     </p>
+                 </ConfigSection>
+
+                 <ConfigSection title="GitHub Automation Integration" icon={<TerminalIcon size={18} className="text-[#1c1917]" />}>
+                    <div className="space-y-4">
+                      <Input
+                        label="GitHub Personal Access Token (PAT)"
+                        type="password"
+                        value={profileFormData.github_settings?.pat || ''}
+                        onChange={(v) => setProfileFormData({
+                          ...profileFormData,
+                          github_settings: { ...(profileFormData.github_settings || {}), pat: v }
+                        })}
+                        placeholder="ghp_..."
+                        hint="Requires 'workflow' scope to trigger deep scans and tailoring actions"
+                      />
+                      <Input
+                        label="GitHub Repository Name"
+                        value={profileFormData.github_settings?.repo || ''}
+                        onChange={(v) => setProfileFormData({
+                          ...profileFormData,
+                          github_settings: { ...(profileFormData.github_settings || {}), repo: v }
+                        })}
+                        placeholder="username/repository"
+                        hint="E.g., UGilfoyle/career-ops"
+                      />
+                    </div>
                  </ConfigSection>
                </div>
             </motion.div>
