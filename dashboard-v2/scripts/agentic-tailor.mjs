@@ -10,7 +10,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 let hf = null;
 let hfUnavailable = false;
 let hfTokenInUse = '';
-const HF_MODEL = process.env.HF_MODEL || 'Qwen/Qwen2.5-72B-Instruct';
+const HF_MODEL = process.env.HF_MODEL || 'MiniMaxAI/MiniMax-M2.7';
 const TARGET_MAP = 'data/current_eval.json';
 const TEMPLATE = 'templates/ats-template-professional.html';
 const require = createRequire(import.meta.url);
@@ -48,8 +48,9 @@ async function getHfClient(token) {
   }
 }
 
-async function callHfChatViaHttp(messages) {
+async function callHfChatViaHttp(messages, model) {
   if (!hfTokenInUse) return null;
+  const targetModel = model || HF_MODEL;
   const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -57,7 +58,7 @@ async function callHfChatViaHttp(messages) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: HF_MODEL,
+      model: targetModel,
       messages,
       max_tokens: 3000,
       temperature: 0.2,
@@ -830,15 +831,44 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   ];
 
   let response;
-  if (hfClient) {
-    response = await hfClient.chatCompletion({
-      model: HF_MODEL,
-      messages,
-      max_tokens: 3000,
-      temperature: 0.2
-    });
-  } else {
-    response = await callHfChatViaHttp(messages);
+  let targetModel = HF_MODEL;
+  try {
+    if (hfClient) {
+      response = await hfClient.chatCompletion({
+        model: targetModel,
+        messages,
+        max_tokens: 3000,
+        temperature: 0.2
+      });
+    } else {
+      response = await callHfChatViaHttp(messages, targetModel);
+    }
+  } catch (err) {
+    console.warn(`⚠️ Hugging Face API failed for ${targetModel}: ${err.message}`);
+    
+    // If the primary model fails (e.g. quota or rate limit), try falling back to Qwen
+    if (targetModel === 'MiniMaxAI/MiniMax-M2.7') {
+      const fallbackModel = 'Qwen/Qwen2.5-72B-Instruct';
+      console.log(`🔄 [Quota/Rate-Limit Fallback] Attempting fallback to: ${fallbackModel}...`);
+      try {
+        if (hfClient) {
+          response = await hfClient.chatCompletion({
+            model: fallbackModel,
+            messages,
+            max_tokens: 3000,
+            temperature: 0.2
+          });
+        } else {
+          response = await callHfChatViaHttp(messages, fallbackModel);
+        }
+        console.log(`✅ Fallback to ${fallbackModel} succeeded.`);
+      } catch (fallbackErr) {
+        console.warn(`⚠️ Fallback to ${fallbackModel} also failed: ${fallbackErr.message}`);
+        throw fallbackErr;
+      }
+    } else {
+      throw err;
+    }
   }
 
   try {
