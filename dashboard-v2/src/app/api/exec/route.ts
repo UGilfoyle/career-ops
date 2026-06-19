@@ -122,6 +122,16 @@ export async function GET(req: NextRequest) {
           controller.close();
           return;
         } else if (cmd === 'skill-gap' || cmd === 'sync-stories') {
+          if (process.env.VERCEL === '1') {
+            const actionName = cmd === 'skill-gap' ? 'Skill Gap Heatmap' : 'Story Bank Sync';
+            send({ 
+              type: 'stderr', 
+              content: `\n⚠️  [Vercel Serverless Constraint]\n"${actionName}" parses local reports in your project folder.\nThis cannot run directly on the cloud serverless deployment.\n\n👉 Please run this command locally in your terminal instead:\n   npm run ${cmd}\n\n` 
+            });
+            send({ type: 'done', code: 1 });
+            controller.close();
+            return;
+          }
           scriptName = `${cmd}.mjs`;
         } else if (cmd === 'help' || cmd === '?') {
           const helpText = `
