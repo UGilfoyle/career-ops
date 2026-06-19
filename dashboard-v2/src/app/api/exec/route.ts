@@ -121,6 +121,8 @@ export async function GET(req: NextRequest) {
           send({ type: 'done', code: 0 });
           controller.close();
           return;
+        } else if (cmd === 'skill-gap' || cmd === 'sync-stories') {
+          scriptName = `${cmd}.mjs`;
         } else if (cmd === 'help' || cmd === '?') {
           const helpText = `
   ┌─────────────────────────────────────────────────────┐
@@ -133,6 +135,8 @@ export async function GET(req: NextRequest) {
   │  UTILITIES                                          │
   │    scan              Quick discovery check           │
   │    tailor <id>       Quick Resume preview            │
+  │    skill-gap         Analyze CV-JD missing skills    │
+  │    sync-stories      Sync STAR stories to master bank│
   │    ls                List project files              │
   │    clear             Clear terminal screen           │
   │    help              Show this reference             │
@@ -222,12 +226,19 @@ export async function GET(req: NextRequest) {
         }
 
         // 4. Execute Script from the new 'scripts' location
-        const scriptPath = path.join(process.cwd(), 'scripts', scriptName);
+        const isRootScript = cmd === 'skill-gap' || cmd === 'sync-stories';
+        const scriptPath = isRootScript 
+          ? path.join(process.cwd(), '..', scriptName) 
+          : path.join(process.cwd(), 'scripts', scriptName);
         
+        const execCwd = isRootScript 
+          ? path.join(process.cwd(), '..') 
+          : userTmpDir;
+
         // We run in the temp dir so the script finds its config/profile.yml there
         // but we need to tell Node where to find its modules and local imports
         const child = spawn('node', [scriptPath, ...scriptArgs], {
-          cwd: userTmpDir,
+          cwd: execCwd,
           env: { 
             ...process.env, 
             FORCE_COLOR: '1',
