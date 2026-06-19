@@ -53,12 +53,13 @@ Read `cv.md`. Ejecuta TODOS los bloques:
 
 #### Paso 0 — Detección de Arquetipo
 
-Clasifica la oferta en uno de los 6 arquetipos. Si es híbrido, indica los 2 más cercanos.
+Clasifica la oferta en uno de los 7 arquetipos. Si es híbrido, indica los 2 más cercanos.
 
-**Los 6 arquetipos (todos igual de válidos):**
+**Los 7 arquetipos (todos igual de válidos):**
 
 | Arquetipo | Ejes temáticos | Qué compran |
 |-----------|----------------|-------------|
+| **AI Software Engineer / GenAI SWE** | GenAI features, LLM integration, prompt design, RAG, vector search, orchestration (LangChain/LlamaIndex) | Alguien que construya features de usuario, servicios y APIs aprovechando modelos AI |
 | **AI Platform / LLMOps Engineer** | Evaluation, observability, reliability, pipelines | Alguien que ponga AI en producción con métricas |
 | **Agentic Workflows / Automation** | HITL, tooling, orchestration, multi-agent | Alguien que construya sistemas de agentes fiables |
 | **Technical AI Product Manager** | GenAI/Agents, PRDs, discovery, delivery | Alguien que traduzca negocio → producto AI |
@@ -72,6 +73,7 @@ Clasifica la oferta en uno de los 6 arquetipos. Si es híbrido, indica los 2 má
 
 | Si el rol es... | Emphasize about the candidate... | Fuentes de proof points |
 |-----------------|--------------------------|--------------------------|
+| GenAI SWE | Desarrollo de features, integración de APIs de modelos, RAG, velocidad a producción | cv.md + article-digest.md |
 | Platform / LLMOps | Builder de sistemas en producción, observability, evals, closed-loop | article-digest.md + cv.md |
 | Agentic / Automation | Orquestación multi-agente, HITL, reliability, cost | article-digest.md + cv.md |
 | Technical AI PM | Product discovery, PRDs, métricas, stakeholder mgmt | cv.md + article-digest.md |
@@ -80,6 +82,7 @@ Clasifica la oferta en uno de los 6 arquetipos. Si es híbrido, indica los 2 má
 | AI Transformation Lead | Change management, team enablement, adoption | cv.md + article-digest.md |
 
 **Ventaja transversal**: Enmarcar perfil como **"Technical builder"** que adapta su framing al rol:
+- Para GenAI SWE: "builder que integra modelos de manera segura y eficiente construyendo valor y UX robustas"
 - Para PM: "builder que reduce incertidumbre con prototipos y luego productioniza con disciplina"
 - Para FDE: "builder que entrega fast con observability y métricas desde día 1"
 - Para SA: "builder que diseña sistemas end-to-end con experiencia real en integrations"

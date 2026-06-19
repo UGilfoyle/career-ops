@@ -23,9 +23,18 @@ target_roles:
     - "Staff ML Engineer"
   # Archetypes help the evaluation system score fit
   archetypes:
-    - name: "AI/ML Engineer"
+    - name: "AI Engineer"
+      level: "Senior"
+      fit: "primary"
+    - name: "Machine Learning Engineer"
+      level: "Senior"
+      fit: "primary"
+    - name: "AI Software Engineer / GenAI SWE"
       level: "Senior/Staff"
       fit: "primary"        # primary = dream role, secondary = good fit, adjacent = stretch
+    - name: "AI/ML Engineer"
+      level: "Senior/Staff"
+      fit: "primary"
     - name: "AI Product Manager"
       level: "Senior"
       fit: "secondary"

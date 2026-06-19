@@ -1101,6 +1101,7 @@ GLOBAL RULES:
 - NO AI-sounding phrases
 - Use short sentences, active voice, specific numbers where they appear in the digest
 - Lead with substance, not filler
+- Highlight Applied AI & GenAI/LLM: For Software Engineer roles and above, if the candidate has experience building GenAI features, prompt engineering, RAG, or integrating LLM APIs, ensure these achievements are prominently highlighted and woven into the summary, core competencies, and bullets.
 
 TASK:
 1. RESUME TAILORING — every output field MUST be aligned to the JD below:

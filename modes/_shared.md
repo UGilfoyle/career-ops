@@ -48,6 +48,7 @@ Classify every offer into one of these types (or hybrid of 2):
 
 | Archetype | Key signals in JD |
 |-----------|-------------------|
+| AI Software Engineer / GenAI SWE | "LLM", "GenAI", "prompt engineering", "RAG", "vector database", "orchestration", "features" |
 | AI Platform / LLMOps | "observability", "evals", "pipelines", "monitoring", "reliability" |
 | Agentic / Automation | "agent", "HITL", "orchestration", "workflow", "multi-agent" |
 | Technical AI PM | "PRD", "roadmap", "discovery", "stakeholder", "product manager" |

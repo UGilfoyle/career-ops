@@ -29,7 +29,10 @@ import {
   BookOpen,
   Copy,
   HelpCircle,
-  Code
+  Code,
+  Columns,
+  List,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -40,6 +43,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [data, setData] = useState<any>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [appsViewMode, setAppsViewMode] = useState<'kanban' | 'table'>('kanban');
   const [logs, setLogs] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [cmdInput, setCmdInput] = useState('');
@@ -627,6 +631,30 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
   };
 
+  const updateApplicationStatus = async (appId: number, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/applications/${appId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson?.error || 'Failed to update status');
+      }
+      // Refresh dashboard data
+      const refreshRes = await fetch('/api/data');
+      if (refreshRes.ok) {
+        const refreshedData = await refreshRes.json();
+        setData(refreshedData);
+      }
+    } catch (err: any) {
+      console.error('Update status error:', err);
+      setToast({ show: true, message: err.message || 'Failed to update status' });
+      setTimeout(() => setToast({ show: false, message: '' }), 4000);
+    }
+  };
+
   const openDeleteConfirm = (id: number, company: string, title: string) => {
     setDeleteTarget({ id, company, title });
     setDeleteConfirmOpen(true);
@@ -762,6 +790,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} onClick={() => setActiveTab('apps')} />
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} onClick={() => setActiveTab('pipeline')} />
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} onClick={() => setActiveTab('cv')} />
+            <NavItem id="nav-skills" icon={<TrendingUp size={18}/>} label="Skill Gaps" active={activeTab === 'skills'} onClick={() => setActiveTab('skills')} />
             {isAdmin && (
               <NavItem id="nav-analytics" icon={<Eye size={18}/>} label="Analytics" active={activeTab === 'analytics'} onClick={() => { setActiveTab('analytics'); if (!visitorStats) { fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {}); } }} />
             )}
@@ -1001,89 +1030,286 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             </motion.div>
           )}
 
-          {activeTab === 'apps' && (
-            <motion.div key="apps" className="bg-white border border-[#e7e5e4] rounded-[2rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
-              <div className="p-8 border-b border-[#e7e5e4] bg-[#faf9f6]">
-                <h2 className="text-xl font-bold text-[#1c1917]">Global Applications</h2>
-              </div>
-              <div className="overflow-x-auto max-h-[600px]">
-                <table className="w-full text-left">
-                  <thead className="sticky top-0 bg-[#f5f5f4] border-b border-[#e7e5e4]">
-                    <tr className="text-[#a8a29e] text-[10px] uppercase tracking-[0.2em] font-bold">
-                      <th className="px-8 py-5">Company</th>
-                      <th className="px-8 py-5">Role</th>
-                      <th className="px-8 py-5">Date</th>
-                      <th className="px-8 py-5">AI Score</th>
-                      <th className="px-8 py-5">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#f5f5f4]">
-                    {filteredApplications.map((app: any, i: number) => (
-                      <tr key={i} className="hover:bg-[#faf9f6] transition-colors group">
-                        <td className="px-8 py-6 font-bold text-[#1c1917]">{app.company}</td>
-                        <td className="px-8 py-6 text-[#78716c] font-medium">{app.role}</td>
-                        <td className="px-8 py-6 text-[#a8a29e] font-mono text-xs uppercase">{new Date(app.applied_at).toLocaleDateString()}</td>
-                        <td className="px-8 py-6">
-                           <div className="flex items-center gap-3">
-                              <div className="h-1 w-16 bg-[#e7e5e4] rounded-full overflow-hidden">
-                                 <div className="h-full bg-[#1c1917]" style={{ width: `${app.score * 10 || 0}%` }}></div>
+          {activeTab === 'apps' && (() => {
+            const kanbanColumns = [
+              { id: 'EVALUATED', label: 'Evaluated', statuses: ['PENDING', 'EVALUATED'], color: 'border-t-amber-500 bg-amber-50/5' },
+              { id: 'APPLIED', label: 'Applied', statuses: ['APPLIED', 'RESPONDED', 'SENT'], color: 'border-t-sky-500 bg-sky-50/5' },
+              { id: 'INTERVIEW', label: 'Interviewing', statuses: ['INTERVIEW', 'ENTREVISTA'], color: 'border-t-indigo-500 bg-indigo-50/5' },
+              { id: 'OFFER', label: 'Offers', statuses: ['OFFER', 'OFERTA'], color: 'border-t-emerald-500 bg-emerald-50/5' },
+              { id: 'CLOSED', label: 'Closed', statuses: ['REJECTED', 'DISCARDED', 'SKIP', 'RECHAZADO', 'DESCARTADO'], color: 'border-t-stone-400 bg-stone-50/5' }
+            ];
+
+            const followUpReminders = (data?.applications || []).filter((app: any) => {
+              const statusUpper = String(app.status || '').toUpperCase();
+              return statusUpper === 'APPLIED' && app.applied_at && 
+                Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24)) >= 7;
+            });
+
+            return (
+              <motion.div key="apps" className="bg-white border border-[#e7e5e4] rounded-[2rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
+                <div className="p-8 border-b border-[#e7e5e4] bg-[#faf9f6] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-[#1c1917]">Global Applications</h2>
+                    <p className="text-xs text-[#78716c] mt-1">Manage and track your active job application processes.</p>
+                  </div>
+                  <div className="flex items-center bg-[#f5f5f4] border border-[#e7e5e4] rounded-xl p-1 shrink-0 self-start sm:self-auto">
+                    <button
+                      onClick={() => setAppsViewMode('kanban')}
+                      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'kanban' ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#78716c] hover:text-[#1c1917]'}`}
+                    >
+                      <Columns size={14} />
+                      Kanban Board
+                    </button>
+                    <button
+                      onClick={() => setAppsViewMode('table')}
+                      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'table' ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#78716c] hover:text-[#1c1917]'}`}
+                    >
+                      <List size={14} />
+                      Table List
+                    </button>
+                  </div>
+                </div>
+
+                {/* Reminders Panel */}
+                {followUpReminders.length > 0 && (
+                  <div className="mx-8 mt-8 p-6 bg-amber-50/85 border border-amber-200/80 rounded-[1.5rem] flex items-start gap-4">
+                    <AlertCircle className="text-amber-600 mt-0.5 shrink-0" size={20} />
+                    <div>
+                      <h3 className="text-sm font-bold text-amber-900">Follow-Up Reminders</h3>
+                      <p className="text-xs text-amber-700 mt-1 font-medium">
+                        You applied to these roles more than 7 days ago. Consider checking in or sending a follow-up email:
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {followUpReminders.map((app: any, idx: number) => {
+                          const days = Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24));
+                          return (
+                            <div key={idx} className="bg-white border border-amber-200 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700 flex items-center gap-2 shadow-sm">
+                              <span className="font-bold text-[#1c1917]">{app.company}</span>
+                              <span className="text-stone-300">|</span>
+                              <span className="text-stone-500 font-medium">{app.role}</span>
+                              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">{days}d ago</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {appsViewMode === 'table' ? (
+                  <div className="overflow-x-auto max-h-[600px] mt-2">
+                    <table className="w-full text-left">
+                      <thead className="sticky top-0 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+                        <tr className="text-[#a8a29e] text-[10px] uppercase tracking-[0.2em] font-bold">
+                          <th className="px-8 py-5">Company</th>
+                          <th className="px-8 py-5">Role</th>
+                          <th className="px-8 py-5">Status</th>
+                          <th className="px-8 py-5">Date</th>
+                          <th className="px-8 py-5">AI Score</th>
+                          <th className="px-8 py-5">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f5f5f4]">
+                        {filteredApplications.map((app: any, i: number) => (
+                          <tr key={i} className="hover:bg-[#faf9f6] transition-colors group">
+                            <td className="px-8 py-6 font-bold text-[#1c1917]">{app.company}</td>
+                            <td className="px-8 py-6 text-[#78716c] font-medium">{app.role}</td>
+                            <td className="px-8 py-6">
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                                ['APPLIED', 'SENT'].includes(String(app.status || '').toUpperCase()) ? 'bg-sky-50 text-sky-700 border border-sky-100' :
+                                ['INTERVIEW', 'ENTREVISTA'].includes(String(app.status || '').toUpperCase()) ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                                ['OFFER', 'OFERTA'].includes(String(app.status || '').toUpperCase()) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                ['REJECTED', 'DESCARTADO', 'SKIP', 'DISCARDED'].includes(String(app.status || '').toUpperCase()) ? 'bg-stone-100 text-stone-600' :
+                                'bg-amber-50 text-amber-700 border border-amber-100'
+                              }`}>
+                                {app.status}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6 text-[#a8a29e] font-mono text-xs uppercase">
+                              {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-8 py-6">
+                               <div className="flex items-center gap-3">
+                                  <div className="h-1 w-16 bg-[#e7e5e4] rounded-full overflow-hidden">
+                                     <div className="h-full bg-[#1c1917]" style={{ width: `${app.score * 10 || 0}%` }}></div>
+                                  </div>
+                                  <span className="text-xs font-bold text-[#1c1917]">{app.score}</span>
+                               </div>
+                            </td>
+                            <td className="px-8 py-6 text-[#1c1917]">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => { setActiveTab('terminal'); runCommand(`apply ${app.job_id} --deep`); }}
+                                  className="p-2 border border-[#e7e5e4] rounded-lg hover:bg-[#1c1917] hover:text-white transition-all"
+                                  title="Run tailor/apply"
+                                >
+                                  <Play size={14} />
+                                </button>
+                                {app?.url && (
+                                  <a
+                                    href={app.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2 border border-[#e7e5e4] rounded-lg hover:bg-[#f5f5f4] transition-all"
+                                    title="Open posting"
+                                  >
+                                    <ExternalLink size={14} />
+                                  </a>
+                                )}
+                                {app?.job_id && (
+                                  <button
+                                    onClick={() => openJobDetails(Number(app.job_id))}
+                                    className="p-2 border border-[#e7e5e4] rounded-lg hover:bg-[#f5f5f4] transition-all"
+                                    title="Details"
+                                  >
+                                    <FileText size={14} />
+                                  </button>
+                                )}
+                                {app?.job_id && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      openDeleteConfirm(
+                                        Number(app.job_id),
+                                        String(app.company || 'Job'),
+                                        String(app.role || 'Unknown role')
+                                      )
+                                    }
+                                    className="p-2 border border-[#e7e5e4] rounded-lg text-[#a8a29e] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                                    title="Delete application and job record"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </div>
-                              <span className="text-xs font-bold text-[#1c1917]">{app.score}</span>
-                           </div>
-                        </td>
-                        <td className="px-8 py-6 text-[#1c1917]">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => { setActiveTab('terminal'); runCommand(`apply ${app.job_id} --deep`); }}
-                              className="p-2 border border-[#e7e5e4] rounded-lg hover:bg-[#1c1917] hover:text-white transition-all"
-                            >
-                              <Play size={14} />
-                            </button>
-                            {app?.url && (
-                              <a
-                                href={app.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-2 border border-[#e7e5e4] rounded-lg hover:bg-[#f5f5f4] transition-all"
-                                title="Open posting"
-                              >
-                                <ExternalLink size={14} />
-                              </a>
-                            )}
-                            {app?.job_id && (
-                              <button
-                                onClick={() => openJobDetails(Number(app.job_id))}
-                                className="p-2 border border-[#e7e5e4] rounded-lg hover:bg-[#f5f5f4] transition-all"
-                                title="Details"
-                              >
-                                <FileText size={14} />
-                              </button>
-                            )}
-                            {app?.job_id && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  openDeleteConfirm(
-                                    Number(app.job_id),
-                                    String(app.company || 'Job'),
-                                    String(app.role || 'Unknown role')
-                                  )
-                                }
-                                className="p-2 border border-[#e7e5e4] rounded-lg text-[#a8a29e] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
-                                title="Delete application and job record"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-8 grid grid-cols-1 md:grid-cols-5 gap-6 items-start overflow-x-auto min-h-[500px]">
+                    {kanbanColumns.map((col) => {
+                      const colApps = filteredApplications.filter((app: any) =>
+                        col.statuses.includes(String(app.status || '').toUpperCase())
+                      );
+
+                      return (
+                        <div
+                          key={col.id}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const appIdStr = e.dataTransfer.getData('text/plain');
+                            const appId = parseInt(appIdStr, 10);
+                            if (Number.isFinite(appId)) {
+                              updateApplicationStatus(appId, col.statuses[0]);
+                            }
+                          }}
+                          className={`flex flex-col rounded-2xl border border-dashed border-[#e7e5e4] p-4 transition-all min-h-[400px] ${col.color}`}
+                        >
+                          <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#e7e5e4]">
+                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#1c1917]">{col.label}</span>
+                            <span className="bg-[#1c1917] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{colApps.length}</span>
+                          </div>
+
+                          <div className="flex flex-col gap-3 flex-grow overflow-y-auto max-h-[500px] pr-1">
+                            {colApps.map((app: any) => {
+                              const days = app.applied_at 
+                                ? Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24)) 
+                                : null;
+                              const showOverdue = col.id === 'APPLIED' && days !== null && days >= 14;
+                              const showWarning = col.id === 'APPLIED' && days !== null && days >= 7 && days < 14;
+
+                              return (
+                                <div
+                                  key={app.app_id}
+                                  draggable
+                                  onDragStart={(e) => {
+                                    e.dataTransfer.setData('text/plain', String(app.app_id));
+                                  }}
+                                  className="bg-white border border-[#e7e5e4] p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative"
+                                >
+                                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                                    <h4 className="font-bold text-sm text-[#1c1917] line-clamp-1 leading-tight">{app.company}</h4>
+                                    <span className="text-[10px] font-bold text-[#1c1917] bg-[#f5f5f4] border border-[#e7e5e4] px-1.5 py-0.5 rounded shrink-0">
+                                      ★ {app.score}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-[#78716c] font-semibold line-clamp-1 mb-3">{app.role}</p>
+
+                                  {showOverdue && (
+                                    <div className="bg-rose-50 border border-rose-100 rounded-lg p-2 mb-3 flex items-center gap-1.5 text-[10px] font-bold text-rose-700">
+                                      <AlertCircle size={12} className="shrink-0" />
+                                      <span>Overdue: Follow up! ({days}d)</span>
+                                    </div>
+                                  )}
+                                  {showWarning && (
+                                    <div className="bg-amber-50 border border-amber-100 rounded-lg p-2 mb-3 flex items-center gap-1.5 text-[10px] font-bold text-amber-700">
+                                      <AlertCircle size={12} className="shrink-0" />
+                                      <span>Remind: Follow up soon ({days}d)</span>
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#f5f5f4]">
+                                    <select
+                                      value={col.id}
+                                      onChange={(e) => {
+                                        const selectCol = kanbanColumns.find(c => c.id === e.target.value);
+                                        if (selectCol) {
+                                          updateApplicationStatus(app.app_id, selectCol.statuses[0]);
+                                        }
+                                      }}
+                                      className="text-[9px] uppercase font-extrabold text-[#78716c] bg-[#faf9f6] border border-[#e7e5e4] rounded px-1.5 py-0.5 outline-none cursor-pointer hover:bg-stone-50 transition-all select-none"
+                                    >
+                                      <option value="EVALUATED">Evaluated</option>
+                                      <option value="APPLIED">Applied</option>
+                                      <option value="INTERVIEW">Interview</option>
+                                      <option value="OFFER">Offer</option>
+                                      <option value="CLOSED">Closed</option>
+                                    </select>
+
+                                    <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                      {app?.url && (
+                                        <a
+                                          href={app.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="p-1 border border-[#e7e5e4] rounded hover:bg-[#f5f5f4] text-[#78716c] transition-all"
+                                          title="Open posting"
+                                        >
+                                          <ExternalLink size={10} />
+                                        </a>
+                                      )}
+                                      {app?.job_id && (
+                                        <button
+                                          onClick={() => openJobDetails(Number(app.job_id))}
+                                          className="p-1 border border-[#e7e5e4] rounded hover:bg-[#f5f5f4] text-[#78716c] transition-all"
+                                          title="Details"
+                                        >
+                                          <FileText size={10} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {colApps.length === 0 && (
+                              <div className="flex-grow flex items-center justify-center py-12 border border-dashed border-[#e7e5e4] rounded-xl bg-stone-50/10">
+                                <span className="text-[10px] uppercase font-bold text-[#a8a29e] tracking-widest">Empty</span>
+                              </div>
                             )}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
-          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            );
+          })()}
 
           {activeTab === 'pipeline' && (
             <motion.div key="pipeline" className="bg-white border border-[#e7e5e4] rounded-[2rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
@@ -1344,6 +1570,152 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                </div>
             </motion.div>
           )}
+
+          {activeTab === 'skills' && (() => {
+            const skillGaps = data?.profile?.skill_gaps || [];
+            const totalRanked = data?.meta?.jobsRanked || 1;
+
+            return (
+              <motion.div key="skills" className="space-y-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-[#1c1917]">Skill Gaps & Heatmap</h2>
+                    <p className="text-xs text-[#78716c] mt-1">
+                      Aggregated gaps extracted from your job evaluations. Focus your learning on these top areas.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setActiveTab('terminal'); runCommand('skill-gap'); }}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-[#1c1917] hover:bg-[#27272a] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0"
+                  >
+                    <Zap size={14} />
+                    Re-Analyze Gaps
+                  </button>
+                </div>
+
+                {skillGaps.length === 0 ? (
+                  <div className="bg-stone-50 border border-dashed border-[#e7e5e4] rounded-[2rem] p-16 text-center max-w-2xl mx-auto mt-8">
+                    <TrendingUp className="text-[#a8a29e] mx-auto mb-4" size={48} />
+                    <h3 className="text-lg font-bold text-[#1c1917]">No Skill Gaps Analyzed Yet</h3>
+                    <p className="text-sm text-[#78716c] mt-2 max-w-md mx-auto">
+                      Evaluate a few jobs first and run the analysis script to extract and aggregate skills that are missing from your CV.
+                    </p>
+                    <button
+                      onClick={() => { setActiveTab('terminal'); runCommand('skill-gap'); }}
+                      className="mt-6 px-6 py-3 bg-[#1c1917] text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-[#27272a] transition-all shadow-md"
+                    >
+                      Run Analysis Script
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-6">
+                      <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8 shadow-sm">
+                        <h3 className="text-base font-bold text-[#1c1917] mb-6">Top Missing Skills</h3>
+                        
+                        <div className="space-y-6">
+                          {skillGaps.map((gap: any, index: number) => {
+                            const pct = Math.min(100, Math.round((gap.count / totalRanked) * 100));
+                            const severityUpper = String(gap.severity || 'Medium').toUpperCase();
+                            const severityColor = 
+                              severityUpper === 'HIGH' || severityUpper === 'ALTA' ? 'bg-rose-50 text-rose-700 border-rose-100' :
+                              severityUpper === 'LOW' || severityUpper === 'BAJA' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                              'bg-amber-50 text-amber-700 border-amber-100';
+
+                            return (
+                              <div key={index} className="p-5 border border-[#e7e5e4] rounded-2xl hover:bg-stone-50/50 transition-colors">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                                  <div>
+                                    <h4 className="font-extrabold text-[#1c1917] text-base">{gap.name}</h4>
+                                    <span className="text-[11px] text-[#78716c] font-medium mt-0.5 block">
+                                      Flagged in <strong className="text-[#1c1917]">{gap.count}</strong> of {totalRanked} evaluated jobs ({pct}%)
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 self-start sm:self-center">
+                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${severityColor}`}>
+                                      {gap.severity} Severity
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="h-2 w-full bg-[#f5f5f4] rounded-full overflow-hidden mb-4">
+                                  <div 
+                                    className={`h-full rounded-full ${
+                                      severityUpper === 'HIGH' || severityUpper === 'ALTA' ? 'bg-rose-500' :
+                                      severityUpper === 'LOW' || severityUpper === 'BAJA' ? 'bg-blue-500' :
+                                      'bg-amber-500'
+                                    }`}
+                                    style={{ width: `${pct}%` }}
+                                  ></div>
+                                </div>
+
+                                {gap.mitigations && gap.mitigations.length > 0 && (
+                                  <div className="bg-[#faf9f6] border border-[#e7e5e4] rounded-xl p-4">
+                                    <span className="text-[10px] uppercase font-bold text-[#a8a29e] tracking-wider block mb-2">Mitigation Strategies</span>
+                                    <ul className="list-disc pl-4 text-xs text-stone-600 space-y-1.5 font-medium">
+                                      {gap.mitigations.slice(0, 3).map((mit: string, mIdx: number) => (
+                                        <li key={mIdx}>{mit}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="bg-[#1c1917] text-white border border-[#1c1917] rounded-[2rem] p-8 shadow-xl">
+                        <TrendingUp className="text-amber-400 mb-4" size={32} />
+                        <h3 className="text-lg font-bold text-white mb-2">Learning Priorities</h3>
+                        <p className="text-stone-300 text-xs leading-relaxed font-medium">
+                          These insights are generated by analyzing matching gaps between your CV and target jobs. Prioritize acquiring skills at the top of this list.
+                        </p>
+                        <div className="mt-6 pt-6 border-t border-stone-800 space-y-4">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-stone-400 font-medium">Total Unique Gaps</span>
+                            <span className="font-bold text-white text-sm">{skillGaps.length}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-stone-400 font-medium">High Severity Gaps</span>
+                            <span className="font-bold text-rose-400 text-sm">
+                              {skillGaps.filter((g: any) => ['HIGH', 'ALTA'].includes(String(g.severity || '').toUpperCase())).length}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-stone-400 font-medium">Mitigation Plans</span>
+                            <span className="font-bold text-emerald-400 text-sm">
+                              {skillGaps.reduce((acc: number, g: any) => acc + (g.mitigations?.length || 0), 0)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8 shadow-sm">
+                        <h4 className="text-sm font-bold text-[#1c1917] mb-3">How to mitigate gaps?</h4>
+                        <div className="space-y-3.5 text-xs text-[#78716c] font-medium leading-relaxed">
+                          <div className="flex gap-2.5">
+                            <span className="h-5 w-5 bg-stone-100 rounded-full flex items-center justify-center font-bold text-[#1c1917] text-[10px] shrink-0">1</span>
+                            <p><strong>Add equivalent experience:</strong> If they ask for Docker and you used Kubernetes, emphasize your containerization skills.</p>
+                          </div>
+                          <div className="flex gap-2.5">
+                            <span className="h-5 w-5 bg-stone-100 rounded-full flex items-center justify-center font-bold text-[#1c1917] text-[10px] shrink-0">2</span>
+                            <p><strong>Build a mini-project:</strong> Create a weekend project using the missing technology to show you can learn fast.</p>
+                          </div>
+                          <div className="flex gap-2.5">
+                            <span className="h-5 w-5 bg-stone-100 rounded-full flex items-center justify-center font-bold text-[#1c1917] text-[10px] shrink-0">3</span>
+                            <p><strong>Optimize CV tailoring:</strong> Follow the personalization plan (Block E) in your reports to highlight adjacent competencies.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })()}
 
           {activeTab === 'analytics' && (
             <motion.div key="analytics" className="space-y-8">

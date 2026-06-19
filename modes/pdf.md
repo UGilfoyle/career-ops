@@ -58,6 +58,8 @@ Ejemplos de reformulación legítima:
 - JD dice "MLOps" y CV dice "observability, evals, error handling" → cambiar a "MLOps and observability: evals, error handling, cost monitoring"
 - JD dice "stakeholder management" y CV dice "collaborated with team" → cambiar a "stakeholder management across engineering, operations, and business"
 
+- **Roles de Software Engineer o superior:** Si el JD menciona AI/GenAI/LLM, o si el candidato tiene experiencia comprobable en integración de APIs de LLMs, prompt engineering, RAG, bases de datos vectoriales, orquestación de agentes o herramientas afines en sus organizaciones, forzar que estos puntos se destaquen tanto en el Professional Summary como en los Experience Bullets y en la sección de Skills/Core Competencies.
+
 **NUNCA añadir skills que el candidato no tiene. Solo reformular experiencia real con el vocabulario exacto del JD.**
 
 ## Template HTML

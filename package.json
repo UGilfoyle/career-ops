@@ -9,6 +9,8 @@
     "dedup": "node dedup-tracker.mjs",
     "doctor": "node doctor.mjs",
     "sync-check": "node cv-sync-check.mjs",
+    "sync-stories": "node sync-stories.mjs",
+    "skill-gap": "node skill-gap.mjs",
     "update:check": "node update-system.mjs check",
     "liveness": "grep -o \"https://[^ |]*\" data/pipeline.md | head -10 | xargs node check-liveness.mjs",
     "scan": "node scratch-scan.mjs",
