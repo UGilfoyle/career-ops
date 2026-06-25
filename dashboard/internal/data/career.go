@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/santifer/career-ops/dashboard/internal/model"
+	"github.com/UGilfoyle/career-ops/dashboard/internal/model"
 )
 
 var (

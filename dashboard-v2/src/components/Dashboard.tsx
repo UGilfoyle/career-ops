@@ -594,24 +594,60 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
   };
 
-  const applyResumeImport = () => {
+  const applyResumeImport = async () => {
     const nextExp = normalizeExperience(resumeImport?.experience || []);
     const nextEdu = normalizeEducation(resumeImport?.education || []);
-    setProfileFormData((prev: any) => {
-      const prevExp = normalizeExperience(prev?.experience || []);
-      const prevEdu = normalizeEducation(prev?.education || []);
-      const exp =
-        resumeImportMode === 'replace'
-          ? nextExp
-          : mergeUniqueByKey(prevExp, nextExp, (e) => `${e.company}::${e.role}::${e.period}`.toLowerCase());
-      const education =
-        resumeImportMode === 'replace'
-          ? nextEdu
-          : mergeUniqueByKey(prevEdu, nextEdu, (e) => `${e.school}::${e.degree}::${e.period}`.toLowerCase());
-      return { ...prev, experience: exp, education };
-    });
-    setToast({ show: true, message: '[OK] ✔ Resume import applied to Experience/Education — hit Save Changes to persist' });
-    setTimeout(() => setToast({ show: false, message: '' }), 5000);
+    const prevExp = normalizeExperience(profileFormData?.experience || []);
+    const prevEdu = normalizeEducation(profileFormData?.education || []);
+    
+    const exp =
+      resumeImportMode === 'replace'
+        ? nextExp
+        : mergeUniqueByKey(prevExp, nextExp, (e) => `${e.company}::${e.role}::${e.period}`.toLowerCase());
+    const education =
+      resumeImportMode === 'replace'
+        ? nextEdu
+        : mergeUniqueByKey(prevEdu, nextEdu, (e) => `${e.school}::${e.degree}::${e.period}`.toLowerCase());
+
+    setProfileFormData((prev: any) => ({ ...prev, experience: exp, education }));
+
+    setIsSaving(true);
+    setSaveStatus('saving');
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_context: {
+            candidate: profileFormData.candidate,
+            narrative: profileFormData.narrative,
+            experience: exp,
+            education: education,
+            search: profileFormData.search,
+            github_settings: profileFormData.github_settings
+          },
+          targeting_keywords: profileFormData.targeting_keywords,
+          email: accountInfo.email,
+          password: accountInfo.password || undefined
+        })
+      });
+      if (res.ok) {
+        setSaveStatus('success');
+        setToast({ show: true, message: '[OK] ✔ Resume import applied and saved successfully!' });
+        setResumeImportStatus('idle');
+        setResumeImport(null);
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      } else {
+        setSaveStatus('error');
+        setToast({ show: true, message: '❌ Failed to save imported settings' });
+      }
+    } catch (e) {
+      setSaveStatus('error');
+      setToast({ show: true, message: '❌ Error saving imported settings' });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setToast({ show: false, message: '' }), 5000);
+    }
   };
 
   const openJobDetails = async (jobId: number) => {

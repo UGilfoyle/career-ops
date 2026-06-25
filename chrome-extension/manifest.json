@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Career-Ops Companion",
+  "version": "1.0.0",
+  "description": "Chrome companion for career-ops. Scrapes job listings, fetches matches, and auto-fills application forms using your local profile.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

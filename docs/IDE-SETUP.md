@@ -15,7 +15,7 @@ Career-Ops works with any AI coding IDE that can read project files and run term
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/santifer/career-ops.git
+git clone https://github.com/UGilfoyle/career-ops.git
 cd career-ops
 npm install
 npx playwright install chromium   # Required for PDF generation

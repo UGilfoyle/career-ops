@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
@@ -373,4 +373,184 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
   }
   
   controller.close();
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const userId = session.user.id;
+    const body = await req.json();
+    const q = body.cmd?.trim() || '';
+    if (!q) {
+      return NextResponse.json({ error: 'Empty command' }, { status: 400 });
+    }
+
+    const [cmd, ...args] = q.split(/\s+/);
+    
+    // Check if we should trigger GitHub Action
+    const isDeep = args.includes('--deep') || process.env.VERCEL === '1' || cmd === 'add';
+    
+    if (isDeep) {
+      // Trigger GitHub Action
+      let script = '';
+      let scriptArgs = '';
+      
+      if (cmd === 'add') {
+        script = 'add-job.mjs';
+        scriptArgs = q.replace(/^add\s+/i, '').trim();
+      } else if (cmd === 'tailor' || cmd === 'offer-match') {
+        script = 'agentic-tailor.mjs';
+        scriptArgs = args.find((a: string) => a !== '--deep') || '';
+      } else if (cmd === 'apply') {
+        script = 'auto-apply.mjs';
+        scriptArgs = args.find((a: string) => a !== '--deep') || '';
+      } else if (cmd === 'scan') {
+        script = 'scratch-scan.mjs';
+        scriptArgs = '';
+      } else if (/^\d+$/.test(cmd)) {
+        script = 'agentic-tailor.mjs';
+        scriptArgs = cmd;
+      } else {
+        return NextResponse.json({ error: `Command ${cmd} not supported in deep mode` }, { status: 400 });
+      }
+
+      // Trigger GitHub Action and wait for it
+      let pat = process.env.GITHUB_PAT;
+      let repo = 'UGilfoyle/career-ops';
+
+      try {
+        const profileRows = await sql`
+          SELECT resume_context FROM user_profiles WHERE user_id = ${userId}
+        `;
+        if (profileRows && profileRows.length > 0) {
+          const resumeContext = profileRows[0].resume_context || {};
+          if (resumeContext.github_settings?.pat) {
+            pat = resumeContext.github_settings.pat;
+          }
+          if (resumeContext.github_settings?.repo) {
+            repo = resumeContext.github_settings.repo;
+          }
+        }
+      } catch (dbErr) {
+        console.error('Failed to fetch user profile for GITHUB_PAT:', dbErr);
+      }
+
+      if (!pat) {
+        return NextResponse.json({ error: 'GITHUB_PAT not configured. Please set your GitHub Personal Access Token in Settings.' }, { status: 400 });
+      }
+
+      const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS background_runs (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          action_script TEXT NOT NULL,
+          action_args TEXT,
+          status TEXT NOT NULL DEFAULT 'queued',
+          run_url TEXT,
+          queued_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          completed_at TIMESTAMP
+        );
+      `;
+      await sql`
+        INSERT INTO background_runs (id, user_id, action_script, action_args, status)
+        VALUES (${runId}, ${String(userId)}, ${script}, ${scriptArgs || null}, 'queued')
+        ON CONFLICT (id) DO NOTHING
+      `;
+
+      const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/scraper-cron.yml/dispatches`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Authorization': `Bearer ${pat}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ref: 'main',
+          inputs: {
+            user_id: String(userId),
+            run_id: runId,
+            action_script: script,
+            action_args: scriptArgs
+          }
+        })
+      });
+
+      if (res.ok) {
+        return NextResponse.json({ ok: true, jobId: runId, isDeep: true });
+      } else {
+        const errText = await res.text();
+        return NextResponse.json({ error: `GitHub Action trigger failed: ${errText}` }, { status: 500 });
+      }
+    } else {
+      // Local Execution
+      let scriptName = '';
+      let scriptArgs = args;
+
+      if (/^\d+$/.test(cmd)) {
+        scriptName = 'agentic-tailor.mjs';
+        scriptArgs = [cmd];
+      } else if (cmd === 'rank' || cmd === 'offer-list') {
+        scriptName = 'rank-pipeline.mjs';
+      } else if (cmd === 'scan') {
+        scriptName = 'scratch-scan.mjs';
+      } else if (cmd === 'tailor' || cmd === 'offer-match') {
+        scriptName = 'agentic-tailor.mjs';
+      } else if (cmd === 'apply') {
+        scriptName = 'auto-apply.mjs';
+      } else {
+        return NextResponse.json({ error: `career-ops: command not found: ${cmd}` }, { status: 404 });
+      }
+
+      // Spawn child process in the background
+      const scriptPath = path.join(process.cwd(), 'scripts', scriptName);
+      
+      // Setup temp workspace
+      const userTmpDir = path.join('/tmp', 'career-ops', userId);
+      const configDir = path.join(userTmpDir, 'config');
+      const dataDir = path.join(userTmpDir, 'data');
+      const outputDir = path.join(userTmpDir, 'output');
+      const templatesDir = path.join(userTmpDir, 'templates');
+      
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.mkdirSync(dataDir, { recursive: true });
+      fs.mkdirSync(outputDir, { recursive: true });
+      fs.mkdirSync(templatesDir, { recursive: true });
+
+      // Get profile
+      const profileRows = await sql`
+        SELECT resume_context, targeting_keywords FROM user_profiles WHERE user_id = ${userId}
+      `;
+      const profile = profileRows[0] || { resume_context: {}, targeting_keywords: { positive: [], negative: [] } };
+      fs.writeFileSync(path.join(configDir, 'profile.yml'), yaml.dump(profile.resume_context));
+      fs.writeFileSync(path.join(configDir, 'keywords.json'), JSON.stringify(profile.targeting_keywords));
+
+      // Resolve portals
+      const portalsYmlPath = path.join(process.cwd(), 'runtime-assets', 'portals.yml');
+      if (fs.existsSync(portalsYmlPath)) {
+        fs.copyFileSync(portalsYmlPath, path.join(userTmpDir, 'portals.yml'));
+      }
+      
+      const child = spawn('node', [scriptPath, ...scriptArgs], {
+        cwd: userTmpDir,
+        env: { 
+          ...process.env, 
+          FORCE_COLOR: '1',
+          SCAN_USER_ID: userId,
+          APP_ROOT: process.cwd(),
+          NODE_PATH: `${path.join(process.cwd(), 'node_modules')}:${path.join(process.cwd(), '..', 'node_modules')}`,
+        }
+      });
+
+      child.unref();
+
+      return NextResponse.json({ ok: true, jobId: 'local', isDeep: false });
+    }
+  } catch (error: any) {
+    console.error('POST api/exec Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

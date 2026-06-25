@@ -36,17 +36,21 @@
     "careerops",
     "automation"
   ],
-  "author": "Santiago Fernández de Valderrama <hi@santifer.io> (https://santifer.io)",
-  "homepage": "https://santifer.io",
+  "author": "Akash Kaintura <akash.k96.official@gmail.com> (https://github.com/UGilfoyle)",
+  "homepage": "https://github.com/UGilfoyle/career-ops",
   "repository": {
     "type": "git",
-    "url": "https://github.com/santifer/career-ops"
+    "url": "https://github.com/UGilfoyle/career-ops"
   },
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1073.0",
     "@google/generative-ai": "^0.24.1",
+    "@huggingface/inference": "^4.13.19",
     "dotenv": "^17.0.0",
     "js-yaml": "^4.1.1",
-    "playwright": "1.61.0"
+    "playwright": "1.61.0",
+    "postgres": "^3.4.9",
+    "yaml": "^2.9.0"
   }
 }

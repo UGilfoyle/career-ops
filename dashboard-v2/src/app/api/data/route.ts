@@ -16,7 +16,10 @@ export async function GET() {
     const userId = session.user.id;
 
     const data = await getDashboardData(userId);
-    return NextResponse.json(data);
+    return NextResponse.json({
+      ...data,
+      apps: data.applications
+    });
   } catch (error: any) {
     console.error('API Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -3,11 +3,11 @@ message: "If you use career-ops, please cite it using these metadata."
 title: "Career-Ops: AI-Powered Job Search Pipeline"
 type: software
 authors:
-  - family-names: "Fernández de Valderrama"
-    given-names: "Santiago"
-    website: "https://santifer.io"
-url: "https://santifer.io"
-repository-code: "https://github.com/santifer/career-ops"
+  - family-names: "Kaintura"
+    given-names: "Akash"
+    website: "https://github.com/UGilfoyle"
+url: "https://github.com/UGilfoyle/career-ops"
+repository-code: "https://github.com/UGilfoyle/career-ops"
 license: MIT
 keywords:
   - ai
