@@ -18,8 +18,8 @@ importers:
         specifier: ^4.13.19
         version: 4.13.19
       dotenv:
-        specifier: ^17.0.0
-        version: 17.4.1
+        specifier: ^17.4.2
+        version: 17.4.2
       js-yaml:
         specifier: ^4.1.1
         version: 4.1.1
@@ -143,15 +143,15 @@ packages:
     engines: {node: '>=18.0.0'}
 
   '@huggingface/inference@4.13.19':
-    resolution: {integrity: sha512-F2Jv7kCAGsdrUCCHMcyQev3ax9XVUdeYYng9bDPffRnnph55g9n0IzeK4ILUr5zRjifCK5ZWIu7VfIn9nQWcIw==}
+    resolution: {integrity: sha512-F2Jv7kCAGsdrUCCHMcyQev3ax9XVUdeYYng9bDPffRnnph55g9n0IzeK4ILUr5zRjifCK5ZWIu7VfIn9nQWcIw==, tarball: https://npm.pkg.github.com/download/@huggingface/inference/4.13.19/345403c27d32d24e278734c78972e7d375716d8c}
     engines: {node: '>=18'}
 
   '@huggingface/jinja@0.5.9':
-    resolution: {integrity: sha512-uWTG+l3VJRsl7EXxYizuL3P+cCPoc3cRqbWWRcQN0FhejRfbdq0RNhCmbY/YDtnTcz9icdLYuLDjsnz4d8JMuw==}
+    resolution: {integrity: sha512-uWTG+l3VJRsl7EXxYizuL3P+cCPoc3cRqbWWRcQN0FhejRfbdq0RNhCmbY/YDtnTcz9icdLYuLDjsnz4d8JMuw==, tarball: https://npm.pkg.github.com/download/@huggingface/jinja/0.5.9/294f741fa098c2b3173788b44ca651958bffa36d}
     engines: {node: '>=18'}
 
   '@huggingface/tasks@0.21.13':
-    resolution: {integrity: sha512-zW8gImE4dzConGeZdlGiLdTgb/mbFuuDdBNEe9fDsx8rv3KsG0OfDp0UY48+cYp/ZxYsBzNr890W22cKLvDLfA==}
+    resolution: {integrity: sha512-zW8gImE4dzConGeZdlGiLdTgb/mbFuuDdBNEe9fDsx8rv3KsG0OfDp0UY48+cYp/ZxYsBzNr890W22cKLvDLfA==, tarball: https://npm.pkg.github.com/download/@huggingface/tasks/0.21.13/e0e86b4171a953ff84ae8932327715b0a8e9010f}
 
   '@nodable/entities@2.2.0':
     resolution: {integrity: sha512-9uGyhaQavEUMC8AIddIjau4NsnsXhou+j5sBAGojCM1oxmQpVKTWR/9JxABD6UAv12vpIms55fPZKFQEhG6uBg==}
@@ -201,8 +201,8 @@ packages:
   bowser@2.14.1:
     resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
 
-  dotenv@17.4.1:
-    resolution: {integrity: sha512-k8DaKGP6r1G30Lx8V4+pCsLzKr8vLmV2paqEj1Y55GdAgJuIqpRp5FfajGF8KtwMxCz9qJc6wUIJnm053d/WCw==}
+  dotenv@17.4.2:
+    resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
     engines: {node: '>=12'}
 
   fast-xml-builder@1.2.0:
@@ -553,7 +553,7 @@ snapshots:
 
   bowser@2.14.1: {}
 
-  dotenv@17.4.1: {}
+  dotenv@17.4.2: {}
 
   fast-xml-builder@1.2.0:
     dependencies:
