@@ -1,332 +1,188 @@
-# Career-Ops
+# Career-Ops: Standalone AI Job Search & SaaS Command Center
 
-[English](README.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (Brasil)](README.pt-BR.md) | [한국어](README.ko-KR.md) | [日本語](README.ja.md) | [简体中文](README.cn.md) | [繁體中文](README.zh-TW.md) | [Українська](README.ua.md) | [Русский](README.ru.md) | [Polski](README.pl.md) | [العربية](README.ar.md)
+Companies use AI to filter candidates. **Career-Ops gives candidates the AI infrastructure to target and secure their next role.** 
 
-
-
-<p align="center">
-  Companies use AI to filter candidates. <strong>Career-Ops gives candidates AI to <em>choose</em> companies.</strong><br>
-  <em>Open source and local-first.</em>
-</p>
-
-
-
-<p align="center"><sub>FEATURED IN</sub></p>
-
-<p align="center">
-  <a href="https://wired.com.gr/article/to-ai-ergaleio-pou-fernei-epanastasi-ston-tropo-pou-psachnoume-douleia/" rel="noopener noreferrer nofollow"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/press/wired-dark.svg"><img src="docs/press/wired.svg" alt="WIRED" height="32"></picture></a>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://www.businessinsider.com/how-i-built-tool-filter-job-listings-landed-head-ai-2026-4" rel="noopener noreferrer nofollow"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/press/business-insider-dark.svg"><img src="docs/press/business-insider.svg" alt="Business Insider" height="32"></picture></a>
-</p>
+This repository is a fully standalone, bifurcated edition of Career-Ops featuring a local-first CLI pipeline integrated with a multi-tenant Next.js SaaS dashboard, Go TUI dashboard, cloud storage synchronization, and distributed scraper automation.
 
 ---
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Career-Ops Demo" width="800">
-</p>
-
-<p align="center"><strong>Evaluate job offers · Customize CVs · Track your pipeline</strong></p>
-
-<p align="center">
-  <a href="https://discord.gg/8pRpHETxa4"><img src="https://img.shields.io/badge/Join_the_community-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
+  <strong>Evaluate job offers · Customize CVs · Track your pipeline · SaaS Hub</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/UGilfoyle/career-ops/releases/latest"><img src="https://img.shields.io/github/v/release/UGilfoyle/career-ops?style=for-the-badge&labelColor=2b3137&color=2ea44f&label=release" alt="Latest release"></a>
+  <a href="https://github.com/UGilfoyle/career-ops"><img src="https://img.shields.io/badge/Status-Standalone-blue?style=for-the-badge" alt="Standalone Repository"></a>
 </p>
 
-<p align="center">
-  <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/Built_with-Claude_Code-000?style=for-the-badge&logo=anthropic&logoColor=white" alt="Built with Claude Code"></a>
-</p>
+---
 
-<p align="center">
-  <sub>Also runs on any agent-skill-standard CLI</sub><br>
-  <img src="https://img.shields.io/badge/Claude_Code-000?style=flat&logo=anthropic&logoColor=white" alt="Claude Code">
-  <img src="https://img.shields.io/badge/OpenCode-111827?style=flat&logo=terminal&logoColor=white" alt="OpenCode">
-  <img src="https://img.shields.io/badge/Gemini_CLI-4285F4?style=flat&logo=google&logoColor=white" alt="Gemini CLI">
-  <img src="https://img.shields.io/badge/Antigravity_CLI-4285F4?style=flat&logo=google&logoColor=white" alt="Antigravity CLI">
-  <img src="https://img.shields.io/badge/Codex-412991?style=flat&logo=openai&logoColor=white" alt="Codex">
-  <img src="https://img.shields.io/badge/Qwen-615CED?style=flat" alt="Qwen">
-  <img src="https://img.shields.io/badge/GitHub_Copilot-000?style=flat&logo=githubcopilot&logoColor=white" alt="GitHub Copilot">
-  <br>
-  <img src="https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white" alt="Node.js">
-  <img src="https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white" alt="Go">
-  <img src="https://img.shields.io/badge/Playwright-2EAD33?style=flat&logo=playwright&logoColor=white" alt="Playwright">
-  <img src="https://img.shields.io/badge/Bubble_Tea-FF75B5?style=flat&logo=go&logoColor=white" alt="Bubble Tea">
-  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT">
-  <a href="TRADEMARK.md"><img src="https://img.shields.io/badge/Trademark-Policy-blue.svg" alt="Trademark Policy"></a>
-</p>
+## 🏗️ System Architecture
 
-## What Is This
+Career-Ops bridges local-first CLI workflows and Go terminal interfaces with a full-stack cloud Next.js SaaS platform.
 
-Career-Ops ([career-ops.org](https://career-ops.org), also known as **careerops**) turns any AI coding CLI into a full job search command center. Instead of manually tracking applications in a spreadsheet, you get an AI-powered pipeline that:
+```mermaid
+graph TD
+    %% SaaS Layer
+    subgraph SaaS_Layer [SaaS Web Portal - Next.js 16]
+        WebDash["Web Dashboard (dashboard-v2/)"]
+        API["REST & Exec APIs (/api/exec)"]
+        Auth["NextAuth v5 Session Control"]
+    end
 
-- **Evaluates offers** with a structured A-F scoring system (10 weighted dimensions)
-- **Generates tailored PDFs** -- ATS-optimized CVs customized per job description
-- **Scans portals** automatically (Greenhouse, Ashby, Lever, company pages)
-- **Processes in batch** -- evaluate 10+ offers in parallel with sub-agents
-- **Tracks everything** in a single source of truth with integrity checks
+    %% Storage & Database
+    subgraph Storage [Database & Cloud Storage]
+        DB[(PostgreSQL Database)]
+        R2[(Cloudflare R2 / AWS S3)]
+    end
 
-> **Important: This is NOT a spray-and-pray tool.** Career-ops is a filter -- it helps you find the few offers worth your time out of hundreds. The system strongly recommends against applying to anything scoring below 4.0/5. Your time is valuable, and so is the recruiter's. Always review before submitting.
+    %% CLI / Local Layer
+    subgraph Local_Pipeline [Local CLI Pipeline]
+        CLI["AI CLI Agent (Gemini/Claude)"]
+        TUI["Go TUI Dashboard (dashboard/)"]
+        LocalData["Local Tracker (data/applications.md)"]
+    end
 
-Career-ops is agentic: whichever AI coding CLI you choose navigates career pages with Playwright, evaluates fit by reasoning about your CV vs the job description (not keyword matching), and adapts your resume per listing.
+    %% Execution Runner (GitHub Actions / Local)
+    subgraph Runner_Infrastructure [Scraper / Worker Runners]
+        GH_Actions["GitHub Actions Runner (scraper-cron.yml)"]
+        NodeWorker["Local Node.js Scripts (scan.mjs, agentic-tailor.mjs)"]
+    end
 
-> **Heads up: the first evaluations won't be great.** The system doesn't know you yet. Feed it context -- your CV, your career story, your proof points, your preferences, what you're good at, what you want to avoid. The more you nurture it, the better it gets. Think of it as onboarding a new recruiter: the first week they need to learn about you, then they become invaluable.
+    %% Interactions
+    WebDash --> API
+    API --> Auth
+    WebDash --> DB
+    API -->|Workflow Dispatch| GH_Actions
+    API -->|Local Spawn| NodeWorker
+    
+    %% Storage Connections
+    GH_Actions -->|Uploads CVs/PDFs| R2
+    NodeWorker -->|Uploads CVs/PDFs| R2
+    GH_Actions -->|Updates Funnel State| DB
+    
+    %% Local Interfacing
+    CLI -->|Evaluates & PDF Gen| LocalData
+    TUI -->|Visualizes| LocalData
+```
 
-An open-source tool designed to manage and optimize your job search pipeline.
+### Core Operations Flow
+1. **Scraper Job Dispatch**: Users trigger scans from [dashboard-v2](file:///Users/akashkaintura/Desktop/career-ops/dashboard-v2). The API invokes workflow runs in GitHub Actions or locally spawns [scan.mjs](file:///Users/akashkaintura/Desktop/career-ops/scan.mjs).
+2. **Zero-Token ATS Scans**: The engine fetches job postings directly from Greenhouse, Lever, and Ashby JSON APIs, bypassing heavy Playwright requirements for list scanning.
+3. **AI Evaluation & Cascade**: [agentic-tailor.mjs](file:///Users/akashkaintura/Desktop/career-ops/agentic-tailor.mjs) processes descriptions using a try-catch model cascade (defaulting to MiniMax, falling back to Qwen) to generate markdown reports and custom CV layouts.
+4. **Data Sync**: Reports are cataloged in [data/applications.md](file:///Users/akashkaintura/Desktop/career-ops/data/applications.md), and generated resume PDFs are compiled via Playwright and synced to Cloudflare R2 or AWS S3 buckets.
 
-## Features
+---
 
-| Feature                  | Description                                                                                                                              |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **Auto-Pipeline**        | Paste a URL, get a full evaluation + PDF + tracker entry                                                                                 |
-| **6-Block Evaluation**   | Role summary, CV match, level strategy, comp research, personalization, interview prep (STAR+R) -- plus a Block G posting-legitimacy check that flags scams and ghost jobs |
-| **Interview Story Bank** | Accumulates STAR+Reflection stories across evaluations -- 5-10 master stories that answer any behavioral question                        |
-| **Negotiation Scripts**  | Salary negotiation frameworks, geographic discount pushback, competing offer leverage                                                    |
-| **ATS PDF Generation**   | Keyword-injected CVs with Space Grotesk + DM Sans design                                                                                 |
-| **Cover Letter Generator** | Research-backed cover letters with keyword mirroring, four interactive angle prompts (why/problems/approach/tone), draft-in-chat approval gate, and A4 PDF via the same HTML + Playwright pipeline as CVs. Auto-drafts on every evaluation; complete and generate on demand via `/career-ops cover` |
-| **Portal Scanner**       | 45+ companies pre-configured (Anthropic, OpenAI, ElevenLabs, Retool, n8n...) + custom queries across Ashby, Greenhouse, Lever, Wellfound |
-| **Batch Processing**     | Parallel evaluation with headless CLI workers (`claude -p` / `opencode run`)                                                             |
-| **Dashboard TUI**        | Terminal UI to browse, filter, and sort your pipeline                                                                                    |
-| **Human-in-the-Loop**    | AI evaluates and recommends, you decide and act. The system never submits an application -- you always have the final call               |
-| **Pipeline Integrity**   | Automated merge, dedup, status normalization, health checks                                                                              |
+## 🛠️ Bifurcation & Standalone Customizations
 
-## Quick Start
+To enable custom feature sets and separate the pipeline from upstream updates, the following modifications were completed:
 
-To set up the system:
+* **Standalone System Updater**: Reconfigured [update-system.mjs](file:///Users/akashkaintura/Desktop/career-ops/update-system.mjs) to target `UGilfoyle/career-ops` for tags, releases, and changelog updates.
+* **Go Module Isolation**: Refactored the dashboard module in [go.mod](file:///Users/akashkaintura/Desktop/career-ops/dashboard/go.mod) and updated package import routes in all `.go` files under the [dashboard](file:///Users/akashkaintura/Desktop/career-ops/dashboard) folder to use the dedicated repository path.
+* **Metadata & Licensing**: Replaced all upstream references with standalone configurations across [package.json](file:///Users/akashkaintura/Desktop/career-ops/package.json), [CITATION.cff](file:///Users/akashkaintura/Desktop/career-ops/CITATION.cff), [SECURITY.md](file:///Users/akashkaintura/Desktop/career-ops/SECURITY.md), [GOVERNANCE.md](file:///Users/akashkaintura/Desktop/career-ops/GOVERNANCE.md), and [SUPPORT.md](file:///Users/akashkaintura/Desktop/career-ops/SUPPORT.md).
+* **Funding & Branding Cleanup**: Removed upstream `.github/FUNDING.yml` configuration and purged sponsorship widgets to align the repository strictly under personal ownership.
 
+---
+
+## ⚡ Tech Stack
+
+| Component | Technology | Description |
+| :--- | :--- | :--- |
+| **SaaS Hub (`dashboard-v2`)** | Next.js 16, React 19, Tailwind CSS | Multi-tenant visual dashboard with Server-Side Rendering (SSR). |
+| **SaaS Auth / Database** | NextAuth v5, PostgreSQL | Session persistence and relational application funnel tracking. |
+| **Cloud Assets** | AWS SDK, Cloudflare R2 / S3 | Storage for generated PDF resumes and customized cover letters. |
+| **Terminal TUI (`dashboard`)** | Go 1.24, Bubble Tea, Lipgloss | Fast, interactive CLI dashboard with keyboard navigation. |
+| **Static Web Dashboard** | Node.js, Express (`web-dashboard`) | Lightweight, self-contained single-page browser pipeline. |
+| **Engine / Scrapers** | Node.js 20+, Playwright | Zero-token direct-API scanners and headless compilers. |
+| **AI Processing** | OpenAI-Compatible LLM Cascade | Fail-safe pipeline defaulting to MiniMax and falling back to Qwen. |
+
+---
+
+## 💾 Data Contract & Separation of Concerns
+
+To prevent system updates from overwriting custom CV data or settings, Career-Ops maintains a strict barrier between layers:
+
+### 👤 User Layer (Never modified by system updates)
+* **[cv.md](file:///Users/akashkaintura/Desktop/career-ops/cv.md)**: The canonical source-of-truth markdown resume.
+* **[config/profile.yml](file:///Users/akashkaintura/Desktop/career-ops/config/profile.yml)**: Personal parameters (name, target roles, salary range).
+* **[modes/_profile.md](file:///Users/akashkaintura/Desktop/career-ops/modes/_profile.md)**: User-specific scoring metrics, keywords, and narratives.
+* **[data/applications.md](file:///Users/akashkaintura/Desktop/career-ops/data/applications.md)**: The raw markdown tracking spreadsheet.
+* **[portals.yml](file:///Users/akashkaintura/Desktop/career-ops/portals.yml)**: Scraper configuration target companies and job filters.
+
+### ⚙️ System Layer (System code & engine defaults)
+* Node.js scripts (`scan.mjs`, `agentic-tailor.mjs`, `merge-tracker.mjs`).
+* All files in `modes/` (except `_profile.md`).
+* Templates folder (`templates/cv-template.html`, `templates/states.yml`).
+
+---
+
+## 🚀 Quick Start
+
+### 1. Installation & Environment Setup
+Clone the repository and install the dependencies:
 ```bash
-# 1. Clone your repository
 git clone https://github.com/UGilfoyle/career-ops.git
 cd career-ops
 
-# 2. Install dependencies
 npm install
-npx playwright install chromium   # only needed for PDF generation
-
-# 3. Check setup
-npm run doctor                     # Validates all prerequisites
-
-# 4. Configure
-cp config/profile.example.yml config/profile.yml  # Edit with your details
-cp templates/portals.example.yml portals.yml       # Customize companies
-
-# 5. Add your CV
-# Create cv.md in the project root with your CV in markdown
+npx playwright install chromium # Needed for PDF compilation
 ```
 
-### Personalize and Use
-
-Open your AI coding CLI in the project directory:
-
+### 2. Verify Your Configuration
+Run the cold-start check script to ensure all user files are placed properly:
 ```bash
-gemini   # or claude / opencode / agy
+npm run doctor
 ```
+If this is your first run, the system will guide you through onboarding steps to create [cv.md](file:///Users/akashkaintura/Desktop/career-ops/cv.md) and [config/profile.yml](file:///Users/akashkaintura/Desktop/career-ops/config/profile.yml).
 
-Then ask the AI to adapt the system for you:
-* *"Change the archetypes to backend engineering roles"*
-* *"Add these 5 companies to portals.yml"*
-* *"Update my profile with this CV I'm pasting"*
+### 3. Launching Dashboard Portals
 
-> **The system is designed to be customized by your AI coding CLI itself.** Modes, archetypes, scoring weights, negotiation scripts -- just ask it to change them. It reads the same files it uses, so it knows exactly what to edit.
-
-See [docs/SETUP.md](docs/SETUP.md) for the full setup guide.
-
-## Gemini & Antigravity CLI Integration
-
-Career-ops supports [Gemini CLI](https://github.com/google-gemini/gemini-cli) and Antigravity CLI natively, the same way it supports Claude Code and OpenCode. All 15 slash commands are available, using the same `modes/*.md` evaluation logic.
-
-### Option A: Native Gemini CLI (Recommended)
-
+#### Option A: Next.js SaaS Web Dashboard (Premium)
 ```bash
-# 1. Install Gemini CLI (requires Node.js 20+)
-npm install -g @google/gemini-cli
-# or: npx @google/gemini-cli --version
-
-# 2. Run in the career-ops directory — on first launch, sign in with your
-#    Google account (free) to authenticate
-cd career-ops
-gemini
-
-# 3. Use the unified /career-ops command with subcommands:
-/career-ops "Senior AI Engineer at Anthropic..."
-/career-ops pipeline
-/career-ops scan
-/career-ops pdf
-/career-ops tracker
+cd dashboard-v2
+pnpm install
+pnpm dev
 ```
+Navigate to `http://localhost:3000` to access the multi-tenant web application.
 
-The `GEMINI.md` file is auto-loaded as context. The skill is defined using the open standard in `.agents/skills/career-ops/SKILL.md` and symlinked/referenced for each supported CLI (e.g. `.claude/`, `.qwen/`, `.antigravitycli/`).
-
-### Option B: Standalone API Script (No CLI install needed)
-
-```bash
-# 1. Get a free API key at https://aistudio.google.com/apikey
-cp .env.example .env
-# Edit .env, set GEMINI_API_KEY=your_key_here
-
-# 2. Install dependencies
-npm install
-
-# 3. Evaluate a job description
-node gemini-eval.mjs "We are looking for a Senior AI Engineer..."
-node gemini-eval.mjs --file ./jds/my-job.txt
-npm run gemini:eval -- "JD text here"
-```
-
-> **Free tier:** Both options work without billing. Native CLI uses Google OAuth; the API script uses `gemini-2.5-flash` (15 RPM, 1M tokens/day free).
-
-## Usage
-
-Career-ops is a single slash command with multiple modes:
-
-```
-/career-ops                → Show all available commands
-/career-ops {paste a JD}   → Full auto-pipeline (evaluate + PDF + tracker)
-/career-ops scan           → Scan portals for new offers
-/career-ops pdf            → Generate ATS-optimized CV
-/career-ops cover          → Cover letter generator (paste JD or /career-ops cover {slug})
-/career-ops batch          → Batch evaluate multiple offers
-/career-ops tracker        → View application status
-/career-ops apply          → Fill application forms with AI
-/career-ops pipeline       → Process pending URLs
-/career-ops contacto       → LinkedIn outreach message
-/career-ops deep           → Deep company research
-/career-ops training       → Evaluate a course/cert
-/career-ops project        → Evaluate a portfolio project
-```
-
-Or just paste a job URL or description directly -- career-ops auto-detects it and runs the full pipeline.
-
-## How It Works
-
-```
-You paste a job URL or description
-        │
-        ▼
-┌──────────────────┐
-│  Archetype       │  Classifies: LLMOps / Agentic / PM / SA / FDE / Transformation
-│  Detection       │
-└────────┬─────────┘
-         │
-┌────────▼─────────┐
-│  A-F Evaluation  │  Match, gaps, comp research, STAR stories
-│  (reads cv.md)   │
-└────────┬─────────┘
-         │
-    ┌────┼────┐
-    ▼    ▼    ▼
- Report  PDF  Tracker
-  .md   .pdf   .tsv
-```
-
-## Pre-configured Portals
-
-The scanner comes with **45+ companies** ready to scan and **19 search queries** across major job boards. Copy `templates/portals.example.yml` to `portals.yml` and add your own:
-
-**AI Labs:** Anthropic, OpenAI, Mistral, Cohere, LangChain, Pinecone
-**Voice AI:** ElevenLabs, PolyAI, Parloa, Hume AI, Deepgram, Vapi, Bland AI
-**AI Platforms:** Retool, Airtable, Vercel, Temporal, Glean, Arize AI
-**Contact Center:** Ada, LivePerson, Sierra, Decagon, Talkdesk, Genesys
-**Enterprise:** Salesforce, Twilio, Gong, Dialpad
-**LLMOps:** Langfuse, Weights & Biases, Lindy, Cognigy, Speechmatics
-**Automation:** n8n, Zapier, Make.com
-**European:** Factorial, Attio, Tinybird, Clarity AI, Travelperk
-
-**Job boards searched:** Ashby, Greenhouse, Lever, Wellfound, Workable, RemoteFront
-
-By default `node scan.mjs` (a.k.a. `npm run scan`) trusts what each ATS feed returns. Some companies leave stale postings in their public API even after the role is closed, so those expired entries can leak into `pipeline.md`. Pass `--verify` to launch Playwright after the API pass and drop expired postings before they hit the pipeline:
-
-```bash
-node scan.mjs --verify          # zero-token discovery + Playwright liveness check
-```
-
-The verification is sequential and only runs against new offers (after dedup), so the cost stays bounded.
-
-## Dashboard TUI
-
-The built-in terminal dashboard lets you browse your pipeline visually:
-
+#### Option B: Go Terminal TUI Dashboard (Developer)
 ```bash
 cd dashboard
 go build -o career-dashboard .
 ./career-dashboard --path ..
 ```
 
-Features: 6 filter tabs, 4 sort modes, grouped/flat view, lazy-loaded previews, inline status changes.
+#### Option C: Lightweight Static Dashboard (Minimalist)
+```bash
+cd web-dashboard
+node server.mjs
+```
+Navigate to `http://localhost:8080`.
 
-## Project Structure
+---
+
+## 📂 Repository Layout
 
 ```
 career-ops/
-├── AGENTS.md                    # Canonical agent instructions (all CLIs)
-├── CLAUDE.md                    # Claude Code wrapper (imports AGENTS.md)
-├── OPENCODE.md                  # OpenCode wrapper (imports AGENTS.md)
-├── cv.md                        # Your CV (create this)
-├── article-digest.md            # Your proof points (optional)
-├── config/
-│   └── profile.example.yml      # Template for your profile
-├── modes/                       # 15 skill modes
-│   ├── _shared.md               # Shared context (customize this)
-│   ├── oferta.md                # Single evaluation
-│   ├── pdf.md                   # PDF generation
-│   ├── cover.md                 # Cover letter generation
-│   ├── scan.md                  # Portal scanner
-│   ├── batch.md                 # Batch processing
-│   └── ...
-├── templates/
-│   ├── cv-template.html         # ATS-optimized CV template
-│   ├── portals.example.yml      # Scanner config template
-│   └── states.yml               # Canonical statuses
-├── batch/
-│   ├── batch-prompt.md          # Self-contained worker prompt
-│   └── batch-runner.sh          # Orchestrator script
-├── dashboard/                   # Go TUI pipeline viewer
-├── data/                        # Your tracking data (gitignored)
-├── reports/                     # Evaluation reports (gitignored)
-├── output/                      # Generated PDFs (gitignored)
-├── fonts/                       # Space Grotesk + DM Sans
-├── docs/                        # Setup, customization, architecture
-└── examples/                    # Sample CV, report, proof points
+├── AGENTS.md                    # Agent behavior guidelines
+├── CLAUDE.md                    # Claude CLI run configurations
+├── dashboard-v2/                # Next.js 16 Full-Stack SaaS Dashboard
+├── dashboard/                   # Go Bubble Tea TUI
+├── web-dashboard/               # Lightweight static Express dashboard
+├── modes/                       # AI prompt templates & evaluation workflows
+├── templates/                   # HTML/LaTeX templates & keyword profiles
+├── config/                      # User configuration profiles (gitignored)
+├── data/                        # Active application logs & database outputs (gitignored)
+├── reports/                     # Sequential markdown evaluations (gitignored)
+└── output/                      # Generated tailored PDF resumes (gitignored)
 ```
 
-## Tech Stack
+---
 
-![Claude Code](https://img.shields.io/badge/Claude_Code-000?style=flat&logo=anthropic&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
-![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=flat&logo=playwright&logoColor=white)
-![Go](https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white)
-![Bubble Tea](https://img.shields.io/badge/Bubble_Tea-FF75B5?style=flat&logo=go&logoColor=white)
+## ⚖️ Ethics, License & Disclaimer
 
-- **Agent**: Claude Code with custom skills and modes
-- **PDF**: Playwright/Puppeteer + HTML template
-- **Cover letters**: HTML template + Playwright (A4 PDF, same pipeline as CVs)
-- **Scanner**: Playwright + Greenhouse API + WebSearch
-- **Dashboard**: Go + Bubble Tea + Lipgloss (Catppuccin Mocha theme)
-- **Data**: Markdown tables + YAML config + TSV batch files
-
-
-
-## Disclaimer
-
-**career-ops is a local, open-source tool, NOT a hosted service.** By using this software, you acknowledge:
-
-1. **You control your data.** Your CV, contact info, and personal data stay on your machine and are sent directly to the AI provider you choose (Anthropic, OpenAI, etc.). We do not collect, store, or have access to any of your data.
-2. **You control the AI.** The default prompts instruct the AI not to auto-submit applications, but AI models can behave unpredictably. If you modify the prompts or use different models, you do so at your own risk. **Always review AI-generated content for accuracy before submitting.**
-3. **You comply with third-party ToS.** You must use this tool in accordance with the Terms of Service of the career portals you interact with (Greenhouse, Lever, Workday, LinkedIn, etc.). Do not use this tool to spam employers or overwhelm ATS systems.
-4. **No guarantees.** Evaluations are recommendations, not truth. AI models may hallucinate skills or experience. The authors are not liable for employment outcomes, rejected applications, account restrictions, or any other consequences.
-
-See [LEGAL_DISCLAIMER.md](LEGAL_DISCLAIMER.md) for full details. This software is provided under the [MIT License](LICENSE) "as is", without warranty of any kind.
-
-
-
-## License & Trademark
-
-The code is licensed under [MIT](LICENSE). The "career-ops" name and
-brand are governed by the [Trademark Policy](TRADEMARK.md), permissive
-for community use, reserved for commercial product naming and
-endorsement.
-
-## Let's Connect
-
-[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/8pRpHETxa4)
+* **Ethics**: Career-Ops values high-quality matches. **Never auto-submit applications** without a human review. Discourage low-score matches, and respect recruiter review cycles.
+* **Disclaimer**: You are responsible for your data, your deployment, and rate-limit compliance when accessing external job portal APIs.
+* **License**: MIT License. See [LICENSE](file:///Users/akashkaintura/Desktop/career-ops/LICENSE) for the full text. Trademark guidelines can be reviewed in [TRADEMARK.md](file:///Users/akashkaintura/Desktop/career-ops/TRADEMARK.md).
