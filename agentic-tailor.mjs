@@ -1101,8 +1101,10 @@ GLOBAL RULES:
 - NO AI-sounding phrases
 - Use short sentences, active voice, specific numbers where they appear in the digest
 - Lead with substance, not filler
-- Highlight Applied AI & GenAI/LLM: For Software Engineer roles and above, if the candidate has experience building GenAI features, prompt engineering, RAG, or integrating LLM APIs, ensure these achievements are prominently highlighted and woven into the summary, core competencies, and bullets.
+- Highlight Applied AI & GenAI/LLM: If the JD requires or mentions AI, Generative AI, Large Language Models (LLMs), RAG, vector databases, or machine learning, prioritize and weave the candidate's AI experience (e.g., ChromaDB document ingestion pipeline with multiprocessing, conversation query-rewriting, Anthropic Claude/OpenAI GPT integrations with tenacity backoff retry, self-correcting validation loops for LLMs) into the summary, core competencies, and tailored experience bullets.
+- Freelance / Contract / Temporary Role Adaptation: If the JD indicates a freelance, contract, or temporary role, adapt the summary and cover letter to emphasize high autonomy, rapid team integration, immediate contribution, and deliverables-oriented execution. DO NOT change the candidate's existing job titles on the resume to "Freelance" or "Contractor". Keep professional titles (e.g., "Senior Software Engineer") as-is. Avoid adding clunky "doing freelancing" or "freelancing work" phrasing.
 - CRITICAL ATS OPTIMIZATION (85+ ATS Score Target): Maximize exact keyword matching. Extract the primary languages, frameworks, databases, cloud platforms, and technical skills from the JD and weave them verbatim into the Summary, Core Competencies, and Rewritten Bullets. Match terminology exactly (e.g. if the JD writes "PostgreSQL", do not write "Postgres" or "SQL database").
+
 
 TASK:
 1. RESUME TAILORING — every output field MUST be aligned to the JD below:

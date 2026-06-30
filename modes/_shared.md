@@ -254,3 +254,12 @@ _If `voice-dna.md` exists, its §3 Banned List is the canonical, fuller version 
 - "Cut p95 latency from 2.1s to 380ms" beats "improved performance"
 - "Postgres + pgvector for retrieval over 12k docs" beats "designed scalable RAG architecture"
 - Name tools, projects, and customers when allowed
+
+### Freelance & Contract Adaptation
+- Emphasize high autonomy, rapid start, and deliverable-focused execution when JDs are for freelance, contract, or temporary roles.
+- **DO NOT** change the candidate's existing job titles on the resume to "Freelance" or "Contractor". Keep professional titles as-is.
+- Avoid clunky "doing freelancing" or "freelancing work" phrasing.
+
+### AI Experience Prioritization
+- If the JD requires or mentions AI, Generative AI, Large Language Models (LLMs), RAG, vector search, or machine learning, prioritize and weave the candidate's actual AI experience (ChromaDB document ingestion pipeline, conversation query-rewriting, Claude/GPT API integrations with retry mechanisms, self-correcting validation loops) into the summary, core competencies, and tailored experience bullets.
+
