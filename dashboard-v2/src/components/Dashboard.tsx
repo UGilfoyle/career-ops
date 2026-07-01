@@ -15,6 +15,7 @@ import {
   LogOut,
   Shield,
   ShieldCheck,
+  ChevronLeft,
   ChevronRight,
   X,
   Zap,
@@ -33,9 +34,7 @@ import {
   Columns,
   List,
   AlertCircle,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
