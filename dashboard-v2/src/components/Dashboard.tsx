@@ -33,7 +33,9 @@ import {
   Columns,
   List,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -80,6 +82,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
   const [jobDetails, setJobDetails] = useState<any>(null);
   const [jobDetailsError, setJobDetailsError] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Visitor analytics state
   const [visitorStats, setVisitorStats] = useState<any>(null);
@@ -165,6 +168,26 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       tooltipDesc: 'Job offers received'
     }
   ];
+
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(localStorage.getItem('career-ops-sidebar-collapsed') === '1');
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('career-ops-sidebar-collapsed', next ? '1' : '0');
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!isSearchOpen) return;
@@ -838,42 +861,68 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
   return (
     <div className="flex h-screen bg-[#FAFAF8] text-[#1C1C1E] font-sans selection:bg-[#1C1C1E]/10">
-      {/* Sidebar: Updated to warm stone/beige */}
-      <aside className="w-64 border-r border-[#E5E5E0] bg-[#F5F5F0] flex flex-col h-screen overflow-hidden">
-        <div className="p-6 pb-2">
-          <div className="flex items-center gap-2.5 mb-10 px-2">
-            <div className="w-8 h-8 rounded-lg bg-[#1c1c1e] flex items-center justify-center flex-shrink-0">
+      {/* Sidebar: collapsible — icons only when collapsed */}
+      <aside
+        className={`relative flex h-screen flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-[width] duration-300 ease-in-out ${
+          sidebarCollapsed ? 'w-[4.5rem]' : 'w-64'
+        }`}
+      >
+        <div className={`flex-1 overflow-y-auto overflow-x-hidden ${sidebarCollapsed ? 'p-3 pb-2' : 'p-6 pb-2'}`}>
+          <div
+            className={`mb-8 flex items-center ${
+              sidebarCollapsed ? 'justify-center px-0' : 'gap-2.5 px-2'
+            }`}
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1c1c1e]">
               <Zap size={14} className="text-white" strokeWidth={2} />
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[16px] font-semibold text-[#1a1a1a]">Career-Ops</span>
-              <span className="text-[11px] font-medium text-[#9ca3af]">v2.0</span>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="flex min-w-0 items-baseline gap-1.5 overflow-hidden">
+                <span className="truncate text-[16px] font-semibold text-[#1a1a1a]">Career-Ops</span>
+                <span className="shrink-0 text-[11px] font-medium text-[#9ca3af]">v2.0</span>
+              </div>
+            )}
           </div>
 
           <nav className="space-y-1">
-            <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-            <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} onClick={() => setActiveTab('apps')} />
-            <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} onClick={() => setActiveTab('pipeline')} />
-            <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} onClick={() => setActiveTab('resume-studio')} />
-            <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} onClick={() => setActiveTab('cv')} />
-            <NavItem id="nav-skills" icon={<TrendingUp size={18}/>} label="Skill Gaps" active={activeTab === 'skills'} onClick={() => setActiveTab('skills')} />
+            <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('dashboard')} />
+            <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('apps')} />
+            <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('pipeline')} />
+            <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('resume-studio')} />
+            <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
+            <NavItem id="nav-skills" icon={<TrendingUp size={18}/>} label="Skill Gaps" active={activeTab === 'skills'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('skills')} />
             {isAdmin && (
-              <NavItem id="nav-analytics" icon={<Eye size={18}/>} label="Analytics" active={activeTab === 'analytics'} onClick={() => { setActiveTab('analytics'); if (!visitorStats) { fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {}); } }} />
+              <NavItem id="nav-analytics" icon={<Eye size={18}/>} label="Analytics" active={activeTab === 'analytics'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('analytics'); if (!visitorStats) { fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {}); } }} />
             )}
-            <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} onClick={() => setActiveTab('terminal')} />
-            <NavItem id="nav-docs" icon={<BookOpen size={18}/>} label="Tutorial & Docs" active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} />
+            <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('terminal')} />
+            <NavItem id="nav-docs" icon={<BookOpen size={18}/>} label="Tutorial & Docs" active={activeTab === 'docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('docs')} />
           </nav>
         </div>
 
-        <div className="mt-auto p-6 border-t border-[#E5E5E0]">
-          <NavItem id="nav-settings" icon={<Settings size={18}/>} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
-          <button 
+        <div className={`mt-auto border-t border-[#E5E5E0] ${sidebarCollapsed ? 'p-3' : 'p-6'}`}>
+          <NavItem id="nav-settings" icon={<Settings size={18}/>} label="Settings" active={activeTab === 'settings'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('settings')} />
+          <button
             onClick={() => signOut({ callbackUrl: '/' })}
-            className="w-full mt-2 flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50 group"
+            title={sidebarCollapsed ? 'Sign Out' : undefined}
+            className={`group mt-2 flex w-full items-center rounded-xl text-[#6B6B6B] transition-all hover:bg-white/50 hover:text-[#1C1C1E] ${
+              sidebarCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
+            }`}
           >
-            <LogOut size={18} className="opacity-70 group-hover:opacity-100 transition-opacity" />
-            <span className="text-sm font-bold">Sign Out</span>
+            <LogOut size={18} className="opacity-70 transition-opacity group-hover:opacity-100" />
+            {!sidebarCollapsed && <span className="text-sm font-bold">Sign Out</span>}
+          </button>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!sidebarCollapsed}
+            className={`mt-2 flex w-full items-center rounded-xl border border-[#E5E5E0] bg-white text-[#6B6B6B] transition-all hover:border-[#D4D4CE] hover:text-[#1C1C1E] ${
+              sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-2 px-4 py-2.5'
+            }`}
+          >
+            {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {!sidebarCollapsed && <span className="text-xs font-bold">Collapse</span>}
           </button>
         </div>
       </aside>
@@ -3181,24 +3230,49 @@ System Initialized — v2.0`}
   );
 }
 
-function NavItem({ id, icon, label, active, onClick }: { id?: string, icon: any, label: string, active: boolean, onClick: () => void }) {
+function NavItem({ id, icon, label, active, collapsed, onClick }: { id?: string, icon: any, label: string, active: boolean, collapsed?: boolean, onClick: () => void }) {
   return (
-    <button id={id} onClick={onClick} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-xl' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}>
-      {icon}
-      <span className="text-sm">{label}</span>
+    <button
+      id={id}
+      type="button"
+      title={collapsed ? label : undefined}
+      onClick={onClick}
+      className={`w-full flex items-center rounded-2xl transition-all ${
+        collapsed ? 'justify-center px-0 py-3.5' : 'gap-4 px-5 py-4'
+      } ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-xl' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}
+    >
+      <span className="shrink-0">{icon}</span>
+      {!collapsed && <span className="truncate text-sm text-left">{label}</span>}
     </button>
   );
 }
 
-function NavItemSoon({ id, icon, label, active, onClick }: { id?: string, icon: any, label: string, active: boolean, onClick: () => void }) {
+function NavItemSoon({ id, icon, label, active, collapsed, onClick }: { id?: string, icon: any, label: string, active: boolean, collapsed?: boolean, onClick: () => void }) {
   return (
-    <button id={id} onClick={onClick} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-xl' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}>
-      {icon}
-      <span className="text-sm flex-1 text-left">{label}</span>
-      {!active && (
-        <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
-          Soon
-        </span>
+    <button
+      id={id}
+      type="button"
+      title={collapsed ? `${label} (coming soon)` : undefined}
+      onClick={onClick}
+      className={`relative w-full flex items-center rounded-2xl transition-all ${
+        collapsed ? 'justify-center px-0 py-3.5' : 'gap-4 px-5 py-4'
+      } ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-xl' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}
+    >
+      <span className="relative shrink-0">
+        {icon}
+        {collapsed && !active && (
+          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-[#F5F5F0]" aria-hidden />
+        )}
+      </span>
+      {!collapsed && (
+        <>
+          <span className="flex-1 truncate text-left text-sm">{label}</span>
+          {!active && (
+            <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
+              Soon
+            </span>
+          )}
+        </>
       )}
     </button>
   );
