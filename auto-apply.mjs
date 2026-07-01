@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import sql from './db/client.mjs';
+import { openApplyBrowser } from './browser-session.mjs';
 
 let hf = null;
 const TARGET_MAP = 'data/current_eval.json';
@@ -499,10 +500,17 @@ async function matchAndFillFields(fields, profile, aiMapping) {
     await runGuidedPack('Playwright runtime is unavailable in this environment.');
   }
 
-  const browser = await chromium.launch({ headless: true }); 
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  
+  let session;
+  try {
+    session = await openApplyBrowser(chromium, {
+      headless: Boolean(process.env.GITHUB_ACTIONS || process.env.CI),
+    });
+  } catch (err) {
+    await runGuidedPack(err.message);
+  }
+
+  const { page, mode: browserMode, cleanup } = session;
+
   try {
     const [profileRow] = await sql`SELECT resume_context FROM user_profiles WHERE user_id = ${userId} LIMIT 1`;
     if (profileRow?.resume_context) {
@@ -557,12 +565,18 @@ async function matchAndFillFields(fields, profile, aiMapping) {
     // In CI / GitHub Actions we cannot hand control to a human.
     if (process.env.GITHUB_ACTIONS || process.env.CI) {
       console.log('✅ Guided prefill finished (CI mode).');
+    } else if (browserMode === 'cdp') {
+      console.log('⏳ Tab is ready in Brave — review the form and submit when ready.');
+      console.log('   (Your other Brave tabs are untouched.)');
+      await new Promise((resolve) => {
+        page.on('close', resolve);
+        setTimeout(resolve, 600000);
+      });
     } else {
       console.log('⏳ Handing over control to you. Browser will stay open.');
-      // Keep browser alive until user closes it or 10 minutes pass
-      await new Promise(resolve => {
-          page.on('close', resolve);
-          setTimeout(resolve, 600000); // 10 min fail-safe
+      await new Promise((resolve) => {
+        page.on('close', resolve);
+        setTimeout(resolve, 600000);
       });
     }
     
@@ -570,7 +584,10 @@ async function matchAndFillFields(fields, profile, aiMapping) {
     // Any automation failure should fall back to guided pack instead of failing the run.
     await runGuidedPack(`Automation failed: ${err.message}`);
   } finally {
-    try { await browser.close(); } catch {}
+    const isCi = Boolean(process.env.GITHUB_ACTIONS || process.env.CI);
+    try {
+      await cleanup({ closePage: isCi });
+    } catch {}
     process.exit(0);
   }
 })();
