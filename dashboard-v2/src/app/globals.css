@@ -57,6 +57,9 @@
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-blink: blink 1s step-end infinite;
+  --animate-fade-in-up: fadeInUp 0.3s ease-out forwards;
+  --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
 
   @keyframes accordion-down {
     from {
@@ -73,6 +76,18 @@
     to {
       height: 0;
     }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
   }
 }
 
@@ -97,34 +112,34 @@
 
 @layer base {
   :root {
-    --background: 45 20% 98%; /* Softest Beige Canvas */
-    --foreground: 24 5% 10%;  /* Deep Charcoal Text */
-    --card: 0 0% 100%;       /* Pure White Cards */
-    --card-foreground: 24 5% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 24 5% 10%;
-    --primary: 24 10% 10%;   /* Solid Black Primary */
-    --primary-foreground: 45 20% 98%;
-    --secondary: 45 10% 95%; /* Subtle Sand Secondary */
-    --secondary-foreground: 24 5% 10%;
-    --muted: 45 10% 92%;
-    --muted-foreground: 25 5% 45%;
-    --accent: 25 50% 45%;    /* Muted Terracotta Accent */
-    --accent-foreground: 45 20% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 45 10% 90%;    /* Fine Stone Borders */
-    --input: 45 10% 90%;
-    --ring: 24 10% 10%;
-    --radius: 0.75rem;       /* Slightly rounder corners for premium feel */
-    --sidebar-background: 45 20% 96%;
-    --sidebar-foreground: 24 5% 20%;
-    --sidebar-primary: 24 10% 10%;
-    --sidebar-primary-foreground: 45 20% 98%;
-    --sidebar-accent: 45 10% 92%;
-    --sidebar-accent-foreground: 24 5% 10%;
-    --sidebar-border: 45 10% 88%;
-    --sidebar-ring: 24 10% 10%;
+    --background: #FAFAF8;
+    --foreground: #1A1A1A;
+    --card: #FFFFFF;
+    --card-foreground: #1A1A1A;
+    --popover: #FFFFFF;
+    --popover-foreground: #1A1A1A;
+    --primary: #1C1C1E;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F5F5F0;
+    --secondary-foreground: #1A1A1A;
+    --muted: #F0F0EB;
+    --muted-foreground: #9CA3AF;
+    --accent: #F0F0EB;
+    --accent-foreground: #1A1A1A;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --border: #E5E5E0;
+    --input: #FAFAF8;
+    --ring: #3B82F6;
+    --radius: 0.75rem;
+    --sidebar-background: #F5F5F0;
+    --sidebar-foreground: #1A1A1A;
+    --sidebar-primary: #1C1C1E;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #F0F0EB;
+    --sidebar-accent-foreground: #1A1A1A;
+    --sidebar-border: #E5E5E0;
+    --sidebar-ring: #3B82F6;
   }
 
   .dark {

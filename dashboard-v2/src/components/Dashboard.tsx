@@ -838,11 +838,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       {/* Sidebar: Updated to warm stone/beige */}
       <aside className="w-64 border-r border-[#e7e5e4] bg-[#f5f5f4] flex flex-col h-screen overflow-hidden">
         <div className="p-6 pb-2">
-          <div className="flex items-center gap-3 mb-10 px-2">
-            <div className="h-8 w-8 bg-[#1c1917] rounded-lg flex items-center justify-center">
-              <Briefcase className="h-5 w-5 text-white" />
+          <div className="flex items-center gap-2.5 mb-10 px-2">
+            <div className="w-8 h-8 rounded-lg bg-[#1c1c1e] flex items-center justify-center flex-shrink-0">
+              <Zap size={14} className="text-white" strokeWidth={2} />
             </div>
-            <span className="text-xl font-bold tracking-tight text-[#1c1917]">Career-Ops <span className="text-[10px] text-[#a8a29e] font-mono">v2.0</span></span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[16px] font-semibold text-[#1a1a1a]">Career-Ops</span>
+              <span className="text-[11px] font-medium text-[#9ca3af]">v2.0</span>
+            </div>
           </div>
 
           <nav className="space-y-1">
@@ -3160,22 +3163,24 @@ function NavItem({ id, icon, label, active, onClick }: { id?: string, icon: any,
 
 function StatCard({ icon, label, value, color = 'stone' }: { icon: any, label: string, value: any, color?: 'stone' | 'emerald' | 'blue' | 'amber' | 'purple' }) {
   const colorClasses = {
-    stone: 'bg-[#1c1917]',
-    emerald: 'bg-emerald-600',
-    blue: 'bg-blue-600',
-    amber: 'bg-amber-500',
-    purple: 'bg-purple-600'
+    stone: '#1C1C1E',
+    emerald: '#10B981',
+    blue: '#3B82F6',
+    amber: '#F59E0B',
+    purple: '#8B5CF6'
   };
 
   return (
-    <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#e7e5e4] hover:border-[#1c1917] hover:shadow-lg transition-all group">
-      <div className="flex items-center gap-3 mb-4">
-        <div className={`p-2.5 ${colorClasses[color]} rounded-xl text-white shadow-sm`}>
+    <div className="bg-white border border-[#E5E5E0] rounded-2xl p-6 hover:shadow-md hover:border-[#D4D4CE] transition-all duration-200 cursor-default">
+      <div className="flex items-start justify-between">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colorClasses[color] }}>
           {icon}
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#a8a29e]">{label}</span>
+        <span className="text-[10px] font-semibold tracking-widest uppercase text-[#9CA3AF]">{label}</span>
       </div>
-      <div className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1c1917]">{value}</div>
+      <div className="mt-4">
+        <span className="text-[36px] font-bold text-[#1A1A1A] leading-none">{value}</span>
+      </div>
     </div>
   );
 }
