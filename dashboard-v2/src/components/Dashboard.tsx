@@ -32,10 +32,13 @@ import {
   Code,
   Columns,
   List,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
+import ComingSoonBanner from './ComingSoonBanner';
+import ResumeStudioTeaser from './ResumeStudioTeaser';
 
 export default function Dashboard({ initialData }: { initialData?: any }) {
   const { data: session, status } = useSession();
@@ -852,6 +855,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
             <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} onClick={() => setActiveTab('apps')} />
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} onClick={() => setActiveTab('pipeline')} />
+            <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} onClick={() => setActiveTab('resume-studio')} />
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} onClick={() => setActiveTab('cv')} />
             <NavItem id="nav-skills" icon={<TrendingUp size={18}/>} label="Skill Gaps" active={activeTab === 'skills'} onClick={() => setActiveTab('skills')} />
             {isAdmin && (
@@ -924,6 +928,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
              </button>
           </div>
         </header>
+
+        {activeTab !== 'resume-studio' && (
+          <ComingSoonBanner onLearnMore={() => setActiveTab('resume-studio')} />
+        )}
 
         <AnimatePresence>
           {isSearchOpen && (
@@ -1489,6 +1497,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 </table>
               </div>
             </motion.div>
+          )}
+
+          {activeTab === 'resume-studio' && (
+            <ResumeStudioTeaser
+              onOpenTerminal={() => setActiveTab('terminal')}
+              onOpenSettings={() => setActiveTab('settings')}
+              onOpenResumeManager={() => setActiveTab('cv')}
+            />
           )}
 
           {activeTab === 'cv' && (
@@ -3170,6 +3186,20 @@ function NavItem({ id, icon, label, active, onClick }: { id?: string, icon: any,
     <button id={id} onClick={onClick} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-xl' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}>
       {icon}
       <span className="text-sm">{label}</span>
+    </button>
+  );
+}
+
+function NavItemSoon({ id, icon, label, active, onClick }: { id?: string, icon: any, label: string, active: boolean, onClick: () => void }) {
+  return (
+    <button id={id} onClick={onClick} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-xl' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}>
+      {icon}
+      <span className="text-sm flex-1 text-left">{label}</span>
+      {!active && (
+        <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
+          Soon
+        </span>
+      )}
     </button>
   );
 }
