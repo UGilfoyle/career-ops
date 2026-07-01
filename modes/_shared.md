@@ -251,10 +251,15 @@ _If `voice-dna.md` exists, its §3 Banned List is the canonical, fuller version 
 - Mix sentence lengths (short. Then longer with context. Short again.)
 - Don't always use "X, Y, and Z" — sometimes two items, sometimes four
 
-### Quantified impact (required for ATS content score)
-- At least 75% of experience bullets should include a real metric from cv.md (% , counts, latency, cost, throughput)
+### Quantified impact (required for 85+ ATS content score)
+- At least 85% of experience bullets should include a real metric from cv.md (% , counts, latency, cost, throughput)
 - Carry numbers verbatim from the source CV — never invent metrics
 - Weak: "improved system performance". Strong: "cut server CPU load by 30%"
+
+### Word repetition (ATS content penalty)
+- No action verb (implemented, developed, built, designed, led) more than once in the full resume
+- Never repeat the same word twice in one sentence — use a synonym for the second occurrence
+- JD keywords (React, AWS, PostgreSQL) may repeat; filler verbs may not
 - "Cut p95 latency from 2.1s to 380ms" beats "improved performance"
 - "Postgres + pgvector for retrieval over 12k docs" beats "designed scalable RAG architecture"
 - Name tools, projects, and customers when allowed

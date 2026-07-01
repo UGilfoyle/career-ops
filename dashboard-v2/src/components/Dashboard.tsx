@@ -1160,23 +1160,24 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 )}
 
                 {appsViewMode === 'table' ? (
-                  <div className="overflow-x-auto max-h-[600px] mt-2">
-                    <table className="w-full text-left">
-                      <thead className="sticky top-0 bg-[#F5F5F0] border-b border-[#E5E5E0]">
-                        <tr className="text-[#9CA3AF] text-[10px] uppercase tracking-[0.2em] font-bold">
-                          <th className="px-8 py-5">Company</th>
-                          <th className="px-8 py-5">Role</th>
-                          <th className="px-8 py-5">Status</th>
-                          <th className="px-8 py-5">Date</th>
-                          <th className="px-8 py-5">AI Score</th>
-                          <th className="px-8 py-5">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#F5F5F0]">
-                        {filteredApplications.map((app: any, i: number) => (
-                          <tr key={i} className="hover:bg-[#FAFAF8] transition-colors group">
-                            <td className="px-8 py-6 font-bold text-[#1C1C1E]">{app.company}</td>
-                            <td className="px-8 py-6 text-[#6B6B6B] font-medium">{app.role}</td>
+                  <div className="p-8 pt-6">
+                    <div className="h-[min(560px,calc(100vh-18rem))] min-h-[420px] overflow-auto rounded-2xl border border-[#E5E5E0] bg-white">
+                      <table className="w-full min-w-[56rem] text-left">
+                        <thead className="sticky top-0 z-10 bg-[#F5F5F0] border-b border-[#E5E5E0] shadow-[0_1px_0_#E5E5E0]">
+                          <tr className="text-[#9CA3AF] text-[10px] uppercase tracking-[0.2em] font-bold">
+                            <th className="px-8 py-5">Company</th>
+                            <th className="px-8 py-5">Role</th>
+                            <th className="px-8 py-5">Status</th>
+                            <th className="px-8 py-5">Date</th>
+                            <th className="px-8 py-5">AI Score</th>
+                            <th className="px-8 py-5">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#F5F5F0]">
+                          {filteredApplications.map((app: any, i: number) => (
+                            <tr key={i} className="hover:bg-[#FAFAF8] transition-colors group">
+                              <td className="px-8 py-6 font-bold text-[#1C1C1E] max-w-[12rem] break-words">{app.company}</td>
+                              <td className="px-8 py-6 text-[#6B6B6B] font-medium max-w-[14rem] break-words">{app.role}</td>
                             <td className="px-8 py-6">
                               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
                                 ['APPLIED', 'SENT'].includes(String(app.status || '').toUpperCase()) ? 'bg-sky-50 text-sky-700 border border-sky-100' :
@@ -1248,11 +1249,21 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             </td>
                           </tr>
                         ))}
+                        {filteredApplications.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="px-8 py-16 text-center text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+                              No applications yet
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 ) : (
-                  <div className="p-8 grid grid-cols-1 md:grid-cols-5 gap-6 items-start overflow-x-auto min-h-[500px]">
+                  <div className="p-8 pt-6">
+                    <div className="h-[min(560px,calc(100vh-18rem))] min-h-[420px] overflow-x-auto">
+                      <div className="grid h-full min-h-[420px] grid-cols-1 md:grid-cols-5 gap-6 items-stretch min-w-[min(100%,64rem)]">
                     {kanbanColumns.map((col) => {
                       const colApps = filteredApplications.filter((app: any) =>
                         col.statuses.includes(String(app.status || '').toUpperCase())
@@ -1270,14 +1281,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               updateApplicationStatus(appId, col.statuses[0]);
                             }
                           }}
-                          className={`flex flex-col rounded-2xl border border-dashed border-[#E5E5E0] p-4 transition-all min-h-[400px] ${col.color}`}
+                          className={`flex h-full min-h-0 min-w-[220px] flex-col rounded-2xl border border-dashed border-[#E5E5E0] p-4 transition-all ${col.color}`}
                         >
-                          <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5E0]">
+                          <div className="mb-3 flex shrink-0 items-center justify-between border-b border-[#E5E5E0] pb-3">
                             <span className="text-xs font-extrabold uppercase tracking-wider text-[#1C1C1E]">{col.label}</span>
                             <span className="bg-[#1C1C1E] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{colApps.length}</span>
                           </div>
 
-                          <div className="flex flex-col gap-3 flex-grow overflow-y-auto max-h-[500px] pr-1">
+                          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden pr-1">
                             {colApps.map((app: any) => {
                               const days = app.applied_at 
                                 ? Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24)) 
@@ -1292,15 +1303,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   onDragStart={(e) => {
                                     e.dataTransfer.setData('text/plain', String(app.app_id));
                                   }}
-                                  className="bg-white border border-[#E5E5E0] p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative"
+                                  className="bg-white border border-[#E5E5E0] p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative shrink-0"
                                 >
                                   <div className="flex items-start justify-between gap-2 mb-1.5">
-                                    <h4 className="font-bold text-sm text-[#1C1C1E] line-clamp-1 leading-tight">{app.company}</h4>
+                                    <h4 className="font-bold text-sm text-[#1C1C1E] line-clamp-2 break-words leading-tight min-w-0 flex-1">{app.company}</h4>
                                     <span className="text-[10px] font-bold text-[#1C1C1E] bg-[#F5F5F0] border border-[#E5E5E0] px-1.5 py-0.5 rounded shrink-0">
                                       ★ {app.score}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-[#6B6B6B] font-semibold line-clamp-1 mb-3">{app.role}</p>
+                                  <p className="text-xs text-[#6B6B6B] font-semibold line-clamp-2 break-words mb-3">{app.role}</p>
 
                                   {showOverdue && (
                                     <div className="bg-rose-50 border border-rose-100 rounded-lg p-2 mb-3 flex items-center gap-1.5 text-[10px] font-bold text-rose-700">
@@ -1360,7 +1371,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               );
                             })}
                             {colApps.length === 0 && (
-                              <div className="flex-grow flex items-center justify-center py-12 border border-dashed border-[#E5E5E0] rounded-xl bg-stone-50/10">
+                              <div className="flex min-h-[140px] items-center justify-center rounded-xl border border-dashed border-[#E5E5E0] bg-stone-50/10">
                                 <span className="text-[10px] uppercase font-bold text-[#9CA3AF] tracking-widest">Empty</span>
                               </div>
                             )}
@@ -1368,6 +1379,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         </div>
                       );
                     })}
+                      </div>
+                    </div>
                   </div>
                 )}
               </motion.div>
