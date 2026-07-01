@@ -20,16 +20,16 @@ export const sendVerificationEmail = async (email: string, token: string) => {
         <head>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-            body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background-color: #faf9f6; }
-            .container { max-width: 600px; margin: 40px auto; padding: 60px 40px; background-color: #ffffff; border: 1px solid #e7e5e4; border-radius: 40px; }
-            .logo { width: 56px; height: 56px; background-color: #1c1917; border-radius: 16px; margin: 0 auto 40px auto; display: flex; align-items: center; justify-content: center; }
-            .headline { font-size: 32px; font-weight: 700; color: #1c1917; text-align: center; margin-bottom: 12px; letter-spacing: -0.025em; }
-            .subtext { font-size: 16px; color: #78716c; text-align: center; margin-bottom: 48px; line-height: 1.5; }
-            .otp-box { background-color: #faf9f6; border: 1px solid #e7e5e4; padding: 40px; border-radius: 32px; text-align: center; margin-bottom: 48px; }
-            .otp-code { font-size: 52px; font-weight: 700; color: #1c1917; letter-spacing: 12px; margin-left: 12px; }
-            .footer { border-top: 1px solid #f5f5f4; margin-top: 60px; padding-top: 32px; text-align: center; }
-            .footer-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: #a8a29e; }
-            .notice { font-size: 12px; color: #a8a29e; line-height: 1.6; margin-bottom: 0; }
+            body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background-color: #FAFAF8; }
+            .container { max-width: 600px; margin: 40px auto; padding: 60px 40px; background-color: #ffffff; border: 1px solid #E5E5E0; border-radius: 40px; }
+            .logo { width: 56px; height: 56px; background-color: #1C1C1E; border-radius: 16px; margin: 0 auto 40px auto; display: flex; align-items: center; justify-content: center; }
+            .headline { font-size: 32px; font-weight: 700; color: #1C1C1E; text-align: center; margin-bottom: 12px; letter-spacing: -0.025em; }
+            .subtext { font-size: 16px; color: #6B6B6B; text-align: center; margin-bottom: 48px; line-height: 1.5; }
+            .otp-box { background-color: #FAFAF8; border: 1px solid #E5E5E0; padding: 40px; border-radius: 32px; text-align: center; margin-bottom: 48px; }
+            .otp-code { font-size: 52px; font-weight: 700; color: #1C1C1E; letter-spacing: 12px; margin-left: 12px; }
+            .footer { border-top: 1px solid #F5F5F0; margin-top: 60px; padding-top: 32px; text-align: center; }
+            .footer-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: #9CA3AF; }
+            .notice { font-size: 12px; color: #9CA3AF; line-height: 1.6; margin-bottom: 0; }
           </style>
         </head>
         <body>

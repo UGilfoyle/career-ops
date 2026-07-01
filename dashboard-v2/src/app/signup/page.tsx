@@ -79,7 +79,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-[#1c1917] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1C1C1E] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#f59e0b]/5 rounded-full blur-[150px]" />
       
       <motion.div 
@@ -88,14 +88,14 @@ export default function SignupPage() {
         className="w-full max-w-md z-10"
       >
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center h-14 w-14 bg-[#1c1917] rounded-2xl shadow-xl mb-6">
+          <div className="inline-flex items-center justify-center h-14 w-14 bg-[#1C1C1E] rounded-2xl shadow-xl mb-6">
             <Briefcase className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-4xl font-bold tracking-tight mb-2">Initialize Account</h1>
-          <p className="text-[#a8a29e] font-medium text-sm">Create your secure career command center</p>
+          <p className="text-[#9CA3AF] font-medium text-sm">Create your secure career command center</p>
         </div>
 
-        <div className="bg-white border border-[#e7e5e4] rounded-[2.5rem] p-10 shadow-2xl shadow-black/[0.02] relative overflow-hidden">
+        <div className="bg-white border border-[#E5E5E0] rounded-[2.5rem] p-10 shadow-2xl shadow-black/[0.02] relative overflow-hidden">
           <AnimatePresence mode="wait">
             {isSuccess ? (
               <motion.div 
@@ -108,14 +108,14 @@ export default function SignupPage() {
                    <Shield className="h-10 w-10 text-emerald-500" />
                 </div>
                 <h2 className="text-2xl font-bold mb-2">Identity Created</h2>
-                <p className="text-[#a8a29e] mb-4 font-medium italic">Handshaking with verification engine...</p>
+                <p className="text-[#9CA3AF] mb-4 font-medium italic">Handshaking with verification engine...</p>
               </motion.div>
             ) : (
               <motion.form key="form" onSubmit={handleSubmit} className="space-y-6">
                  <div className="space-y-2">
-                   <label className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-[0.2em] ml-1">Candidate Name</label>
+                   <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] ml-1">Candidate Name</label>
                    <div className="relative group">
-                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#a8a29e] group-focus-within:text-[#1c1917] transition-colors" size={18} />
+                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF] group-focus-within:text-[#1C1C1E] transition-colors" size={18} />
                      <input
                        name="name"
                        type="text"
@@ -123,15 +123,15 @@ export default function SignupPage() {
                        onChange={(e) => setFormData({...formData, name: e.target.value})}
                        placeholder="John Doe"
                        required
-                       className="w-full bg-[#faf9f6]/50 border border-[#e7e5e4] rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-[#1c1917] transition-all font-bold placeholder:text-[#a8a29e]/50"
+                       className="w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-[#1C1C1E] transition-all font-bold placeholder:text-[#9CA3AF]/50"
                      />
                    </div>
                  </div>
 
                  <div className="space-y-2">
-                   <label className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-[0.2em] ml-1">Email Address</label>
+                   <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] ml-1">Email Address</label>
                    <div className="relative group">
-                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#a8a29e] group-focus-within:text-[#1c1917] transition-colors" size={18} />
+                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF] group-focus-within:text-[#1C1C1E] transition-colors" size={18} />
                      <input
                        name="email"
                        type="email"
@@ -139,15 +139,15 @@ export default function SignupPage() {
                        onChange={(e) => setFormData({...formData, email: e.target.value})}
                        placeholder="name@company.com"
                        required
-                       className="w-full bg-[#faf9f6]/50 border border-[#e7e5e4] rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-[#1c1917] transition-all font-bold placeholder:text-[#a8a29e]/50"
+                       className="w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-[#1C1C1E] transition-all font-bold placeholder:text-[#9CA3AF]/50"
                      />
                    </div>
                  </div>
 
                  <div className="space-y-2">
-                   <label className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-[0.2em] ml-1">Password</label>
+                   <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] ml-1">Password</label>
                    <div className="relative group">
-                     <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-[#a8a29e] group-focus-within:text-[#1c1917] transition-colors" size={18} />
+                     <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF] group-focus-within:text-[#1C1C1E] transition-colors" size={18} />
                      <input
                        name="password"
                        type="password"
@@ -155,10 +155,10 @@ export default function SignupPage() {
                        onChange={(e) => setFormData({...formData, password: e.target.value})}
                        placeholder="••••••••"
                        required
-                       className="w-full bg-[#faf9f6]/50 border border-[#e7e5e4] rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-[#1c1917] transition-all font-bold placeholder:text-[#a8a29e]/50"
+                       className="w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-[#1C1C1E] transition-all font-bold placeholder:text-[#9CA3AF]/50"
                      />
                    </div>
-                   <p className="text-[9px] text-[#a8a29e] font-bold tracking-widest pl-1 mt-2">MINIMUM 8 CHARACTERS REQUIRED</p>
+                   <p className="text-[9px] text-[#9CA3AF] font-bold tracking-widest pl-1 mt-2">MINIMUM 8 CHARACTERS REQUIRED</p>
                  </div>
 
                  {error && (
@@ -171,7 +171,7 @@ export default function SignupPage() {
                  <button 
                    type="submit"
                    disabled={isLoading}
-                   className="w-full bg-[#1c1917] text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#27272a] transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
+                   className="w-full bg-[#1C1C1E] text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#27272a] transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
                  >
                    {isLoading ? <Loader2 className="animate-spin" size={20} /> : (
                      <>
@@ -181,16 +181,16 @@ export default function SignupPage() {
                    )}
                  </button>
 
-                <div className="mt-8 flex items-center gap-4 text-[#e7e5e4]">
-                  <div className="h-px w-full bg-[#e7e5e4]" />
-                  <span className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-[0.2em] whitespace-nowrap">Third Party</span>
-                  <div className="h-px w-full bg-[#e7e5e4]" />
+                <div className="mt-8 flex items-center gap-4 text-[#E5E5E0]">
+                  <div className="h-px w-full bg-[#E5E5E0]" />
+                  <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] whitespace-nowrap">Third Party</span>
+                  <div className="h-px w-full bg-[#E5E5E0]" />
                 </div>
 
                 <button
                   type="button"
                   onClick={() => signIn('github', { callbackUrl: '/?walkthrough=1' })}
-                  className="w-full mt-6 bg-white border border-[#e7e5e4] text-[#1c1917] font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#faf9f6] transition-all"
+                  className="w-full mt-6 bg-white border border-[#E5E5E0] text-[#1C1C1E] font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#FAFAF8] transition-all"
                 >
                   <Github size={20} />
                   Continue with GitHub
@@ -200,14 +200,14 @@ export default function SignupPage() {
           </AnimatePresence>
         </div>
 
-        <p className="mt-10 text-center text-[#a8a29e] text-sm font-medium">
+        <p className="mt-10 text-center text-[#9CA3AF] text-sm font-medium">
           Already have an account?{' '}
-          <Link href="/login" className="text-[#1c1917] font-bold hover:underline underline-offset-4 decoration-[#e7e5e4]">
+          <Link href="/login" className="text-[#1C1C1E] font-bold hover:underline underline-offset-4 decoration-[#E5E5E0]">
             Sign In
           </Link>
         </p>
 
-        <div className="mt-12 flex items-center justify-center gap-3 text-[#e7e5e4]">
+        <div className="mt-12 flex items-center justify-center gap-3 text-[#E5E5E0]">
            <Shield size={16} />
            <span className="text-[9px] font-bold uppercase tracking-[0.25em]">SaaS Identity v2.0-modern</span>
         </div>

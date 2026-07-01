@@ -78,12 +78,12 @@ function AuthContinueContent() {
   }, [provider, callbackUrl, router]);
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-[#1c1917] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1C1C1E] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#f59e0b]/5 rounded-full blur-[150px]" />
 
       <div className="w-full max-w-md z-10">
-        <div className="bg-white border border-[#e7e5e4] rounded-[2.5rem] p-10 shadow-2xl shadow-black/[0.02] text-center">
-          <div className="inline-flex items-center justify-center h-14 w-14 bg-[#1c1917] rounded-2xl shadow-xl mb-6">
+        <div className="bg-white border border-[#E5E5E0] rounded-[2.5rem] p-10 shadow-2xl shadow-black/[0.02] text-center">
+          <div className="inline-flex items-center justify-center h-14 w-14 bg-[#1C1C1E] rounded-2xl shadow-xl mb-6">
             <Shield className="h-7 w-7 text-white" />
           </div>
 
@@ -92,9 +92,9 @@ function AuthContinueContent() {
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight mb-2">{content.title}</h1>
-          <p className="text-[#78716c] font-medium mb-6">{content.subtitle}</p>
+          <p className="text-[#6B6B6B] font-medium mb-6">{content.subtitle}</p>
 
-          <div className="inline-flex items-center gap-3 rounded-2xl bg-[#faf9f6] border border-[#e7e5e4] px-5 py-3 text-sm font-bold text-[#1c1917]">
+          <div className="inline-flex items-center gap-3 rounded-2xl bg-[#FAFAF8] border border-[#E5E5E0] px-5 py-3 text-sm font-bold text-[#1C1C1E]">
             <Loader2 className="h-4 w-4 animate-spin" />
             Redirecting...
           </div>
@@ -115,7 +115,7 @@ function AuthContinueContent() {
                 }
                 router.replace('/login?verified=true');
               }}
-              className="w-full mt-6 bg-[#1c1917] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#27272a] transition-all shadow-xl active:scale-[0.98]"
+              className="w-full mt-6 bg-[#1C1C1E] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#27272a] transition-all shadow-xl active:scale-[0.98]"
             >
               {content.buttonLabel}
               <ArrowRight size={18} className="text-white/50" />
@@ -129,7 +129,7 @@ function AuthContinueContent() {
 
 export default function AuthContinuePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#faf9f6] flex items-center justify-center"><Loader2 className="animate-spin text-[#1c1917]" /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center"><Loader2 className="animate-spin text-[#1C1C1E]" /></div>}>
       <AuthContinueContent />
     </Suspense>
   );

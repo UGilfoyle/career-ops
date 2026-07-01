@@ -817,11 +817,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#faf9f6] text-[#1c1917]">
+      <div className="flex h-screen items-center justify-center bg-[#FAFAF8] text-[#1C1C1E]">
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="h-8 w-8 border-2 border-[#1c1917] border-t-transparent rounded-full"
+          className="h-8 w-8 border-2 border-[#1C1C1E] border-t-transparent rounded-full"
         />
       </div>
     );
@@ -834,9 +834,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const displayName = firstNameFromProfile || firstNameFromSession || null;
 
   return (
-    <div className="flex h-screen bg-[#faf9f6] text-[#1c1917] font-sans selection:bg-[#1c1917]/10">
+    <div className="flex h-screen bg-[#FAFAF8] text-[#1C1C1E] font-sans selection:bg-[#1C1C1E]/10">
       {/* Sidebar: Updated to warm stone/beige */}
-      <aside className="w-64 border-r border-[#e7e5e4] bg-[#f5f5f4] flex flex-col h-screen overflow-hidden">
+      <aside className="w-64 border-r border-[#E5E5E0] bg-[#F5F5F0] flex flex-col h-screen overflow-hidden">
         <div className="p-6 pb-2">
           <div className="flex items-center gap-2.5 mb-10 px-2">
             <div className="w-8 h-8 rounded-lg bg-[#1c1c1e] flex items-center justify-center flex-shrink-0">
@@ -862,11 +862,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           </nav>
         </div>
 
-        <div className="mt-auto p-6 border-t border-[#e7e5e4]">
+        <div className="mt-auto p-6 border-t border-[#E5E5E0]">
           <NavItem id="nav-settings" icon={<Settings size={18}/>} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
           <button 
             onClick={() => signOut({ callbackUrl: '/' })}
-            className="w-full mt-2 flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-[#78716c] hover:text-[#1c1917] hover:bg-white/50 group"
+            className="w-full mt-2 flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50 group"
           >
             <LogOut size={18} className="opacity-70 group-hover:opacity-100 transition-opacity" />
             <span className="text-sm font-bold">Sign Out</span>
@@ -878,23 +878,23 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       <main className="flex-1 overflow-y-auto p-12 bg-white">
         <header className="flex justify-between items-center mb-12">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-[#1c1917]">
+            <h1 className="text-4xl font-bold tracking-tight text-[#1C1C1E]">
               {displayName ? `Welcome back, ${displayName}` : 'Welcome back'}
             </h1>
-            <p className="text-[#a8a29e] font-medium mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+            <p className="text-[#9CA3AF] font-medium mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
             {data?.meta?.lastRunId && (
-              <div className="mt-3 text-[10px] font-mono text-[#a8a29e] uppercase tracking-[0.2em]">
-                Last run: <span className="text-[#1c1917] font-bold">{String(data.meta.lastRunScript || '').replace('.mjs', '')}</span>{' '}
-                <span className="text-[#a8a29e]">·</span>{' '}
-                <span className="text-[#1c1917] font-bold">{String(data.meta.lastRunStatus || '')}</span>{' '}
+              <div className="mt-3 text-[10px] font-mono text-[#9CA3AF] uppercase tracking-[0.2em]">
+                Last run: <span className="text-[#1C1C1E] font-bold">{String(data.meta.lastRunScript || '').replace('.mjs', '')}</span>{' '}
+                <span className="text-[#9CA3AF]">·</span>{' '}
+                <span className="text-[#1C1C1E] font-bold">{String(data.meta.lastRunStatus || '')}</span>{' '}
                 {data?.meta?.lastRunUrl && (
                   <>
-                    <span className="text-[#a8a29e]">·</span>{' '}
+                    <span className="text-[#9CA3AF]">·</span>{' '}
                     <a
                       href={data.meta.lastRunUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline underline-offset-4 hover:text-[#1c1917]"
+                      className="underline underline-offset-4 hover:text-[#1C1C1E]"
                     >
                       logs
                     </a>
@@ -908,8 +908,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                onClick={() => setIsSearchOpen((v) => !v)}
                className={`px-5 py-2.5 border rounded-xl transition-colors flex items-center gap-2 text-sm font-bold ${
                  isSearchOpen || searchQuery.trim()
-                   ? 'bg-white border-[#1c1917] text-[#1c1917]'
-                   : 'bg-[#f5f5f4] border border-[#e7e5e4] hover:bg-[#e7e5e4] text-[#1c1917]'
+                   ? 'bg-white border-[#1C1C1E] text-[#1C1C1E]'
+                   : 'bg-[#F5F5F0] border border-[#E5E5E0] hover:bg-[#E5E5E0] text-[#1C1C1E]'
                }`}
              >
                 <Search size={16} />
@@ -917,7 +917,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
              </button>
              <button 
                 onClick={() => { setActiveTab('terminal'); runCommand('rank'); }}
-                className="px-5 py-2.5 bg-[#1c1917] text-white font-bold rounded-xl hover:bg-[#27272a] transition-all flex items-center gap-2 shadow-lg"
+                className="px-5 py-2.5 bg-[#1C1C1E] text-white font-bold rounded-xl hover:bg-[#27272a] transition-all flex items-center gap-2 shadow-lg"
               >
                 <Play size={16} />
                 <span>Quick Run</span>
@@ -933,25 +933,25 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               exit={{ opacity: 0, y: -8 }}
               className="mb-10"
             >
-              <div className="flex items-center gap-3 bg-[#faf9f6] border border-[#e7e5e4] rounded-2xl px-4 py-3">
-                <Search size={16} className="text-[#a8a29e]" />
+              <div className="flex items-center gap-3 bg-[#FAFAF8] border border-[#E5E5E0] rounded-2xl px-4 py-3">
+                <Search size={16} className="text-[#9CA3AF]" />
                 <input
                   ref={searchInputRef}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search pipeline, applications, docs..."
-                  className="flex-1 bg-transparent outline-none text-sm font-medium text-[#1c1917] placeholder:text-[#a8a29e]"
+                  className="flex-1 bg-transparent outline-none text-sm font-medium text-[#1C1C1E] placeholder:text-[#9CA3AF]"
                 />
                 {searchQuery.trim() && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="px-3 py-1.5 rounded-xl border border-[#e7e5e4] text-[10px] font-bold uppercase tracking-widest text-[#1c1917] hover:bg-white transition-colors"
+                    className="px-3 py-1.5 rounded-xl border border-[#E5E5E0] text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:bg-white transition-colors"
                   >
                     Clear
                   </button>
                 )}
               </div>
-              <div className="mt-2 text-[10px] font-mono text-[#a8a29e] uppercase tracking-[0.2em]">
+              <div className="mt-2 text-[10px] font-mono text-[#9CA3AF] uppercase tracking-[0.2em]">
                 Results: {filteredPipeline.length} pipeline · {filteredApplications.length} applications · {filteredDocs.length} docs
               </div>
             </motion.div>
@@ -993,19 +993,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                  <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-[#f5f5f4] border border-[#e7e5e4] p-10 rounded-[2.5rem] relative overflow-hidden"
+                    className="bg-[#F5F5F0] border border-[#E5E5E0] p-10 rounded-[2.5rem] relative overflow-hidden"
                  >
                    <div className="relative z-10 max-w-xl">
-                      <h3 className="text-2xl font-bold mb-3 flex items-center gap-3 text-[#1c1917]">
-                        <Zap className="text-[#1c1917]" size={22} />
+                      <h3 className="text-2xl font-bold mb-3 flex items-center gap-3 text-[#1C1C1E]">
+                        <Zap className="text-[#1C1C1E]" size={22} />
                         Launch Checklist
                       </h3>
-                      <p className="text-[#78716c] mb-8 font-medium">Complete these steps to activate your AI discovery engine.</p>
+                      <p className="text-[#6B6B6B] mb-8 font-medium">Complete these steps to activate your AI discovery engine.</p>
                       
                        <div className="grid grid-cols-1 gap-4">
                          <button 
                            onClick={() => setActiveTab('settings')}
-                           className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${data?.profile?.candidate?.full_name ? 'bg-white border-[#e7e5e4] text-[#1c1917]' : 'bg-white border-[#e7e5e4] hover:bg-[#f5f5f4]'}`}
+                           className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${data?.profile?.candidate?.full_name ? 'bg-white border-[#E5E5E0] text-[#1C1C1E]' : 'bg-white border-[#E5E5E0] hover:bg-[#F5F5F0]'}`}
                          >
                            <span className="text-sm font-bold">Complete Profile Identity</span>
                            {data?.profile?.candidate?.full_name ? <CheckCircle2 size={16} className="text-emerald-500" /> : <ChevronRight size={16} />}
@@ -1016,16 +1016,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                )}
 
                <div className="grid grid-cols-2 gap-12">
-                  <div className="bg-[#f5f5f4] p-10 rounded-[2.5rem] border border-[#e7e5e4] aspect-video flex flex-col justify-between">
+                  <div className="bg-[#F5F5F0] p-10 rounded-[2.5rem] border border-[#E5E5E0] aspect-video flex flex-col justify-between">
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <h3 className="text-2xl font-bold mb-1 text-[#1c1917]">Application Funnel</h3>
-                          <p className="text-[#a8a29e] font-medium text-xs flex items-center gap-1.5">
+                          <h3 className="text-2xl font-bold mb-1 text-[#1C1C1E]">Application Funnel</h3>
+                          <p className="text-[#9CA3AF] font-medium text-xs flex items-center gap-1.5">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Real-time status tracking
                           </p>
                         </div>
-                        <div className="text-[10px] font-mono text-[#78716c] uppercase tracking-wider bg-white/60 px-2.5 py-1 rounded-full border border-[#e7e5e4]/50">
+                        <div className="text-[10px] font-mono text-[#6B6B6B] uppercase tracking-wider bg-white/60 px-2.5 py-1 rounded-full border border-[#E5E5E0]/50">
                           Auto-Refresh
                         </div>
                       </div>
@@ -1035,10 +1035,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           <div key={stage.key} className="flex-1 flex items-stretch gap-1 sm:gap-2 h-full">
                             <div className="flex-1 flex flex-col justify-end items-center group relative h-full">
                               {/* Custom Interactive Tooltip */}
-                              <div className="absolute bottom-full mb-3 opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 bg-[#1c1917] text-[#faf9f6] text-[10px] font-bold px-3 py-2 rounded-xl shadow-xl whitespace-nowrap z-30 flex flex-col items-center border border-[#44403c]">
+                              <div className="absolute bottom-full mb-3 opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 bg-[#1C1C1E] text-[#FAFAF8] text-[10px] font-bold px-3 py-2 rounded-xl shadow-xl whitespace-nowrap z-30 flex flex-col items-center border border-[#44403c]">
                                 <span>{stage.tooltipTitle}</span>
-                                <span className="text-[#a8a29e] text-[9px] font-medium mt-0.5">{stage.tooltipDesc}</span>
-                                <div className="w-2 h-2 bg-[#1c1917] rotate-45 mt-1 -mb-2 border-r border-b border-[#44403c]"></div>
+                                <span className="text-[#9CA3AF] text-[9px] font-medium mt-0.5">{stage.tooltipDesc}</span>
+                                <div className="w-2 h-2 bg-[#1C1C1E] rotate-45 mt-1 -mb-2 border-r border-b border-[#44403c]"></div>
                               </div>
 
                               {/* Value badge */}
@@ -1047,7 +1047,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </div>
 
                               {/* Interactive dynamic bar */}
-                              <div className="w-full bg-white border border-[#e7e5e4] rounded-2xl overflow-hidden flex items-end h-24 shadow-inner relative">
+                              <div className="w-full bg-white border border-[#E5E5E0] rounded-2xl overflow-hidden flex items-end h-24 shadow-inner relative">
                                 <motion.div
                                   initial={{ height: 0 }}
                                   animate={{ height: stage.height }}
@@ -1058,7 +1058,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </div>
 
                               {/* Label */}
-                              <div className="mt-2 text-[10px] font-extrabold text-[#78716c] uppercase tracking-widest text-center">
+                              <div className="mt-2 text-[10px] font-extrabold text-[#6B6B6B] uppercase tracking-widest text-center">
                                 {stage.label}
                               </div>
                             </div>
@@ -1073,19 +1073,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         ))}
                       </div>
                    </div>
-                  <div className="bg-white p-10 rounded-[2.5rem] border border-[#e7e5e4]">
-                     <h3 className="text-2xl font-bold mb-8 text-[#1c1917]">Recent Activity</h3>
+                  <div className="bg-white p-10 rounded-[2.5rem] border border-[#E5E5E0]">
+                     <h3 className="text-2xl font-bold mb-8 text-[#1C1C1E]">Recent Activity</h3>
                      <div className="space-y-6 text-sm">
                        {data?.applications?.length > 0 ? data.applications.slice(0, 4).map((app: any, i: number) => (
                          <div key={i} className="flex items-center justify-between group">
                            <div className="flex items-center gap-4">
-                              <div className="h-1.5 w-1.5 rounded-full bg-[#1c1917] animate-pulse" />
-                              <span className="font-bold text-[#1c1917]">{app.company}</span>
+                              <div className="h-1.5 w-1.5 rounded-full bg-[#1C1C1E] animate-pulse" />
+                              <span className="font-bold text-[#1C1C1E]">{app.company}</span>
                            </div>
-                           <span className="text-[#a8a29e] font-mono uppercase text-[10px] tracking-widest">{new Date(app.applied_at).toLocaleDateString()}</span>
+                           <span className="text-[#9CA3AF] font-mono uppercase text-[10px] tracking-widest">{new Date(app.applied_at).toLocaleDateString()}</span>
                          </div>
                        )) : (
-                         <p className="text-[#a8a29e] italic font-medium">No recent activity detected.</p>
+                         <p className="text-[#9CA3AF] italic font-medium">No recent activity detected.</p>
                        )}
                      </div>
                   </div>
@@ -1109,23 +1109,23 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             });
 
             return (
-              <motion.div key="apps" className="bg-white border border-[#e7e5e4] rounded-[2rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
-                <div className="p-8 border-b border-[#e7e5e4] bg-[#faf9f6] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <motion.div key="apps" className="bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
+                <div className="p-8 border-b border-[#E5E5E0] bg-[#FAFAF8] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-xl font-bold text-[#1c1917]">Global Applications</h2>
-                    <p className="text-xs text-[#78716c] mt-1">Manage and track your active job application processes.</p>
+                    <h2 className="text-xl font-bold text-[#1C1C1E]">Global Applications</h2>
+                    <p className="text-xs text-[#6B6B6B] mt-1">Manage and track your active job application processes.</p>
                   </div>
-                  <div className="flex items-center bg-[#f5f5f4] border border-[#e7e5e4] rounded-xl p-1 shrink-0 self-start sm:self-auto">
+                  <div className="flex items-center bg-[#F5F5F0] border border-[#E5E5E0] rounded-xl p-1 shrink-0 self-start sm:self-auto">
                     <button
                       onClick={() => setAppsViewMode('kanban')}
-                      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'kanban' ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#78716c] hover:text-[#1c1917]'}`}
+                      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'kanban' ? 'bg-white text-[#1C1C1E] shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
                     >
                       <Columns size={14} />
                       Kanban Board
                     </button>
                     <button
                       onClick={() => setAppsViewMode('table')}
-                      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'table' ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#78716c] hover:text-[#1c1917]'}`}
+                      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'table' ? 'bg-white text-[#1C1C1E] shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
                     >
                       <List size={14} />
                       Table List
@@ -1147,7 +1147,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           const days = Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24));
                           return (
                             <div key={idx} className="bg-white border border-amber-200 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700 flex items-center gap-2 shadow-sm">
-                              <span className="font-bold text-[#1c1917]">{app.company}</span>
+                              <span className="font-bold text-[#1C1C1E]">{app.company}</span>
                               <span className="text-stone-300">|</span>
                               <span className="text-stone-500 font-medium">{app.role}</span>
                               <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">{days}d ago</span>
@@ -1162,8 +1162,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 {appsViewMode === 'table' ? (
                   <div className="overflow-x-auto max-h-[600px] mt-2">
                     <table className="w-full text-left">
-                      <thead className="sticky top-0 bg-[#f5f5f4] border-b border-[#e7e5e4]">
-                        <tr className="text-[#a8a29e] text-[10px] uppercase tracking-[0.2em] font-bold">
+                      <thead className="sticky top-0 bg-[#F5F5F0] border-b border-[#E5E5E0]">
+                        <tr className="text-[#9CA3AF] text-[10px] uppercase tracking-[0.2em] font-bold">
                           <th className="px-8 py-5">Company</th>
                           <th className="px-8 py-5">Role</th>
                           <th className="px-8 py-5">Status</th>
@@ -1172,11 +1172,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           <th className="px-8 py-5">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#f5f5f4]">
+                      <tbody className="divide-y divide-[#F5F5F0]">
                         {filteredApplications.map((app: any, i: number) => (
-                          <tr key={i} className="hover:bg-[#faf9f6] transition-colors group">
-                            <td className="px-8 py-6 font-bold text-[#1c1917]">{app.company}</td>
-                            <td className="px-8 py-6 text-[#78716c] font-medium">{app.role}</td>
+                          <tr key={i} className="hover:bg-[#FAFAF8] transition-colors group">
+                            <td className="px-8 py-6 font-bold text-[#1C1C1E]">{app.company}</td>
+                            <td className="px-8 py-6 text-[#6B6B6B] font-medium">{app.role}</td>
                             <td className="px-8 py-6">
                               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
                                 ['APPLIED', 'SENT'].includes(String(app.status || '').toUpperCase()) ? 'bg-sky-50 text-sky-700 border border-sky-100' :
@@ -1188,22 +1188,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 {app.status}
                               </span>
                             </td>
-                            <td className="px-8 py-6 text-[#a8a29e] font-mono text-xs uppercase">
+                            <td className="px-8 py-6 text-[#9CA3AF] font-mono text-xs uppercase">
                               {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'N/A'}
                             </td>
                             <td className="px-8 py-6">
                                <div className="flex items-center gap-3">
-                                  <div className="h-1 w-16 bg-[#e7e5e4] rounded-full overflow-hidden">
-                                     <div className="h-full bg-[#1c1917]" style={{ width: `${app.score * 10 || 0}%` }}></div>
+                                  <div className="h-1 w-16 bg-[#E5E5E0] rounded-full overflow-hidden">
+                                     <div className="h-full bg-[#1C1C1E]" style={{ width: `${app.score * 10 || 0}%` }}></div>
                                   </div>
-                                  <span className="text-xs font-bold text-[#1c1917]">{app.score}</span>
+                                  <span className="text-xs font-bold text-[#1C1C1E]">{app.score}</span>
                                </div>
                             </td>
-                            <td className="px-8 py-6 text-[#1c1917]">
+                            <td className="px-8 py-6 text-[#1C1C1E]">
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => { setActiveTab('terminal'); runCommand(`apply ${app.job_id} --deep`); }}
-                                  className="p-2 border border-[#e7e5e4] rounded-lg hover:bg-[#1c1917] hover:text-white transition-all"
+                                  className="p-2 border border-[#E5E5E0] rounded-lg hover:bg-[#1C1C1E] hover:text-white transition-all"
                                   title="Run tailor/apply"
                                 >
                                   <Play size={14} />
@@ -1213,7 +1213,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                     href={app.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-2 border border-[#e7e5e4] rounded-lg hover:bg-[#f5f5f4] transition-all"
+                                    className="p-2 border border-[#E5E5E0] rounded-lg hover:bg-[#F5F5F0] transition-all"
                                     title="Open posting"
                                   >
                                     <ExternalLink size={14} />
@@ -1222,7 +1222,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 {app?.job_id && (
                                   <button
                                     onClick={() => openJobDetails(Number(app.job_id))}
-                                    className="p-2 border border-[#e7e5e4] rounded-lg hover:bg-[#f5f5f4] transition-all"
+                                    className="p-2 border border-[#E5E5E0] rounded-lg hover:bg-[#F5F5F0] transition-all"
                                     title="Details"
                                   >
                                     <FileText size={14} />
@@ -1238,7 +1238,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                         String(app.role || 'Unknown role')
                                       )
                                     }
-                                    className="p-2 border border-[#e7e5e4] rounded-lg text-[#a8a29e] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                                    className="p-2 border border-[#E5E5E0] rounded-lg text-[#9CA3AF] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
                                     title="Delete application and job record"
                                   >
                                     <Trash2 size={14} />
@@ -1270,11 +1270,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               updateApplicationStatus(appId, col.statuses[0]);
                             }
                           }}
-                          className={`flex flex-col rounded-2xl border border-dashed border-[#e7e5e4] p-4 transition-all min-h-[400px] ${col.color}`}
+                          className={`flex flex-col rounded-2xl border border-dashed border-[#E5E5E0] p-4 transition-all min-h-[400px] ${col.color}`}
                         >
-                          <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#e7e5e4]">
-                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#1c1917]">{col.label}</span>
-                            <span className="bg-[#1c1917] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{colApps.length}</span>
+                          <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5E0]">
+                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#1C1C1E]">{col.label}</span>
+                            <span className="bg-[#1C1C1E] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{colApps.length}</span>
                           </div>
 
                           <div className="flex flex-col gap-3 flex-grow overflow-y-auto max-h-[500px] pr-1">
@@ -1292,15 +1292,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   onDragStart={(e) => {
                                     e.dataTransfer.setData('text/plain', String(app.app_id));
                                   }}
-                                  className="bg-white border border-[#e7e5e4] p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative"
+                                  className="bg-white border border-[#E5E5E0] p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative"
                                 >
                                   <div className="flex items-start justify-between gap-2 mb-1.5">
-                                    <h4 className="font-bold text-sm text-[#1c1917] line-clamp-1 leading-tight">{app.company}</h4>
-                                    <span className="text-[10px] font-bold text-[#1c1917] bg-[#f5f5f4] border border-[#e7e5e4] px-1.5 py-0.5 rounded shrink-0">
+                                    <h4 className="font-bold text-sm text-[#1C1C1E] line-clamp-1 leading-tight">{app.company}</h4>
+                                    <span className="text-[10px] font-bold text-[#1C1C1E] bg-[#F5F5F0] border border-[#E5E5E0] px-1.5 py-0.5 rounded shrink-0">
                                       ★ {app.score}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-[#78716c] font-semibold line-clamp-1 mb-3">{app.role}</p>
+                                  <p className="text-xs text-[#6B6B6B] font-semibold line-clamp-1 mb-3">{app.role}</p>
 
                                   {showOverdue && (
                                     <div className="bg-rose-50 border border-rose-100 rounded-lg p-2 mb-3 flex items-center gap-1.5 text-[10px] font-bold text-rose-700">
@@ -1315,7 +1315,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                     </div>
                                   )}
 
-                                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#f5f5f4]">
+                                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#F5F5F0]">
                                     <select
                                       value={col.id}
                                       onChange={(e) => {
@@ -1324,7 +1324,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                           updateApplicationStatus(app.app_id, selectCol.statuses[0]);
                                         }
                                       }}
-                                      className="text-[9px] uppercase font-extrabold text-[#78716c] bg-[#faf9f6] border border-[#e7e5e4] rounded px-1.5 py-0.5 outline-none cursor-pointer hover:bg-stone-50 transition-all select-none"
+                                      className="text-[9px] uppercase font-extrabold text-[#6B6B6B] bg-[#FAFAF8] border border-[#E5E5E0] rounded px-1.5 py-0.5 outline-none cursor-pointer hover:bg-stone-50 transition-all select-none"
                                     >
                                       <option value="EVALUATED">Evaluated</option>
                                       <option value="APPLIED">Applied</option>
@@ -1339,7 +1339,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                           href={app.url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="p-1 border border-[#e7e5e4] rounded hover:bg-[#f5f5f4] text-[#78716c] transition-all"
+                                          className="p-1 border border-[#E5E5E0] rounded hover:bg-[#F5F5F0] text-[#6B6B6B] transition-all"
                                           title="Open posting"
                                         >
                                           <ExternalLink size={10} />
@@ -1348,7 +1348,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                       {app?.job_id && (
                                         <button
                                           onClick={() => openJobDetails(Number(app.job_id))}
-                                          className="p-1 border border-[#e7e5e4] rounded hover:bg-[#f5f5f4] text-[#78716c] transition-all"
+                                          className="p-1 border border-[#E5E5E0] rounded hover:bg-[#F5F5F0] text-[#6B6B6B] transition-all"
                                           title="Details"
                                         >
                                           <FileText size={10} />
@@ -1360,8 +1360,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               );
                             })}
                             {colApps.length === 0 && (
-                              <div className="flex-grow flex items-center justify-center py-12 border border-dashed border-[#e7e5e4] rounded-xl bg-stone-50/10">
-                                <span className="text-[10px] uppercase font-bold text-[#a8a29e] tracking-widest">Empty</span>
+                              <div className="flex-grow flex items-center justify-center py-12 border border-dashed border-[#E5E5E0] rounded-xl bg-stone-50/10">
+                                <span className="text-[10px] uppercase font-bold text-[#9CA3AF] tracking-widest">Empty</span>
                               </div>
                             )}
                           </div>
@@ -1375,9 +1375,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           })()}
 
           {activeTab === 'pipeline' && (
-            <motion.div key="pipeline" className="bg-white border border-[#e7e5e4] rounded-[2rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
-              <div className="p-8 border-b border-[#e7e5e4] bg-[#faf9f6] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-xl font-bold text-[#1c1917]">Live Job Pipeline</h2>
+            <motion.div key="pipeline" className="bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
+              <div className="p-8 border-b border-[#E5E5E0] bg-[#FAFAF8] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-xl font-bold text-[#1C1C1E]">Live Job Pipeline</h2>
                 {pipelineTotal > 0 && (
                   <button
                     type="button"
@@ -1390,35 +1390,35 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               </div>
               <div className="overflow-x-auto text-sm max-h-[600px]">
                 <table className="w-full text-left">
-                  <thead className="sticky top-0 bg-[#f5f5f4] border-b border-[#e7e5e4]">
-                    <tr className="text-[#a8a29e] text-[10px] uppercase tracking-[0.2em] font-bold">
+                  <thead className="sticky top-0 bg-[#F5F5F0] border-b border-[#E5E5E0]">
+                    <tr className="text-[#9CA3AF] text-[10px] uppercase tracking-[0.2em] font-bold">
                       <th className="px-8 py-5">Target / Company</th>
                       <th className="px-8 py-5">Job Title</th>
                       <th className="px-8 py-5">Score</th>
                       <th className="px-8 py-5">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#f5f5f4]">
+                  <tbody className="divide-y divide-[#F5F5F0]">
                     {filteredPipeline.map((job: any, i: number) => (
-                      <tr key={i} className="hover:bg-[#faf9f6] transition-colors">
+                      <tr key={i} className="hover:bg-[#FAFAF8] transition-colors">
                         <td className="px-8 py-6">
-                           <div className="font-bold text-[#1c1917]">{job.company}</div>
+                           <div className="font-bold text-[#1C1C1E]">{job.company}</div>
                            {job?.url ? (
                              <a
                                href={job.canonical_url || job.url}
                                target="_blank"
                                rel="noopener noreferrer"
-                               className="text-[10px] font-bold text-[#a8a29e] hover:text-[#1c1917] transition-colors inline-flex items-center gap-2"
+                               className="text-[10px] font-bold text-[#9CA3AF] hover:text-[#1C1C1E] transition-colors inline-flex items-center gap-2"
                              >
                                <ExternalLink size={12} />
                                <span>Open posting</span>
                              </a>
                            ) : (
-                             <span className="text-[10px] font-bold text-[#a8a29e]">—</span>
+                             <span className="text-[10px] font-bold text-[#9CA3AF]">—</span>
                            )}
                         </td>
-                        <td className="px-8 py-6 text-[#78716c] font-medium">{job.title || 'Unknown Role'}</td>
-                        <td className="px-8 py-6 font-mono font-bold text-[#1c1917]">{job.score}</td>
+                        <td className="px-8 py-6 text-[#6B6B6B] font-medium">{job.title || 'Unknown Role'}</td>
+                        <td className="px-8 py-6 font-mono font-bold text-[#1C1C1E]">{job.score}</td>
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-3">
                             {job?.is_tailored && (
@@ -1428,7 +1428,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             )}
                             <button
                               onClick={() => { setActiveTab('terminal'); runCommand(`tailor ${job.pipeline_id} --deep`); }}
-                              className="px-4 py-2 bg-[#1c1917] text-white rounded-xl font-bold text-xs hover:bg-[#27272a] transition-all"
+                              className="px-4 py-2 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs hover:bg-[#27272a] transition-all"
                             >
                               Tailor
                             </button>
@@ -1436,8 +1436,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               onClick={() => { setActiveTab('terminal'); runCommand(`apply ${job.pipeline_id} --deep`); }}
                               className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${
                                 job?.is_tailored
-                                  ? 'bg-white border border-[#e7e5e4] text-[#1c1917] hover:bg-[#f5f5f4]'
-                                  : 'bg-white border border-[#e7e5e4] text-[#1c1917] hover:bg-[#f5f5f4]'
+                                  ? 'bg-white border border-[#E5E5E0] text-[#1C1C1E] hover:bg-[#F5F5F0]'
+                                  : 'bg-white border border-[#E5E5E0] text-[#1C1C1E] hover:bg-[#F5F5F0]'
                               }`}
                             >
                               {job?.is_tailored ? 'Apply (Auto)' : 'Apply (Auto)'}
@@ -1450,7 +1450,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                              </button>
                             <button
                               onClick={() => openJobDetails(Number(job.pipeline_id))}
-                              className="px-4 py-2 bg-[#f5f5f4] border border-[#e7e5e4] text-[#1c1917] rounded-xl font-bold text-xs hover:bg-[#e7e5e4] transition-all"
+                              className="px-4 py-2 bg-[#F5F5F0] border border-[#E5E5E0] text-[#1C1C1E] rounded-xl font-bold text-xs hover:bg-[#E5E5E0] transition-all"
                             >
                               Details
                             </button>
@@ -1463,7 +1463,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   String(job.title || 'Unknown role')
                                 )
                               }
-                              className="p-2 rounded-xl border border-[#e7e5e4] text-[#a8a29e] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                              className="p-2 rounded-xl border border-[#E5E5E0] text-[#9CA3AF] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
                               title="Remove from pipeline"
                             >
                               <Trash2 size={16} />
@@ -1481,45 +1481,45 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           {activeTab === 'cv' && (
             <motion.div key="cv" className="grid grid-cols-3 gap-10">
                <div className="col-span-2 space-y-10">
-                <div className="bg-[#f5f5f4] p-10 border border-[#e7e5e4] rounded-[2.5rem]">
-                   <h3 className="text-xl font-bold mb-6 text-[#1c1917] border-b border-[#e7e5e4] pb-4">Profile Narrative</h3>
+                <div className="bg-[#F5F5F0] p-10 border border-[#E5E5E0] rounded-[2.5rem]">
+                   <h3 className="text-xl font-bold mb-6 text-[#1C1C1E] border-b border-[#E5E5E0] pb-4">Profile Narrative</h3>
                    {data?.profile?.narrative?.exit_story ? (
-                     <p className="text-[#1c1917] leading-relaxed font-medium italic pl-6 border-l-4 border-emerald-500/30">
+                     <p className="text-[#1C1C1E] leading-relaxed font-medium italic pl-6 border-l-4 border-emerald-500/30">
                         "{data?.profile?.narrative?.exit_story}"
                      </p>
                    ) : (
                      <div className="py-4">
-                       <p className="text-[#a8a29e] font-medium italic">No narrative defined yet.</p>
-                       <button onClick={() => setActiveTab('settings')} className="mt-4 text-[#1c1917] text-xs font-bold uppercase tracking-widest hover:underline underline-offset-4">Configure Story →</button>
+                       <p className="text-[#9CA3AF] font-medium italic">No narrative defined yet.</p>
+                       <button onClick={() => setActiveTab('settings')} className="mt-4 text-[#1C1C1E] text-xs font-bold uppercase tracking-widest hover:underline underline-offset-4">Configure Story →</button>
                      </div>
                    )}
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   {data?.profile?.narrative?.superpowers?.length > 0 ? (
                     data.profile.narrative.superpowers.map((s: any, i: number) => (
-                      <div key={i} className="p-6 bg-white border border-[#e7e5e4] rounded-2xl text-xs font-bold uppercase tracking-widest text-[#a8a29e] hover:text-[#1c1917] transition-colors">
+                      <div key={i} className="p-6 bg-white border border-[#E5E5E0] rounded-2xl text-xs font-bold uppercase tracking-widest text-[#9CA3AF] hover:text-[#1C1C1E] transition-colors">
                          {s}
                       </div>
                     ))
                   ) : (
-                    <div className="col-span-2 p-6 bg-white/50 border border-dashed border-[#e7e5e4] rounded-2xl text-center">
-                       <p className="text-[#a8a29e] text-xs font-bold uppercase tracking-widest">Awaiting Superpower Sync</p>
+                    <div className="col-span-2 p-6 bg-white/50 border border-dashed border-[#E5E5E0] rounded-2xl text-center">
+                       <p className="text-[#9CA3AF] text-xs font-bold uppercase tracking-widest">Awaiting Superpower Sync</p>
                     </div>
                   )}
                 </div>
                </div>
-               <div className="bg-[#faf9f6] border border-[#e7e5e4] rounded-[2rem] sm:rounded-[2.5rem] p-3 sm:p-6 lg:p-8 flex flex-col shadow-sm">
+               <div className="bg-[#FAFAF8] border border-[#E5E5E0] rounded-[2rem] sm:rounded-[2.5rem] p-3 sm:p-6 lg:p-8 flex flex-col shadow-sm">
                   <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-[#1c1917] rounded-xl">
+                      <div className="p-2 bg-[#1C1C1E] rounded-xl">
                         <FileText size={16} className="text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-[#1c1917] text-sm sm:text-base">Generated Documents</h3>
-                        <p className="text-[10px] text-[#a8a29e] hidden sm:block">Tailored resumes and cover letters</p>
+                        <h3 className="font-bold text-[#1C1C1E] text-sm sm:text-base">Generated Documents</h3>
+                        <p className="text-[10px] text-[#9CA3AF] hidden sm:block">Tailored resumes and cover letters</p>
                       </div>
                     </div>
-                    <span className="px-3 py-1 bg-white border border-[#e7e5e4] rounded-full text-[10px] sm:text-xs font-bold text-[#78716c]">
+                    <span className="px-3 py-1 bg-white border border-[#E5E5E0] rounded-full text-[10px] sm:text-xs font-bold text-[#6B6B6B]">
                       {filteredDocs.length} {filteredDocs.length === 1 ? 'item' : 'items'}
                     </span>
                   </div>
@@ -1527,29 +1527,29 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   <div className="space-y-3 overflow-y-auto flex-1">
                     {filteredDocs.length === 0 ? (
                       <div className="text-center py-12 px-4">
-                        <div className="w-16 h-16 mx-auto mb-4 bg-[#f5f5f4] rounded-2xl flex items-center justify-center">
-                          <FileText size={24} className="text-[#a8a29e]" />
+                        <div className="w-16 h-16 mx-auto mb-4 bg-[#F5F5F0] rounded-2xl flex items-center justify-center">
+                          <FileText size={24} className="text-[#9CA3AF]" />
                         </div>
-                        <p className="text-sm font-medium text-[#78716c]">No documents yet</p>
-                        <p className="text-xs text-[#a8a29e] mt-1">Run tailor to generate resumes</p>
+                        <p className="text-sm font-medium text-[#6B6B6B]">No documents yet</p>
+                        <p className="text-xs text-[#9CA3AF] mt-1">Run tailor to generate resumes</p>
                       </div>
                     ) : (
                       filteredDocs.map((doc: any, i: number) => (
                         <div
                           key={i}
-                          className="group bg-white rounded-2xl border border-[#e7e5e4] hover:border-[#1c1917] hover:shadow-lg transition-all duration-200 overflow-hidden"
+                          className="group bg-white rounded-2xl border border-[#E5E5E0] hover:border-[#1C1C1E] hover:shadow-lg transition-all duration-200 overflow-hidden"
                         >
                           {/* Card Header */}
-                          <div className="p-3 sm:p-4 border-b border-[#f5f5f4] bg-gradient-to-r from-white to-[#faf9f6]">
+                          <div className="p-3 sm:p-4 border-b border-[#F5F5F0] bg-gradient-to-r from-white to-[#FAFAF8]">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                  <span className="truncate text-sm font-bold text-[#1c1917]">
+                                  <span className="truncate text-sm font-bold text-[#1C1C1E]">
                                     {doc.company}
                                   </span>
                                 </div>
-                                <div className="truncate text-xs text-[#78716c] pl-4">
+                                <div className="truncate text-xs text-[#6B6B6B] pl-4">
                                   {doc.title}
                                 </div>
                               </div>
@@ -1559,7 +1559,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                     href={doc.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-2 rounded-lg hover:bg-[#f5f5f4] transition-all text-[#78716c] hover:text-[#1c1917]"
+                                    className="p-2 rounded-lg hover:bg-[#F5F5F0] transition-all text-[#6B6B6B] hover:text-[#1C1C1E]"
                                     title="Open job posting"
                                   >
                                     <ExternalLink size={14} />
@@ -1567,7 +1567,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 )}
                                 <button
                                   onClick={() => openDeleteConfirm(Number(doc.id), doc.company, doc.title)}
-                                  className="p-2 rounded-lg hover:bg-rose-50 transition-all text-[#a8a29e] hover:text-rose-600"
+                                  className="p-2 rounded-lg hover:bg-rose-50 transition-all text-[#9CA3AF] hover:text-rose-600"
                                   title="Delete job and documents"
                                 >
                                   <Trash2 size={14} />
@@ -1583,13 +1583,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               {doc.has_resume_pdf ? (
                                 <a
                                   href={`/api/view/${doc.id}?format=pdf&download=1`}
-                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1c1917] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
+                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1C1C1E] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
                                 >
                                   <FileText size={14} />
                                   <span>Resume</span>
                                 </a>
                               ) : (
-                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#f5f5f4] text-[#a8a29e] text-xs font-bold cursor-not-allowed">
+                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F5F5F0] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
                                   <FileText size={14} />
                                   <span>—</span>
                                 </span>
@@ -1599,13 +1599,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               {doc.has_cover_letter_pdf ? (
                                 <a
                                   href={`/api/view/${doc.id}?type=cl&format=pdf&download=1`}
-                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1c1917] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
+                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1C1C1E] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
                                 >
                                   <FileText size={14} />
                                   <span>Cover</span>
                                 </a>
                               ) : (
-                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#f5f5f4] text-[#a8a29e] text-xs font-bold cursor-not-allowed">
+                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F5F5F0] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
                                   <FileText size={14} />
                                   <span>—</span>
                                 </span>
@@ -1614,7 +1614,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               {/* HTML */}
                               <a
                                 href={`/api/view/${doc.id}?download=1`}
-                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[#e7e5e4] text-[#1c1917] text-xs font-bold hover:bg-[#f5f5f4] hover:border-[#1c1917] transition-all"
+                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[#E5E5E0] text-[#1C1C1E] text-xs font-bold hover:bg-[#F5F5F0] hover:border-[#1C1C1E] transition-all"
                               >
                                 <FileText size={14} />
                                 <span>HTML</span>
@@ -1625,7 +1625,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 href={`/api/view/${doc.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[#e7e5e4] text-[#78716c] text-xs font-bold hover:bg-[#f5f5f4] hover:text-[#1c1917] hover:border-[#1c1917] transition-all"
+                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] text-xs font-bold hover:bg-[#F5F5F0] hover:text-[#1C1C1E] hover:border-[#1C1C1E] transition-all"
                               >
                                 <ExternalLink size={14} />
                                 <span>View</span>
@@ -1648,14 +1648,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <motion.div key="skills" className="space-y-8">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-[#1c1917]">Skill Gaps & Heatmap</h2>
-                    <p className="text-xs text-[#78716c] mt-1">
+                    <h2 className="text-2xl font-bold text-[#1C1C1E]">Skill Gaps & Heatmap</h2>
+                    <p className="text-xs text-[#6B6B6B] mt-1">
                       Aggregated gaps extracted from your job evaluations. Focus your learning on these top areas.
                     </p>
                   </div>
                   <button
                     onClick={() => { setActiveTab('terminal'); runCommand('skill-gap'); }}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-[#1c1917] hover:bg-[#27272a] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-[#1C1C1E] hover:bg-[#27272a] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0"
                   >
                     <Zap size={14} />
                     Re-Analyze Gaps
@@ -1663,15 +1663,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 </div>
 
                 {skillGaps.length === 0 ? (
-                  <div className="bg-stone-50 border border-dashed border-[#e7e5e4] rounded-[2rem] p-16 text-center max-w-2xl mx-auto mt-8">
-                    <TrendingUp className="text-[#a8a29e] mx-auto mb-4" size={48} />
-                    <h3 className="text-lg font-bold text-[#1c1917]">No Skill Gaps Analyzed Yet</h3>
-                    <p className="text-sm text-[#78716c] mt-2 max-w-md mx-auto">
+                  <div className="bg-stone-50 border border-dashed border-[#E5E5E0] rounded-[2rem] p-16 text-center max-w-2xl mx-auto mt-8">
+                    <TrendingUp className="text-[#9CA3AF] mx-auto mb-4" size={48} />
+                    <h3 className="text-lg font-bold text-[#1C1C1E]">No Skill Gaps Analyzed Yet</h3>
+                    <p className="text-sm text-[#6B6B6B] mt-2 max-w-md mx-auto">
                       Evaluate a few jobs first and run the analysis script to extract and aggregate skills that are missing from your CV.
                     </p>
                     <button
                       onClick={() => { setActiveTab('terminal'); runCommand('skill-gap'); }}
-                      className="mt-6 px-6 py-3 bg-[#1c1917] text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-[#27272a] transition-all shadow-md"
+                      className="mt-6 px-6 py-3 bg-[#1C1C1E] text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-[#27272a] transition-all shadow-md"
                     >
                       Run Analysis Script
                     </button>
@@ -1679,8 +1679,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-6">
-                      <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8 shadow-sm">
-                        <h3 className="text-base font-bold text-[#1c1917] mb-6">Top Missing Skills</h3>
+                      <div className="bg-white border border-[#E5E5E0] rounded-[2rem] p-8 shadow-sm">
+                        <h3 className="text-base font-bold text-[#1C1C1E] mb-6">Top Missing Skills</h3>
                         
                         <div className="space-y-6">
                           {skillGaps.map((gap: any, index: number) => {
@@ -1692,12 +1692,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               'bg-amber-50 text-amber-700 border-amber-100';
 
                             return (
-                              <div key={index} className="p-5 border border-[#e7e5e4] rounded-2xl hover:bg-stone-50/50 transition-colors">
+                              <div key={index} className="p-5 border border-[#E5E5E0] rounded-2xl hover:bg-stone-50/50 transition-colors">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                                   <div>
-                                    <h4 className="font-extrabold text-[#1c1917] text-base">{gap.name}</h4>
-                                    <span className="text-[11px] text-[#78716c] font-medium mt-0.5 block">
-                                      Flagged in <strong className="text-[#1c1917]">{gap.count}</strong> of {totalRanked} evaluated jobs ({pct}%)
+                                    <h4 className="font-extrabold text-[#1C1C1E] text-base">{gap.name}</h4>
+                                    <span className="text-[11px] text-[#6B6B6B] font-medium mt-0.5 block">
+                                      Flagged in <strong className="text-[#1C1C1E]">{gap.count}</strong> of {totalRanked} evaluated jobs ({pct}%)
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2 self-start sm:self-center">
@@ -1707,7 +1707,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   </div>
                                 </div>
 
-                                <div className="h-2 w-full bg-[#f5f5f4] rounded-full overflow-hidden mb-4">
+                                <div className="h-2 w-full bg-[#F5F5F0] rounded-full overflow-hidden mb-4">
                                   <div 
                                     className={`h-full rounded-full ${
                                       severityUpper === 'HIGH' || severityUpper === 'ALTA' ? 'bg-rose-500' :
@@ -1719,8 +1719,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 </div>
 
                                 {gap.mitigations && gap.mitigations.length > 0 && (
-                                  <div className="bg-[#faf9f6] border border-[#e7e5e4] rounded-xl p-4">
-                                    <span className="text-[10px] uppercase font-bold text-[#a8a29e] tracking-wider block mb-2">Mitigation Strategies</span>
+                                  <div className="bg-[#FAFAF8] border border-[#E5E5E0] rounded-xl p-4">
+                                    <span className="text-[10px] uppercase font-bold text-[#9CA3AF] tracking-wider block mb-2">Mitigation Strategies</span>
                                     <ul className="list-disc pl-4 text-xs text-stone-600 space-y-1.5 font-medium">
                                       {gap.mitigations.slice(0, 3).map((mit: string, mIdx: number) => (
                                         <li key={mIdx}>{mit}</li>
@@ -1736,7 +1736,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     </div>
 
                     <div className="space-y-6">
-                      <div className="bg-[#1c1917] text-white border border-[#1c1917] rounded-[2rem] p-8 shadow-xl">
+                      <div className="bg-[#1C1C1E] text-white border border-[#1C1C1E] rounded-[2rem] p-8 shadow-xl">
                         <TrendingUp className="text-amber-400 mb-4" size={32} />
                         <h3 className="text-lg font-bold text-white mb-2">Learning Priorities</h3>
                         <p className="text-stone-300 text-xs leading-relaxed font-medium">
@@ -1762,19 +1762,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         </div>
                       </div>
 
-                      <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8 shadow-sm">
-                        <h4 className="text-sm font-bold text-[#1c1917] mb-3">How to mitigate gaps?</h4>
-                        <div className="space-y-3.5 text-xs text-[#78716c] font-medium leading-relaxed">
+                      <div className="bg-white border border-[#E5E5E0] rounded-[2rem] p-8 shadow-sm">
+                        <h4 className="text-sm font-bold text-[#1C1C1E] mb-3">How to mitigate gaps?</h4>
+                        <div className="space-y-3.5 text-xs text-[#6B6B6B] font-medium leading-relaxed">
                           <div className="flex gap-2.5">
-                            <span className="h-5 w-5 bg-stone-100 rounded-full flex items-center justify-center font-bold text-[#1c1917] text-[10px] shrink-0">1</span>
+                            <span className="h-5 w-5 bg-stone-100 rounded-full flex items-center justify-center font-bold text-[#1C1C1E] text-[10px] shrink-0">1</span>
                             <p><strong>Add equivalent experience:</strong> If they ask for Docker and you used Kubernetes, emphasize your containerization skills.</p>
                           </div>
                           <div className="flex gap-2.5">
-                            <span className="h-5 w-5 bg-stone-100 rounded-full flex items-center justify-center font-bold text-[#1c1917] text-[10px] shrink-0">2</span>
+                            <span className="h-5 w-5 bg-stone-100 rounded-full flex items-center justify-center font-bold text-[#1C1C1E] text-[10px] shrink-0">2</span>
                             <p><strong>Build a mini-project:</strong> Create a weekend project using the missing technology to show you can learn fast.</p>
                           </div>
                           <div className="flex gap-2.5">
-                            <span className="h-5 w-5 bg-stone-100 rounded-full flex items-center justify-center font-bold text-[#1c1917] text-[10px] shrink-0">3</span>
+                            <span className="h-5 w-5 bg-stone-100 rounded-full flex items-center justify-center font-bold text-[#1C1C1E] text-[10px] shrink-0">3</span>
                             <p><strong>Optimize CV tailoring:</strong> Follow the personalization plan (Block E) in your reports to highlight adjacent competencies.</p>
                           </div>
                         </div>
@@ -1789,8 +1789,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           {activeTab === 'analytics' && (
             <motion.div key="analytics" className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold mb-2 text-[#1c1917]">Visitor Analytics</h2>
-                <p className="text-[#a8a29e] font-medium">Track unique visitors to your Career-Ops dashboard</p>
+                <h2 className="text-2xl font-bold mb-2 text-[#1C1C1E]">Visitor Analytics</h2>
+                <p className="text-[#9CA3AF] font-medium">Track unique visitors to your Career-Ops dashboard</p>
               </div>
 
               {/* Summary Cards */}
@@ -1801,31 +1801,31 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   { label: 'Last 30 Days', views: visitorStats?.month?.total_views, unique: visitorStats?.month?.unique_visitors },
                   { label: 'All Time', views: visitorStats?.allTime?.total_views, unique: visitorStats?.allTime?.unique_visitors },
                 ].map((s) => (
-                  <div key={s.label} className="p-6 bg-white border border-[#e7e5e4] rounded-2xl hover:border-[#1c1917] hover:shadow-lg transition-all">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#a8a29e] mb-3">{s.label}</div>
-                    <div className="text-3xl font-bold text-[#1c1917]">{s.unique ?? '—'}</div>
-                    <div className="text-xs text-[#a8a29e] mt-1">{s.views ?? 0} total views</div>
+                  <div key={s.label} className="p-6 bg-white border border-[#E5E5E0] rounded-2xl hover:border-[#1C1C1E] hover:shadow-lg transition-all">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] mb-3">{s.label}</div>
+                    <div className="text-3xl font-bold text-[#1C1C1E]">{s.unique ?? '—'}</div>
+                    <div className="text-xs text-[#9CA3AF] mt-1">{s.views ?? 0} total views</div>
                   </div>
                 ))}
               </div>
 
               {/* Daily Chart */}
               {visitorStats?.daily && visitorStats.daily.length > 0 && (
-                <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8">
-                  <h3 className="text-lg font-bold text-[#1c1917] mb-6 flex items-center gap-2"><TrendingUp size={18} /> Daily Visitors (Last 14 Days)</h3>
+                <div className="bg-white border border-[#E5E5E0] rounded-[2rem] p-8">
+                  <h3 className="text-lg font-bold text-[#1C1C1E] mb-6 flex items-center gap-2"><TrendingUp size={18} /> Daily Visitors (Last 14 Days)</h3>
                   <div className="flex items-end gap-2 h-48">
                     {[...visitorStats.daily].reverse().map((d: any) => {
                       const maxVisitors = Math.max(...visitorStats.daily.map((dd: any) => dd.unique_visitors || 1));
                       const heightPct = Math.max(((d.unique_visitors || 0) / maxVisitors) * 100, 4);
                       return (
                         <div key={d.date} className="flex-1 flex flex-col items-center gap-2">
-                          <span className="text-[10px] font-bold text-[#1c1917]">{d.unique_visitors}</span>
+                          <span className="text-[10px] font-bold text-[#1C1C1E]">{d.unique_visitors}</span>
                           <div
                             className="w-full bg-purple-500 rounded-t-lg transition-all hover:bg-purple-600"
                             style={{ height: `${heightPct}%` }}
                             title={`${d.date}: ${d.unique_visitors} unique, ${d.views} total`}
                           />
-                          <span className="text-[9px] text-[#a8a29e] font-mono">{String(d.date).slice(5)}</span>
+                          <span className="text-[9px] text-[#9CA3AF] font-mono">{String(d.date).slice(5)}</span>
                         </div>
                       );
                     })}
@@ -1836,18 +1836,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Top Pages */}
                 {visitorStats?.topPages && visitorStats.topPages.length > 0 && (
-                  <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8">
-                    <h3 className="text-lg font-bold text-[#1c1917] mb-6 flex items-center gap-2"><FileText size={18} /> Top Pages</h3>
+                  <div className="bg-white border border-[#E5E5E0] rounded-[2rem] p-8">
+                    <h3 className="text-lg font-bold text-[#1C1C1E] mb-6 flex items-center gap-2"><FileText size={18} /> Top Pages</h3>
                     <div className="space-y-3">
                       {visitorStats.topPages.map((p: any, i: number) => (
-                        <div key={p.path} className="flex items-center justify-between p-3 rounded-xl bg-[#faf9f6]">
+                        <div key={p.path} className="flex items-center justify-between p-3 rounded-xl bg-[#FAFAF8]">
                           <div className="flex items-center gap-3">
-                            <span className="text-[10px] font-bold text-[#a8a29e] w-5">{i + 1}.</span>
-                            <span className="text-sm font-bold text-[#1c1917] font-mono">{p.path}</span>
+                            <span className="text-[10px] font-bold text-[#9CA3AF] w-5">{i + 1}.</span>
+                            <span className="text-sm font-bold text-[#1C1C1E] font-mono">{p.path}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-sm font-bold text-[#1c1917]">{p.unique_visitors}</span>
-                            <span className="text-xs text-[#a8a29e] ml-1">unique</span>
+                            <span className="text-sm font-bold text-[#1C1C1E]">{p.unique_visitors}</span>
+                            <span className="text-xs text-[#9CA3AF] ml-1">unique</span>
                           </div>
                         </div>
                       ))}
@@ -1857,16 +1857,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
                 {/* Top Countries */}
                 {visitorStats?.topCountries && visitorStats.topCountries.length > 0 && (
-                  <div className="bg-white border border-[#e7e5e4] rounded-[2rem] p-8">
-                    <h3 className="text-lg font-bold text-[#1c1917] mb-6 flex items-center gap-2"><Globe size={18} /> Top Countries</h3>
+                  <div className="bg-white border border-[#E5E5E0] rounded-[2rem] p-8">
+                    <h3 className="text-lg font-bold text-[#1C1C1E] mb-6 flex items-center gap-2"><Globe size={18} /> Top Countries</h3>
                     <div className="space-y-3">
                       {visitorStats.topCountries.map((c: any, i: number) => (
-                        <div key={c.country} className="flex items-center justify-between p-3 rounded-xl bg-[#faf9f6]">
+                        <div key={c.country} className="flex items-center justify-between p-3 rounded-xl bg-[#FAFAF8]">
                           <div className="flex items-center gap-3">
-                            <span className="text-[10px] font-bold text-[#a8a29e] w-5">{i + 1}.</span>
-                            <span className="text-sm font-bold text-[#1c1917]">{c.country}</span>
+                            <span className="text-[10px] font-bold text-[#9CA3AF] w-5">{i + 1}.</span>
+                            <span className="text-sm font-bold text-[#1C1C1E]">{c.country}</span>
                           </div>
-                          <span className="text-sm font-bold text-[#1c1917]">{c.unique_visitors}</span>
+                          <span className="text-sm font-bold text-[#1C1C1E]">{c.unique_visitors}</span>
                         </div>
                       ))}
                     </div>
@@ -1875,7 +1875,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               </div>
 
               {!visitorStats && (
-                <div className="text-center py-20 text-[#a8a29e]">
+                <div className="text-center py-20 text-[#9CA3AF]">
                   <Eye size={48} className="mx-auto mb-4 opacity-30" />
                   <p className="font-bold">Loading analytics...</p>
                 </div>
@@ -1885,25 +1885,25 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
           {activeTab === 'docs' && (
             <motion.div key="docs" className="space-y-10">
-              <div className="flex items-center gap-4 border-b border-[#e7e5e4] pb-6">
-                <div className="h-12 w-12 bg-[#1c1917] rounded-2xl flex items-center justify-center text-white">
+              <div className="flex items-center gap-4 border-b border-[#E5E5E0] pb-6">
+                <div className="h-12 w-12 bg-[#1C1C1E] rounded-2xl flex items-center justify-center text-white">
                   <BookOpen size={24} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-[#1c1917]">System Documentation & Tutorial</h2>
-                  <p className="text-[#a8a29e] font-medium">Master Career-Ops: Auto-discover, rank, tailor, and auto-apply to jobs.</p>
+                  <h2 className="text-2xl font-bold text-[#1C1C1E]">System Documentation & Tutorial</h2>
+                  <p className="text-[#9CA3AF] font-medium">Master Career-Ops: Auto-discover, rank, tailor, and auto-apply to jobs.</p>
                 </div>
               </div>
 
               {/* Grid Layout: Intro and Deep Flag */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Intro Card */}
-                <div className="bg-[#f5f5f4] p-8 border border-[#e7e5e4] rounded-[2rem] space-y-6">
-                  <h3 className="text-xl font-bold text-[#1c1917] flex items-center gap-2">
+                <div className="bg-[#F5F5F0] p-8 border border-[#E5E5E0] rounded-[2rem] space-y-6">
+                  <h3 className="text-xl font-bold text-[#1C1C1E] flex items-center gap-2">
                     <Zap size={20} className="text-amber-500" />
                     How Career-Ops Works
                   </h3>
-                  <p className="text-sm text-[#78716c] leading-relaxed font-medium">
+                  <p className="text-sm text-[#6B6B6B] leading-relaxed font-medium">
                     Career-Ops is a fully automated, agentic job search, evaluation, and application pipeline. 
                     It continuously works in the background to scan job boards, rank them against your profile, 
                     tailor your materials, and help you apply.
@@ -1916,12 +1916,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       { step: '4', title: 'Form Application', text: 'Record your application details and let the system assist with automated draft filing.' },
                     ].map((s) => (
                       <div key={s.step} className="flex gap-4">
-                        <div className="h-8 w-8 rounded-full bg-white border border-[#e7e5e4] text-[#1c1917] flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                        <div className="h-8 w-8 rounded-full bg-white border border-[#E5E5E0] text-[#1C1C1E] flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                           {s.step}
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-[#1c1917]">{s.title}</h4>
-                          <p className="text-xs text-[#a8a29e] font-medium mt-0.5">{s.text}</p>
+                          <h4 className="text-sm font-bold text-[#1C1C1E]">{s.title}</h4>
+                          <p className="text-xs text-[#9CA3AF] font-medium mt-0.5">{s.text}</p>
                         </div>
                       </div>
                     ))}
@@ -1929,13 +1929,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 </div>
 
                 {/* Deep Flag Card */}
-                <div className="bg-white p-8 border border-[#e7e5e4] rounded-[2rem] space-y-6 shadow-sm">
-                  <h3 className="text-xl font-bold text-[#1c1917] flex items-center gap-2">
+                <div className="bg-white p-8 border border-[#E5E5E0] rounded-[2rem] space-y-6 shadow-sm">
+                  <h3 className="text-xl font-bold text-[#1C1C1E] flex items-center gap-2">
                     <ShieldCheck size={20} className="text-emerald-600" />
-                    Understanding the <code className="bg-[#f5f5f4] px-2 py-0.5 rounded text-xs font-mono font-bold text-emerald-700">--deep</code> Flag
+                    Understanding the <code className="bg-[#F5F5F0] px-2 py-0.5 rounded text-xs font-mono font-bold text-emerald-700">--deep</code> Flag
                   </h3>
-                  <p className="text-sm text-[#78716c] leading-relaxed font-medium">
-                    The <code className="bg-[#f5f5f4] px-1.5 py-0.5 rounded text-xs font-mono font-bold">--deep</code> flag overrides the default, fast heuristic mode to run intensive, highly accurate agent workflows.
+                  <p className="text-sm text-[#6B6B6B] leading-relaxed font-medium">
+                    The <code className="bg-[#F5F5F0] px-1.5 py-0.5 rounded text-xs font-mono font-bold">--deep</code> flag overrides the default, fast heuristic mode to run intensive, highly accurate agent workflows.
                   </p>
                   
                   <div className="space-y-4 text-xs font-medium">
@@ -1971,7 +1971,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
               {/* Command Cheat Sheet */}
               <div className="space-y-6">
-                <h3 className="text-xl font-bold text-[#1c1917] flex items-center gap-2">
+                <h3 className="text-xl font-bold text-[#1C1C1E] flex items-center gap-2">
                   <TerminalIcon size={20} />
                   Interactive Command Reference
                 </h3>
@@ -2021,28 +2021,28 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       badgeColor: 'stone'
                     }
                   ].map((c) => (
-                    <div key={c.cmd} className="bg-white border border-[#e7e5e4] rounded-[2rem] p-6 hover:shadow-lg transition-all flex flex-col justify-between space-y-4">
+                    <div key={c.cmd} className="bg-white border border-[#E5E5E0] rounded-[2rem] p-6 hover:shadow-lg transition-all flex flex-col justify-between space-y-4">
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <code className="text-sm font-mono font-bold text-[#1c1917] bg-[#f5f5f4] px-2.5 py-1 rounded-xl">
+                          <code className="text-sm font-mono font-bold text-[#1C1C1E] bg-[#F5F5F0] px-2.5 py-1 rounded-xl">
                             {c.cmd}
                           </code>
                           <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-${c.badgeColor}-50 text-${c.badgeColor}-700 border border-${c.badgeColor}-200`}>
                             {c.badge}
                           </span>
                         </div>
-                        <p className="text-sm font-medium text-[#78716c]">{c.desc}</p>
-                        <p className="text-xs text-[#a8a29e] italic font-medium">Usage: {c.usage}</p>
+                        <p className="text-sm font-medium text-[#6B6B6B]">{c.desc}</p>
+                        <p className="text-xs text-[#9CA3AF] italic font-medium">Usage: {c.usage}</p>
                       </div>
 
-                      <div className="flex items-center gap-3 border-t border-[#f5f5f4] pt-4">
+                      <div className="flex items-center gap-3 border-t border-[#F5F5F0] pt-4">
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(c.cmd);
                             setToast({ show: true, message: `[OK] ✔ Copied: "${c.cmd}"` });
                             setTimeout(() => setToast({ show: false, message: '' }), 2000);
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#e7e5e4] hover:bg-[#f5f5f4] transition-colors rounded-xl text-xs font-bold text-[#1c1917]"
+                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#E5E5E0] hover:bg-[#F5F5F0] transition-colors rounded-xl text-xs font-bold text-[#1C1C1E]"
                         >
                           <Copy size={13} />
                           <span>Copy</span>
@@ -2052,7 +2052,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             setCmdInput(c.cmd);
                             setActiveTab('terminal');
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#e7e5e4] hover:bg-[#f5f5f4] transition-colors rounded-xl text-xs font-bold text-[#1c1917]"
+                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#E5E5E0] hover:bg-[#F5F5F0] transition-colors rounded-xl text-xs font-bold text-[#1C1C1E]"
                         >
                           <TerminalIcon size={13} />
                           <span>Populate</span>
@@ -2062,7 +2062,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             setActiveTab('terminal');
                             runCommand(c.cmd.replace(' <job_id>', '').replace(' <url>', ''));
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-[#1c1917] text-white hover:bg-[#27272a] transition-all rounded-xl text-xs font-bold"
+                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-[#1C1C1E] text-white hover:bg-[#27272a] transition-all rounded-xl text-xs font-bold"
                         >
                           <Play size={13} />
                           <span>Execute</span>
@@ -2076,18 +2076,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
 
           {activeTab === 'terminal' && (
-            <motion.div key="terminal" className="bg-white rounded-[2rem] flex flex-col h-[600px] overflow-hidden shadow-2xl relative border border-[#e7e5e4]">
-              <div className="p-5 border-b border-[#e7e5e4] flex justify-between items-center bg-[#f5f5f4]">
+            <motion.div key="terminal" className="bg-white rounded-[2rem] flex flex-col h-[600px] overflow-hidden shadow-2xl relative border border-[#E5E5E0]">
+              <div className="p-5 border-b border-[#E5E5E0] flex justify-between items-center bg-[#F5F5F0]">
                  <div className="flex items-center gap-3">
                     <div className="h-3 w-3 bg-[#f59e0b] rounded-full" />
                     <span className="text-[10px] font-mono text-[#57534e] uppercase tracking-[0.2em] font-bold">Career-Ops Output Console</span>
                  </div>
-                 <button onClick={() => setLogs([])} className="text-[10px] text-[#78716c] hover:text-[#1c1917] transition-colors uppercase tracking-widest font-bold">Flush Buffers</button>
+                 <button onClick={() => setLogs([])} className="text-[10px] text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors uppercase tracking-widest font-bold">Flush Buffers</button>
               </div>
               <div id="terminal-logs" className="flex-1 p-8 font-mono text-sm overflow-y-auto whitespace-pre-wrap bg-white text-[#292524] scroll-smooth leading-relaxed select-text cursor-text">
                  {logs.length === 0 && !isExecuting ? (
                    <div className="select-text">
-                     <pre className="font-mono text-[10px] sm:text-xs text-[#1c1917] mb-6 leading-tight font-bold">
+                     <pre className="font-mono text-[10px] sm:text-xs text-[#1C1C1E] mb-6 leading-tight font-bold">
 {`   _____                           ____            
   / ___/___ _________  ___  _____ / __ \\____  _____
  / /__ / __ \`/ ___/ _ \\/ _ \\/ ___// / / / __ \\/ ___/
@@ -2096,36 +2096,36 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                      /_/            
 System Initialized — v2.0`}
                      </pre>
-                     <div className="text-[#78716c] space-y-2 mb-4">
-                       <p><strong className="text-[#57534e]">1. scan --deep</strong> <span className="text-[#a8a29e]">→</span> Auto-discover new job matches</p>
-                       <p><strong className="text-[#57534e]">2. rank --deep</strong> <span className="text-[#a8a29e]">→</span> Score and rank discovered roles</p>
-                       <p><strong className="text-[#57534e]">3. tailor &lt;id&gt; --deep</strong> <span className="text-[#a8a29e]">→</span> Generate hyper-custom Resumes & Cover Letters</p>
-                       <p><strong className="text-[#57534e]">4. apply &lt;id&gt; --deep</strong> <span className="text-[#a8a29e]">→</span> Automatically apply to role</p>
-                       <p><strong className="text-[#57534e]">5. add &lt;url&gt;</strong> <span className="text-[#a8a29e]">→</span> Scrape & add job to pipeline</p>
+                     <div className="text-[#6B6B6B] space-y-2 mb-4">
+                       <p><strong className="text-[#57534e]">1. scan --deep</strong> <span className="text-[#9CA3AF]">→</span> Auto-discover new job matches</p>
+                       <p><strong className="text-[#57534e]">2. rank --deep</strong> <span className="text-[#9CA3AF]">→</span> Score and rank discovered roles</p>
+                       <p><strong className="text-[#57534e]">3. tailor &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Generate hyper-custom Resumes & Cover Letters</p>
+                       <p><strong className="text-[#57534e]">4. apply &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Automatically apply to role</p>
+                       <p><strong className="text-[#57534e]">5. add &lt;url&gt;</strong> <span className="text-[#9CA3AF]">→</span> Scrape & add job to pipeline</p>
                        <br/>
-                       <p><strong className="text-[#57534e]">help</strong>        <span className="text-[#a8a29e]">→</span> View full command reference</p>
+                       <p><strong className="text-[#57534e]">help</strong>        <span className="text-[#9CA3AF]">→</span> View full command reference</p>
                        <br/>
-                       <p className="text-[#a8a29e]"><kbd className="px-1 py-0.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded text-[9px]">↑</kbd> <kbd className="px-1 py-0.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded text-[9px]">↓</kbd> History • <kbd className="px-1 py-0.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded text-[9px]">Ctrl+C</kbd> Clear line</p>
+                       <p className="text-[#9CA3AF]"><kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">↑</kbd> <kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">↓</kbd> History • <kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">Ctrl+C</kbd> Clear line</p>
                      </div>
-                     <div className="text-[#a8a29e] italic mt-4">Awaiting input...</div>
+                     <div className="text-[#9CA3AF] italic mt-4">Awaiting input...</div>
                    </div>
                  ) : (
                    <div className="space-y-1">
                      {logs.map((log, i) => (
-                      <div key={i} className={`select-text ${log.type === 'stderr' ? 'text-rose-700' : 'text-[#1c1917]'}`}>
+                      <div key={i} className={`select-text ${log.type === 'stderr' ? 'text-rose-700' : 'text-[#1C1C1E]'}`}>
                           {log.content}
                        </div>
                      ))}
                      {isExecuting && (
-                        <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.8, repeat: Infinity }} className="inline-block w-2 h-5 bg-[#1c1917] ml-1" />
+                        <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.8, repeat: Infinity }} className="inline-block w-2 h-5 bg-[#1C1C1E] ml-1" />
                      )}
                    </div>
                  )}
               </div>
 
-              <div className="p-5 bg-[#f5f5f4] border-t border-[#e7e5e4]">
+              <div className="p-5 bg-[#F5F5F0] border-t border-[#E5E5E0]">
                  <div className="flex items-center gap-3">
-                    <span className="text-[#1c1917] font-bold font-mono">auth@career-ops:~$</span>
+                    <span className="text-[#1C1C1E] font-bold font-mono">auth@career-ops:~$</span>
                     <form onSubmit={handleCommandSubmit} className="flex-1">
                        <input 
                          type="text"
@@ -2134,7 +2134,7 @@ System Initialized — v2.0`}
                          onKeyDown={handleKeyDown}
                          placeholder="scan / apply <id> / help (Ctrl+C to clear)"
                          disabled={isExecuting}
-                         className="w-full bg-transparent outline-none border-none text-[#1c1917] font-mono placeholder:text-[#78716c] caret-[#1c1917] select-text"
+                         className="w-full bg-transparent outline-none border-none text-[#1C1C1E] font-mono placeholder:text-[#6B6B6B] caret-[#1C1C1E] select-text"
                          autoFocus
                        />
                     </form>
@@ -2147,8 +2147,8 @@ System Initialized — v2.0`}
             <motion.div key="settings" className="w-full max-w-5xl">
                <div className="flex justify-between items-end mb-12">
                  <div>
-                   <h2 className="text-4xl font-bold text-[#1c1917] tracking-tight">System Configuration</h2>
-                   <p className="text-[#a8a29e] mt-1 font-medium italic">Establishing your global professional identity.</p>
+                   <h2 className="text-4xl font-bold text-[#1C1C1E] tracking-tight">System Configuration</h2>
+                   <p className="text-[#9CA3AF] mt-1 font-medium italic">Establishing your global professional identity.</p>
                  </div>
                  <div className="flex items-center gap-3">
                    <button
@@ -2156,7 +2156,7 @@ System Initialized — v2.0`}
                        localStorage.removeItem(`career_ops_onboarding_v2:${session?.user?.email || session?.user?.id || 'default'}`);
                        setWalkthroughStep(0);
                      }}
-                     className="px-5 py-4 rounded-2xl font-bold text-xs text-[#78716c] hover:text-[#1c1917] hover:bg-[#f5f5f4] transition-all flex items-center gap-2"
+                     className="px-5 py-4 rounded-2xl font-bold text-xs text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-[#F5F5F0] transition-all flex items-center gap-2"
                    >
                      <Play size={14} />
                      Restart Tour
@@ -2164,7 +2164,7 @@ System Initialized — v2.0`}
                    <button
                      onClick={handleSaveSettings}
                      disabled={isSaving}
-                     className={`px-10 py-4 rounded-2xl font-bold transition-all shadow-xl flex items-center gap-3 ${saveStatus === 'success' ? 'bg-emerald-500 text-white' : 'bg-[#1c1917] text-white hover:bg-[#27272a]'}`}
+                     className={`px-10 py-4 rounded-2xl font-bold transition-all shadow-xl flex items-center gap-3 ${saveStatus === 'success' ? 'bg-emerald-500 text-white' : 'bg-[#1C1C1E] text-white hover:bg-[#27272a]'}`}
                    >
                      {saveStatus === 'saving' ? 'Syncing...' : saveStatus === 'success' ? <><CheckCircle2 size={18} /> Profile Locked</> : 'Save Changes'}
                    </button>
@@ -2172,7 +2172,7 @@ System Initialized — v2.0`}
                </div>
 
                <div className="grid grid-cols-2 gap-10">
-                 <ConfigSection id="config-security" title="Account Security" icon={<Shield size={18} className="text-[#1c1917]" />}>
+                 <ConfigSection id="config-security" title="Account Security" icon={<Shield size={18} className="text-[#1C1C1E]" />}>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                      <Input label="Login Email" value={accountInfo.email} onChange={(v) => setAccountInfo({...accountInfo, email: v})} />
                      <div className="hidden md:block" />
@@ -2181,25 +2181,25 @@ System Initialized — v2.0`}
                    </div>
                  </ConfigSection>
 
-                 <ConfigSection title="Candidate Identity" icon={<LayoutDashboard size={18} className="text-[#1c1917]" />}>
+                 <ConfigSection title="Candidate Identity" icon={<LayoutDashboard size={18} className="text-[#1C1C1E]" />}>
                    {/* Profile Completion Indicator */}
                    {(() => {
                      const fields = ['full_name', 'email', 'location', 'phone', 'linkedin'];
                      const filled = fields.filter(f => profileFormData.candidate?.[f]?.trim()).length;
                      const percent = Math.round((filled / fields.length) * 100);
                      return (
-                       <div className="mb-5 bg-[#faf9f6] rounded-2xl p-4 border border-[#e7e5e4]">
+                       <div className="mb-5 bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
                          <div className="flex items-center justify-between mb-2">
-                           <span className="text-xs font-bold text-[#1c1917] uppercase tracking-wider">Profile Completion</span>
-                           <span className={`text-xs font-bold ${percent === 100 ? 'text-emerald-600' : 'text-[#78716c]'}`}>{percent}%</span>
+                           <span className="text-xs font-bold text-[#1C1C1E] uppercase tracking-wider">Profile Completion</span>
+                           <span className={`text-xs font-bold ${percent === 100 ? 'text-emerald-600' : 'text-[#6B6B6B]'}`}>{percent}%</span>
                          </div>
-                         <div className="h-2 bg-[#e7e5e4] rounded-full overflow-hidden">
+                         <div className="h-2 bg-[#E5E5E0] rounded-full overflow-hidden">
                            <div
-                             className={`h-full rounded-full transition-all duration-500 ${percent === 100 ? 'bg-emerald-500' : 'bg-[#1c1917]'}`}
+                             className={`h-full rounded-full transition-all duration-500 ${percent === 100 ? 'bg-emerald-500' : 'bg-[#1C1C1E]'}`}
                              style={{ width: `${percent}%` }}
                            />
                          </div>
-                         <p className="text-[10px] text-[#a8a29e] mt-2">
+                         <p className="text-[10px] text-[#9CA3AF] mt-2">
                            {percent === 100 ? '✓ All essential fields completed' : `${5 - filled} field${5 - filled === 1 ? '' : 's'} remaining for a complete profile`}
                          </p>
                        </div>
@@ -2207,12 +2207,12 @@ System Initialized — v2.0`}
                    })()}
 
                    {/* Essential Info Card */}
-                   <div className="bg-white rounded-2xl border border-[#e7e5e4] p-4 mb-4">
-                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#f5f5f4]">
-                       <div className="w-8 h-8 bg-[#1c1917] rounded-lg flex items-center justify-center">
+                   <div className="bg-white rounded-2xl border border-[#E5E5E0] p-4 mb-4">
+                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#F5F5F0]">
+                       <div className="w-8 h-8 bg-[#1C1C1E] rounded-lg flex items-center justify-center">
                          <span className="text-white text-xs font-bold">01</span>
                        </div>
-                       <span className="text-sm font-bold text-[#1c1917]">Essential Information</span>
+                       <span className="text-sm font-bold text-[#1C1C1E]">Essential Information</span>
                        <span className="text-[10px] text-rose-500 font-medium ml-auto">Required</span>
                      </div>
 
@@ -2252,13 +2252,13 @@ System Initialized — v2.0`}
                    </div>
 
                    {/* Online Presence Card */}
-                   <div className="bg-white rounded-2xl border border-[#e7e5e4] p-4">
-                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#f5f5f4]">
-                       <div className="w-8 h-8 bg-[#78716c] rounded-lg flex items-center justify-center">
+                   <div className="bg-white rounded-2xl border border-[#E5E5E0] p-4">
+                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#F5F5F0]">
+                       <div className="w-8 h-8 bg-[#6B6B6B] rounded-lg flex items-center justify-center">
                          <span className="text-white text-xs font-bold">02</span>
                        </div>
-                       <span className="text-sm font-bold text-[#1c1917]">Online Presence</span>
-                       <span className="text-[10px] text-[#a8a29e] font-medium ml-auto">Recommended</span>
+                       <span className="text-sm font-bold text-[#1C1C1E]">Online Presence</span>
+                       <span className="text-[10px] text-[#9CA3AF] font-medium ml-auto">Recommended</span>
                      </div>
 
                      <div className="space-y-4">
@@ -2281,10 +2281,10 @@ System Initialized — v2.0`}
 
                    {/* Quick Preview */}
                    {profileFormData.candidate.full_name && (
-                     <div className="mt-4 bg-[#faf9f6] rounded-2xl p-4 border border-[#e7e5e4]">
-                       <p className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-wider mb-2">Resume Header Preview</p>
-                       <div className="text-sm font-bold text-[#1c1917]">{profileFormData.candidate.full_name}</div>
-                       <div className="text-xs text-[#78716c] mt-1">
+                     <div className="mt-4 bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
+                       <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-2">Resume Header Preview</p>
+                       <div className="text-sm font-bold text-[#1C1C1E]">{profileFormData.candidate.full_name}</div>
+                       <div className="text-xs text-[#6B6B6B] mt-1">
                          {[
                            profileFormData.candidate.location,
                            profileFormData.candidate.email,
@@ -2292,7 +2292,7 @@ System Initialized — v2.0`}
                          ].filter(Boolean).join(' • ') || 'Add location, email, and phone'}
                        </div>
                        {(profileFormData.candidate.linkedin || profileFormData.candidate.github) && (
-                         <div className="text-[10px] text-[#a8a29e] mt-2">
+                         <div className="text-[10px] text-[#9CA3AF] mt-2">
                            {[
                              profileFormData.candidate.linkedin && `linkedin.com/in/${profileFormData.candidate.linkedin.replace(/^.*\//, '')}`,
                              profileFormData.candidate.github && (profileFormData.candidate.github.includes('/') ? profileFormData.candidate.github : `github.com/${profileFormData.candidate.github}`)
@@ -2303,7 +2303,7 @@ System Initialized — v2.0`}
                    )}
                  </ConfigSection>
 
-                 <ConfigSection title="Resume Import" icon={<Upload size={18} className="text-[#1c1917]" />}>
+                 <ConfigSection title="Resume Import" icon={<Upload size={18} className="text-[#1C1C1E]" />}>
                    <div className="space-y-5">
                      {/* Upload Area - Drop Zone Style */}
                      <div
@@ -2314,7 +2314,7 @@ System Initialized — v2.0`}
                              ? 'border-rose-400 bg-rose-50'
                              : resumeImportStatus === 'ready'
                                ? 'border-emerald-500 bg-emerald-50'
-                               : 'border-[#e7e5e4] hover:border-[#1c1917] hover:bg-[#faf9f6]'
+                               : 'border-[#E5E5E0] hover:border-[#1C1C1E] hover:bg-[#FAFAF8]'
                        }`}
                      >
                        <div className="text-center">
@@ -2323,7 +2323,7 @@ System Initialized — v2.0`}
                              ? 'bg-emerald-100'
                              : resumeImportStatus === 'error'
                                ? 'bg-rose-100'
-                               : 'bg-[#f5f5f4]'
+                               : 'bg-[#F5F5F0]'
                          }`}>
                            {resumeImportStatus === 'uploading' ? (
                              <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
@@ -2332,24 +2332,24 @@ System Initialized — v2.0`}
                            ) : resumeImportStatus === 'error' ? (
                              <AlertTriangle size={24} className="text-rose-600" />
                            ) : (
-                             <Upload size={24} className="text-[#78716c]" />
+                             <Upload size={24} className="text-[#6B6B6B]" />
                            )}
                          </div>
 
-                         <p className="text-sm font-bold text-[#1c1917] mb-1">
+                         <p className="text-sm font-bold text-[#1C1C1E] mb-1">
                            {resumeImportStatus === 'uploading' && 'Analyzing resume...'}
                            {resumeImportStatus === 'ready' && 'Resume analyzed successfully'}
                            {resumeImportStatus === 'error' && 'Import failed'}
                            {resumeImportStatus === 'idle' && 'Upload your resume (PDF or DOCX)'}
                          </p>
-                         <p className="text-xs text-[#78716c] mb-4">
+                         <p className="text-xs text-[#6B6B6B] mb-4">
                            {resumeImportStatus === 'idle' && 'We\'ll extract Experience and Education automatically'}
                            {resumeImportStatus === 'ready' && `Found ${(resumeImport?.experience || []).length} experience entries and ${(resumeImport?.education || []).length} education entries`}
                            {resumeImportStatus === 'error' && (resumeImport?.error || 'Unknown error')}
                          </p>
 
                          {resumeImportStatus !== 'uploading' && (
-                           <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1c1917] text-white text-xs font-bold rounded-xl hover:bg-[#27272a] transition-colors cursor-pointer">
+                           <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1C1C1E] text-white text-xs font-bold rounded-xl hover:bg-[#27272a] transition-colors cursor-pointer">
                              <Upload size={14} />
                              <span>{resumeImportStatus === 'ready' ? 'Upload different resume' : 'Choose file'}</span>
                              <input
@@ -2369,10 +2369,10 @@ System Initialized — v2.0`}
                      </div>
 
                      {/* Import Mode Selection */}
-                     <div className="bg-[#faf9f6] rounded-2xl p-4 border border-[#e7e5e4]">
+                     <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
                        <div className="flex items-center justify-between mb-3">
-                         <span className="text-xs font-bold text-[#1c1917] uppercase tracking-wider">Import Mode</span>
-                         <span className="text-[10px] text-[#a8a29e] bg-white px-2 py-1 rounded-lg border border-[#e7e5e4]">
+                         <span className="text-xs font-bold text-[#1C1C1E] uppercase tracking-wider">Import Mode</span>
+                         <span className="text-[10px] text-[#9CA3AF] bg-white px-2 py-1 rounded-lg border border-[#E5E5E0]">
                            {resumeImportMode === 'merge' ? 'Add to existing' : 'Replace all'}
                          </span>
                        </div>
@@ -2384,19 +2384,19 @@ System Initialized — v2.0`}
                            onClick={() => setResumeImportMode('merge')}
                            className={`p-4 rounded-xl border text-left transition-all ${
                              resumeImportMode === 'merge'
-                               ? 'bg-white border-[#1c1917] shadow-sm'
-                               : 'bg-white border-[#e7e5e4] hover:border-[#1c1917]'
+                               ? 'bg-white border-[#1C1C1E] shadow-sm'
+                               : 'bg-white border-[#E5E5E0] hover:border-[#1C1C1E]'
                            }`}
                          >
                            <div className="flex items-center gap-2 mb-2">
                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                               resumeImportMode === 'merge' ? 'border-[#1c1917] bg-[#1c1917]' : 'border-[#e7e5e4]'
+                               resumeImportMode === 'merge' ? 'border-[#1C1C1E] bg-[#1C1C1E]' : 'border-[#E5E5E0]'
                              }`}>
                                {resumeImportMode === 'merge' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                              </div>
-                             <span className="text-sm font-bold text-[#1c1917]">Merge</span>
+                             <span className="text-sm font-bold text-[#1C1C1E]">Merge</span>
                            </div>
-                           <p className="text-[10px] text-[#78716c] leading-relaxed">
+                           <p className="text-[10px] text-[#6B6B6B] leading-relaxed">
                              Keep existing entries and add new ones from resume. No duplicates.
                            </p>
                          </button>
@@ -2408,18 +2408,18 @@ System Initialized — v2.0`}
                            className={`p-4 rounded-xl border text-left transition-all ${
                              resumeImportMode === 'replace'
                                ? 'bg-white border-rose-500 shadow-sm'
-                               : 'bg-white border-[#e7e5e4] hover:border-rose-400'
+                               : 'bg-white border-[#E5E5E0] hover:border-rose-400'
                            }`}
                          >
                            <div className="flex items-center gap-2 mb-2">
                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                               resumeImportMode === 'replace' ? 'border-rose-500 bg-rose-500' : 'border-[#e7e5e4]'
+                               resumeImportMode === 'replace' ? 'border-rose-500 bg-rose-500' : 'border-[#E5E5E0]'
                              }`}>
                                {resumeImportMode === 'replace' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                              </div>
-                             <span className="text-sm font-bold text-[#1c1917]">Replace</span>
+                             <span className="text-sm font-bold text-[#1C1C1E]">Replace</span>
                            </div>
-                           <p className="text-[10px] text-[#78716c] leading-relaxed">
+                           <p className="text-[10px] text-[#6B6B6B] leading-relaxed">
                              Delete all existing entries. Use only what's in the uploaded resume.
                            </p>
                          </button>
@@ -2493,12 +2493,12 @@ System Initialized — v2.0`}
                    </div>
                  </ConfigSection>
 
-                 <ConfigSection title="Experience" icon={<Briefcase size={18} className="text-[#1c1917]" />}>
+                 <ConfigSection title="Experience" icon={<Briefcase size={18} className="text-[#1C1C1E]" />}>
                    <div className="space-y-4">
                      {(profileFormData.experience || []).map((exp: any, idx: number) => (
-                       <div key={idx} className="p-5 bg-[#faf9f6]/50 border border-[#e7e5e4] rounded-2xl">
+                       <div key={idx} className="p-5 bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl">
                          <div className="flex items-start justify-between gap-4 mb-4">
-                           <div className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-widest">
+                           <div className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">
                              Role {idx + 1}
                            </div>
                            <button
@@ -2556,7 +2556,7 @@ System Initialized — v2.0`}
                          </div>
 
                          <div className="mt-4">
-                           <label className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-widest mb-2 block">
+                           <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-2 block">
                              Bullets (one per line)
                            </label>
                            <textarea
@@ -2571,7 +2571,7 @@ System Initialized — v2.0`}
                                next[idx] = { ...(next[idx] || {}), bullets };
                                setProfileFormData({ ...profileFormData, experience: next });
                              }}
-                             className="w-full bg-[#faf9f6]/50 border border-[#e7e5e4] rounded-2xl p-4 outline-none focus:border-[#1c1917] transition-all text-sm font-medium leading-relaxed"
+                             className="w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl p-4 outline-none focus:border-[#1C1C1E] transition-all text-sm font-medium leading-relaxed"
                            />
                          </div>
                        </div>
@@ -2587,19 +2587,19 @@ System Initialized — v2.0`}
                            ],
                          })
                        }
-                       className="w-full px-6 py-3 rounded-2xl border border-[#e7e5e4] bg-white hover:bg-[#f5f5f4] transition-colors text-sm font-bold text-[#1c1917]"
+                       className="w-full px-6 py-3 rounded-2xl border border-[#E5E5E0] bg-white hover:bg-[#F5F5F0] transition-colors text-sm font-bold text-[#1C1C1E]"
                      >
                        Add Experience
                      </button>
                    </div>
                  </ConfigSection>
 
-                 <ConfigSection title="Education" icon={<FileText size={18} className="text-[#1c1917]" />}>
+                 <ConfigSection title="Education" icon={<FileText size={18} className="text-[#1C1C1E]" />}>
                    <div className="space-y-4">
                      {(profileFormData.education || []).map((edu: any, idx: number) => (
-                       <div key={idx} className="p-5 bg-[#faf9f6]/50 border border-[#e7e5e4] rounded-2xl">
+                       <div key={idx} className="p-5 bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl">
                          <div className="flex items-start justify-between gap-4 mb-4">
-                           <div className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-widest">
+                           <div className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">
                              Entry {idx + 1}
                            </div>
                            <button
@@ -2663,27 +2663,27 @@ System Initialized — v2.0`}
                            education: [...(profileFormData.education || []), { school: '', degree: '', period: '' }],
                          })
                        }
-                       className="w-full px-6 py-3 rounded-2xl border border-[#e7e5e4] bg-white hover:bg-[#f5f5f4] transition-colors text-sm font-bold text-[#1c1917]"
+                       className="w-full px-6 py-3 rounded-2xl border border-[#E5E5E0] bg-white hover:bg-[#F5F5F0] transition-colors text-sm font-bold text-[#1C1C1E]"
                      >
                        Add Education
                      </button>
                    </div>
                  </ConfigSection>
 
-                 <ConfigSection id="config-narrative" title="Core Narrative" icon={<FileText size={18} className="text-[#1c1917]" />}>
+                 <ConfigSection id="config-narrative" title="Core Narrative" icon={<FileText size={18} className="text-[#1C1C1E]" />}>
                     <Input label="Strategic Headline" value={profileFormData.narrative.headline} onChange={(v) => setProfileFormData({...profileFormData, narrative: {...profileFormData.narrative, headline: v}})} />
                     <div>
-                       <label className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-widest mb-2 block">Executive Story</label>
+                       <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-2 block">Executive Story</label>
                        <textarea
                          rows={4}
                          value={profileFormData.narrative.exit_story}
                          onChange={(e) => setProfileFormData({...profileFormData, narrative: {...profileFormData.narrative, exit_story: e.target.value}})}
-                         className="w-full bg-[#faf9f6]/50 border border-[#e7e5e4] rounded-2xl p-4 outline-none focus:border-[#1c1917] transition-all text-sm font-medium leading-relaxed"
+                         className="w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl p-4 outline-none focus:border-[#1C1C1E] transition-all text-sm font-medium leading-relaxed"
                        />
                     </div>
                  </ConfigSection>
 
-                 <ConfigSection id="config-targeting" title="Targeting Parameters" icon={<Search size={18} className="text-[#1c1917]" />}>
+                 <ConfigSection id="config-targeting" title="Targeting Parameters" icon={<Search size={18} className="text-[#1C1C1E]" />}>
                     <div className="space-y-6">
                       <TagInput
                         label="Targeted Roles & Skills"
@@ -2695,7 +2695,7 @@ System Initialized — v2.0`}
                         onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, positive: profileFormData.targeting_keywords.positive.filter((_: string, idx: number) => idx !== i)}})}
                         color="emerald"
                       />
-                      <div className="pt-6 border-t border-[#f5f5f4]">
+                      <div className="pt-6 border-t border-[#F5F5F0]">
                         <TagInput
                           label="Exclusion Keywords"
                           placeholder="Type a keyword to exclude, press Enter..."
@@ -2710,7 +2710,7 @@ System Initialized — v2.0`}
                     </div>
                  </ConfigSection>
 
-                 <ConfigSection title="Portal Sources (Per User)" icon={<TerminalIcon size={18} className="text-[#1c1917]" />}>
+                 <ConfigSection title="Portal Sources (Per User)" icon={<TerminalIcon size={18} className="text-[#1C1C1E]" />}>
                     <TagInput
                       label="Enabled Portals"
                       placeholder="linkedin, naukri, indeed, instahyre, flexiple..."
@@ -2733,12 +2733,12 @@ System Initialized — v2.0`}
                       })}
                       color="stone"
                     />
-                    <p className="text-xs text-[#78716c] font-medium">
+                    <p className="text-xs text-[#6B6B6B] font-medium">
                       Multi-tenant: every user should configure their own basics once in Settings.
                     </p>
                  </ConfigSection>
 
-                 <ConfigSection title="GitHub Automation Integration" icon={<TerminalIcon size={18} className="text-[#1c1917]" />}>
+                 <ConfigSection title="GitHub Automation Integration" icon={<TerminalIcon size={18} className="text-[#1C1C1E]" />}>
                     <div className="space-y-4">
                       <Input
                         label="GitHub Personal Access Token (PAT)"
@@ -2783,13 +2783,13 @@ System Initialized — v2.0`}
               initial={{ opacity: 0, y: 10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
-              className="w-full max-w-4xl bg-white rounded-[2rem] border border-[#e7e5e4] shadow-2xl overflow-hidden"
+              className="w-full max-w-4xl bg-white rounded-[2rem] border border-[#E5E5E0] shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-[#e7e5e4] flex items-start justify-between gap-4">
+              <div className="p-6 border-b border-[#E5E5E0] flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="text-xs font-mono text-[#a8a29e] uppercase tracking-[0.2em]">Job details</div>
-                  <div className="text-xl font-bold text-[#1c1917] mt-1 truncate">
+                  <div className="text-xs font-mono text-[#9CA3AF] uppercase tracking-[0.2em]">Job details</div>
+                  <div className="text-xl font-bold text-[#1C1C1E] mt-1 truncate">
                     {jobDetails?.company ? `${jobDetails.company} · ${jobDetails.title}` : 'Loading…'}
                   </div>
                   {jobDetails?.url && (
@@ -2797,7 +2797,7 @@ System Initialized — v2.0`}
                       href={jobDetails.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-[#1c1917] underline underline-offset-4"
+                      className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-[#1C1C1E] underline underline-offset-4"
                     >
                       <ExternalLink size={14} />
                       Open posting
@@ -2806,7 +2806,7 @@ System Initialized — v2.0`}
                 </div>
                 <button
                   onClick={() => setJobDetailsOpen(false)}
-                  className="p-2 rounded-xl hover:bg-[#f5f5f4] transition-colors"
+                  className="p-2 rounded-xl hover:bg-[#F5F5F0] transition-colors"
                   aria-label="Close"
                 >
                   <X size={18} />
@@ -2815,17 +2815,17 @@ System Initialized — v2.0`}
 
               <div className="p-6 max-h-[70vh] overflow-y-auto">
                 {jobDetailsLoading && (
-                  <div className="text-sm font-medium text-[#78716c]">Loading job description…</div>
+                  <div className="text-sm font-medium text-[#6B6B6B]">Loading job description…</div>
                 )}
                 {jobDetailsError && (
                   <div className="text-sm font-bold text-rose-700">Error: {jobDetailsError}</div>
                 )}
                 {!jobDetailsLoading && !jobDetailsError && (
                   <>
-                    <div className="text-[10px] font-mono text-[#a8a29e] uppercase tracking-[0.2em] mb-3">
+                    <div className="text-[10px] font-mono text-[#9CA3AF] uppercase tracking-[0.2em] mb-3">
                       Job description
                     </div>
-                    <pre className="whitespace-pre-wrap text-sm leading-relaxed text-[#1c1917]">
+                    <pre className="whitespace-pre-wrap text-sm leading-relaxed text-[#1C1C1E]">
                       {jobDetails?.jd_text || 'No JD captured yet. Run Tailor to scrape and persist it.'}
                     </pre>
                   </>
@@ -2833,16 +2833,16 @@ System Initialized — v2.0`}
               </div>
 
               {!jobDetailsLoading && !jobDetailsError && jobDetails && (
-                <div className="p-6 bg-[#faf9f6] border-t border-[#e7e5e4] flex items-center justify-end gap-3">
+                <div className="p-6 bg-[#FAFAF8] border-t border-[#E5E5E0] flex items-center justify-end gap-3">
                   <button
                     onClick={() => { setJobDetailsOpen(false); setActiveTab('terminal'); runCommand(`tailor ${jobDetails.id} --deep`); }}
-                    className="px-5 py-2.5 bg-[#1c1917] text-white rounded-xl font-bold text-xs hover:bg-[#27272a] transition-all"
+                    className="px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs hover:bg-[#27272a] transition-all"
                   >
                     Tailor
                   </button>
                   <button
                     onClick={() => { setJobDetailsOpen(false); setActiveTab('terminal'); runCommand(`apply ${jobDetails.id} --deep`); }}
-                    className="px-5 py-2.5 bg-white border border-[#e7e5e4] text-[#1c1917] rounded-xl font-bold text-xs hover:bg-[#f5f5f4] transition-all"
+                    className="px-5 py-2.5 bg-white border border-[#E5E5E0] text-[#1C1C1E] rounded-xl font-bold text-xs hover:bg-[#F5F5F0] transition-all"
                   >
                     Apply (Auto)
                   </button>
@@ -2883,32 +2883,32 @@ System Initialized — v2.0`}
                     <AlertTriangle size={24} className="text-rose-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#1c1917] text-lg">Delete Job?</h3>
-                    <p className="text-xs text-[#78716c]">This action cannot be undone</p>
+                    <h3 className="font-bold text-[#1C1C1E] text-lg">Delete Job?</h3>
+                    <p className="text-xs text-[#6B6B6B]">This action cannot be undone</p>
                   </div>
                 </div>
               </div>
 
               {/* Content */}
               <div className="p-6">
-                <p className="text-sm text-[#78716c] mb-4">
+                <p className="text-sm text-[#6B6B6B] mb-4">
                   You are about to delete:
                 </p>
-                <div className="bg-[#faf9f6] rounded-2xl p-4 border border-[#e7e5e4]">
-                  <div className="font-bold text-[#1c1917] mb-1">{deleteTarget.company}</div>
-                  <div className="text-xs text-[#78716c]">{deleteTarget.title}</div>
+                <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
+                  <div className="font-bold text-[#1C1C1E] mb-1">{deleteTarget.company}</div>
+                  <div className="text-xs text-[#6B6B6B]">{deleteTarget.title}</div>
                 </div>
-                <p className="text-xs text-[#a8a29e] mt-4">
+                <p className="text-xs text-[#9CA3AF] mt-4">
                   This deletes the job record (and application row, if present) plus any stored resumes, cover letters, and job description for this posting.
                 </p>
               </div>
 
               {/* Actions */}
-              <div className="p-4 border-t border-[#e7e5e4] flex gap-3">
+              <div className="p-4 border-t border-[#E5E5E0] flex gap-3">
                 <button
                   onClick={() => setDeleteConfirmOpen(false)}
                   disabled={deleteLoading}
-                  className="flex-1 px-4 py-3 rounded-xl border border-[#e7e5e4] text-[#78716c] font-bold text-sm hover:bg-[#f5f5f4] transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-3 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] font-bold text-sm hover:bg-[#F5F5F0] transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -2958,18 +2958,18 @@ System Initialized — v2.0`}
                     <Trash2 size={22} className="text-rose-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#1c1917] text-lg">Clear pipeline</h3>
-                    <p className="text-xs text-[#78716c]">One request — removes jobs from the database</p>
+                    <h3 className="font-bold text-[#1C1C1E] text-lg">Clear pipeline</h3>
+                    <p className="text-xs text-[#6B6B6B]">One request — removes jobs from the database</p>
                   </div>
                 </div>
               </div>
               <div className="p-6 space-y-4">
-                <p className="text-sm text-[#78716c]">
+                <p className="text-sm text-[#6B6B6B]">
                   Choose what to remove. Application-tracked jobs are never included.
                 </p>
                 {pipelineFilterActive ? (
                   <div className="space-y-3">
-                    <label className="flex items-start gap-3 cursor-pointer rounded-2xl border border-[#e7e5e4] p-4 hover:bg-[#faf9f6] has-[:checked]:border-rose-300 has-[:checked]:bg-rose-50/40">
+                    <label className="flex items-start gap-3 cursor-pointer rounded-2xl border border-[#E5E5E0] p-4 hover:bg-[#FAFAF8] has-[:checked]:border-rose-300 has-[:checked]:bg-rose-50/40">
                       <input
                         type="radio"
                         name="clear-pipeline-scope"
@@ -2978,13 +2978,13 @@ System Initialized — v2.0`}
                         onChange={() => setClearPipelineScope('visible')}
                       />
                       <span>
-                        <span className="font-bold text-[#1c1917]">Visible rows only</span>
-                        <span className="block text-xs text-[#78716c] mt-1">
+                        <span className="font-bold text-[#1C1C1E]">Visible rows only</span>
+                        <span className="block text-xs text-[#6B6B6B] mt-1">
                           Delete {pipelineFiltered} job{pipelineFiltered === 1 ? '' : 's'} matching your search ({pipelineTotal} total in pipeline).
                         </span>
                       </span>
                     </label>
-                    <label className="flex items-start gap-3 cursor-pointer rounded-2xl border border-[#e7e5e4] p-4 hover:bg-[#faf9f6] has-[:checked]:border-rose-300 has-[:checked]:bg-rose-50/40">
+                    <label className="flex items-start gap-3 cursor-pointer rounded-2xl border border-[#E5E5E0] p-4 hover:bg-[#FAFAF8] has-[:checked]:border-rose-300 has-[:checked]:bg-rose-50/40">
                       <input
                         type="radio"
                         name="clear-pipeline-scope"
@@ -2993,26 +2993,26 @@ System Initialized — v2.0`}
                         onChange={() => setClearPipelineScope('all')}
                       />
                       <span>
-                        <span className="font-bold text-[#1c1917]">Entire pipeline</span>
-                        <span className="block text-xs text-[#78716c] mt-1">
+                        <span className="font-bold text-[#1C1C1E]">Entire pipeline</span>
+                        <span className="block text-xs text-[#6B6B6B] mt-1">
                           Delete all {pipelineTotal} job{pipelineTotal === 1 ? '' : 's'} (ignores search).
                         </span>
                       </span>
                     </label>
                   </div>
                 ) : (
-                  <div className="bg-[#faf9f6] rounded-2xl p-4 border border-[#e7e5e4] text-sm text-[#57534e]">
-                    This will delete <strong className="text-[#1c1917]">{pipelineTotal}</strong> pipeline job
+                  <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0] text-sm text-[#57534e]">
+                    This will delete <strong className="text-[#1C1C1E]">{pipelineTotal}</strong> pipeline job
                     {pipelineTotal === 1 ? '' : 's'} and any stored JDs / tailored assets for those rows.
                   </div>
                 )}
               </div>
-              <div className="p-4 border-t border-[#e7e5e4] flex gap-3">
+              <div className="p-4 border-t border-[#E5E5E0] flex gap-3">
                 <button
                   type="button"
                   onClick={() => setClearPipelineOpen(false)}
                   disabled={clearPipelineLoading}
-                  className="flex-1 px-4 py-3 rounded-xl border border-[#e7e5e4] text-[#78716c] font-bold text-sm hover:bg-[#f5f5f4] transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-3 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] font-bold text-sm hover:bg-[#F5F5F0] transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -3051,7 +3051,7 @@ System Initialized — v2.0`}
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-6 right-6 z-[100] bg-[#1c1917] text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10"
+            className="fixed bottom-6 right-6 z-[100] bg-[#1C1C1E] text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10"
           >
             <CheckCircle2 size={20} className="text-[#f59e0b]" />
             <span className="text-sm font-bold tracking-wide">{toast.message}</span>
@@ -3084,7 +3084,7 @@ System Initialized — v2.0`}
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="bg-white rounded-[2rem] border border-[#e7e5e4] shadow-2xl max-w-md w-full p-8 relative pointer-events-auto transition-all duration-500 max-h-[calc(100vh-2rem)] overflow-y-auto"
+                className="bg-white rounded-[2rem] border border-[#E5E5E0] shadow-2xl max-w-md w-full p-8 relative pointer-events-auto transition-all duration-500 max-h-[calc(100vh-2rem)] overflow-y-auto"
                 style={spotlightRect ? {
                     position: 'absolute',
                     top: Math.min(window.innerHeight - 480, Math.max(20, spotlightRect.top + spotlightRect.height + 20)),
@@ -3092,51 +3092,51 @@ System Initialized — v2.0`}
                 } : {}}
               >
                 <div className="absolute top-0 right-0 p-5">
-                  <button onClick={completeOnboarding} className="text-[#a8a29e] hover:text-[#1c1917] transition-colors">
+                  <button onClick={completeOnboarding} className="text-[#9CA3AF] hover:text-[#1C1C1E] transition-colors">
                     <span className="text-[10px] font-bold uppercase tracking-widest">Skip Tour</span>
                   </button>
                 </div>
 
                 {/* Step indicator */}
                 <div className="flex items-center gap-2 mb-6">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#a8a29e]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
                     Step {walkthroughStep + 1} of {steps.length}
                   </span>
-                  <div className="flex-1 h-1 bg-[#f5f5f4] rounded-full overflow-hidden">
+                  <div className="flex-1 h-1 bg-[#F5F5F0] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#1c1917] transition-all duration-300"
+                      className="h-full bg-[#1C1C1E] transition-all duration-300"
                       style={{ width: `${((walkthroughStep + 1) / steps.length) * 100}%` }}
                     />
                   </div>
                 </div>
 
                 <div className="mb-6">
-                  <div className="h-12 w-12 bg-gradient-to-br from-[#1c1917] to-[#44403c] rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-black/10">
+                  <div className="h-12 w-12 bg-gradient-to-br from-[#1C1C1E] to-[#44403c] rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-black/10">
                     <div className="text-white">{steps[walkthroughStep].icon}</div>
                   </div>
 
-                  <h2 className="text-xl font-bold text-[#1c1917] mb-3 tracking-tight leading-tight">{steps[walkthroughStep].title}</h2>
-                  <p className="text-[#78716c] leading-relaxed text-sm">{steps[walkthroughStep].content}</p>
+                  <h2 className="text-xl font-bold text-[#1C1C1E] mb-3 tracking-tight leading-tight">{steps[walkthroughStep].title}</h2>
+                  <p className="text-[#6B6B6B] leading-relaxed text-sm">{steps[walkthroughStep].content}</p>
                 </div>
 
-                <div className="flex items-center justify-between mt-6 pt-5 border-t border-[#f5f5f4]">
+                <div className="flex items-center justify-between mt-6 pt-5 border-t border-[#F5F5F0]">
                   <div className="flex gap-1.5">
                     {steps.map((_, s) => (
-                      <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${walkthroughStep === s ? 'bg-[#1c1917] w-6' : 'bg-[#e7e5e4] w-1.5'}`} />
+                      <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${walkthroughStep === s ? 'bg-[#1C1C1E] w-6' : 'bg-[#E5E5E0] w-1.5'}`} />
                     ))}
                   </div>
                   <div className="flex gap-2">
                     {walkthroughStep > 0 && (
                       <button
                         onClick={() => setWalkthroughStep(walkthroughStep - 1)}
-                        className="px-4 py-2.5 text-[#78716c] hover:text-[#1c1917] rounded-xl font-bold text-xs transition-colors"
+                        className="px-4 py-2.5 text-[#6B6B6B] hover:text-[#1C1C1E] rounded-xl font-bold text-xs transition-colors"
                       >
                         Back
                       </button>
                     )}
                     <button
                       onClick={() => walkthroughStep < steps.length - 1 ? setWalkthroughStep(walkthroughStep + 1) : completeOnboarding()}
-                      className="px-5 py-2.5 bg-[#1c1917] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#27272a] transition-all shadow-lg shadow-black/10"
+                      className="px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#27272a] transition-all shadow-lg shadow-black/10"
                     >
                       {walkthroughStep === steps.length - 1 ? 'Get Started' : 'Next'}
                       <ChevronRight size={14} />
@@ -3154,7 +3154,7 @@ System Initialized — v2.0`}
 
 function NavItem({ id, icon, label, active, onClick }: { id?: string, icon: any, label: string, active: boolean, onClick: () => void }) {
   return (
-    <button id={id} onClick={onClick} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-[#1c1917] text-white font-bold shadow-xl' : 'text-[#78716c] hover:text-[#1c1917] hover:bg-white/50'}`}>
+    <button id={id} onClick={onClick} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-xl' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}>
       {icon}
       <span className="text-sm">{label}</span>
     </button>
@@ -3187,8 +3187,8 @@ function StatCard({ icon, label, value, color = 'stone' }: { icon: any, label: s
 
 function ConfigSection({ id, title, icon, children }: { id?: string, title: string, icon: any, children: React.ReactNode }) {
   return (
-    <div id={id} className="bg-white border border-[#e7e5e4] rounded-[2.5rem] p-6 space-y-6 scroll-mt-10">
-      <h3 className="font-bold text-lg flex items-center gap-3 text-[#1c1917] border-b border-[#f5f5f4] pb-6">{icon} {title}</h3>
+    <div id={id} className="bg-white border border-[#E5E5E0] rounded-[2.5rem] p-6 space-y-6 scroll-mt-10">
+      <h3 className="font-bold text-lg flex items-center gap-3 text-[#1C1C1E] border-b border-[#F5F5F0] pb-6">{icon} {title}</h3>
       {children}
     </div>
   );
@@ -3214,18 +3214,18 @@ function Input({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-widest block pl-1">
+        <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest block pl-1">
           {label}
           {required && <span className="text-rose-500 ml-1">*</span>}
         </label>
-        {hint && <span className="text-[9px] text-[#a8a29e] italic">{hint}</span>}
+        {hint && <span className="text-[9px] text-[#9CA3AF] italic">{hint}</span>}
       </div>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full bg-[#faf9f6]/50 border rounded-2xl p-4 outline-none focus:border-[#1c1917] transition-all text-sm font-bold text-[#1c1917] ${
-          value?.trim() ? 'border-[#e7e5e4]' : required ? 'border-rose-200 focus:border-rose-400' : 'border-[#e7e5e4]'
+        className={`w-full bg-[#FAFAF8]/50 border rounded-2xl p-4 outline-none focus:border-[#1C1C1E] transition-all text-sm font-bold text-[#1C1C1E] ${
+          value?.trim() ? 'border-[#E5E5E0]' : required ? 'border-rose-200 focus:border-rose-400' : 'border-[#E5E5E0]'
         }`}
         placeholder={placeholder}
         required={required}
@@ -3271,9 +3271,9 @@ function TagInput({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
 
   return (
     <div className="space-y-2">
-      <label className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-widest block pl-1">{label}</label>
+      <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest block pl-1">{label}</label>
       <div
-        className="min-h-[52px] w-full bg-[#faf9f6]/50 border border-[#e7e5e4] rounded-2xl p-3 flex flex-wrap gap-2 items-center cursor-text focus-within:border-[#1c1917] transition-all"
+        className="min-h-[52px] w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl p-3 flex flex-wrap gap-2 items-center cursor-text focus-within:border-[#1C1C1E] transition-all"
         onClick={() => inputRef.current?.focus()}
       >
         {tags.map((tag, i) => (
@@ -3313,10 +3313,10 @@ function TagInput({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
           onKeyDown={handleKey}
           onBlur={commit}
           placeholder={tags.length === 0 ? placeholder : '+ Add more'}
-          className="flex-1 min-w-[120px] bg-transparent outline-none text-sm font-bold text-[#1c1917] placeholder:text-[#a8a29e]/60"
+          className="flex-1 min-w-[120px] bg-transparent outline-none text-sm font-bold text-[#1C1C1E] placeholder:text-[#9CA3AF]/60"
         />
       </div>
-      <p className="text-[10px] text-[#a8a29e] pl-1">Press <kbd className="px-1 py-0.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded text-[9px]">Enter</kbd> or <kbd className="px-1 py-0.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded text-[9px]">,</kbd> to add a tag</p>
+      <p className="text-[10px] text-[#9CA3AF] pl-1">Press <kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">Enter</kbd> or <kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">,</kbd> to add a tag</p>
     </div>
   );
 }
