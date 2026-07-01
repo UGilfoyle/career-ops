@@ -246,11 +246,15 @@ _If `voice-dna.md` exists, its §3 Banned List is the canonical, fuller version 
 `generate-pdf.mjs` automatically normalizes em-dashes, smart quotes, and zero-width characters to ASCII equivalents for maximum ATS compatibility. But avoid generating them in the first place.
 
 ### Vary sentence structure
-- Don't start every bullet with the same verb
+- Don't start every bullet with the same verb — each bullet must use a unique opening action verb across the full resume
+- Never repeat high-frequency verbs (implemented, developed, designed, led, built) more than once; rotate: executed, applied, engineered, enhanced, expanded, enforced, deployed, streamlined
 - Mix sentence lengths (short. Then longer with context. Short again.)
 - Don't always use "X, Y, and Z" — sometimes two items, sometimes four
 
-### Prefer specifics over abstractions
+### Quantified impact (required for ATS content score)
+- At least 75% of experience bullets should include a real metric from cv.md (% , counts, latency, cost, throughput)
+- Carry numbers verbatim from the source CV — never invent metrics
+- Weak: "improved system performance". Strong: "cut server CPU load by 30%"
 - "Cut p95 latency from 2.1s to 380ms" beats "improved performance"
 - "Postgres + pgvector for retrieval over 12k docs" beats "designed scalable RAG architecture"
 - Name tools, projects, and customers when allowed

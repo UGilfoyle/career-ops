@@ -6,6 +6,7 @@ import { createRequire } from 'module';
 import { pathToFileURL } from 'url';
 import sql from './db/client.mjs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { polishTailoredResume, auditResumeQuality } from './resume-quality.mjs';
 
 let hf = null;
 let hfUnavailable = false;
@@ -1098,6 +1099,8 @@ GLOBAL RULES:
 - Highlight Applied AI & GenAI/LLM: If the JD requires or mentions AI, Generative AI, Large Language Models (LLMs), RAG, vector databases, or machine learning, prioritize and weave the candidate's AI experience (e.g., ChromaDB document ingestion pipeline with multiprocessing, conversation query-rewriting, Anthropic Claude/OpenAI GPT integrations with tenacity backoff retry, self-correcting validation loops for LLMs) into the summary, core competencies, and tailored experience bullets.
 - Freelance / Contract / Temporary Role Adaptation: If the JD indicates a freelance, contract, or temporary role, adapt the summary and cover letter to emphasize high autonomy, rapid team integration, immediate contribution, and deliverables-oriented execution. DO NOT change the candidate's existing job titles on the resume to "Freelance" or "Contractor". Keep professional titles (e.g., "Senior Software Engineer") as-is. Avoid adding clunky "doing freelancing" or "freelancing work" phrasing.
 - CRITICAL ATS OPTIMIZATION (85+ ATS Score Target): Maximize exact keyword matching. Extract the primary languages, frameworks, databases, cloud platforms, and technical skills from the JD and weave them verbatim into the Summary, Core Competencies, and Rewritten Bullets. Match terminology exactly (e.g. if the JD writes "PostgreSQL", do not write "Postgres" or "SQL database").
+- CRITICAL — QUANTIFIED IMPACT: At least 75% of experience bullets MUST include a real metric from the digest (% , dollar amount, latency, throughput, user/request counts, cost reduction). Carry numbers verbatim from source bullets — never invent metrics. Weak: "improved performance". Strong: "cut server CPU load by 30%".
+- CRITICAL — VERB VARIETY (no repetition): Never start two bullets with the same verb anywhere in the resume. Do not repeat implemented, developed, designed, led, built, created, or optimized more than once each. Rotate verbs: executed, applied, engineered, architected, delivered, streamlined, deployed, enhanced, expanded, enforced, drove, owned, reduced, accelerated.
 
 
 TASK:
@@ -1121,7 +1124,9 @@ ${roleDigest}
       BULLET RULES:
       - Each bullet MUST reference at least one specific technology/requirement from the JD
       - Use EXACT JD terminology (if JD says ".NET Core", write ".NET Core" not "backend frameworks")
-      - Include metrics from the digest where available; never fabricate numbers
+      - Each bullet MUST include at least one metric from the digest when the source bullet has one; never fabricate numbers
+      - Start each bullet with a UNIQUE action verb — no two bullets may share the same opening verb
+      - Avoid overused verbs: do not use "implemented" or "developed" more than once in the entire resume; prefer executed, applied, engineered, enhanced, expanded, enforced, deployed, streamlined
       - Connect each bullet directly to a JD requirement
 
 2. COVER LETTER (body only — template adds "Dear Hiring Manager," and "Sincerely,"):
@@ -1286,6 +1291,25 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       console.log(`[DEBUG] AI returned flat experience array: ${exp.length} bullets (legacy single-role)`);
     }
   }
+
+  if (data?.resume) {
+    const { resume: polished, stats } = polishTailoredResume(data.resume, profile?.experience || []);
+    data.resume = polished;
+    if (stats.verbsRotated > 0 || stats.metricsEnriched > 0) {
+      console.log(
+        `📊 Resume quality polish: ${stats.verbsRotated} repeated verb(s) rotated, ${stats.metricsEnriched} bullet(s) enriched with source metrics`,
+      );
+    }
+    const audit = auditResumeQuality(data.resume);
+    if (audit.repeatedVerbs.length > 0) {
+      console.warn(`⚠ Remaining repeated verbs after polish: ${audit.repeatedVerbs.join(', ')}`);
+    }
+    if (audit.withoutMetrics > 0 && audit.totalBullets > 0) {
+      const pct = Math.round(((audit.totalBullets - audit.withoutMetrics) / audit.totalBullets) * 100);
+      console.log(`📈 Quantified impact coverage: ${pct}% of bullets (${audit.totalBullets - audit.withoutMetrics}/${audit.totalBullets})`);
+    }
+  }
+
   return data;
 }
 
