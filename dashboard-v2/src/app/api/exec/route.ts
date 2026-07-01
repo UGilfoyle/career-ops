@@ -357,10 +357,133 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
     if (res.ok) {
       send({ type: 'stdout', content: `[OK] ✔ ${actionName} successfully queued on GitHub Actions\n` });
       send({ type: 'stdout', content: `     → Run ID: ${runId}\n` });
-      send({ type: 'stdout', content: '[WAIT] ◐ Please allow 5-10 minutes for the process to complete in the background\n' });
+      
       if (script === 'agentic-tailor.mjs') {
-        send({ type: 'stdout', content: '[FILE] 📄 PDF will be available in the GitHub Actions artifacts when ready\n' });
+        send({ type: 'stdout', content: '[FILE] 📄 Crafting tailored resume PDF... The completed document will automatically appear in your Resume Manager (Generated Docs) once finished.\n' });
+      } else {
+        send({ type: 'stdout', content: `[WAIT] ⏳ Initializing ${actionName} in the background...\n` });
       }
+
+      const startTime = new Date();
+      let percentage = 5;
+      const intervalMs = 3000; // 3 seconds per tick
+      const maxTicks = 45; // ~135 seconds max polling
+      let tick = 0;
+      let lastPrintedStatus = '';
+
+      while (tick < maxTicks) {
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        tick++;
+
+        // Query database to see if the run has completed
+        let runStatus: string | null = null;
+        let runUrl: string | null = null;
+
+        try {
+          const lookbackTime = new Date(startTime.getTime() - 60000);
+          const recentRuns = await sql`
+            SELECT status, run_url FROM background_runs
+            WHERE id = ${runId}
+               OR (
+                 user_id = ${String(userId)}
+                 AND action_script = ${script}
+                 AND queued_at >= ${lookbackTime}
+                 AND status IN ('success', 'failure', 'cancelled')
+               )
+            ORDER BY queued_at DESC
+            LIMIT 1
+          `;
+
+          if (recentRuns && recentRuns.length > 0) {
+            const status = recentRuns[0].status;
+            if (status === 'success' || status === 'failure' || status === 'cancelled') {
+              runStatus = status;
+              runUrl = recentRuns[0].run_url || null;
+            }
+          }
+        } catch (dbErr) {
+          // Fail silently on DB queries to keep execution flowing
+        }
+
+        if (runStatus) {
+          if (runStatus === 'success') {
+            send({ type: 'stdout', content: `[PROGRESS] [██████████] 100% completed!\n` });
+            send({ type: 'stdout', content: `[OK] ✔ ${actionName} completed successfully!\n` });
+            if (runUrl) {
+              send({ type: 'stdout', content: `     → Execution Details: ${runUrl}\n` });
+            }
+          } else if (runStatus === 'failure') {
+            send({ type: 'stderr', content: `[ERR] ✗ ${actionName} failed in the background.\n` });
+            if (runUrl) {
+              send({ type: 'stderr', content: `      Execution Details: ${runUrl}\n` });
+            }
+          } else {
+            send({ type: 'stdout', content: `[WARN] ⚠ ${actionName} was cancelled.\n` });
+          }
+          break;
+        }
+
+        // Calculate simulated progress based on script type
+        let statusText = 'Processing';
+
+        if (script === 'agentic-tailor.mjs') {
+          if (tick < 4) {
+            percentage = 10 + tick * 5;
+            statusText = 'Provisioning container & starting Node runner';
+          } else if (tick < 10) {
+            percentage = 30 + (tick - 4) * 5;
+            statusText = 'Scraping and analyzing job description';
+          } else if (tick < 18) {
+            percentage = 60 + (tick - 10) * 3;
+            statusText = 'Generating tailored experiences & skills via LLM';
+          } else if (tick < 26) {
+            percentage = 84 + (tick - 18) * 2;
+            statusText = 'Compiling LaTeX/HTML and generating PDF package';
+          } else {
+            percentage = 98;
+            statusText = 'Syncing profile database (wrapping up)';
+          }
+        } else if (script === 'scratch-scan.mjs') {
+          if (tick < 4) {
+            percentage = 10 + tick * 5;
+            statusText = 'Initializing job scanners';
+          } else if (tick < 12) {
+            percentage = 30 + (tick - 4) * 4;
+            statusText = 'Crawling target company portals';
+          } else if (tick < 22) {
+            percentage = 62 + (tick - 12) * 3;
+            statusText = 'Parsing job listings & filtering roles';
+          } else {
+            percentage = 92 + (tick - 22) * 1;
+            statusText = 'Deduplicating scan history & writing to pipeline';
+          }
+          if (percentage > 98) percentage = 98;
+        } else {
+          percentage = Math.min(98, 10 + tick * 4);
+          statusText = 'Executing background action';
+        }
+
+        if (statusText !== lastPrintedStatus) {
+          lastPrintedStatus = statusText;
+          const barWidth = 10;
+          const filledWidth = Math.round((percentage / 100) * barWidth);
+          const emptyWidth = barWidth - filledWidth;
+          const bar = '█'.repeat(filledWidth) + '░'.repeat(emptyWidth);
+
+          send({
+            type: 'stdout',
+            content: `[WAIT] ⏳ Progress: [${bar}] ${percentage}% (${statusText}...)\n`
+          });
+        }
+      }
+
+      if (tick >= maxTicks) {
+        send({
+          type: 'stdout',
+          content: `[INFO] ⏳ ${actionName} is still processing in the background. You can safely close this terminal; the results will update on your dashboard once finished.\n`
+        });
+      }
+
       send({ type: 'done', code: 0 });
     } else {
       const errBody = await res.text();

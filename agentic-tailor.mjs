@@ -1057,13 +1057,7 @@ async function tailorPackage(jd, profile, companyName) {
         experience: (profile?.experience?.[0]?.bullets || []).slice(0, 3),
       },
       cover_letter: (() => {
-        const em = String(profile?.candidate?.email || '').trim();
-        const ph = String(profile?.candidate?.phone || '').trim();
-        const tail =
-          em || ph
-            ? `I would welcome the opportunity to discuss fit and next steps. You may contact me at ${[em, ph].filter(Boolean).join(' or ')}.`
-            : 'I would welcome the opportunity to discuss fit and next steps.';
-        return `I am writing to express my interest in opportunities with ${companyName} that align with the technical requirements described in the posting. The role emphasizes delivery in production environments; my background includes building and operating backend systems with a focus on reliability and measurable performance.\n\nMy recent work aligns with several themes in the job description, including ${(profile?.narrative?.superpowers || []).slice(0, 3).join(', ') || 'the stacks and outcomes summarized in the profile context below'}. I am prepared to contribute on day one and to collaborate closely with engineering and operations partners.\n\n${tail}`;
+        return `I am writing to express my interest in opportunities with ${companyName} that align with the technical requirements described in the posting. The role emphasizes delivery in production environments; my background includes building and operating backend systems with a focus on reliability and measurable performance.\n\nMy recent work aligns with several themes in the job description, including ${(profile?.narrative?.superpowers || []).slice(0, 3).join(', ') || 'the stacks and outcomes summarized in the profile context below'}. I am prepared to contribute on day one and to collaborate closely with engineering and operations partners.\n\nI would welcome the opportunity to discuss fit and next steps.`;
       })()
     };
   }
@@ -1136,7 +1130,7 @@ ${roleDigest}
    - Tone: first person, formal. Prefer "I am writing...", "The posting emphasizes..."
    - Para 1 (2 sentences): Interest at ${companyName}; reference a concrete JD requirement
    - Para 2 (2-3 sentences): Map experience to JD requirements with tools and outcomes
-   - Para 3 (1-2 sentences): Availability + contact: use ONLY ${candidateEmail} and ${candidatePhone}
+   - Para 3 (1-2 sentences): Closing and next steps (e.g. welcoming an interview or expressing interest in next steps). Do NOT restate the candidate's name, email, phone number, location, or contact details in the body, as they are already printed in the header.
 
 JD:
 ${jd.substring(0, 4000)}
