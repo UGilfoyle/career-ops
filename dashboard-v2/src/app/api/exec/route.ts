@@ -312,8 +312,13 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
     return;
   }
 
-  const actionName = script === 'scratch-scan.mjs' ? 'deep scan' : script === 'agentic-tailor.mjs' ? 'deep tailoring (PDF)' : 'auto-apply';
-  send({ type: 'stdout', content: `[EXEC] ▶ Triggering ${actionName} via GitHub Actions (Playwright + Chromium)...\n` });
+  const actionName = script === 'scratch-scan.mjs' ? 'deep scan' : script === 'agentic-tailor.mjs' ? 'agentic tailoring' : 'auto-apply';
+  const actionDesc = script === 'scratch-scan.mjs'
+    ? 'Scouting the market for your best-fit opportunities...'
+    : script === 'agentic-tailor.mjs'
+    ? 'Crafting a tailored application package just for you...'
+    : 'Submitting your application intelligently...';
+  send({ type: 'stdout', content: `[EXEC] ▶ ${actionDesc}\n` });
 
   try {
     // Create a run record (for lifecycle + traceability)
@@ -355,13 +360,12 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
     });
 
     if (res.ok) {
-      send({ type: 'stdout', content: `[OK] ✔ ${actionName} successfully queued on GitHub Actions\n` });
-      send({ type: 'stdout', content: `     → Run ID: ${runId}\n` });
+      send({ type: 'stdout', content: `[OK] ✔ Task accepted — working in the background.\n` });
       
       if (script === 'agentic-tailor.mjs') {
-        send({ type: 'stdout', content: '[FILE] 📄 Crafting tailored resume PDF... The completed document will automatically appear in your Resume Manager (Generated Docs) once finished.\n' });
+        send({ type: 'stdout', content: '[FILE] 📄 Your tailored resume and cover letter are being crafted. They will appear in Resume Manager once ready.\n' });
       } else {
-        send({ type: 'stdout', content: `[WAIT] ⏳ Initializing ${actionName} in the background...\n` });
+        send({ type: 'stdout', content: `[WAIT] ⏳ Standing by — your request is being processed...\n` });
       }
 
       const startTime = new Date();
@@ -407,18 +411,12 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
 
         if (runStatus) {
           if (runStatus === 'success') {
-            send({ type: 'stdout', content: `[PROGRESS] [██████████] 100% completed!\n` });
-            send({ type: 'stdout', content: `[OK] ✔ ${actionName} completed successfully!\n` });
-            if (runUrl) {
-              send({ type: 'stdout', content: `     → Execution Details: ${runUrl}\n` });
-            }
+            send({ type: 'stdout', content: `[PROGRESS] [██████████] 100% — All done!\n` });
+            send({ type: 'stdout', content: `[OK] ✔ Your ${actionName} is complete. Check your dashboard for results.\n` });
           } else if (runStatus === 'failure') {
-            send({ type: 'stderr', content: `[ERR] ✗ ${actionName} failed in the background.\n` });
-            if (runUrl) {
-              send({ type: 'stderr', content: `      Execution Details: ${runUrl}\n` });
-            }
+            send({ type: 'stderr', content: `[ERR] ✗ Something went wrong during ${actionName}. Please try again or check your configuration.\n` });
           } else {
-            send({ type: 'stdout', content: `[WARN] ⚠ ${actionName} was cancelled.\n` });
+            send({ type: 'stdout', content: `[WARN] ⚠ ${actionName} was stopped before completion.\n` });
           }
           break;
         }
@@ -429,38 +427,38 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
         if (script === 'agentic-tailor.mjs') {
           if (tick < 4) {
             percentage = 10 + tick * 5;
-            statusText = 'Provisioning container & starting Node runner';
+            statusText = 'Reading your profile and understanding the role';
           } else if (tick < 10) {
             percentage = 30 + (tick - 4) * 5;
-            statusText = 'Scraping and analyzing job description';
+            statusText = 'Mapping your strengths to what they are looking for';
           } else if (tick < 18) {
             percentage = 60 + (tick - 10) * 3;
-            statusText = 'Generating tailored experiences & skills via LLM';
+            statusText = 'Writing tailored experience highlights and skills';
           } else if (tick < 26) {
             percentage = 84 + (tick - 18) * 2;
-            statusText = 'Compiling LaTeX/HTML and generating PDF package';
+            statusText = 'Assembling your final resume and cover letter';
           } else {
             percentage = 98;
-            statusText = 'Syncing profile database (wrapping up)';
+            statusText = 'Saving your documents — almost done';
           }
         } else if (script === 'scratch-scan.mjs') {
           if (tick < 4) {
             percentage = 10 + tick * 5;
-            statusText = 'Initializing job scanners';
+            statusText = 'Warming up the opportunity scanner';
           } else if (tick < 12) {
             percentage = 30 + (tick - 4) * 4;
-            statusText = 'Crawling target company portals';
+            statusText = 'Scanning target companies for open roles';
           } else if (tick < 22) {
             percentage = 62 + (tick - 12) * 3;
-            statusText = 'Parsing job listings & filtering roles';
+            statusText = 'Scoring and filtering roles by fit';
           } else {
             percentage = 92 + (tick - 22) * 1;
-            statusText = 'Deduplicating scan history & writing to pipeline';
+            statusText = 'Adding new matches to your pipeline';
           }
           if (percentage > 98) percentage = 98;
         } else {
           percentage = Math.min(98, 10 + tick * 4);
-          statusText = 'Executing background action';
+          statusText = 'Processing your request';
         }
 
         if (statusText !== lastPrintedStatus) {
@@ -480,18 +478,17 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
       if (tick >= maxTicks) {
         send({
           type: 'stdout',
-          content: `[INFO] ⏳ ${actionName} is still processing in the background. You can safely close this terminal; the results will update on your dashboard once finished.\n`
+          content: `[INFO] ⏳ Still working in the background — this one is thorough! Results will appear on your dashboard once ready. You can safely close this terminal.\n`
         });
       }
 
       send({ type: 'done', code: 0 });
     } else {
-      const errBody = await res.text();
-      send({ type: 'stderr', content: `[ERR] ✗ Failed to trigger action. GitHub API responded with ${res.status}:\n${errBody}\n` });
+      send({ type: 'stderr', content: `[ERR] ✗ Could not start the task. Please check your settings or try again shortly.\n` });
       send({ type: 'done', code: 1 });
     }
   } catch (err: any) {
-    send({ type: 'stderr', content: `[ERR] ✗ Network error: ${err.message}\n` });
+    send({ type: 'stderr', content: `[ERR] ✗ A connectivity issue occurred. Please check your network and try again.\n` });
     send({ type: 'done', code: 1 });
   }
   
