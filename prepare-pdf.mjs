@@ -29,7 +29,19 @@ console.log('══════════════════════�
 console.log(`  📄 Tailoring Resume for ${company}`);
 console.log('═══════════════════════════════════════════');
 
-const tailoredFile = `output/Akash_Kaintura_${company.replace(/\s/g, '')}_Tailored.pdf`;
+const companyClean = company.replace(/[^a-z0-9]/gi, '_').replace(/_{2,}/g, '_').toLowerCase();
+const outDir = 'output';
+let tailoredFile = '';
+if (fs.existsSync(outDir)) {
+  const files = fs.readdirSync(outDir);
+  const match = files.find(f => f.toLowerCase().includes(companyClean) && (f.includes('Resume') || f.includes('SSE') || f.includes('Tailored')) && f.endsWith('.pdf'));
+  if (match) {
+    tailoredFile = path.join(outDir, match);
+  }
+}
+if (!tailoredFile) {
+  tailoredFile = `output/Akash_Kaintura_${company.replace(/\s/g, '_')}_Resume.pdf`;
+}
 
 if (fs.existsSync(tailoredFile)) {
   console.log(`✅ Tailored PDF already exists: ${tailoredFile}`);

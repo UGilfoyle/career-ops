@@ -93,8 +93,8 @@ function findTailoredCV(companyName) {
   if (!fs.existsSync(outDir)) return null;
   
   const files = fs.readdirSync(outDir);
-  // Matches "Akash_Kaintura_SSE_CompanyName.pdf"
-  const match = files.find(f => f.toLowerCase().includes(companyName.toLowerCase()) && f.includes('SSE') && f.endsWith('.pdf'));
+  // Matches "Akash_Kaintura_SSE_CompanyName.pdf" or "Akash_Kaintura_CompanyName_Resume.pdf"
+  const match = files.find(f => f.toLowerCase().includes(companyName.toLowerCase()) && (f.includes('Resume') || f.includes('SSE') || f.includes('Tailored')) && f.endsWith('.pdf'));
   return match ? path.join('output', match) : null;
 }
 

@@ -1513,8 +1513,10 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
 
     const sanitizeFilename = (str) => str.replace(/[^a-z0-9]/gi, '_').replace(/_{2,}/g, '_').substring(0, 50);
     const companySlug = sanitizeFilename(entry.company);
-    const resumePathHtml = `output/Resume_Akash_Kaintura_SSE_${companySlug}.html`;
-    const resumePathPdf = `output/Resume_Akash_Kaintura_SSE_${companySlug}.pdf`;
+    const candidateNameSlug = sanitizeFilename(c.full_name || 'Candidate');
+    
+    const resumePathHtml = `output/${candidateNameSlug}_${companySlug}_Resume.html`;
+    const resumePathPdf = `output/${candidateNameSlug}_${companySlug}_Resume.pdf`;
 
     if (!fs.existsSync('output')) fs.mkdirSync('output');
     fs.writeFileSync(resumePathHtml, resumeHtml);
@@ -1531,8 +1533,8 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       clHtml = clHtml.replace(new RegExp(`{{${key}}}`, 'g'), val || '');
     });
 
-    const clPathHtml = `output/Cover_Letter_Akash_Kaintura_SSE_${companySlug}.html`;
-    const clPathPdf = `output/Cover_Letter_Akash_Kaintura_SSE_${companySlug}.pdf`;
+    const clPathHtml = `output/${candidateNameSlug}_${companySlug}_CL.html`;
+    const clPathPdf = `output/${candidateNameSlug}_${companySlug}_CL.pdf`;
     fs.writeFileSync(clPathHtml, clHtml);
 
     console.log(`✅ Package ready: ${resumePathHtml} & ${clPathHtml}`);
