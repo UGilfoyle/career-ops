@@ -691,6 +691,30 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
   };
 
+  const handleMarkApplied = async (jobId: number) => {
+    try {
+      const res = await fetch('/api/applications/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, status: 'APPLIED' }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to mark as applied');
+
+      const refreshRes = await fetch('/api/data');
+      if (refreshRes.ok) {
+        const freshData = await refreshRes.json();
+        setData(freshData);
+      }
+
+      setToast({ show: true, message: '[OK] ✔ Job moved to Applications board' });
+      setTimeout(() => setToast({ show: false, message: '' }), 4000);
+    } catch (e: any) {
+      setToast({ show: true, message: `[ERR] ✗ ${e?.message || 'Action failed'}` });
+      setTimeout(() => setToast({ show: false, message: '' }), 5000);
+    }
+  };
+
   const openDeleteConfirm = (id: number, company: string, title: string) => {
     setDeleteTarget({ id, company, title });
     setDeleteConfirmOpen(true);
@@ -1413,8 +1437,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   : 'bg-white border border-[#e7e5e4] text-[#1c1917] hover:bg-[#f5f5f4]'
                               }`}
                             >
-                              {job?.is_tailored ? 'Apply (optional)' : 'Apply'}
+                              {job?.is_tailored ? 'Apply (Auto)' : 'Apply (Auto)'}
                             </button>
+                            <button
+                               onClick={() => handleMarkApplied(Number(job.pipeline_id))}
+                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all"
+                             >
+                               Mark Applied
+                             </button>
                             <button
                               onClick={() => openJobDetails(Number(job.pipeline_id))}
                               className="px-4 py-2 bg-[#f5f5f4] border border-[#e7e5e4] text-[#1c1917] rounded-xl font-bold text-xs hover:bg-[#e7e5e4] transition-all"
@@ -2798,6 +2828,29 @@ System Initialized — v2.0`}
                   </>
                 )}
               </div>
+
+              {!jobDetailsLoading && !jobDetailsError && jobDetails && (
+                <div className="p-6 bg-[#faf9f6] border-t border-[#e7e5e4] flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => { setJobDetailsOpen(false); setActiveTab('terminal'); runCommand(`tailor ${jobDetails.id} --deep`); }}
+                    className="px-5 py-2.5 bg-[#1c1917] text-white rounded-xl font-bold text-xs hover:bg-[#27272a] transition-all"
+                  >
+                    Tailor
+                  </button>
+                  <button
+                    onClick={() => { setJobDetailsOpen(false); setActiveTab('terminal'); runCommand(`apply ${jobDetails.id} --deep`); }}
+                    className="px-5 py-2.5 bg-white border border-[#e7e5e4] text-[#1c1917] rounded-xl font-bold text-xs hover:bg-[#f5f5f4] transition-all"
+                  >
+                    Apply (Auto)
+                  </button>
+                  <button
+                    onClick={() => { setJobDetailsOpen(false); handleMarkApplied(Number(jobDetails.id)); }}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all"
+                  >
+                    Mark Applied
+                  </button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
