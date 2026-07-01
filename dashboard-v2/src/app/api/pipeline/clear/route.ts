@@ -6,13 +6,19 @@ export const dynamic = 'force-dynamic';
 
 const MAX_IDS = 5000;
 
-/** Same pipeline rows as GET /api/data: jobs not linked to Applications for this user. */
+/** Same pipeline rows as GET /api/data: jobs not linked to Applications for this user, excluding those with generated resumes or cover letters. */
 function pipelineSubquery(tx: any, userId: string | number) {
   return tx`
     SELECT j.id
     FROM jobs j
     WHERE j.user_id = ${userId}
       AND (j.score IS NULL OR COALESCE(j.score, 0) >= 0)
+      AND j.resume_html IS NULL
+      AND j.cover_letter_html IS NULL
+      AND j.resume_pdf_key IS NULL
+      AND j.cover_letter_pdf_key IS NULL
+      AND j.resume_pdf IS NULL
+      AND j.cover_letter_pdf IS NULL
       AND j.id NOT IN (
         SELECT a.job_id
         FROM applications a
