@@ -31,8 +31,8 @@ export function PageSectionHeader({
   const statusOk = status === 'SUCCESS';
 
   return (
-    <header className="mb-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <header className="mb-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           {welcomeName ? (
             <h1 className="text-3xl font-bold tracking-tight text-[#1C1C1E] sm:text-4xl">
@@ -53,7 +53,7 @@ export function PageSectionHeader({
             <p className="mt-2 text-sm text-[#6B6B6B]">{subtitle}</p>
           )}
           {scriptLabel && (
-            <div className="mt-3 text-[10px] font-mono uppercase tracking-[0.2em] text-[#9CA3AF]">
+            <div className="mt-2 caps-mono tracking-[0.2em] text-[#9CA3AF]">
               Last run:{' '}
               <span className="font-bold text-[#1C1C1E]">{scriptLabel}</span>
               {status && (
@@ -90,7 +90,7 @@ export function PageSectionHeader({
 export function CompanyAvatar({ name }: { name?: string | null }) {
   const letter = String(name || '?').trim().charAt(0).toUpperCase() || '?';
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E5E5E0] bg-[#F5F5F0] text-sm font-bold text-[#6B6B6B]">
+    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#E5E5E0] bg-[#F5F5F0] text-[11px] font-bold text-[#6B6B6B]">
       {letter}
     </div>
   );
@@ -102,9 +102,9 @@ export function AiScoreBadge({ score }: { score?: string | number | null }) {
   const label = value != null ? `${value.toFixed(1)}/5` : '—';
 
   return (
-    <div className="inline-flex min-w-[9rem] items-center gap-2 rounded-full bg-[#1C1C1E] px-4 py-2 text-xs font-bold text-white">
-      <span className="text-white/90">★</span>
-      <span>{label}</span>
-    </div>
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#1C1C1E] px-2 py-0.5 font-mono text-[10px] text-white whitespace-nowrap">
+      <span className="text-white/75">★</span>
+      {label}
+    </span>
   );
 }

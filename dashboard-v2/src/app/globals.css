@@ -159,8 +159,21 @@
     line-height: 1.5;
   }
 
-  code, pre, kbd, samp, .font-mono {
+  code, pre, kbd, samp {
     font-family: var(--font-jetbrains-mono), 'Courier New', monospace;
+  }
+
+  .font-mono {
+    font-family: var(--font-jetbrains-mono), 'Courier New', monospace;
+    font-feature-settings: normal;
+  }
+
+  .caps-mono {
+    font-family: var(--font-jetbrains-mono), 'Courier New', monospace;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
   }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }

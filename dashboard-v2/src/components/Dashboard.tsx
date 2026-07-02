@@ -35,7 +35,9 @@ import {
   List,
   AlertCircle,
   Sparkles,
-  Files
+  Files,
+  Filter,
+  ArrowUpDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -54,6 +56,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [loading, setLoading] = useState(!initialData);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [appsViewMode, setAppsViewMode] = useState<'kanban' | 'table'>('kanban');
+  const [appsSortBy, setAppsSortBy] = useState<'score' | 'date'>('score');
   const [logs, setLogs] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [cmdInput, setCmdInput] = useState('');
@@ -118,6 +121,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const filteredApplications = (data?.applications || []).filter((app: any) =>
     matches(app.company) || matches(app.role) || matches(app.url) || matches(app.status) || matches(app.score)
   );
+  const sortedApplications = [...filteredApplications].sort((a: any, b: any) => {
+    if (appsSortBy === 'score') {
+      return parseFloat(String(b.score || 0)) - parseFloat(String(a.score || 0));
+    }
+    const dateA = a.applied_at ? new Date(a.applied_at).getTime() : 0;
+    const dateB = b.applied_at ? new Date(b.applied_at).getTime() : 0;
+    return dateB - dateA;
+  });
   const filteredDocs = (data?.pdfs || []).filter((doc: any) =>
     matches(doc.company) || matches(doc.title) || matches(doc.name)
   );
@@ -880,7 +891,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     <>
       <button
         onClick={() => setIsSearchOpen((v) => !v)}
-        className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-colors ${
+        className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-colors ${
           isSearchOpen || searchQuery.trim()
             ? 'border-[#1C1C1E] bg-white text-[#1C1C1E]'
             : 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:bg-[#FAFAF8]'
@@ -891,10 +902,52 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       </button>
       <button
         onClick={() => { setActiveTab('terminal'); runCommand('rank'); }}
-        className="flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#27272a]"
+        className="flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#27272a]"
       >
         <Play size={16} />
         <span>Quick Run</span>
+      </button>
+    </>
+  );
+
+  const appsHeaderActions = (
+    <>
+      <div className="flex items-center rounded-xl border border-[#E5E5E0] bg-[#F5F5F0] p-1">
+        <button
+          type="button"
+          onClick={() => setAppsViewMode('kanban')}
+          className={`rounded-lg px-3 py-1.5 caps-mono transition-all ${appsViewMode === 'kanban' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
+        >
+          Kanban
+        </button>
+        <button
+          type="button"
+          onClick={() => setAppsViewMode('table')}
+          className={`rounded-lg px-3 py-1.5 caps-mono transition-all ${appsViewMode === 'table' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
+        >
+          Table
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => setIsSearchOpen((v) => !v)}
+        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
+          isSearchOpen || searchQuery.trim()
+            ? 'border-[#1C1C1E] bg-white text-[#1C1C1E]'
+            : 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:bg-[#FAFAF8]'
+        }`}
+      >
+        <Filter size={14} />
+        Filter
+      </button>
+      <button
+        type="button"
+        onClick={() => setAppsSortBy((prev) => (prev === 'score' ? 'date' : 'score'))}
+        className="flex items-center gap-2 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 text-sm font-bold text-[#1C1C1E] transition-colors hover:bg-[#FAFAF8]"
+        title={appsSortBy === 'score' ? 'Sorted by score' : 'Sorted by date'}
+      >
+        <ArrowUpDown size={14} />
+        Sort
       </button>
     </>
   );
@@ -970,14 +1023,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-[#FAFAF8] p-6 sm:p-8 lg:p-10">
+      <main className="flex-1 overflow-y-auto bg-[#FAFAF8] p-5 sm:p-6 lg:p-8">
         <AnimatePresence>
           {isSearchOpen && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="mb-10"
+              className="mb-4"
             >
               <div className="flex items-center gap-3 bg-[#FAFAF8] border border-[#E5E5E0] rounded-2xl px-4 py-3">
                 <Search size={16} className="text-[#9CA3AF]" />
@@ -1126,7 +1179,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             const kanbanColumns = [
               { id: 'EVALUATED', label: 'Evaluated', bar: 'bg-amber-400', statuses: ['PENDING', 'EVALUATED'], color: 'border-t-amber-500 bg-amber-50/5' },
               { id: 'APPLIED', label: 'Applied', bar: 'bg-sky-500', statuses: ['APPLIED', 'RESPONDED', 'SENT'], color: 'border-t-sky-500 bg-sky-50/5' },
-              { id: 'INTERVIEW', label: 'Interviewing', bar: 'bg-emerald-500', statuses: ['INTERVIEW', 'ENTREVISTA'], color: 'border-t-emerald-500 bg-emerald-50/5' },
+              { id: 'INTERVIEWING', label: 'Interviewing', bar: 'bg-emerald-500', statuses: ['INTERVIEW', 'ENTREVISTA'], color: 'border-t-emerald-500 bg-emerald-50/5' },
               { id: 'OFFER', label: 'Offer', bar: 'bg-purple-500', statuses: ['OFFER', 'OFERTA'], color: 'border-t-purple-500 bg-purple-50/5' },
               { id: 'REJECTED', label: 'Rejected', bar: 'bg-stone-400', statuses: ['REJECTED', 'DISCARDED', 'SKIP', 'RECHAZADO', 'DESCARTADO'], color: 'border-t-stone-400 bg-stone-50/5' }
             ];
@@ -1138,41 +1191,23 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             });
 
             return (
-              <motion.div key="apps" className="space-y-6">
+              <motion.div key="apps" className="space-y-4">
                 <PageSectionHeader
                   title="Application Pipeline"
                   subtitle={`${activeApplicationCount} active application${activeApplicationCount === 1 ? '' : 's'} across 5 stages`}
-                  lastRun={lastRunMeta}
-                  actions={searchActions}
+                  actions={appsHeaderActions}
                 />
-              <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
-                <div className="flex flex-col gap-4 border-b border-[#E5E5E0] bg-white p-6 sm:flex-row sm:items-center sm:justify-end">
-                  <div className="flex items-center rounded-xl border border-[#E5E5E0] bg-[#F5F5F0] p-1">
-                    <button
-                      onClick={() => setAppsViewMode('kanban')}
-                      className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'kanban' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
-                    >
-                      Kanban
-                    </button>
-                    <button
-                      onClick={() => setAppsViewMode('table')}
-                      className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'table' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
-                    >
-                      Table
-                    </button>
-                  </div>
-                </div>
-
+              <div className="overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white shadow-sm">
                 {/* Reminders Panel */}
                 {followUpReminders.length > 0 && (
-                  <div className="mx-8 mt-8 p-6 bg-amber-50/85 border border-amber-200/80 rounded-[1.5rem] flex items-start gap-4">
-                    <AlertCircle className="text-amber-600 mt-0.5 shrink-0" size={20} />
+                  <div className="mx-4 mt-4 p-4 bg-amber-50/85 border border-amber-200/80 rounded-xl flex items-start gap-3">
+                    <AlertCircle className="text-amber-600 mt-0.5 shrink-0" size={18} />
                     <div>
                       <h3 className="text-sm font-bold text-amber-900">Follow-Up Reminders</h3>
                       <p className="text-xs text-amber-700 mt-1 font-medium">
                         You applied to these roles more than 7 days ago. Consider checking in or sending a follow-up email:
                       </p>
-                      <div className="flex flex-wrap gap-2 mt-3">
+                      <div className="flex flex-wrap gap-2 mt-2">
                         {followUpReminders.map((app: any, idx: number) => {
                           const days = Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24));
                           return (
@@ -1180,7 +1215,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               <span className="font-bold text-[#1C1C1E]">{app.company}</span>
                               <span className="text-stone-300">|</span>
                               <span className="text-stone-500 font-medium">{app.role}</span>
-                              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">{days}d ago</span>
+                              <span className="bg-amber-100 text-amber-800 caps-mono px-2 py-0.5 rounded-full">{days}d ago</span>
                             </div>
                           );
                         })}
@@ -1190,26 +1225,26 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 )}
 
                 {appsViewMode === 'table' ? (
-                  <div className="p-8 pt-6">
-                    <div className="h-[min(560px,calc(100vh-18rem))] min-h-[420px] overflow-auto rounded-2xl border border-[#E5E5E0] bg-white">
+                  <div className="p-4">
+                    <div className="h-[min(560px,calc(100vh-13rem))] min-h-[420px] overflow-auto rounded-xl border border-[#E5E5E0] bg-white">
                       <table className="w-full min-w-[56rem] text-left">
                         <thead className="sticky top-0 z-10 bg-[#F5F5F0] border-b border-[#E5E5E0] shadow-[0_1px_0_#E5E5E0]">
-                          <tr className="text-[#9CA3AF] text-[10px] uppercase tracking-[0.2em] font-bold">
-                            <th className="px-8 py-5">Company</th>
-                            <th className="px-8 py-5">Role</th>
-                            <th className="px-8 py-5">Status</th>
-                            <th className="px-8 py-5">Date</th>
-                            <th className="px-8 py-5">AI Score</th>
-                            <th className="px-8 py-5">Action</th>
+                          <tr className="caps-mono text-[#9CA3AF] tracking-[0.2em]">
+                            <th className="px-5 py-4">Company</th>
+                            <th className="px-5 py-4">Role</th>
+                            <th className="px-5 py-4">Status</th>
+                            <th className="px-5 py-4">Date</th>
+                            <th className="px-5 py-4">AI Score</th>
+                            <th className="px-5 py-4">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#F5F5F0]">
-                          {filteredApplications.map((app: any, i: number) => (
+                          {sortedApplications.map((app: any, i: number) => (
                             <tr key={i} className="hover:bg-[#FAFAF8] transition-colors group">
-                              <td className="px-8 py-6 font-bold text-[#1C1C1E] max-w-[12rem] break-words">{app.company}</td>
-                              <td className="px-8 py-6 text-[#6B6B6B] font-medium max-w-[14rem] break-words">{app.role}</td>
-                            <td className="px-8 py-6">
-                              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                              <td className="px-5 py-4 font-bold text-[#1C1C1E] max-w-[12rem] break-words">{app.company}</td>
+                              <td className="px-5 py-4 text-[#6B6B6B] font-medium max-w-[14rem] break-words">{app.role}</td>
+                            <td className="px-5 py-4">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full caps-mono tracking-wider ${
                                 ['APPLIED', 'SENT'].includes(String(app.status || '').toUpperCase()) ? 'bg-sky-50 text-sky-700 border border-sky-100' :
                                 ['INTERVIEW', 'ENTREVISTA'].includes(String(app.status || '').toUpperCase()) ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
                                 ['OFFER', 'OFERTA'].includes(String(app.status || '').toUpperCase()) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
@@ -1219,18 +1254,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 {app.status}
                               </span>
                             </td>
-                            <td className="px-8 py-6 text-[#9CA3AF] font-mono text-xs uppercase">
+                            <td className="px-5 py-4 font-mono text-xs text-[#9CA3AF]">
                               {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'N/A'}
                             </td>
-                            <td className="px-8 py-6">
-                               <div className="flex items-center gap-3">
-                                  <div className="h-1 w-16 bg-[#E5E5E0] rounded-full overflow-hidden">
-                                     <div className="h-full bg-[#1C1C1E]" style={{ width: `${app.score * 10 || 0}%` }}></div>
-                                  </div>
-                                  <span className="text-xs font-bold text-[#1C1C1E]">{app.score}</span>
-                               </div>
+                            <td className="px-5 py-4">
+                               <AiScoreBadge score={app.score} />
                             </td>
-                            <td className="px-8 py-6 text-[#1C1C1E]">
+                            <td className="px-5 py-4 text-[#1C1C1E]">
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => { setActiveTab('terminal'); runCommand(`apply ${app.job_id} --deep`); }}
@@ -1279,9 +1309,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             </td>
                           </tr>
                         ))}
-                        {filteredApplications.length === 0 && (
+                        {sortedApplications.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="px-8 py-16 text-center text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+                            <td colSpan={6} className="px-5 py-12 text-center caps-mono tracking-widest text-[#9CA3AF]">
                               No applications yet
                             </td>
                           </tr>
@@ -1291,11 +1321,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-8 pt-6">
-                    <div className="h-[min(560px,calc(100vh-18rem))] min-h-[420px] overflow-x-auto">
-                      <div className="grid h-full min-h-[420px] grid-cols-1 md:grid-cols-5 gap-6 items-stretch min-w-[min(100%,64rem)]">
+                  <div className="p-4">
+                    <div className="h-[min(560px,calc(100vh-13rem))] min-h-[420px] overflow-x-auto">
+                      <div className="grid h-full min-w-[900px] grid-cols-5 gap-3 min-h-0">
                     {kanbanColumns.map((col) => {
-                      const colApps = filteredApplications.filter((app: any) =>
+                      const colApps = sortedApplications.filter((app: any) =>
                         col.statuses.includes(String(app.status || '').toUpperCase())
                       );
 
@@ -1311,17 +1341,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               updateApplicationStatus(appId, col.statuses[0]);
                             }
                           }}
-                          className={`flex h-full min-h-0 min-w-[220px] flex-col rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 transition-all ${col.color}`}
+                          className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#E5E5E0] bg-white"
                         >
-                          <div className="mb-3 shrink-0">
-                            <div className="mb-2 flex items-center justify-between">
-                              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9CA3AF]">{col.label}</span>
-                              <span className="rounded-full bg-[#1C1C1E] px-2 py-0.5 text-[10px] font-bold text-white">{colApps.length}</span>
-                            </div>
-                            <div className={`h-1 rounded-full ${col.bar}`} />
+                          <div className={`h-1 shrink-0 ${col.bar}`} />
+                          <div className="flex shrink-0 items-center justify-between border-b border-[#F5F5F0] px-3 py-2.5">
+                            <span className="caps-mono text-[#9CA3AF]">{col.id}</span>
+                            <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#1C1C1E] px-1.5 font-mono text-[10px] text-white">{colApps.length}</span>
                           </div>
 
-                          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden pr-1">
+                          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
                             {colApps.map((app: any) => {
                               const days = app.applied_at 
                                 ? Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24)) 
@@ -1336,35 +1364,35 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   onDragStart={(e) => {
                                     e.dataTransfer.setData('text/plain', String(app.app_id));
                                   }}
-                                  className="group relative shrink-0 cursor-grab rounded-xl border border-[#E5E5E0] bg-white p-4 shadow-sm transition-all hover:shadow-md active:cursor-grabbing"
+                                  className="group relative shrink-0 cursor-grab rounded-lg border border-[#E5E5E0] bg-white p-3 transition-all hover:shadow-sm active:cursor-grabbing"
                                 >
-                                  <div className="mb-3 flex items-start justify-between gap-2">
+                                  <div className="mb-2 flex items-start justify-between gap-1.5">
                                     <CompanyAvatar name={app.company} />
                                     <AiScoreBadge score={app.score} />
                                   </div>
-                                  <h4 className="mb-1 line-clamp-2 break-words text-sm font-bold leading-tight text-[#1C1C1E]">{app.company}</h4>
-                                  <p className="mb-3 line-clamp-2 break-words text-xs font-medium text-[#6B6B6B]">{app.role}</p>
+                                  <h4 className="mb-0.5 line-clamp-2 break-words text-sm font-bold leading-snug text-[#1C1C1E]">{app.company}</h4>
+                                  <p className="mb-2 line-clamp-2 break-words text-xs text-[#6B6B6B]">{app.role}</p>
 
                                   {showOverdue && (
-                                    <div className="bg-rose-50 border border-rose-100 rounded-lg p-2 mb-3 flex items-center gap-1.5 text-[10px] font-bold text-rose-700">
-                                      <AlertCircle size={12} className="shrink-0" />
-                                      <span>Overdue: Follow up! ({days}d)</span>
+                                    <div className="bg-rose-50 border border-rose-100 rounded-md p-1.5 mb-2 flex items-center gap-1.5 text-[10px] font-bold text-rose-700">
+                                      <AlertCircle size={11} className="shrink-0" />
+                                      <span>Overdue ({days}d)</span>
                                     </div>
                                   )}
                                   {showWarning && (
-                                    <div className="bg-amber-50 border border-amber-100 rounded-lg p-2 mb-3 flex items-center gap-1.5 text-[10px] font-bold text-amber-700">
-                                      <AlertCircle size={12} className="shrink-0" />
-                                      <span>Remind: Follow up soon ({days}d)</span>
+                                    <div className="bg-amber-50 border border-amber-100 rounded-md p-1.5 mb-2 flex items-center gap-1.5 text-[10px] font-bold text-amber-700">
+                                      <AlertCircle size={11} className="shrink-0" />
+                                      <span>Follow up ({days}d)</span>
                                     </div>
                                   )}
 
-                                  <div className="flex items-center justify-between border-t border-[#F5F5F0] pt-3">
-                                    <span className="text-[11px] font-medium text-[#9CA3AF]">
+                                  <div className="flex items-center justify-between pt-2">
+                                    <span className="font-mono text-[11px] text-[#9CA3AF]">
                                       {app.applied_at
                                         ? new Date(app.applied_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                                         : '—'}
                                     </span>
-                                    <div className="flex items-center gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
+                                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                                       {app?.url && (
                                         <a
                                           href={app.url}
@@ -1391,8 +1419,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               );
                             })}
                             {colApps.length === 0 && (
-                              <div className="flex min-h-[140px] items-center justify-center rounded-xl border border-dashed border-[#E5E5E0] bg-stone-50/10">
-                                <span className="text-[10px] uppercase font-bold text-[#9CA3AF] tracking-widest">Empty</span>
+                              <div className="flex flex-1 min-h-[80px] items-center justify-center rounded-lg border border-dashed border-[#E5E5E0]">
+                                <span className="caps-mono tracking-widest text-[#9CA3AF]">Empty</span>
                               </div>
                             )}
                           </div>
