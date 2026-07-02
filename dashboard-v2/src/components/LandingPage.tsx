@@ -1,6 +1,6 @@
 'use client';
 
-import { Briefcase, ArrowRight, ShieldCheck, Play, Sparkles, Zap, Target, Eye } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Play, Sparkles, Zap, Target, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -25,7 +25,7 @@ export default function LandingPage() {
       <header className="z-20 px-8 py-6 flex justify-between items-center border-b border-[#E5E5E0] backdrop-blur-md sticky top-0 bg-[#FAFAF8]/80">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 bg-[#1C1C1E] rounded-lg flex items-center justify-center shadow-sm">
-            <Briefcase className="h-5 w-5 text-white" />
+            <Zap className="h-5 w-5 text-white" strokeWidth={2.25} />
           </div>
           <span className="text-xl font-bold tracking-tight text-[#1C1C1E]">Career-Ops <span className="text-[10px] text-[#6B6B6B] font-mono uppercase tracking-widest ml-1">SaaS v2</span></span>
         </div>
