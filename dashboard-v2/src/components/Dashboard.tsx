@@ -2106,7 +2106,8 @@ System Initialized — v2.0`}
                  }
                />
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start auto-rows-min">
+              {/* Masonry layout: prevents tall-right/short-left whitespace gaps */}
+              <div className="columns-1 xl:columns-2 gap-5 [column-fill:_balance]">
                  <ConfigSection id="config-security" title="Account Security" icon={<Shield size={18} className="text-[#1C1C1E]" />}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <Input label="Login Email" value={accountInfo.email} onChange={(v) => setAccountInfo({...accountInfo, email: v})} />
@@ -3172,7 +3173,7 @@ function StatCard({ icon, label, value, color = 'stone' }: { icon: any, label: s
 
 function ConfigSection({ id, title, icon, children }: { id?: string, title: string, icon: any, children: React.ReactNode }) {
   return (
-    <div id={id} className="h-fit bg-white border border-[#E5E5E0] rounded-[1.75rem] p-4 space-y-3 scroll-mt-10">
+    <div id={id} className="mb-5 break-inside-avoid h-fit bg-white border border-[#E5E5E0] rounded-[1.75rem] p-4 space-y-3 scroll-mt-10">
       <h3 className="font-bold text-lg flex items-center gap-3 text-[#1C1C1E] border-b border-[#F5F5F0] pb-3">{icon} {title}</h3>
       {children}
     </div>
