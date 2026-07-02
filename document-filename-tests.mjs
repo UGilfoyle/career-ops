@@ -18,25 +18,25 @@ const base = buildApplicationDocumentBasename({
   company,
   roleTitle: 'Senior Backend Engineer',
 });
-assert.equal(base, 'AkashKainturaStripeSrBEEng');
+assert.equal(base, 'AkashKaintura_Stripe_SrBEEng');
 
 const paths = buildApplicationDocumentPaths({
   candidateName: name,
   company,
   roleTitle: 'Senior Backend Engineer',
 });
-assert.equal(paths.resumePdf, 'output/AkashKainturaStripeSrBEEng.pdf');
-assert.equal(paths.coverPdf, 'output/AkashKainturaStripeSrBEEngcover.pdf');
-assert.equal(paths.resumeHtml, 'output/AkashKainturaStripeSrBEEng.html');
-assert.equal(paths.coverHtml, 'output/AkashKainturaStripeSrBEEngcover.html');
+assert.equal(paths.resumePdf, 'output/AkashKaintura_Stripe_SrBEEng.pdf');
+assert.equal(paths.coverPdf, 'output/AkashKaintura_Stripe_SrBEEng_cover.pdf');
+assert.equal(paths.resumeHtml, 'output/AkashKaintura_Stripe_SrBEEng.html');
+assert.equal(paths.coverHtml, 'output/AkashKaintura_Stripe_SrBEEng_cover.html');
 
 assert.equal(
   buildDownloadFilename({ candidateName: name, company, roleTitle: 'Senior Backend Engineer', kind: 'resume' }),
-  'AkashKainturaStripeSrBEEng.pdf',
+  'AkashKaintura_Stripe_SrBEEng.pdf',
 );
 assert.equal(
   buildDownloadFilename({ candidateName: name, company, roleTitle: 'Senior Backend Engineer', kind: 'cover' }),
-  'AkashKainturaStripeSrBEEngcover.pdf',
+  'AkashKaintura_Stripe_SrBEEng_cover.pdf',
 );
 
 console.log('document-filename-tests: ok');

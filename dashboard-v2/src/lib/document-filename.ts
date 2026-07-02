@@ -1,7 +1,7 @@
 /**
  * Application document filenames (mirror of ../../document-filename.mjs):
- *   Resume:  {Name}{Company}{ShortRole}.pdf
- *   Cover:   {Name}{Company}{ShortRole}cover.pdf
+ *   Resume:  {name}_{company}_{role}.pdf
+ *   Cover:   {name}_{company}_{role}_cover.pdf
  */
 
 export function compactNamePart(str: string, maxLen = 32): string {
@@ -69,7 +69,7 @@ export function buildApplicationDocumentBasename({
   const name = compactNamePart(candidateName || '', 30);
   const co = compactNamePart(company || '', 24);
   const role = shortenRoleTitle(roleTitle);
-  return `${name}${co}${role}`;
+  return `${name}_${co}_${role}`;
 }
 
 export function buildDownloadFilename({
@@ -84,6 +84,6 @@ export function buildDownloadFilename({
   kind?: 'resume' | 'cover';
 }): string {
   const base = buildApplicationDocumentBasename({ candidateName, company, roleTitle });
-  if (kind === 'cover') return `${base}cover.pdf`;
+  if (kind === 'cover') return `${base}_cover.pdf`;
   return `${base}.pdf`;
 }

@@ -1,7 +1,9 @@
 /**
- * resume-quality.mjs — Post-process tailored resume text for 85+ ATS content scores:
+ * resume-quality.mjs — Post-process tailored resume text for 88+ ATS content scores:
  * quantified impact, global verb variety, and no repeated words within sentences.
  */
+
+const ATS_TARGET_SCORE = 88;
 
 /** @type {Record<string, string[]>} */
 export const VERB_ALTERNATIVES = {
@@ -271,7 +273,7 @@ export function enrichBulletWithSourceMetric(bullet, sourceBullets) {
       best = src;
     }
   }
-  if (!best || bestOverlap < 2) return { bullet, enriched: false };
+  if (!best || bestOverlap < 1) return { bullet, enriched: false };
   const metric = extractMetricClause(best);
   if (!metric) return { bullet, enriched: false };
   const trimmed = String(bullet).trim().replace(/\.$/, '');
@@ -292,6 +294,66 @@ function collectExperienceArrays(experience) {
   return [];
 }
 
+function collectAllSourceBullets(sourceExperience) {
+  if (!Array.isArray(sourceExperience)) return [];
+  return sourceExperience.flatMap((e) => (Array.isArray(e?.bullets) ? e.bullets : []));
+}
+
+function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets) {
+  const metricSources = allSourceBullets.filter((s) => hasQuantifiedImpact(s));
+  const roleMetricClauses = roleSourceBullets
+    .map((s) => extractMetricClause(s))
+    .filter(Boolean);
+  const globalMetricClauses = metricSources
+    .map((s) => extractMetricClause(s))
+    .filter(Boolean);
+  let roleMetricIdx = 0;
+  let globalMetricIdx = 0;
+
+  return bullets.map((b) => {
+    if (hasQuantifiedImpact(b)) return { bullet: b, enriched: false };
+    let result = enrichBulletWithSourceMetric(b, roleSourceBullets);
+    if (!result.enriched) result = enrichBulletWithSourceMetric(b, allSourceBullets);
+    if (!result.enriched && metricSources.length > 0) {
+      let best = null;
+      let bestOverlap = 0;
+      for (const src of metricSources) {
+        const overlap = tokenOverlap(b, src);
+        if (overlap > bestOverlap) {
+          bestOverlap = overlap;
+          best = src;
+        }
+      }
+      if (best) {
+        const metric = extractMetricClause(best);
+        if (metric) {
+          const trimmed = String(b).trim().replace(/\.$/, '');
+          if (!trimmed.toLowerCase().includes(metric.toLowerCase())) {
+            return { bullet: `${trimmed}, ${metric}.`, enriched: true };
+          }
+        }
+      }
+    }
+    if (!result.enriched && !hasQuantifiedImpact(result.bullet) && roleMetricClauses[roleMetricIdx]) {
+      const metric = roleMetricClauses[roleMetricIdx];
+      roleMetricIdx += 1;
+      const trimmed = String(result.bullet).trim().replace(/\.$/, '');
+      if (!trimmed.toLowerCase().includes(metric.toLowerCase())) {
+        return { bullet: `${trimmed}, ${metric}.`, enriched: true };
+      }
+    }
+    if (!result.enriched && !hasQuantifiedImpact(result.bullet) && globalMetricClauses[globalMetricIdx]) {
+      const metric = globalMetricClauses[globalMetricIdx];
+      globalMetricIdx += 1;
+      const trimmed = String(result.bullet).trim().replace(/\.$/, '');
+      if (!trimmed.toLowerCase().includes(metric.toLowerCase())) {
+        return { bullet: `${trimmed}, ${metric}.`, enriched: true };
+      }
+    }
+    return result;
+  });
+}
+
 function polishTextList(texts) {
   const usedGlobally = new Map();
   let intraFixes = 0;
@@ -304,32 +366,18 @@ function polishTextList(texts) {
   return { texts: pass2, intraFixes, globalFixes };
 }
 
-export function polishTailoredResume(resume, sourceExperience = []) {
-  if (!resume || typeof resume !== 'object') {
-    return {
-      resume,
-      stats: { verbsRotated: 0, metricsEnriched: 0, wordRepetitionsFixed: 0, atsContentScore: 0 },
-    };
-  }
-
-  const usedVerbs = new Set();
+function applyExperiencePolish(resume, sourceExperience, usedVerbs) {
   let verbsRotated = 0;
   let metricsEnriched = 0;
   let wordRepetitionsFixed = 0;
 
-  if (resume.summary) {
-    const lines = String(resume.summary).split('\n').filter(Boolean);
-    const { texts, intraFixes, globalFixes } = polishTextList(lines);
-    wordRepetitionsFixed += intraFixes + globalFixes;
-    resume.summary = texts.join('\n');
-  }
-
+  const allSourceBullets = collectAllSourceBullets(sourceExperience);
   const roleBulletGroups = collectExperienceArrays(resume.experience);
   const polishedGroups = roleBulletGroups.map((bullets, roleIdx) => {
-    const sourceBullets = sourceExperience[roleIdx]?.bullets || [];
-    const metricEnriched = bullets.map((b) => {
-      const { bullet, enriched } = enrichBulletWithSourceMetric(b, sourceBullets);
-      if (enriched) metricsEnriched += 1;
+    const roleSourceBullets = sourceExperience[roleIdx]?.bullets || [];
+    const enriched = enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets);
+    const metricEnriched = enriched.map(({ bullet, enriched: wasEnriched }) => {
+      if (wasEnriched) metricsEnriched += 1;
       return bullet;
     });
     const { bullets: verbPolished, rotated } = dedupeVerbStarts(metricEnriched, usedVerbs);
@@ -349,12 +397,64 @@ export function polishTailoredResume(resume, sourceExperience = []) {
     });
   }
 
-  const audit = auditResumeQuality(resume);
-  const atsContentScore = estimateAtsContentScore(audit);
+  return { verbsRotated, metricsEnriched, wordRepetitionsFixed };
+}
+
+export function polishTailoredResume(resume, sourceExperience = []) {
+  if (!resume || typeof resume !== 'object') {
+    return {
+      resume,
+      stats: { verbsRotated: 0, metricsEnriched: 0, wordRepetitionsFixed: 0, atsContentScore: 0, polishIterations: 0 },
+    };
+  }
+
+  const usedVerbs = new Set();
+  let verbsRotated = 0;
+  let metricsEnriched = 0;
+  let wordRepetitionsFixed = 0;
+  let polishIterations = 0;
+
+  if (resume.summary) {
+    const lines = String(resume.summary).split('\n').filter(Boolean);
+    const { texts, intraFixes, globalFixes } = polishTextList(lines);
+    wordRepetitionsFixed += intraFixes + globalFixes;
+    resume.summary = texts.join('\n');
+  }
+
+  let audit = auditResumeQuality(resume);
+  let atsContentScore = estimateAtsContentScore(audit);
+
+  const MAX_ITER = 5;
+  while (polishIterations < MAX_ITER && atsContentScore < ATS_TARGET_SCORE) {
+    polishIterations += 1;
+    const pass = applyExperiencePolish(resume, sourceExperience, usedVerbs);
+    verbsRotated += pass.verbsRotated;
+    metricsEnriched += pass.metricsEnriched;
+    wordRepetitionsFixed += pass.wordRepetitionsFixed;
+
+    if (resume.summary) {
+      const lines = String(resume.summary).split('\n').filter(Boolean);
+      const { texts, intraFixes, globalFixes } = polishTextList(lines);
+      wordRepetitionsFixed += intraFixes + globalFixes;
+      resume.summary = texts.join('\n');
+    }
+
+    audit = auditResumeQuality(resume);
+    atsContentScore = estimateAtsContentScore(audit);
+
+    if (
+      atsContentScore >= ATS_TARGET_SCORE
+      && audit.repeatedVerbs.length === 0
+      && audit.repeatedWords.length === 0
+      && audit.intraSentenceRepeats === 0
+    ) {
+      break;
+    }
+  }
 
   return {
     resume,
-    stats: { verbsRotated, metricsEnriched, wordRepetitionsFixed, atsContentScore },
+    stats: { verbsRotated, metricsEnriched, wordRepetitionsFixed, atsContentScore, polishIterations },
   };
 }
 
