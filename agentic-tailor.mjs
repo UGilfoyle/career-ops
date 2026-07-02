@@ -7,6 +7,7 @@ import { pathToFileURL } from 'url';
 import sql from './db/client.mjs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { polishTailoredResume, auditResumeQuality } from './resume-quality.mjs';
+import { buildApplicationDocumentPaths } from './document-filename.mjs';
 
 let hf = null;
 let hfUnavailable = false;
@@ -1319,6 +1320,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       const pct = Math.round(((audit.totalBullets - audit.withoutMetrics) / audit.totalBullets) * 100);
       console.log(`📈 Quantified impact coverage: ${pct}% of bullets (${audit.totalBullets - audit.withoutMetrics}/${audit.totalBullets})`);
     }
+    data.ats_content_score = stats.atsContentScore ?? null;
   }
 
   return data;
@@ -1548,12 +1550,23 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       resumeHtml = resumeHtml.replace(new RegExp(`{{${key}}}`, 'g'), val || '');
     });
 
-    const sanitizeFilename = (str) => str.replace(/[^a-z0-9]/gi, '_').replace(/_{2,}/g, '_').substring(0, 50);
-    const companySlug = sanitizeFilename(entry.company);
-    const candidateNameSlug = sanitizeFilename(c.full_name || 'Candidate');
-    
-    const resumePathHtml = `output/${candidateNameSlug}_${companySlug}_Resume.html`;
-    const resumePathPdf = `output/${candidateNameSlug}_${companySlug}_Resume.pdf`;
+    let roleTitle = entry.title || 'Role';
+    if (jdText) {
+      const titleLine = jdText.split('\n').find((l) => l.toLowerCase().startsWith('job title:'));
+      if (titleLine) {
+        roleTitle = titleLine.substring(titleLine.indexOf(':') + 1).trim();
+      }
+    }
+
+    const docPaths = buildApplicationDocumentPaths({
+      candidateName: c.full_name || 'Candidate',
+      company: entry.company || 'Company',
+      roleTitle,
+    });
+    const resumePathHtml = docPaths.resumeHtml;
+    const resumePathPdf = docPaths.resumePdf;
+    const clPathHtml = docPaths.coverHtml;
+    const clPathPdf = docPaths.coverPdf;
 
     if (!fs.existsSync('output')) fs.mkdirSync('output');
     fs.writeFileSync(resumePathHtml, resumeHtml);
@@ -1570,8 +1583,6 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       clHtml = clHtml.replace(new RegExp(`{{${key}}}`, 'g'), val || '');
     });
 
-    const clPathHtml = `output/${candidateNameSlug}_${companySlug}_CL.html`;
-    const clPathPdf = `output/${candidateNameSlug}_${companySlug}_CL.pdf`;
     fs.writeFileSync(clPathHtml, clHtml);
 
     console.log(`✅ Package ready: ${resumePathHtml} & ${clPathHtml}`);
@@ -1585,17 +1596,12 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
           ADD COLUMN IF NOT EXISTS resume_pdf_key TEXT,
           ADD COLUMN IF NOT EXISTS cover_letter_pdf_key TEXT,
           ADD COLUMN IF NOT EXISTS canonical_url TEXT,
-          ADD COLUMN IF NOT EXISTS jd_text TEXT;
+          ADD COLUMN IF NOT EXISTS jd_text TEXT,
+          ADD COLUMN IF NOT EXISTS ats_content_score INTEGER;
       `;
       
-      // Extract job title from JD text if available
-      let inferredTitle = entry.title || 'Job via URL';
-      if (jdText) {
-        const titleLine = jdText.split('\n').find(l => l.toLowerCase().startsWith('job title:'));
-        if (titleLine) {
-          inferredTitle = titleLine.substring(titleLine.indexOf(':') + 1).trim();
-        }
-      }
+      // Job title for DB (same as filename role segment)
+      const inferredTitle = roleTitle;
 
       // We assume entry.id exists if it came from DB, else we try to find it by URL or insert it
       if (!entry.id) {
@@ -1638,7 +1644,8 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
             resume_html = ${resumeHtml},
             cover_letter_html = ${clHtml},
             canonical_url = COALESCE(${canonicalUrl}, canonical_url),
-            jd_text = COALESCE(${String(jdText || '').slice(0, 25000)}, jd_text)
+            jd_text = COALESCE(${String(jdText || '').slice(0, 25000)}, jd_text),
+            ats_content_score = COALESCE(${result.ats_content_score ?? null}, ats_content_score)
           WHERE id = ${entry.id} AND user_id = ${userId}
         `;
         console.log(`💾 HTML assets persisted to database for job ID ${entry.id}. You can view/print them from the dashboard!`);

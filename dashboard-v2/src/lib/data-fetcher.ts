@@ -147,6 +147,7 @@ export async function getDashboardData(userId: string) {
             updated_at,
             url,
             canonical_url,
+            ats_content_score,
             (resume_pdf_key IS NOT NULL OR resume_pdf IS NOT NULL) AS has_resume_pdf,
             (cover_letter_pdf_key IS NOT NULL OR cover_letter_pdf IS NOT NULL) AS has_cover_letter_pdf,
             (resume_html IS NOT NULL) AS has_resume_html,
@@ -167,6 +168,7 @@ export async function getDashboardData(userId: string) {
           url: d.canonical_url || d.url,
           name: `Tailored Assets: ${d.company} - ${d.title}`,
           mtime: d.updated_at,
+          ats_content_score: d.ats_content_score != null ? Number(d.ats_content_score) : null,
           has_resume_pdf: !!d.has_resume_pdf,
           has_cover_letter_pdf: !!d.has_cover_letter_pdf,
           has_resume_html: !!d.has_resume_html,
@@ -194,13 +196,14 @@ export async function getDashboardData(userId: string) {
             )
           ORDER BY created_at DESC
         `;
-        return docs.map(d => ({
+        return docs.map((d: any) => ({
           id: d.id,
           company: d.company,
           title: d.title,
           url: d.canonical_url || d.url,
           name: `Tailored Assets: ${d.company} - ${d.title}`,
           mtime: d.created_at,
+          ats_content_score: d.ats_content_score != null ? Number(d.ats_content_score) : null,
           has_resume_pdf: !!d.has_resume_pdf,
           has_cover_letter_pdf: !!d.has_cover_letter_pdf,
           has_resume_html: !!d.has_resume_html,

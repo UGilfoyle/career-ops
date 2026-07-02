@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { findTailoredResumePdf } from './document-filename.mjs';
 
 const TARGET_MAP = 'data/current_eval.json';
 const index = process.argv[2];
@@ -31,16 +32,19 @@ console.log('══════════════════════�
 
 const companyClean = company.replace(/[^a-z0-9]/gi, '_').replace(/_{2,}/g, '_').toLowerCase();
 const outDir = 'output';
-let tailoredFile = '';
-if (fs.existsSync(outDir)) {
+let tailoredFile =
+  findTailoredResumePdf(outDir, {
+    candidateName: process.env.CAREER_OPS_CANDIDATE_NAME || '',
+    company,
+    roleTitle: entry.title || entry.role || '',
+  }) || '';
+if (!tailoredFile && fs.existsSync(outDir)) {
   const files = fs.readdirSync(outDir);
-  const match = files.find(f => f.toLowerCase().includes(companyClean) && (f.includes('Resume') || f.includes('SSE') || f.includes('Tailored')) && f.endsWith('.pdf'));
-  if (match) {
-    tailoredFile = path.join(outDir, match);
-  }
+  const match = files.find(f => f.toLowerCase().includes(companyClean) && f.endsWith('.pdf') && !f.toLowerCase().includes('cover'));
+  if (match) tailoredFile = path.join(outDir, match);
 }
 if (!tailoredFile) {
-  tailoredFile = `output/Akash_Kaintura_${company.replace(/\s/g, '_')}_Resume.pdf`;
+  tailoredFile = `output/${company.replace(/\s/g, '_')}.pdf`;
 }
 
 if (fs.existsSync(tailoredFile)) {

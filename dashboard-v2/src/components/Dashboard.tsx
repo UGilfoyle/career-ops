@@ -43,6 +43,9 @@ import ComingSoonBanner from './ComingSoonBanner';
 import ResumeStudioTeaser from './ResumeStudioTeaser';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
 
+/** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
+const SHOW_RESUME_MANAGER_NAV = false;
+
 export default function Dashboard({ initialData }: { initialData?: any }) {
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.email === 'admin@career-ops.local';
@@ -218,7 +221,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
     const hint =
       label === 'Tailor' && outcome === 'completed'
-        ? ' [FILE] PDF ready in Resume Manager → Generated Docs'
+        ? ' [FILE] PDF ready in Generated Docs'
         : '';
     return { toast: `[OK] ✔ ${label} ${outcome}${hint}`, terminal: `[OK] ✔ ${label} ${outcome}${hint}` };
   };
@@ -861,7 +864,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const displayName = firstNameFromProfile || firstNameFromSession || null;
 
   return (
-    <div className="flex h-screen bg-[#FAFAF8] text-[#1C1C1E] font-sans selection:bg-[#1C1C1E]/10">
+    <div className="flex h-screen bg-[#FAFAF8] text-[#1C1C1E] font-[family-name:var(--font-inter)] selection:bg-[#1C1C1E]/10">
       {/* Sidebar: collapsible — icons only when collapsed */}
       <aside
         className={`relative flex h-screen flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-[width] duration-300 ease-in-out ${
@@ -891,7 +894,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('pipeline')} />
             <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('resume-studio')} />
             <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('generated-docs')} />
+            {SHOW_RESUME_MANAGER_NAV && (
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
+            )}
             <NavItem id="nav-skills" icon={<TrendingUp size={18}/>} label="Skill Gaps" active={activeTab === 'skills'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('skills')} />
             {isAdmin && (
               <NavItem id="nav-analytics" icon={<Eye size={18}/>} label="Analytics" active={activeTab === 'analytics'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('analytics'); if (!visitorStats) { fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {}); } }} />
@@ -930,7 +935,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-12 bg-white">
+      <main
+        className={`flex-1 overflow-y-auto ${
+          activeTab === 'generated-docs' ? 'bg-[#FAFAF8] p-8 sm:p-10' : 'bg-white p-12'
+        }`}
+      >
+        {activeTab !== 'generated-docs' && (
         <header className="flex justify-between items-center mb-12">
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-[#1C1C1E]">
@@ -979,8 +989,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
              </button>
           </div>
         </header>
+        )}
 
-        {activeTab !== 'resume-studio' && (
+        {activeTab !== 'resume-studio' && activeTab !== 'generated-docs' && (
           <ComingSoonBanner onLearnMore={() => setActiveTab('resume-studio')} />
         )}
 
@@ -1017,6 +1028,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
         </AnimatePresence>
 
+        {activeTab !== 'generated-docs' && (
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-10 sm:mb-12">
           <StatCard
             icon={<Clock size={18} className="text-white" />}
@@ -1043,6 +1055,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             color="amber"
           />
         </section>
+        )}
 
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (

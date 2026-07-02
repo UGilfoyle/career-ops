@@ -2,12 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import sql from './db/client.mjs';
 import { openApplyBrowser } from '../../browser-session.mjs';
+import { findTailoredResumePdf } from '../../document-filename.mjs';
 
 let hf = null;
 const TARGET_MAP = 'data/current_eval.json';
 
 let urlOrIdx = process.argv[2];
 let company = process.argv[3] || '';
+let jobTitle = '';
 const rawUserId = process.env.SCAN_USER_ID || 1;
 const userId = Number.parseInt(String(rawUserId), 10);
 if (!Number.isFinite(userId)) {
@@ -89,14 +91,12 @@ ${note || ''}
 let profile = { candidate: {}, narrative: {}, legal: {}, compensation: {} };
 
 function findTailoredCV(companyName) {
-  if (!companyName) return null;
   const outDir = path.join(process.cwd(), 'output');
-  if (!fs.existsSync(outDir)) return null;
-  
-  const files = fs.readdirSync(outDir);
-  // Matches "Akash_Kaintura_SSE_CompanyName.pdf" or "Akash_Kaintura_CompanyName_Resume.pdf"
-  const match = files.find(f => f.toLowerCase().includes(companyName.toLowerCase()) && (f.includes('Resume') || f.includes('SSE') || f.includes('Tailored')) && f.endsWith('.pdf'));
-  return match ? path.join('output', match) : null;
+  return findTailoredResumePdf(outDir, {
+    candidateName: profile?.candidate?.full_name,
+    company: companyName,
+    roleTitle: jobTitle,
+  });
 }
 
 if (!urlOrIdx) {
@@ -124,7 +124,7 @@ if (/^\d+$/.test(urlOrIdx)) {
     if (Number.isFinite(jobId)) {
       try {
         const [job] = await sql`
-          SELECT url, company
+          SELECT url, company, title
           FROM jobs
           WHERE id = ${jobId} AND user_id = ${userId}
           LIMIT 1
@@ -132,6 +132,7 @@ if (/^\d+$/.test(urlOrIdx)) {
         if (job?.url) {
           targetUrl = job.url;
           company = company || job.company || '';
+          jobTitle = job.title || '';
         }
       } catch {}
     }

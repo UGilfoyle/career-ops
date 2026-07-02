@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { buildDownloadFilename } from '@/lib/document-filename';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
@@ -81,22 +82,21 @@ export async function GET(
       return new NextResponse('Job not found', { status: 404 });
     }
 
-    const safe = (s: string) =>
-      String(s || '')
-        .replace(/https?:\/\//g, '')
-        .replace(/[^a-z0-9]+/gi, '_')
-        .replace(/_{2,}/g, '_')
-        .replace(/^_+|_+$/g, '')
-        .slice(0, 80);
-    const nameCore = [
-      safe(session.user.name || ''),
-      safe(job.company || ''),
-      safe(job.title || ''),
-      type === 'cl' ? 'Cover_Letter' : 'Resume',
-    ].filter(Boolean).join('_') || `career_ops_${jobId}`;
+    const [profileRow] = await sql`
+      SELECT resume_context FROM user_profiles WHERE user_id = ${session.user.id} LIMIT 1
+    `;
+    const candidateName =
+      (profileRow as any)?.resume_context?.candidate?.full_name || session.user.name;
+
+    const downloadFilename = buildDownloadFilename({
+      candidateName,
+      company: job.company,
+      roleTitle: job.title,
+      kind: type === 'cl' ? 'cover' : 'resume',
+    });
 
     if (format === 'pdf') {
-      const filename = `${nameCore}.pdf`;
+      const filename = downloadFilename;
       const key = type === 'cl' ? job.cover_letter_pdf_key : job.resume_pdf_key;
       if (key) {
         const r2Endpoint =
@@ -168,7 +168,7 @@ export async function GET(
         return new NextResponse(stream, {
           headers: {
             'Content-Type': 'application/pdf',
-            ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : {}),
+            ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : { 'X-Frame-Options': 'SAMEORIGIN' }),
             'X-CareerOps-PDF-Source': 'r2',
           },
         });
@@ -182,7 +182,7 @@ export async function GET(
       return new NextResponse(pdf, {
         headers: {
           'Content-Type': 'application/pdf',
-          ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : {}),
+          ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : { 'X-Frame-Options': 'SAMEORIGIN' }),
           'X-CareerOps-PDF-Source': 'db',
         },
       });
@@ -194,10 +194,11 @@ export async function GET(
       return new NextResponse('Content not found', { status: 404 });
     }
 
-    const filename = `${nameCore}.html`;
+    const filename = downloadFilename.replace(/\.pdf$/i, '.html');
     return new NextResponse(html, {
       headers: {
-        'Content-Type': 'text/html',
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Frame-Options': 'SAMEORIGIN',
         ...(download
           ? { 'Content-Disposition': `attachment; filename="${filename}"` }
           : {}),
