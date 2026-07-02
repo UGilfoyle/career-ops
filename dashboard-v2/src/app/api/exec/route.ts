@@ -121,9 +121,9 @@ export async function GET(req: NextRequest) {
           send({ type: 'done', code: 0 });
           controller.close();
           return;
-        } else if (cmd === 'skill-gap' || cmd === 'sync-stories') {
+        } else if (cmd === 'sync-stories') {
           if (process.env.VERCEL === '1') {
-            const actionName = cmd === 'skill-gap' ? 'Skill Gap Heatmap' : 'Story Bank Sync';
+            const actionName = 'Story Bank Sync';
             send({ 
               type: 'stderr', 
               content: `\n⚠️  [Vercel Serverless Constraint]\n"${actionName}" parses local reports in your project folder.\nThis cannot run directly on the cloud serverless deployment.\n\n👉 Please run this command locally in your terminal instead:\n   npm run ${cmd}\n\n` 
@@ -145,7 +145,6 @@ export async function GET(req: NextRequest) {
   │  UTILITIES                                          │
   │    scan              Quick discovery check           │
   │    tailor <id>       Quick Resume preview            │
-  │    skill-gap         Analyze CV-JD missing skills    │
   │    sync-stories      Sync STAR stories to master bank│
   │    ls                List project files              │
   │    clear             Clear terminal screen           │
@@ -236,7 +235,7 @@ export async function GET(req: NextRequest) {
         }
 
         // 4. Execute Script from the new 'scripts' location
-        const isRootScript = cmd === 'skill-gap' || cmd === 'sync-stories';
+        const isRootScript = cmd === 'sync-stories';
         const scriptPath = isRootScript 
           ? path.join(process.cwd(), '..', scriptName) 
           : path.join(process.cwd(), 'scripts', scriptName);
