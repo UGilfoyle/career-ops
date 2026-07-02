@@ -3,26 +3,8 @@
  * verify-tailor-quality.mjs — offline check that polish + naming hit 88+ without DB/LLM.
  */
 
-import fs from 'fs';
-import path from 'path';
 import { polishTailoredResume, auditResumeQuality, estimateAtsContentScore } from './resume-quality.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
-
-const DEBUG_LOG = path.join('.cursor', 'debug-977bca.log');
-
-function agentLog(location, message, data, hypothesisId) {
-  const line = JSON.stringify({
-    sessionId: '977bca',
-    runId: 'verify-post-fix',
-    location,
-    message,
-    data,
-    hypothesisId,
-    timestamp: Date.now(),
-  });
-  fs.mkdirSync('.cursor', { recursive: true });
-  fs.appendFileSync(DEBUG_LOG, `${line}\n`);
-}
 
 const sourceExperience = [
   {
@@ -67,17 +49,6 @@ const ok =
   && after.withoutMetrics === 0
   && paths.resumePdf.endsWith('AkashKaintura_Stripe_SrBEEng.pdf')
   && paths.coverPdf.endsWith('AkashKaintura_Stripe_SrBEEng_cover.pdf');
-
-agentLog('verify-tailor-quality.mjs', 'verification result', {
-  scoreBefore,
-  scoreAfter: stats.atsContentScore,
-  stats,
-  repeatedVerbs: after.repeatedVerbs,
-  withoutMetrics: after.withoutMetrics,
-  resumePdf: paths.resumePdf,
-  coverPdf: paths.coverPdf,
-  ok,
-}, 'verify');
 
 console.log(JSON.stringify({ ok, scoreBefore, scoreAfter: stats.atsContentScore, paths }, null, 2));
 process.exit(ok ? 0 : 1);
