@@ -46,6 +46,12 @@ import GeneratedDocsPanel from './GeneratedDocsPanel';
 /** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
 const SHOW_RESUME_MANAGER_NAV = false;
 
+/** Tabs that show Search + Quick Run (no welcome banner). */
+const TABS_WITH_TOP_ACTIONS = new Set(['dashboard', 'apps', 'pipeline', 'skills', 'cv', 'analytics']);
+
+/** Overview stat cards only on the home dashboard. */
+const TABS_WITH_STAT_CARDS = new Set(['dashboard']);
+
 export default function Dashboard({ initialData }: { initialData?: any }) {
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.email === 'admin@career-ops.local';
@@ -858,12 +864,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     );
   }
 
-  const firstNameFromProfile = data?.profile?.candidate?.full_name?.trim()?.split(/\s+/)?.[0];
-  const firstNameFromSession =
-    session?.user?.name?.trim()?.split(/\s+/)?.[0] ||
-    session?.user?.email?.split('@')?.[0];
-  const displayName = firstNameFromProfile || firstNameFromSession || null;
-
   return (
     <div className="flex h-screen bg-[#FAFAF8] text-[#1C1C1E] font-[family-name:var(--font-inter)] selection:bg-[#1C1C1E]/10">
       {/* Sidebar: collapsible — icons only when collapsed */}
@@ -941,59 +941,31 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           activeTab === 'generated-docs' ? 'bg-[#FAFAF8] p-8 sm:p-10' : 'bg-white p-12'
         }`}
       >
-        {activeTab !== 'generated-docs' && (
-        <header className="flex justify-between items-center mb-12">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight text-[#1C1C1E]">
-              {displayName ? `Welcome back, ${displayName}` : 'Welcome back'}
-            </h1>
-            <p className="text-[#9CA3AF] font-medium mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-            {data?.meta?.lastRunId && (
-              <div className="mt-3 text-[10px] font-mono text-[#9CA3AF] uppercase tracking-[0.2em]">
-                Last run: <span className="text-[#1C1C1E] font-bold">{String(data.meta.lastRunScript || '').replace('.mjs', '')}</span>{' '}
-                <span className="text-[#9CA3AF]">·</span>{' '}
-                <span className="text-[#1C1C1E] font-bold">{String(data.meta.lastRunStatus || '')}</span>{' '}
-                {data?.meta?.lastRunUrl && (
-                  <>
-                    <span className="text-[#9CA3AF]">·</span>{' '}
-                    <a
-                      href={data.meta.lastRunUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-4 hover:text-[#1C1C1E]"
-                    >
-                      logs
-                    </a>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="flex gap-4">
-             <button
-               onClick={() => setIsSearchOpen((v) => !v)}
-               className={`px-5 py-2.5 border rounded-xl transition-colors flex items-center gap-2 text-sm font-bold ${
-                 isSearchOpen || searchQuery.trim()
-                   ? 'bg-white border-[#1C1C1E] text-[#1C1C1E]'
-                   : 'bg-[#F5F5F0] border border-[#E5E5E0] hover:bg-[#E5E5E0] text-[#1C1C1E]'
-               }`}
-             >
-                <Search size={16} />
-                <span>{searchQuery.trim() ? 'Searching' : 'Search'}</span>
-             </button>
-             <button 
-                onClick={() => { setActiveTab('terminal'); runCommand('rank'); }}
-                className="px-5 py-2.5 bg-[#1C1C1E] text-white font-bold rounded-xl hover:bg-[#27272a] transition-all flex items-center gap-2 shadow-lg"
-              >
-                <Play size={16} />
-                <span>Quick Run</span>
-             </button>
-          </div>
+        {TABS_WITH_TOP_ACTIONS.has(activeTab) && (
+        <header className="mb-6 flex items-center justify-end gap-4">
+          <button
+            onClick={() => setIsSearchOpen((v) => !v)}
+            className={`flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-bold transition-colors ${
+              isSearchOpen || searchQuery.trim()
+                ? 'border-[#1C1C1E] bg-white text-[#1C1C1E]'
+                : 'border border-[#E5E5E0] bg-[#F5F5F0] text-[#1C1C1E] hover:bg-[#E5E5E0]'
+            }`}
+          >
+            <Search size={16} />
+            <span>{searchQuery.trim() ? 'Searching' : 'Search'}</span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('terminal'); runCommand('rank'); }}
+            className="flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-[#27272a]"
+          >
+            <Play size={16} />
+            <span>Quick Run</span>
+          </button>
         </header>
         )}
 
         <AnimatePresence>
-          {isSearchOpen && (
+          {isSearchOpen && TABS_WITH_TOP_ACTIONS.has(activeTab) && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1025,7 +997,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
         </AnimatePresence>
 
-        {activeTab !== 'generated-docs' && (
+        {TABS_WITH_STAT_CARDS.has(activeTab) && (
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-10 sm:mb-12">
           <StatCard
             icon={<Clock size={18} className="text-white" />}
