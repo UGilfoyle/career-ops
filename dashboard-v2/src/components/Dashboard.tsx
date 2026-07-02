@@ -39,18 +39,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
+import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHeader';
 import ResumeStudioModal from './ResumeStudioModal';
 import ResumeStudioTeaser from './ResumeStudioTeaser';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
 
 /** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
 const SHOW_RESUME_MANAGER_NAV = false;
-
-/** Tabs that show Search + Quick Run (no welcome banner). */
-const TABS_WITH_TOP_ACTIONS = new Set(['dashboard', 'apps', 'pipeline', 'skills', 'cv', 'analytics']);
-
-/** Overview stat cards only on the home dashboard. */
-const TABS_WITH_STAT_CARDS = new Set(['dashboard']);
 
 export default function Dashboard({ initialData }: { initialData?: any }) {
   const { data: session, status } = useSession();
@@ -864,18 +859,58 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     );
   }
 
+  const firstNameFromProfile = data?.profile?.candidate?.full_name?.trim()?.split(/\s+/)?.[0];
+  const firstNameFromSession =
+    session?.user?.name?.trim()?.split(/\s+/)?.[0] ||
+    session?.user?.email?.split('@')?.[0];
+  const displayName = firstNameFromProfile || firstNameFromSession || null;
+
+  const lastRunMeta = {
+    lastRunScript: data?.meta?.lastRunScript || data?.meta?.lastBackgroundActionScript,
+    lastRunStatus: data?.meta?.lastRunStatus || data?.meta?.lastBackgroundStatus,
+    lastRunUrl: data?.meta?.lastRunUrl,
+  };
+
+  const activeApplicationCount = (data?.applications || []).filter((app: any) => {
+    const s = String(app.status || '').toUpperCase();
+    return !['REJECTED', 'DISCARDED', 'SKIP', 'RECHAZADO', 'DESCARTADO'].includes(s);
+  }).length;
+
+  const searchActions = (
+    <>
+      <button
+        onClick={() => setIsSearchOpen((v) => !v)}
+        className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-colors ${
+          isSearchOpen || searchQuery.trim()
+            ? 'border-[#1C1C1E] bg-white text-[#1C1C1E]'
+            : 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:bg-[#FAFAF8]'
+        }`}
+      >
+        <Search size={16} />
+        <span>{searchQuery.trim() ? 'Searching' : 'Search'}</span>
+      </button>
+      <button
+        onClick={() => { setActiveTab('terminal'); runCommand('rank'); }}
+        className="flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#27272a]"
+      >
+        <Play size={16} />
+        <span>Quick Run</span>
+      </button>
+    </>
+  );
+
   return (
     <div className="flex h-screen bg-[#FAFAF8] text-[#1C1C1E] font-[family-name:var(--font-inter)] selection:bg-[#1C1C1E]/10">
       {/* Sidebar: collapsible — icons only when collapsed */}
       <aside
         className={`relative flex h-screen flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-[width] duration-300 ease-in-out ${
-          sidebarCollapsed ? 'w-[4.5rem]' : 'w-64'
+          sidebarCollapsed ? 'w-[4.5rem]' : 'w-60'
         }`}
       >
-        <div className={`flex-1 overflow-y-auto overflow-x-hidden ${sidebarCollapsed ? 'p-3 pb-2' : 'p-6 pb-2'}`}>
+        <div className={`flex-1 overflow-y-auto overflow-x-hidden ${sidebarCollapsed ? 'px-2 py-4' : 'px-4 py-6'}`}>
           <div
-            className={`mb-8 flex items-center ${
-              sidebarCollapsed ? 'justify-center px-0' : 'gap-2.5 px-2'
+            className={`mb-6 flex items-center ${
+              sidebarCollapsed ? 'justify-center' : 'gap-2.5 px-1'
             }`}
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1c1c1e]">
@@ -889,12 +924,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             )}
           </div>
 
-          <nav className="space-y-1">
+          <nav className="space-y-0.5">
             <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('dashboard')} />
-            <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('apps')} />
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('pipeline')} />
+            <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('apps')} />
             <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio' || resumeStudioModalOpen} collapsed={sidebarCollapsed} onClick={() => setResumeStudioModalOpen(true)} />
             <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('generated-docs')} />
+            <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('terminal')} />
             {SHOW_RESUME_MANAGER_NAV && (
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
             )}
@@ -902,12 +938,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             {isAdmin && (
               <NavItem id="nav-analytics" icon={<Eye size={18}/>} label="Analytics" active={activeTab === 'analytics'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('analytics'); if (!visitorStats) { fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {}); } }} />
             )}
-            <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('terminal')} />
             <NavItem id="nav-docs" icon={<BookOpen size={18}/>} label="Tutorial & Docs" active={activeTab === 'docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('docs')} />
           </nav>
         </div>
 
-        <div className={`mt-auto border-t border-[#E5E5E0] ${sidebarCollapsed ? 'p-3' : 'p-6'}`}>
+        <div className={`mt-auto border-t border-[#E5E5E0] ${sidebarCollapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
           <NavItem id="nav-settings" icon={<Settings size={18}/>} label="Settings" active={activeTab === 'settings'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('settings')} />
           <button
             onClick={() => signOut({ callbackUrl: '/' })}
@@ -925,47 +960,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-expanded={!sidebarCollapsed}
-            className={`mt-2 flex w-full items-center rounded-xl border border-[#E5E5E0] bg-white text-[#6B6B6B] transition-all hover:border-[#D4D4CE] hover:text-[#1C1C1E] ${
-              sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-2 px-4 py-2.5'
+            className={`mt-2 flex w-full items-center justify-center rounded-xl border border-[#E5E5E0] bg-white py-2.5 text-[#6B6B6B] transition-all hover:border-[#D4D4CE] hover:text-[#1C1C1E] ${
+              sidebarCollapsed ? 'px-0' : 'px-4'
             }`}
           >
             {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-            {!sidebarCollapsed && <span className="text-xs font-bold">Collapse</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main
-        className={`flex-1 overflow-y-auto ${
-          activeTab === 'generated-docs' ? 'bg-[#FAFAF8] p-8 sm:p-10' : 'bg-white p-12'
-        }`}
-      >
-        {TABS_WITH_TOP_ACTIONS.has(activeTab) && (
-        <header className="mb-6 flex items-center justify-end gap-4">
-          <button
-            onClick={() => setIsSearchOpen((v) => !v)}
-            className={`flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-bold transition-colors ${
-              isSearchOpen || searchQuery.trim()
-                ? 'border-[#1C1C1E] bg-white text-[#1C1C1E]'
-                : 'border border-[#E5E5E0] bg-[#F5F5F0] text-[#1C1C1E] hover:bg-[#E5E5E0]'
-            }`}
-          >
-            <Search size={16} />
-            <span>{searchQuery.trim() ? 'Searching' : 'Search'}</span>
-          </button>
-          <button
-            onClick={() => { setActiveTab('terminal'); runCommand('rank'); }}
-            className="flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-[#27272a]"
-          >
-            <Play size={16} />
-            <span>Quick Run</span>
-          </button>
-        </header>
-        )}
-
+      <main className="flex-1 overflow-y-auto bg-[#FAFAF8] p-6 sm:p-8 lg:p-10">
         <AnimatePresence>
-          {isSearchOpen && TABS_WITH_TOP_ACTIONS.has(activeTab) && (
+          {isSearchOpen && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -997,38 +1004,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
         </AnimatePresence>
 
-        {TABS_WITH_STAT_CARDS.has(activeTab) && (
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-10 sm:mb-12">
-          <StatCard
-            icon={<Clock size={18} className="text-white" />}
-            label="Ongoing"
-            value={data?.stats?.applied || 0}
-            color="stone"
-          />
-          <StatCard
-            icon={<CheckCircle2 size={18} className="text-white" />}
-            label="Interviews"
-            value={data?.stats?.interviews || 0}
-            color="emerald"
-          />
-          <StatCard
-            icon={<FileText size={18} className="text-white" />}
-            label="Saved PDFs"
-            value={data?.pdfs?.length || 0}
-            color="blue"
-          />
-          <StatCard
-            icon={<Search size={18} className="text-white" />}
-            label="In Pipeline"
-            value={data?.pipeline?.length || 0}
-            color="amber"
-          />
-        </section>
-        )}
-
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
-            <motion.div key="dash" className="space-y-12">
+            <motion.div key="dash" className="space-y-8">
+              <PageSectionHeader
+                title="Dashboard"
+                welcomeName={displayName}
+                lastRun={lastRunMeta}
+                actions={searchActions}
+              />
                {/* Onboarding Checklist */}
                {(!data?.profile?.candidate?.full_name) && (
                  <motion.div 
@@ -1116,14 +1100,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    </div>
                   <div className="bg-white p-10 rounded-[2.5rem] border border-[#E5E5E0]">
                      <h3 className="text-2xl font-bold mb-8 text-[#1C1C1E]">Recent Activity</h3>
-                     <div className="space-y-6 text-sm">
+                     <div className="space-y-0 divide-y divide-[#E5E5E0] text-sm">
                        {data?.applications?.length > 0 ? data.applications.slice(0, 4).map((app: any, i: number) => (
-                         <div key={i} className="flex items-center justify-between group">
-                           <div className="flex items-center gap-4">
-                              <div className="h-1.5 w-1.5 rounded-full bg-[#1C1C1E] animate-pulse" />
-                              <span className="font-bold text-[#1C1C1E]">{app.company}</span>
+                         <div key={i} className="flex items-center justify-between py-4 first:pt-0">
+                           <div className="flex min-w-0 items-center gap-3">
+                              <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#9CA3AF]" />
+                              <span className="truncate font-bold text-[#1C1C1E]">
+                                {app.company}{app.role ? ` — ${app.role}` : ''}
+                              </span>
                            </div>
-                           <span className="text-[#9CA3AF] font-mono uppercase text-[10px] tracking-widest">{new Date(app.applied_at).toLocaleDateString()}</span>
+                           <span className="shrink-0 pl-4 text-xs text-[#9CA3AF]">
+                             {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : '—'}
+                           </span>
                          </div>
                        )) : (
                          <p className="text-[#9CA3AF] italic font-medium">No recent activity detected.</p>
@@ -1136,11 +1124,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
           {activeTab === 'apps' && (() => {
             const kanbanColumns = [
-              { id: 'EVALUATED', label: 'Evaluated', statuses: ['PENDING', 'EVALUATED'], color: 'border-t-amber-500 bg-amber-50/5' },
-              { id: 'APPLIED', label: 'Applied', statuses: ['APPLIED', 'RESPONDED', 'SENT'], color: 'border-t-sky-500 bg-sky-50/5' },
-              { id: 'INTERVIEW', label: 'Interviewing', statuses: ['INTERVIEW', 'ENTREVISTA'], color: 'border-t-indigo-500 bg-indigo-50/5' },
-              { id: 'OFFER', label: 'Offers', statuses: ['OFFER', 'OFERTA'], color: 'border-t-emerald-500 bg-emerald-50/5' },
-              { id: 'CLOSED', label: 'Closed', statuses: ['REJECTED', 'DISCARDED', 'SKIP', 'RECHAZADO', 'DESCARTADO'], color: 'border-t-stone-400 bg-stone-50/5' }
+              { id: 'EVALUATED', label: 'Evaluated', bar: 'bg-amber-400', statuses: ['PENDING', 'EVALUATED'], color: 'border-t-amber-500 bg-amber-50/5' },
+              { id: 'APPLIED', label: 'Applied', bar: 'bg-sky-500', statuses: ['APPLIED', 'RESPONDED', 'SENT'], color: 'border-t-sky-500 bg-sky-50/5' },
+              { id: 'INTERVIEW', label: 'Interviewing', bar: 'bg-emerald-500', statuses: ['INTERVIEW', 'ENTREVISTA'], color: 'border-t-emerald-500 bg-emerald-50/5' },
+              { id: 'OFFER', label: 'Offer', bar: 'bg-purple-500', statuses: ['OFFER', 'OFERTA'], color: 'border-t-purple-500 bg-purple-50/5' },
+              { id: 'REJECTED', label: 'Rejected', bar: 'bg-stone-400', statuses: ['REJECTED', 'DISCARDED', 'SKIP', 'RECHAZADO', 'DESCARTADO'], color: 'border-t-stone-400 bg-stone-50/5' }
             ];
 
             const followUpReminders = (data?.applications || []).filter((app: any) => {
@@ -1150,26 +1138,27 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             });
 
             return (
-              <motion.div key="apps" className="bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
-                <div className="p-8 border-b border-[#E5E5E0] bg-[#FAFAF8] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-[#1C1C1E]">Global Applications</h2>
-                    <p className="text-xs text-[#6B6B6B] mt-1">Manage and track your active job application processes.</p>
-                  </div>
-                  <div className="flex items-center bg-[#F5F5F0] border border-[#E5E5E0] rounded-xl p-1 shrink-0 self-start sm:self-auto">
+              <motion.div key="apps" className="space-y-6">
+                <PageSectionHeader
+                  title="Application Pipeline"
+                  subtitle={`${activeApplicationCount} active application${activeApplicationCount === 1 ? '' : 's'} across 5 stages`}
+                  lastRun={lastRunMeta}
+                  actions={searchActions}
+                />
+              <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
+                <div className="flex flex-col gap-4 border-b border-[#E5E5E0] bg-white p-6 sm:flex-row sm:items-center sm:justify-end">
+                  <div className="flex items-center rounded-xl border border-[#E5E5E0] bg-[#F5F5F0] p-1">
                     <button
                       onClick={() => setAppsViewMode('kanban')}
-                      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'kanban' ? 'bg-white text-[#1C1C1E] shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
+                      className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'kanban' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
                     >
-                      <Columns size={14} />
-                      Kanban Board
+                      Kanban
                     </button>
                     <button
                       onClick={() => setAppsViewMode('table')}
-                      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'table' ? 'bg-white text-[#1C1C1E] shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
+                      className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${appsViewMode === 'table' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
                     >
-                      <List size={14} />
-                      Table List
+                      Table
                     </button>
                   </div>
                 </div>
@@ -1322,11 +1311,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               updateApplicationStatus(appId, col.statuses[0]);
                             }
                           }}
-                          className={`flex h-full min-h-0 min-w-[220px] flex-col rounded-2xl border border-dashed border-[#E5E5E0] p-4 transition-all ${col.color}`}
+                          className={`flex h-full min-h-0 min-w-[220px] flex-col rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 transition-all ${col.color}`}
                         >
-                          <div className="mb-3 flex shrink-0 items-center justify-between border-b border-[#E5E5E0] pb-3">
-                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#1C1C1E]">{col.label}</span>
-                            <span className="bg-[#1C1C1E] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{colApps.length}</span>
+                          <div className="mb-3 shrink-0">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9CA3AF]">{col.label}</span>
+                              <span className="rounded-full bg-[#1C1C1E] px-2 py-0.5 text-[10px] font-bold text-white">{colApps.length}</span>
+                            </div>
+                            <div className={`h-1 rounded-full ${col.bar}`} />
                           </div>
 
                           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden pr-1">
@@ -1344,15 +1336,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   onDragStart={(e) => {
                                     e.dataTransfer.setData('text/plain', String(app.app_id));
                                   }}
-                                  className="bg-white border border-[#E5E5E0] p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative shrink-0"
+                                  className="group relative shrink-0 cursor-grab rounded-xl border border-[#E5E5E0] bg-white p-4 shadow-sm transition-all hover:shadow-md active:cursor-grabbing"
                                 >
-                                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                                    <h4 className="font-bold text-sm text-[#1C1C1E] line-clamp-2 break-words leading-tight min-w-0 flex-1">{app.company}</h4>
-                                    <span className="text-[10px] font-bold text-[#1C1C1E] bg-[#F5F5F0] border border-[#E5E5E0] px-1.5 py-0.5 rounded shrink-0">
-                                      ★ {app.score}
-                                    </span>
+                                  <div className="mb-3 flex items-start justify-between gap-2">
+                                    <CompanyAvatar name={app.company} />
+                                    <AiScoreBadge score={app.score} />
                                   </div>
-                                  <p className="text-xs text-[#6B6B6B] font-semibold line-clamp-2 break-words mb-3">{app.role}</p>
+                                  <h4 className="mb-1 line-clamp-2 break-words text-sm font-bold leading-tight text-[#1C1C1E]">{app.company}</h4>
+                                  <p className="mb-3 line-clamp-2 break-words text-xs font-medium text-[#6B6B6B]">{app.role}</p>
 
                                   {showOverdue && (
                                     <div className="bg-rose-50 border border-rose-100 rounded-lg p-2 mb-3 flex items-center gap-1.5 text-[10px] font-bold text-rose-700">
@@ -1367,25 +1358,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                     </div>
                                   )}
 
-                                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#F5F5F0]">
-                                    <select
-                                      value={col.id}
-                                      onChange={(e) => {
-                                        const selectCol = kanbanColumns.find(c => c.id === e.target.value);
-                                        if (selectCol) {
-                                          updateApplicationStatus(app.app_id, selectCol.statuses[0]);
-                                        }
-                                      }}
-                                      className="text-[9px] uppercase font-extrabold text-[#6B6B6B] bg-[#FAFAF8] border border-[#E5E5E0] rounded px-1.5 py-0.5 outline-none cursor-pointer hover:bg-stone-50 transition-all select-none"
-                                    >
-                                      <option value="EVALUATED">Evaluated</option>
-                                      <option value="APPLIED">Applied</option>
-                                      <option value="INTERVIEW">Interview</option>
-                                      <option value="OFFER">Offer</option>
-                                      <option value="CLOSED">Closed</option>
-                                    </select>
-
-                                    <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                  <div className="flex items-center justify-between border-t border-[#F5F5F0] pt-3">
+                                    <span className="text-[11px] font-medium text-[#9CA3AF]">
+                                      {app.applied_at
+                                        ? new Date(app.applied_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                        : '—'}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
                                       {app?.url && (
                                         <a
                                           href={app.url}
@@ -1424,89 +1403,80 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     </div>
                   </div>
                 )}
+              </div>
               </motion.div>
             );
           })()}
 
           {activeTab === 'pipeline' && (
-            <motion.div key="pipeline" className="bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
-              <div className="p-8 border-b border-[#E5E5E0] bg-[#FAFAF8] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-xl font-bold text-[#1C1C1E]">Live Job Pipeline</h2>
-                {pipelineTotal > 0 && (
+            <motion.div key="pipeline" className="space-y-6">
+              <PageSectionHeader
+                title="Job Pipeline"
+                subtitle={`AI-ranked opportunities · ${pipelineTotal} job${pipelineTotal === 1 ? '' : 's'} in pipeline`}
+                lastRun={lastRunMeta}
+                actions={searchActions}
+              />
+            <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
+              <div className="flex flex-col gap-4 border-b border-[#E5E5E0] bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-bold text-[#1C1C1E]">Live Job Pipeline</h2>
+                <div className="flex shrink-0 items-center gap-3">
                   <button
                     type="button"
-                    onClick={openClearPipelineModal}
-                    className="shrink-0 px-4 py-2.5 rounded-xl border border-rose-200 bg-white text-rose-700 text-xs font-bold uppercase tracking-widest hover:bg-rose-50 transition-colors"
+                    onClick={() => { setActiveTab('terminal'); runCommand('scan --deep'); }}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-[#27272a]"
                   >
-                    Clear pipeline…
+                    <Zap size={14} />
+                    Scan --deep
                   </button>
-                )}
+                  {pipelineTotal > 0 && (
+                    <button
+                      type="button"
+                      onClick={openClearPipelineModal}
+                      className="rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-rose-700 transition-colors hover:bg-rose-50"
+                    >
+                      Clear…
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="overflow-x-auto text-sm max-h-[600px]">
+              <div className="max-h-[640px] overflow-x-auto text-sm">
                 <table className="w-full text-left">
-                  <thead className="sticky top-0 bg-[#F5F5F0] border-b border-[#E5E5E0]">
-                    <tr className="text-[#9CA3AF] text-[10px] uppercase tracking-[0.2em] font-bold">
-                      <th className="px-8 py-5">Target / Company</th>
-                      <th className="px-8 py-5">Job Title</th>
-                      <th className="px-8 py-5">Score</th>
-                      <th className="px-8 py-5">Actions</th>
+                  <thead className="sticky top-0 border-b border-[#E5E5E0] bg-[#FAFAF8]">
+                    <tr className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
+                      <th className="px-6 py-4">Target / Company</th>
+                      <th className="px-6 py-4">Job Title</th>
+                      <th className="px-6 py-4">AI Score</th>
+                      <th className="px-6 py-4">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F5F5F0]">
                     {filteredPipeline.map((job: any, i: number) => (
-                      <tr key={i} className="hover:bg-[#FAFAF8] transition-colors">
-                        <td className="px-8 py-6">
-                           <div className="font-bold text-[#1C1C1E]">{job.company}</div>
-                           {job?.url ? (
-                             <a
-                               href={job.canonical_url || job.url}
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               className="text-[10px] font-bold text-[#9CA3AF] hover:text-[#1C1C1E] transition-colors inline-flex items-center gap-2"
-                             >
-                               <ExternalLink size={12} />
-                               <span>Open posting</span>
-                             </a>
-                           ) : (
-                             <span className="text-[10px] font-bold text-[#9CA3AF]">—</span>
-                           )}
-                        </td>
-                        <td className="px-8 py-6 text-[#6B6B6B] font-medium">{job.title || 'Unknown Role'}</td>
-                        <td className="px-8 py-6 font-mono font-bold text-[#1C1C1E]">{job.score}</td>
-                        <td className="px-8 py-6">
+                      <tr key={i} className="transition-colors hover:bg-[#FAFAF8]">
+                        <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
-                            {job?.is_tailored && (
-                              <span className="px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[10px] font-bold text-emerald-700 uppercase tracking-widest">
-                                Tailored
-                              </span>
-                            )}
-                            <button
-                              onClick={() => { setActiveTab('terminal'); runCommand(`tailor ${job.pipeline_id} --deep`); }}
-                              className="px-4 py-2 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs hover:bg-[#27272a] transition-all"
-                            >
-                              Tailor
-                            </button>
-                            <button
-                              onClick={() => { setActiveTab('terminal'); runCommand(`apply ${job.pipeline_id} --deep`); }}
-                              className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${
-                                job?.is_tailored
-                                  ? 'bg-white border border-[#E5E5E0] text-[#1C1C1E] hover:bg-[#F5F5F0]'
-                                  : 'bg-white border border-[#E5E5E0] text-[#1C1C1E] hover:bg-[#F5F5F0]'
-                              }`}
-                            >
-                              {job?.is_tailored ? 'Apply (Auto)' : 'Apply (Auto)'}
-                            </button>
-                            <button
-                               onClick={() => handleMarkApplied(Number(job.pipeline_id))}
-                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all"
-                             >
-                               Mark Applied
-                             </button>
+                            <CompanyAvatar name={job.company} />
+                            <div className="min-w-0">
+                              <div className="truncate font-bold text-[#1C1C1E]">{job.company}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 font-medium text-[#6B6B6B]">{job.title || 'Unknown Role'}</td>
+                        <td className="px-6 py-5">
+                          <AiScoreBadge score={job.score} />
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => openJobDetails(Number(job.pipeline_id))}
-                              className="px-4 py-2 bg-[#F5F5F0] border border-[#E5E5E0] text-[#1C1C1E] rounded-xl font-bold text-xs hover:bg-[#E5E5E0] transition-all"
+                              className="rounded-xl border border-[#E5E5E0] bg-white px-4 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
                             >
-                              Details
+                              Evaluate
+                            </button>
+                            <button
+                              onClick={() => { setActiveTab('terminal'); runCommand(`tailor ${job.pipeline_id} --deep`); }}
+                              className="rounded-xl border border-[#E5E5E0] bg-white px-4 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
+                            >
+                              Tailor
                             </button>
                             <button
                               type="button"
@@ -1517,7 +1487,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   String(job.title || 'Unknown role')
                                 )
                               }
-                              className="p-2 rounded-xl border border-[#E5E5E0] text-[#9CA3AF] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                              className="rounded-xl p-2 text-[#9CA3AF] transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
                               title="Remove from pipeline"
                             >
                               <Trash2 size={16} />
@@ -1526,26 +1496,49 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         </td>
                       </tr>
                     ))}
+                    {filteredPipeline.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-16 text-center text-xs font-bold uppercase tracking-widest text-[#9CA3AF]">
+                          No jobs in pipeline
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
+            </div>
             </motion.div>
           )}
 
           {activeTab === 'resume-studio' && (
+            <motion.div key="resume-studio" className="space-y-6">
+              <PageSectionHeader
+                title="Resume Studio"
+                subtitle="Visual editor with live preview — in active development"
+                lastRun={lastRunMeta}
+              />
             <ResumeStudioTeaser
               onOpenTerminal={() => setActiveTab('terminal')}
               onOpenSettings={() => setActiveTab('settings')}
               onOpenResumeManager={() => setActiveTab('cv')}
             />
+            </motion.div>
           )}
 
           {activeTab === 'generated-docs' && (
+            <div className="space-y-6">
+              <PageSectionHeader
+                title="Generated Docs"
+                subtitle={`${filteredDocs.length} tailored resume${filteredDocs.length === 1 ? '' : 's'} and cover letters`}
+                lastRun={lastRunMeta}
+                actions={searchActions}
+              />
             <GeneratedDocsPanel
               docs={data?.pdfs || []}
               onDelete={openDeleteConfirm}
               onOpenPipeline={() => setActiveTab('pipeline')}
             />
+            </div>
           )}
 
           {activeTab === 'cv' && (
@@ -1716,21 +1709,20 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
             return (
               <motion.div key="skills" className="space-y-8">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-[#1C1C1E]">Skill Gaps & Heatmap</h2>
-                    <p className="text-xs text-[#6B6B6B] mt-1">
-                      Aggregated gaps extracted from your job evaluations. Focus your learning on these top areas.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => { setActiveTab('terminal'); runCommand('skill-gap'); }}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-[#1C1C1E] hover:bg-[#27272a] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0"
-                  >
-                    <Zap size={14} />
-                    Re-Analyze Gaps
-                  </button>
-                </div>
+                <PageSectionHeader
+                  title="Skill Gaps"
+                  subtitle="Aggregated gaps from your job evaluations — focus learning on high-impact areas"
+                  lastRun={lastRunMeta}
+                  actions={
+                    <button
+                      onClick={() => { setActiveTab('terminal'); runCommand('skill-gap'); }}
+                      className="flex shrink-0 items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:bg-[#27272a]"
+                    >
+                      <Zap size={14} />
+                      Re-Analyze Gaps
+                    </button>
+                  }
+                />
 
                 {skillGaps.length === 0 ? (
                   <div className="bg-stone-50 border border-dashed border-[#E5E5E0] rounded-[2rem] p-16 text-center max-w-2xl mx-auto mt-8">
@@ -1955,15 +1947,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
           {activeTab === 'docs' && (
             <motion.div key="docs" className="space-y-10">
-              <div className="flex items-center gap-4 border-b border-[#E5E5E0] pb-6">
-                <div className="h-12 w-12 bg-[#1C1C1E] rounded-2xl flex items-center justify-center text-white">
-                  <BookOpen size={24} />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-[#1C1C1E]">System Documentation & Tutorial</h2>
-                  <p className="text-[#9CA3AF] font-medium">Master Career-Ops: Auto-discover, rank, tailor, and auto-apply to jobs.</p>
-                </div>
-              </div>
+              <PageSectionHeader
+                title="Tutorial & Docs"
+                subtitle="Master Career-Ops: auto-discover, rank, tailor, and apply to jobs"
+                lastRun={lastRunMeta}
+              />
 
               {/* Grid Layout: Intro and Deep Flag */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -2146,7 +2134,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
 
           {activeTab === 'terminal' && (
-            <motion.div key="terminal" className="bg-white rounded-[2rem] flex flex-col h-[600px] overflow-hidden shadow-2xl relative border border-[#E5E5E0]">
+            <motion.div key="terminal" className="space-y-6">
+              <PageSectionHeader
+                title="Terminal"
+                subtitle="Run scan, rank, tailor, and apply commands"
+                lastRun={lastRunMeta}
+              />
+            <div className="relative flex h-[600px] flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
               <div className="p-5 border-b border-[#E5E5E0] flex justify-between items-center bg-[#F5F5F0]">
                  <div className="flex items-center gap-3">
                     <div className="h-3 w-3 bg-[#f59e0b] rounded-full" />
@@ -2210,23 +2204,24 @@ System Initialized — v2.0`}
                     </form>
                  </div>
               </div>
+            </div>
             </motion.div>
           )}
 
           {activeTab === 'settings' && (
-            <motion.div key="settings" className="w-full max-w-5xl">
-               <div className="flex justify-between items-end mb-12">
-                 <div>
-                   <h2 className="text-4xl font-bold text-[#1C1C1E] tracking-tight">System Configuration</h2>
-                   <p className="text-[#9CA3AF] mt-1 font-medium italic">Establishing your global professional identity.</p>
-                 </div>
+            <motion.div key="settings" className="w-full max-w-5xl space-y-8">
+               <PageSectionHeader
+                 title="Settings"
+                 subtitle="Profile, targeting keywords, resume import, and GitHub automation"
+                 lastRun={lastRunMeta}
+                 actions={
                  <div className="flex items-center gap-3">
                    <button
                      onClick={() => {
                        localStorage.removeItem(`career_ops_onboarding_v2:${session?.user?.email || session?.user?.id || 'default'}`);
                        setWalkthroughStep(0);
                      }}
-                     className="px-5 py-4 rounded-2xl font-bold text-xs text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-[#F5F5F0] transition-all flex items-center gap-2"
+                     className="flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-bold text-[#6B6B6B] transition-all hover:bg-[#F5F5F0] hover:text-[#1C1C1E]"
                    >
                      <Play size={14} />
                      Restart Tour
@@ -2234,12 +2229,13 @@ System Initialized — v2.0`}
                    <button
                      onClick={handleSaveSettings}
                      disabled={isSaving}
-                     className={`px-10 py-4 rounded-2xl font-bold transition-all shadow-xl flex items-center gap-3 ${saveStatus === 'success' ? 'bg-emerald-500 text-white' : 'bg-[#1C1C1E] text-white hover:bg-[#27272a]'}`}
+                     className={`flex items-center gap-3 rounded-xl px-6 py-3 text-sm font-bold transition-all shadow-sm ${saveStatus === 'success' ? 'bg-emerald-500 text-white' : 'bg-[#1C1C1E] text-white hover:bg-[#27272a]'}`}
                    >
                      {saveStatus === 'saving' ? 'Syncing...' : saveStatus === 'success' ? <><CheckCircle2 size={18} /> Profile Locked</> : 'Save Changes'}
                    </button>
                  </div>
-               </div>
+                 }
+               />
 
                <div className="grid grid-cols-2 gap-10">
                  <ConfigSection id="config-security" title="Account Security" icon={<Shield size={18} className="text-[#1C1C1E]" />}>
@@ -3236,9 +3232,9 @@ function NavItem({ id, icon, label, active, collapsed, onClick }: { id?: string,
       type="button"
       title={collapsed ? label : undefined}
       onClick={onClick}
-      className={`w-full flex items-center rounded-2xl transition-all ${
-        collapsed ? 'justify-center px-0 py-3.5' : 'gap-4 px-5 py-4'
-      } ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-xl' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}
+      className={`w-full flex items-center rounded-xl transition-all ${
+        collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
+      } ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-md' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}
     >
       <span className="shrink-0">{icon}</span>
       {!collapsed && <span className="truncate text-sm text-left">{label}</span>}
@@ -3253,9 +3249,9 @@ function NavItemSoon({ id, icon, label, active, collapsed, onClick }: { id?: str
       type="button"
       title={collapsed ? `${label} (coming soon)` : undefined}
       onClick={onClick}
-      className={`relative w-full flex items-center rounded-2xl transition-all ${
-        collapsed ? 'justify-center px-0 py-3.5' : 'gap-4 px-5 py-4'
-      } ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-xl' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}
+      className={`relative w-full flex items-center rounded-xl transition-all ${
+        collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
+      } ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-md' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}
     >
       <span className="relative shrink-0">
         {icon}

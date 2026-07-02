@@ -140,16 +140,6 @@ export default function GeneratedDocsPanel({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8 font-[family-name:var(--font-inter)]"
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[#1C1C1E]">Generated Documents</h2>
-          <p className="mt-1 text-sm font-normal text-[#6B6B6B]">Tailored outputs per application</p>
-        </div>
-        <span className="inline-flex w-fit items-center rounded-full border border-[#E5E5E0] bg-[#F5F5F0] px-4 py-1.5 text-xs font-medium text-[#6B6B6B]">
-          {allCards.length} document{allCards.length === 1 ? '' : 's'}
-        </span>
-      </div>
-
       {weekCount > 0 && (
         <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] px-5 py-4 text-sm text-[#6B6B6B]">
           <span className="font-semibold text-[#1C1C1E]">{weekCount}</span> job
