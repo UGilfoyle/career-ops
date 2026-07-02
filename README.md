@@ -28,6 +28,8 @@ graph TD
         WebDash["Web Dashboard (dashboard-v2/)"]
         API["REST & Exec APIs (/api/exec)"]
         Auth["NextAuth v5 Session Control"]
+        ResumeStudio["Resume Studio (Editor & Previews)"]
+        GeneratedDocs["Generated Docs (PDF Library)"]
     end
 
     %% Storage & Database
@@ -39,7 +41,6 @@ graph TD
     %% CLI / Local Layer
     subgraph Local_Pipeline [Local CLI Pipeline]
         CLI["AI CLI Agent (Gemini/Claude)"]
-        TUI["Go TUI Dashboard (dashboard/)"]
         LocalData["Local Tracker (data/applications.md)"]
     end
 
@@ -55,6 +56,8 @@ graph TD
     WebDash --> DB
     API -->|Workflow Dispatch| GH_Actions
     API -->|Local Spawn| NodeWorker
+    ResumeStudio -->|Syncs Profile| DB
+    GeneratedDocs -->|Fetches PDFs| DB
     
     %% Storage Connections
     GH_Actions -->|Uploads CVs/PDFs| R2
@@ -63,7 +66,6 @@ graph TD
     
     %% Local Interfacing
     CLI -->|Evaluates & PDF Gen| LocalData
-    TUI -->|Visualizes| LocalData
 ```
 
 ### Core Operations Flow
@@ -79,7 +81,6 @@ graph TD
 To enable custom feature sets and separate the pipeline from upstream updates, the following modifications were completed:
 
 * **Standalone System Updater**: Reconfigured [update-system.mjs](file:///Users/akashkaintura/Desktop/career-ops/update-system.mjs) to target `UGilfoyle/career-ops` for tags, releases, and changelog updates.
-* **Go Module Isolation**: Refactored the dashboard module in [go.mod](file:///Users/akashkaintura/Desktop/career-ops/dashboard/go.mod) and updated package import routes in all `.go` files under the [dashboard](file:///Users/akashkaintura/Desktop/career-ops/dashboard) folder to use the dedicated repository path.
 * **Metadata & Licensing**: Replaced all upstream references with standalone configurations across [package.json](file:///Users/akashkaintura/Desktop/career-ops/package.json), [CITATION.cff](file:///Users/akashkaintura/Desktop/career-ops/CITATION.cff), [SECURITY.md](file:///Users/akashkaintura/Desktop/career-ops/SECURITY.md), [GOVERNANCE.md](file:///Users/akashkaintura/Desktop/career-ops/GOVERNANCE.md), and [SUPPORT.md](file:///Users/akashkaintura/Desktop/career-ops/SUPPORT.md).
 * **Funding & Branding Cleanup**: Removed upstream `.github/FUNDING.yml` configuration and purged sponsorship widgets to align the repository strictly under personal ownership.
 
@@ -92,8 +93,6 @@ To enable custom feature sets and separate the pipeline from upstream updates, t
 | **SaaS Hub (`dashboard-v2`)** | Next.js 16, React 19, Tailwind CSS | Multi-tenant visual dashboard with Server-Side Rendering (SSR). |
 | **SaaS Auth / Database** | NextAuth v5, PostgreSQL | Session persistence and relational application funnel tracking. |
 | **Cloud Assets** | AWS SDK, Cloudflare R2 / S3 | Storage for generated PDF resumes and customized cover letters. |
-| **Terminal TUI (`dashboard`)** | Go 1.24, Bubble Tea, Lipgloss | Fast, interactive CLI dashboard with keyboard navigation. |
-| **Static Web Dashboard** | Node.js, Express (`web-dashboard`) | Lightweight, self-contained single-page browser pipeline. |
 | **Engine / Scrapers** | Node.js 20+, Playwright | Zero-token direct-API scanners and headless compilers. |
 | **AI Processing** | OpenAI-Compatible LLM Cascade | Fail-safe pipeline defaulting to MiniMax and falling back to Qwen. |
 
@@ -146,20 +145,6 @@ pnpm dev
 ```
 Navigate to `http://localhost:3000` to access the multi-tenant web application.
 
-#### Option B: Go Terminal TUI Dashboard (Developer)
-```bash
-cd dashboard
-go build -o career-dashboard .
-./career-dashboard --path ..
-```
-
-#### Option C: Lightweight Static Dashboard (Minimalist)
-```bash
-cd web-dashboard
-node server.mjs
-```
-Navigate to `http://localhost:8080`.
-
 ---
 
 ## 📂 Repository Layout
@@ -169,8 +154,6 @@ career-ops/
 ├── AGENTS.md                    # Agent behavior guidelines
 ├── CLAUDE.md                    # Claude CLI run configurations
 ├── dashboard-v2/                # Next.js 16 Full-Stack SaaS Dashboard
-├── dashboard/                   # Go Bubble Tea TUI
-├── web-dashboard/               # Lightweight static Express dashboard
 ├── modes/                       # AI prompt templates & evaluation workflows
 ├── templates/                   # HTML/LaTeX templates & keyword profiles
 ├── config/                      # User configuration profiles (gitignored)

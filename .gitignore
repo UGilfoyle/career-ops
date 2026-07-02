@@ -45,6 +45,9 @@ package-lock.json
 # Personal CV and instructions (user-specific, never push)
 cv.md
 INSTRUCTIONS.md
+article-digest.md
+interview-prep/*.md
+!interview-prep/story-bank.md
 
 # Auto-generated scratch scripts (may contain hardcoded personal data)
 scratch/
@@ -63,3 +66,6 @@ scratch-*.cjs
 *.p12
 *.pfx
 dashboard-v2/vercel_deploy_output.log
+
+# Figma design prompts
+docs/figma-prompts-*.md

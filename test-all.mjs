@@ -82,12 +82,12 @@ for (const { name, allowFail } of scripts) {
 // ── 3. DASHBOARD BUILD ──────────────────────────────────────────
 
 if (!QUICK) {
-  console.log('\n3. Dashboard build');
-  const goBuild = run('cd dashboard && go build -o /tmp/career-dashboard-test . 2>&1');
-  if (goBuild !== null) {
-    pass('Dashboard compiles');
+  console.log('\n3. Dashboard build (dashboard-v2)');
+  const nextBuild = run('cd dashboard-v2 && npm run build 2>&1');
+  if (nextBuild !== null) {
+    pass('Dashboard (dashboard-v2) compiles successfully');
   } else {
-    fail('Dashboard build failed');
+    fail('Dashboard (dashboard-v2) build failed');
   }
 } else {
   console.log('\n3. Dashboard build (skipped --quick)');
@@ -146,7 +146,7 @@ const allowedFiles = ['README.md', 'LICENSE', 'CITATION.cff', 'CONTRIBUTING.md',
 let leakFound = false;
 for (const pattern of leakPatterns) {
   const result = run(
-    `grep -rn "${pattern}" --include="*.{${scanExtensions.join(',')}}" . 2>/dev/null | grep -v node_modules | grep -v ".git/" | grep -v go.sum`
+    `grep -rn "${pattern}" --include="*.{${scanExtensions.join(',')}}" . 2>/dev/null | grep -v node_modules | grep -v ".git/" | grep -v "scratch/" | grep -v go.sum`
   );
   if (result) {
     for (const line of result.split('\n')) {
@@ -167,7 +167,7 @@ if (!leakFound) {
 console.log('\n6. Absolute path check');
 
 const absPathResult = run(
-  `grep -rn "/Users/" --include="*.mjs" --include="*.sh" --include="*.md" --include="*.go" --include="*.yml" . 2>/dev/null | grep -v node_modules | grep -v ".git/" | grep -v README.md | grep -v LICENSE | grep -v go.sum | grep -v CLAUDE.md | grep -v test-all.mjs`
+  `grep -rn "/Users/" --include="*.mjs" --include="*.sh" --include="*.md" --include="*.go" --include="*.yml" . 2>/dev/null | grep -v node_modules | grep -v ".git/" | grep -v "scratch/" | grep -v README.md | grep -v LICENSE | grep -v go.sum | grep -v CLAUDE.md | grep -v test-all.mjs`
 );
 if (!absPathResult) {
   pass('No absolute paths in code files');
