@@ -34,12 +34,14 @@ import {
   Columns,
   List,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Files
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 import ComingSoonBanner from './ComingSoonBanner';
 import ResumeStudioTeaser from './ResumeStudioTeaser';
+import GeneratedDocsPanel from './GeneratedDocsPanel';
 
 export default function Dashboard({ initialData }: { initialData?: any }) {
   const { data: session, status } = useSession();
@@ -888,6 +890,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('apps')} />
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('pipeline')} />
             <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('resume-studio')} />
+            <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('generated-docs')} />
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
             <NavItem id="nav-skills" icon={<TrendingUp size={18}/>} label="Skill Gaps" active={activeTab === 'skills'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('skills')} />
             {isAdmin && (
@@ -1552,6 +1555,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               onOpenTerminal={() => setActiveTab('terminal')}
               onOpenSettings={() => setActiveTab('settings')}
               onOpenResumeManager={() => setActiveTab('cv')}
+            />
+          )}
+
+          {activeTab === 'generated-docs' && (
+            <GeneratedDocsPanel
+              docs={data?.pdfs || []}
+              onDelete={openDeleteConfirm}
+              onOpenPipeline={() => setActiveTab('pipeline')}
             />
           )}
 
