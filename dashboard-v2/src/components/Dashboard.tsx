@@ -2106,9 +2106,9 @@ System Initialized — v2.0`}
                  }
                />
 
-               <div className="grid grid-cols-2 gap-10">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                  <ConfigSection id="config-security" title="Account Security" icon={<Shield size={18} className="text-[#1C1C1E]" />}>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <Input label="Login Email" value={accountInfo.email} onChange={(v) => setAccountInfo({...accountInfo, email: v})} />
                      <div className="hidden md:block" />
                      <Input label="New Password" type="password" placeholder="Leave empty to keep current" value={accountInfo.password} onChange={(v) => setAccountInfo({...accountInfo, password: v})} />
@@ -2430,6 +2430,7 @@ System Initialized — v2.0`}
 
                  <ConfigSection title="Experience" icon={<Briefcase size={18} className="text-[#1C1C1E]" />}>
                    <div className="space-y-4">
+                     <div className="max-h-[min(560px,calc(100vh-18rem))] overflow-y-auto pr-2 space-y-4">
                      {(profileFormData.experience || []).map((exp: any, idx: number) => (
                        <div key={idx} className="p-5 bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl">
                          <div className="flex items-start justify-between gap-4 mb-4">
@@ -2511,6 +2512,7 @@ System Initialized — v2.0`}
                          </div>
                        </div>
                      ))}
+                     </div>
 
                      <button
                        onClick={() =>
@@ -2531,6 +2533,7 @@ System Initialized — v2.0`}
 
                  <ConfigSection title="Education" icon={<FileText size={18} className="text-[#1C1C1E]" />}>
                    <div className="space-y-4">
+                     <div className="max-h-[min(480px,calc(100vh-20rem))] overflow-y-auto pr-2 space-y-4">
                      {(profileFormData.education || []).map((edu: any, idx: number) => (
                        <div key={idx} className="p-5 bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl">
                          <div className="flex items-start justify-between gap-4 mb-4">
@@ -2591,6 +2594,7 @@ System Initialized — v2.0`}
                          </div>
                        </div>
                      ))}
+                     </div>
                      <button
                        onClick={() =>
                          setProfileFormData({
@@ -3168,8 +3172,8 @@ function StatCard({ icon, label, value, color = 'stone' }: { icon: any, label: s
 
 function ConfigSection({ id, title, icon, children }: { id?: string, title: string, icon: any, children: React.ReactNode }) {
   return (
-    <div id={id} className="bg-white border border-[#E5E5E0] rounded-[2.5rem] p-6 space-y-6 scroll-mt-10">
-      <h3 className="font-bold text-lg flex items-center gap-3 text-[#1C1C1E] border-b border-[#F5F5F0] pb-6">{icon} {title}</h3>
+    <div id={id} className="bg-white border border-[#E5E5E0] rounded-[2rem] p-5 space-y-4 scroll-mt-10">
+      <h3 className="font-bold text-lg flex items-center gap-3 text-[#1C1C1E] border-b border-[#F5F5F0] pb-4">{icon} {title}</h3>
       {children}
     </div>
   );
