@@ -876,12 +876,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     session?.user?.email?.split('@')?.[0];
   const displayName = firstNameFromProfile || firstNameFromSession || null;
 
-  const lastRunMeta = {
-    lastRunScript: data?.meta?.lastRunScript || data?.meta?.lastBackgroundActionScript,
-    lastRunStatus: data?.meta?.lastRunStatus || data?.meta?.lastBackgroundStatus,
-    lastRunUrl: data?.meta?.lastRunUrl,
-  };
-
   const activeApplicationCount = (data?.applications || []).filter((app: any) => {
     const s = String(app.status || '').toUpperCase();
     return !['REJECTED', 'DISCARDED', 'SKIP', 'RECHAZADO', 'DESCARTADO'].includes(s);
@@ -1063,7 +1057,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <PageSectionHeader
                 title="Dashboard"
                 welcomeName={displayName}
-                lastRun={lastRunMeta}
                 actions={searchActions}
               />
                {/* Onboarding Checklist */}
@@ -1441,7 +1434,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <PageSectionHeader
                 title="Job Pipeline"
                 subtitle={`AI-ranked opportunities · ${pipelineTotal} job${pipelineTotal === 1 ? '' : 's'} in pipeline`}
-                lastRun={lastRunMeta}
                 actions={searchActions}
               />
             <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
@@ -1543,7 +1535,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <PageSectionHeader
                 title="Resume Studio"
                 subtitle="Visual editor with live preview — in active development"
-                lastRun={lastRunMeta}
               />
             <ResumeStudioTeaser
               onOpenTerminal={() => setActiveTab('terminal')}
@@ -1558,7 +1549,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <PageSectionHeader
                 title="Generated Docs"
                 subtitle={`${filteredDocs.length} tailored resume${filteredDocs.length === 1 ? '' : 's'} and cover letters`}
-                lastRun={lastRunMeta}
                 actions={searchActions}
               />
             <GeneratedDocsPanel
@@ -1740,7 +1730,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 <PageSectionHeader
                   title="Skill Gaps"
                   subtitle="Aggregated gaps from your job evaluations — focus learning on high-impact areas"
-                  lastRun={lastRunMeta}
                   actions={
                     <button
                       onClick={() => { setActiveTab('terminal'); runCommand('skill-gap'); }}
@@ -1978,7 +1967,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <PageSectionHeader
                 title="Tutorial & Docs"
                 subtitle="Master Career-Ops: auto-discover, rank, tailor, and apply to jobs"
-                lastRun={lastRunMeta}
               />
 
               {/* Grid Layout: Intro and Deep Flag */}
@@ -2166,7 +2154,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <PageSectionHeader
                 title="Terminal"
                 subtitle="Run scan, rank, tailor, and apply commands"
-                lastRun={lastRunMeta}
               />
             <div className="relative flex h-[600px] flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
               <div className="p-5 border-b border-[#E5E5E0] flex justify-between items-center bg-[#F5F5F0]">
@@ -2241,7 +2228,6 @@ System Initialized — v2.0`}
                <PageSectionHeader
                  title="Settings"
                  subtitle="Profile, targeting keywords, resume import, and GitHub automation"
-                 lastRun={lastRunMeta}
                  actions={
                  <div className="flex items-center gap-3">
                    <button

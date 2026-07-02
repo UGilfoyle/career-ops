@@ -2,17 +2,10 @@
 
 import type { ReactNode } from 'react';
 
-export type LastRunMeta = {
-  lastRunScript?: string | null;
-  lastRunStatus?: string | null;
-  lastRunUrl?: string | null;
-};
-
 type PageSectionHeaderProps = {
   title: string;
   subtitle?: string;
   welcomeName?: string | null;
-  lastRun?: LastRunMeta | null;
   actions?: ReactNode;
 };
 
@@ -20,16 +13,8 @@ export function PageSectionHeader({
   title,
   subtitle,
   welcomeName,
-  lastRun,
   actions,
 }: PageSectionHeaderProps) {
-  const scriptLabel = String(lastRun?.lastRunScript || '')
-    .replace('.mjs', '')
-    .replace(/-/g, ' ')
-    .toUpperCase();
-  const status = String(lastRun?.lastRunStatus || '').toUpperCase();
-  const statusOk = status === 'SUCCESS';
-
   return (
     <header className="mb-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -51,34 +36,6 @@ export function PageSectionHeader({
           )}
           {welcomeName && subtitle && (
             <p className="mt-2 text-sm text-[#6B6B6B]">{subtitle}</p>
-          )}
-          {scriptLabel && (
-            <div className="mt-2 caps-mono tracking-[0.2em] text-[#9CA3AF]">
-              Last run:{' '}
-              <span className="font-bold text-[#1C1C1E]">{scriptLabel}</span>
-              {status && (
-                <>
-                  {' '}
-                  <span className="text-[#9CA3AF]">·</span>{' '}
-                  <span className={statusOk ? 'font-bold text-emerald-600' : 'font-bold text-[#1C1C1E]'}>
-                    {statusOk ? '● SUCCESS' : status}
-                  </span>
-                </>
-              )}
-              {lastRun?.lastRunUrl && (
-                <>
-                  {' '}
-                  <a
-                    href={lastRun.lastRunUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-bold text-[#6B6B6B] underline underline-offset-4 hover:text-[#1C1C1E]"
-                  >
-                    LOGS
-                  </a>
-                </>
-              )}
-            </div>
           )}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>}

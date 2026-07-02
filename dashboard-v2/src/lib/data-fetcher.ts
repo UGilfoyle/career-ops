@@ -230,21 +230,6 @@ export async function getDashboardData(userId: string) {
     }
   };
 
-  const fetchLatestRun = async () => {
-    try {
-      const runRows = await sql`
-        SELECT id, action_script, status, run_url, queued_at, completed_at
-        FROM background_runs
-        WHERE user_id = ${String(userId)}
-        ORDER BY queued_at DESC
-        LIMIT 1
-      `;
-      return runRows[0] || null;
-    } catch {
-      return null;
-    }
-  };
-
   // Execute all queries concurrently in parallel
   const [
     jobMeta,
@@ -254,7 +239,6 @@ export async function getDashboardData(userId: string) {
     profile,
     pdfs,
     latestEvent,
-    latestRun
   ] = await Promise.all([
     fetchJobMeta(),
     fetchApplications(),
@@ -263,7 +247,6 @@ export async function getDashboardData(userId: string) {
     fetchProfile(),
     fetchPdfs(),
     fetchLatestEvent(),
-    fetchLatestRun()
   ]);
 
   return {
@@ -281,12 +264,6 @@ export async function getDashboardData(userId: string) {
       lastBackgroundActionScript: latestEvent?.action_script ?? null,
       lastBackgroundStatus: latestEvent?.status ?? null,
       lastBackgroundCompletedAt: latestEvent?.created_at ?? null,
-      lastRunId: latestRun?.id ?? null,
-      lastRunScript: latestRun?.action_script ?? null,
-      lastRunStatus: latestRun?.status ?? null,
-      lastRunUrl: latestRun?.run_url ?? null,
-      lastRunQueuedAt: latestRun?.queued_at ?? null,
-      lastRunCompletedAt: latestRun?.completed_at ?? null,
     },
     timestamp: new Date().toISOString()
   };
