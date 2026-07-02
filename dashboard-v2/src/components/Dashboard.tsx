@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
-import ComingSoonBanner from './ComingSoonBanner';
+import ResumeStudioModal from './ResumeStudioModal';
 import ResumeStudioTeaser from './ResumeStudioTeaser';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
 
@@ -99,6 +99,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [clearPipelineOpen, setClearPipelineOpen] = useState(false);
   const [clearPipelineScope, setClearPipelineScope] = useState<'all' | 'visible'>('all');
   const [clearPipelineLoading, setClearPipelineLoading] = useState(false);
+  const [resumeStudioModalOpen, setResumeStudioModalOpen] = useState(false);
 
   const appendTerminalLine = (line: string) => {
     setLogs((prev) => [...prev, { type: 'stdout', content: `\n${line}\n` }]);
@@ -892,7 +893,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('dashboard')} />
             <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('apps')} />
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('pipeline')} />
-            <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('resume-studio')} />
+            <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio' || resumeStudioModalOpen} collapsed={sidebarCollapsed} onClick={() => setResumeStudioModalOpen(true)} />
             <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('generated-docs')} />
             {SHOW_RESUME_MANAGER_NAV && (
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
@@ -989,10 +990,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
              </button>
           </div>
         </header>
-        )}
-
-        {activeTab !== 'resume-studio' && activeTab !== 'generated-docs' && (
-          <ComingSoonBanner onLearnMore={() => setActiveTab('resume-studio')} />
         )}
 
         <AnimatePresence>
@@ -2959,6 +2956,13 @@ System Initialized — v2.0`}
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Resume Studio coming-soon modal */}
+      <ResumeStudioModal
+        open={resumeStudioModalOpen}
+        onClose={() => setResumeStudioModalOpen(false)}
+        onSeeRoadmap={() => setActiveTab('resume-studio')}
+      />
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
