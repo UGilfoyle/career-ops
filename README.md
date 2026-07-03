@@ -2,7 +2,7 @@
 
 Companies use AI to filter candidates. **Career-Ops gives candidates the AI infrastructure to target and secure their next role.** 
 
-This repository is a fully standalone, bifurcated edition of Career-Ops featuring a local-first CLI pipeline integrated with a multi-tenant Next.js SaaS dashboard, Go TUI dashboard, cloud storage synchronization, and distributed scraper automation.
+This repository is a standalone edition of Career-Ops featuring a local-first CLI pipeline integrated with a private full-stack Next.js SaaS dashboard, cloud storage synchronization, and scheduled scraper automation.
 
 ---
 
@@ -19,12 +19,12 @@ This repository is a fully standalone, bifurcated edition of Career-Ops featurin
 
 ## 🏗️ System Architecture
 
-Career-Ops bridges local-first CLI workflows and Go terminal interfaces with a full-stack cloud Next.js SaaS platform.
+Career-Ops bridges local-first CLI workflows with a full-stack Next.js SaaS platform.
 
 ```mermaid
 graph TD
     %% SaaS Layer
-    subgraph SaaS_Layer [SaaS Web Portal - Next.js 16]
+    subgraph SaaS_Layer [SaaS Web Portal - Next.js]
         WebDash["Web Dashboard (dashboard-v2/)"]
         API["REST & Exec APIs (/api/exec)"]
         Auth["NextAuth v5 Session Control"]
@@ -69,20 +69,25 @@ graph TD
 ```
 
 ### Core Operations Flow
-1. **Scraper Job Dispatch**: Users trigger scans from [dashboard-v2](file:///Users/akashkaintura/Desktop/career-ops/dashboard-v2). The API invokes workflow runs in GitHub Actions or locally spawns [scan.mjs](file:///Users/akashkaintura/Desktop/career-ops/scan.mjs).
+1. **Scraper Job Dispatch**: Users trigger scans from the web dashboard. The API invokes workflow runs in GitHub Actions or locally spawns `scan.mjs`.
 2. **Zero-Token ATS Scans**: The engine fetches job postings directly from Greenhouse, Lever, and Ashby JSON APIs, bypassing heavy Playwright requirements for list scanning.
-3. **AI Evaluation & Cascade**: [agentic-tailor.mjs](file:///Users/akashkaintura/Desktop/career-ops/agentic-tailor.mjs) processes descriptions using a try-catch model cascade (defaulting to MiniMax, falling back to Qwen) to generate markdown reports and custom CV layouts.
-4. **Data Sync**: Reports are cataloged in [data/applications.md](file:///Users/akashkaintura/Desktop/career-ops/data/applications.md), and generated resume PDFs are compiled via Playwright and synced to Cloudflare R2 or AWS S3 buckets.
+3. **AI Evaluation & Cascade**: `agentic-tailor.mjs` processes descriptions using your configured LLM (e.g., GPT-4o-mini, Gemini, or Claude) to generate markdown reports, tailored resumes, and custom cover letters.
+4. **Data Sync**: Reports are cataloged in `data/applications.md` and synced to your database. PDF resumes are compiled via Playwright and synced to your private Cloudflare R2 or AWS S3 bucket.
 
 ---
 
-## 🛠️ Bifurcation & Standalone Customizations
+## 🇪🇺 EU Compliance & Data Privacy (GDPR)
 
-To enable custom feature sets and separate the pipeline from upstream updates, the following modifications were completed:
+Career-Ops is engineered with privacy-by-design principles fully compliant with the European Union General Data Protection Regulation (GDPR):
 
-* **Standalone System Updater**: Reconfigured [update-system.mjs](file:///Users/akashkaintura/Desktop/career-ops/update-system.mjs) to target `UGilfoyle/career-ops` for tags, releases, and changelog updates.
-* **Metadata & Licensing**: Replaced all upstream references with standalone configurations across [package.json](file:///Users/akashkaintura/Desktop/career-ops/package.json), [CITATION.cff](file:///Users/akashkaintura/Desktop/career-ops/CITATION.cff), [SECURITY.md](file:///Users/akashkaintura/Desktop/career-ops/SECURITY.md), [GOVERNANCE.md](file:///Users/akashkaintura/Desktop/career-ops/GOVERNANCE.md), and [SUPPORT.md](file:///Users/akashkaintura/Desktop/career-ops/SUPPORT.md).
-* **Funding & Branding Cleanup**: Removed upstream `.github/FUNDING.yml` configuration and purged sponsorship widgets to align the repository strictly under personal ownership.
+* **Local-First & Private Storage:** All candidate Personally Identifiable Information (PII) including your CV, contact details, salary expectations, and application history is stored locally on your machine or inside your own private database/cloud storage.
+* **No Telemetry or Third-Party Tracking:** This repository does not contain any analytic trackers, cookies, or remote reporting mechanisms. We collect zero data.
+* **Data Portability:** Your application funnel is stored in standard Markdown (`data/applications.md`) and TSV formats, allowing you to export or delete your entire history instantly.
+
+### EU AI Act & Transparency Compliance
+In accordance with the EU AI Act guidelines regarding artificial intelligence assistance:
+* **Human-in-the-Loop Enforced:** AI evaluations and resume tailoring are strictly advisory. **Never auto-submit job applications.** A human must review and manually click send on every application.
+* **Transparency:** Custom resumes clearly state achievements derived from your real career facts. The system prevents cross-job metrics hallucination to ensure truthfulness to recruiters.
 
 ---
 
@@ -93,8 +98,8 @@ To enable custom feature sets and separate the pipeline from upstream updates, t
 | **SaaS Hub (`dashboard-v2`)** | Next.js 16, React 19, Tailwind CSS | Multi-tenant visual dashboard with Server-Side Rendering (SSR). |
 | **SaaS Auth / Database** | NextAuth v5, PostgreSQL | Session persistence and relational application funnel tracking. |
 | **Cloud Assets** | AWS SDK, Cloudflare R2 / S3 | Storage for generated PDF resumes and customized cover letters. |
-| **Engine / Scrapers** | Node.js 20+, Playwright | Zero-token direct-API scanners and headless compilers. |
-| **AI Processing** | OpenAI-Compatible LLM Cascade | Fail-safe pipeline defaulting to MiniMax and falling back to Qwen. |
+| **Engine / Scrapers** | Node.js 20+, Playwright | Zero-token direct-API scanners and headless PDF compilers. |
+| **AI Processing** | OpenAI-Compatible LLM | Target job evaluation, match scoring, and resume tailoring. |
 
 ---
 
@@ -103,20 +108,20 @@ To enable custom feature sets and separate the pipeline from upstream updates, t
 To prevent system updates from overwriting custom CV data or settings, Career-Ops maintains a strict barrier between layers:
 
 ### 👤 User Layer (Never modified by system updates)
-* **[cv.md](file:///Users/akashkaintura/Desktop/career-ops/cv.md)**: The canonical source-of-truth markdown resume.
-* **[config/profile.yml](file:///Users/akashkaintura/Desktop/career-ops/config/profile.yml)**: Personal parameters (name, target roles, salary range).
-* **[modes/_profile.md](file:///Users/akashkaintura/Desktop/career-ops/modes/_profile.md)**: User-specific scoring metrics, keywords, and narratives.
-* **[data/applications.md](file:///Users/akashkaintura/Desktop/career-ops/data/applications.md)**: The raw markdown tracking spreadsheet.
-* **[portals.yml](file:///Users/akashkaintura/Desktop/career-ops/portals.yml)**: Scraper configuration target companies and job filters.
+* **`cv.md`**: The canonical source-of-truth markdown resume.
+* **`config/profile.yml`**: Personal parameters (name, target roles, salary range, cover letter layout preferences).
+* **`modes/_profile.md`**: User-specific scoring metrics, keywords, and narratives.
+* **`data/applications.md`**: The raw markdown tracking spreadsheet.
+* **`portals.yml`**: Scraper configuration target companies and job filters.
 
 ### ⚙️ System Layer (System code & engine defaults)
-* Node.js scripts (`scan.mjs`, `agentic-tailor.mjs`, `merge-tracker.mjs`).
-* All files in `modes/` (except `_profile.md`).
-* Templates folder (`templates/cv-template.html`, `templates/states.yml`).
+* Node.js scripts (`scan.mjs`, `agentic-tailor.mjs`, `merge-tracker.mjs`, `resume-quality.mjs`).
+* Prompt templates inside `modes/` (e.g. `oferta.md`, `pdf.md`, `scan.md`).
+* Document layouts inside `templates/` (`templates/cv-template.html`, `templates/states.yml`).
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Easy Use)
 
 ### 1. Installation & Environment Setup
 Clone the repository and install the dependencies:
@@ -125,19 +130,17 @@ git clone https://github.com/UGilfoyle/career-ops.git
 cd career-ops
 
 npm install
-npx playwright install chromium # Needed for PDF compilation
+npx playwright install chromium # Needed for PDF resume compilation
 ```
 
-### 2. Verify Your Configuration
-Run the cold-start check script to ensure all user files are placed properly:
+### 2. Run Onboarding Check
+Run the cold-start check script to configure your profile and template:
 ```bash
 npm run doctor
 ```
-If this is your first run, the system will guide you through onboarding steps to create [cv.md](file:///Users/akashkaintura/Desktop/career-ops/cv.md) and [config/profile.yml](file:///Users/akashkaintura/Desktop/career-ops/config/profile.yml).
+If this is your first run, the system will guide you through onboarding steps to create `cv.md` and `config/profile.yml`.
 
-### 3. Launching Dashboard Portals
-
-#### Option A: Next.js SaaS Web Dashboard (Premium)
+### 3. Launch the Web Dashboard
 ```bash
 cd dashboard-v2
 pnpm install
@@ -153,19 +156,18 @@ Navigate to `http://localhost:3000` to access the multi-tenant web application.
 career-ops/
 ├── AGENTS.md                    # Agent behavior guidelines
 ├── CLAUDE.md                    # Claude CLI run configurations
-├── dashboard-v2/                # Next.js 16 Full-Stack SaaS Dashboard
+├── dashboard-v2/                # Next.js Full-Stack SaaS Dashboard
 ├── modes/                       # AI prompt templates & evaluation workflows
-├── templates/                   # HTML/LaTeX templates & keyword profiles
+├── templates/                   # HTML templates & keyword profiles
 ├── config/                      # User configuration profiles (gitignored)
 ├── data/                        # Active application logs & database outputs (gitignored)
 ├── reports/                     # Sequential markdown evaluations (gitignored)
-└── output/                      # Generated tailored PDF resumes (gitignored)
+├── output/                      # Generated tailored PDF resumes (gitignored)
+└── interview-prep/              # Accumulated STAR+R interview story banks (gitignored)
 ```
 
 ---
 
-## ⚖️ Ethics, License & Disclaimer
+## ⚖️ License
 
-* **Ethics**: Career-Ops values high-quality matches. **Never auto-submit applications** without a human review. Discourage low-score matches, and respect recruiter review cycles.
-* **Disclaimer**: You are responsible for your data, your deployment, and rate-limit compliance when accessing external job portal APIs.
-* **License**: MIT License. See [LICENSE](file:///Users/akashkaintura/Desktop/career-ops/LICENSE) for the full text. Trademark guidelines can be reviewed in [TRADEMARK.md](file:///Users/akashkaintura/Desktop/career-ops/TRADEMARK.md).
+MIT License. See [LICENSE](file:///Users/akashkaintura/Desktop/career-ops/LICENSE) for the full text.
