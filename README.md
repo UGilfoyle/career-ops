@@ -23,34 +23,40 @@ Career-Ops bridges local-first CLI workflows with a full-stack Next.js SaaS plat
 
 ```mermaid
 graph TD
+    %% Define Styles for visual excellence
+    classDef saas fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1,rx:6px,ry:6px;
+    classDef storage fill:#f1f5f9,stroke:#475569,stroke-width:2px,color:#334155,rx:4px,ry:4px;
+    classDef local fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#b45309,rx:6px,ry:6px;
+    classDef runner fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#4338ca,rx:6px,ry:6px;
+    
     %% SaaS Layer
-    subgraph SaaS_Layer [SaaS Web Portal - Next.js]
-        WebDash["Web Dashboard (dashboard-v2/)"]
-        API["REST & Exec APIs (/api/exec)"]
-        Auth["NextAuth v5 Session Control"]
-        ResumeStudio["Resume Studio (Editor & Previews)"]
-        GeneratedDocs["Generated Docs (PDF Library)"]
+    subgraph SaaS_Layer ["🌐 SaaS Web Portal (Next.js)"]
+        WebDash["💻 Web Dashboard<br>(dashboard-v2/)"]:::saas
+        API["⚙️ REST & Exec APIs<br>(/api/exec)"]:::saas
+        Auth["🔒 NextAuth v5<br>Session Control"]:::saas
+        ResumeStudio["🎨 Resume Studio<br>(Editor & Previews)"]:::saas
+        GeneratedDocs["📄 Generated Docs<br>(PDF Library)"]:::saas
     end
 
     %% Storage & Database
-    subgraph Storage [Database & Cloud Storage]
-        DB[(PostgreSQL Database)]
-        R2[(Cloudflare R2 / AWS S3)]
+    subgraph Storage_Layer ["💾 Storage & Databases"]
+        DB[("🗄️ PostgreSQL<br>Relational DB")]:::storage
+        R2[("☁️ Cloudflare R2 / S3<br>Object Storage")]:::storage
     end
 
     %% CLI / Local Layer
-    subgraph Local_Pipeline [Local CLI Pipeline]
-        CLI["AI CLI Agent (Gemini/Claude)"]
-        LocalData["Local Tracker (data/applications.md)"]
+    subgraph Local_Pipeline ["🖥️ Local CLI Pipeline"]
+        CLI["🤖 AI CLI Agent<br>(Gemini / Claude)"]:::local
+        LocalData["Local Tracker<br>(data/applications.md)"]:::local
     end
 
     %% Execution Runner (GitHub Actions / Local)
-    subgraph Runner_Infrastructure [Scraper / Worker Runners]
-        GH_Actions["GitHub Actions Runner (scraper-cron.yml)"]
-        NodeWorker["Local Node.js Scripts (scan.mjs, agentic-tailor.mjs)"]
+    subgraph Runner_Infrastructure ["⚙️ Scraper & Worker Runners"]
+        GH_Actions["🚀 GitHub Actions Runner<br>(scraper-cron.yml)"]:::runner
+        NodeWorker["📦 Local Node.js Scripts<br>(scan.mjs, agentic-tailor.mjs)"]:::runner
     end
 
-    %% Interactions
+    %% SaaS interactions
     WebDash --> API
     API --> Auth
     WebDash --> DB
@@ -66,6 +72,14 @@ graph TD
     
     %% Local Interfacing
     CLI -->|Evaluates & PDF Gen| LocalData
+
+    %% Custom link styles
+    linkStyle 3 stroke:#0284c7,stroke-width:2px,stroke-dasharray: 5 5;
+    linkStyle 4 stroke:#0284c7,stroke-width:2px,stroke-dasharray: 5 5;
+    linkStyle 7 stroke:#4f46e5,stroke-width:2px;
+    linkStyle 8 stroke:#4f46e5,stroke-width:2px;
+    linkStyle 9 stroke:#4f46e5,stroke-width:2px;
+    linkStyle 10 stroke:#d97706,stroke-width:2px;
 ```
 
 ### Core Operations Flow
