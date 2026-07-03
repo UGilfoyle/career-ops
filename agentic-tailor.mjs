@@ -463,10 +463,10 @@ function buildExperienceDigestForPrompt(experience, maxRoles = 6) {
       const role = e?.role || e?.title || 'Role';
       const company = e?.company || 'Company';
       const period = e?.period || '';
-      const blurb = (e?.bullets || []).filter(Boolean).slice(0, 2).join(' ');
-      return `• ${role} — ${company} (${period})${blurb ? ` — ${blurb.slice(0, 160)}` : ''}`;
+      const blurb = (e?.bullets || []).filter(Boolean).join('\n  ');
+      return `• ${role} — ${company} (${period}):\n  ${blurb}`;
     })
-    .join('\n');
+    .join('\n\n');
 }
 
 function escapeHtml(s) {
@@ -1100,10 +1100,8 @@ GLOBAL RULES:
 - Highlight Applied AI & GenAI/LLM: If the JD requires or mentions AI, Generative AI, Large Language Models (LLMs), RAG, vector databases, or machine learning, prioritize and weave the candidate's AI experience (e.g., ChromaDB document ingestion pipeline with multiprocessing, conversation query-rewriting, Anthropic Claude/OpenAI GPT integrations with tenacity backoff retry, self-correcting validation loops for LLMs) into the summary, core competencies, and tailored experience bullets.
 - Freelance / Contract / Temporary Role Adaptation: If the JD indicates a freelance, contract, or temporary role, adapt the summary and cover letter to emphasize high autonomy, rapid team integration, immediate contribution, and deliverables-oriented execution. DO NOT change the candidate's existing job titles on the resume to "Freelance" or "Contractor". Keep professional titles (e.g., "Senior Software Engineer") as-is. Avoid adding clunky "doing freelancing" or "freelancing work" phrasing.
 - CRITICAL ATS OPTIMIZATION (88+ ATS Score Target): Maximize exact keyword matching. Extract the primary languages, frameworks, databases, cloud platforms, and technical skills from the JD and weave them verbatim into the Summary, Core Competencies, and Rewritten Bullets. Match terminology exactly (e.g. if the JD writes "PostgreSQL", do not write "Postgres" or "SQL database").
-- CRITICAL — QUANTIFIED IMPACT (88+ target): At least 95% of experience bullets MUST include a real metric from the digest (% , dollar amount, latency, throughput, user/request counts, cost reduction). Carry numbers verbatim from source bullets — never invent metrics. Weak: "improved performance". Strong: "cut server CPU load by 30%".
-- CRITICAL — ZERO REPETITION: Never reuse the same leading action verb twice across the resume. Do not repeat the same verb or buzzword within a bullet. Use varied, precise corporate English — short sentences, active voice, correct spelling and grammar.
-- CRITICAL — ZERO WORD REPETITION: No action verb (implemented, developed, designed, built, led, created, optimized, engineered, delivered) may appear more than ONCE in the entire resume. Never repeat the same word twice in one sentence — rephrase with a synonym immediately (implemented→executed, developed→engineered, built→constructed).
-- CRITICAL — VERB VARIETY: Every bullet starts with a different action verb. Rotate: executed, applied, engineered, architected, delivered, streamlined, deployed, enhanced, expanded, enforced, drove, owned, reduced, accelerated.
+- CRITICAL — QUANTIFIED IMPACT (88+ target): Enforce strong quantification. Wherever a metric is present in the candidate's experience digest (%, dollar amounts, latency, throughput, CPU reduction, uptime, speedups), preserve and highlight it in the rewritten bullets. Never invent or fabricate metrics.
+- CRITICAL — VERB VARIETY: Start each bullet with a unique, strong action verb (e.g., architected, engineered, streamlined, deployed, accelerated). Avoid repeating the same verb in consecutive bullet points.
 
 
 TASK:
@@ -1505,7 +1503,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       LINKEDIN_DISPLAY: c.linkedin,
       PORTFOLIO_URL: c.github ? `https://${c.github}` : '#',
       PORTFOLIO_DISPLAY: c.github || 'Github',
-      DATE: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      DATE: (profile?.cover_letter?.show_date !== false) ? new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '',
       COMPANY_NAME: entry.company,
       JOB_TITLE: entry.title || 'Open role',
       LANG: 'en',

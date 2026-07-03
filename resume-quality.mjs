@@ -161,6 +161,9 @@ function replaceNthWord(text, word, replacement, occurrence = 1) {
 
 /**
  * Replace repeated words inside a single sentence/bullet (not JD tech terms).
+ * Only replaces words that are repeated WITHIN the same sentence segment.
+ * The usedGlobally map tracks word usage for informational purposes
+ * but does NOT trigger mid-sentence replacements across different bullets.
  */
 export function dedupeIntraSentenceRepetition(text, usedGlobally = new Map()) {
   let fixes = 0;
@@ -176,11 +179,13 @@ export function dedupeIntraSentenceRepetition(text, usedGlobally = new Map()) {
 
       const localCount = seenLocal.get(lower) || 0;
       seenLocal.set(lower, localCount + 1);
-      const globalCount = usedGlobally.get(lower) || 0;
 
-      const needsReplace = localCount >= 1 || globalCount >= MAX_GLOBAL_USES;
+      // Only replace if the word is repeated within THIS sentence segment.
+      // Do NOT replace based on global cross-bullet counts — that caused
+      // mid-sentence verb mangling (e.g. "integrated" → "connected").
+      const needsReplace = localCount >= 1;
       if (!needsReplace) {
-        usedGlobally.set(lower, globalCount + 1);
+        usedGlobally.set(lower, (usedGlobally.get(lower) || 0) + 1);
         continue;
       }
 
@@ -188,14 +193,12 @@ export function dedupeIntraSentenceRepetition(text, usedGlobally = new Map()) {
       if (!replacement) continue;
 
       const before = out;
-      out = replaceNthWord(out, word, replacement, localCount >= 1 ? 2 : 1);
+      out = replaceNthWord(out, word, replacement, 2);
       if (out !== before) {
         fixes += 1;
         seenLocal.set(replacement.toLowerCase(), 1);
         usedGlobally.set(lower, (usedGlobally.get(lower) || 0));
         usedGlobally.set(replacement.toLowerCase(), (usedGlobally.get(replacement.toLowerCase()) || 0) + 1);
-      } else if (localCount === 0 && globalCount === 0) {
-        usedGlobally.set(lower, 1);
       }
     }
     return out;
@@ -211,28 +214,22 @@ export function dedupeGlobalWordFrequency(texts, usedGlobally = new Map()) {
   const counts = new Map();
 
   for (const text of texts) {
-    for (const m of String(text).matchAll(/\b([A-Za-z]{4,})\b/g)) {
-      const lower = m[1].toLowerCase();
-      if (!isReplaceableWord(lower)) continue;
-      counts.set(lower, (counts.get(lower) || 0) + 1);
+    const verb = extractLeadingVerb(text);
+    if (verb && isReplaceableWord(verb)) {
+      counts.set(verb, (counts.get(verb) || 0) + 1);
     }
   }
 
   const out = texts.map((text) => {
     let current = text;
-    for (const [word, total] of counts) {
-      if (total <= MAX_GLOBAL_USES) continue;
-      let occurrence = 0;
-      const re = new RegExp(`\\b${escapeRegex(word)}\\b`, 'gi');
-      current = current.replace(re, (match) => {
-        occurrence += 1;
-        if (occurrence <= MAX_GLOBAL_USES) return match;
-        const replacement = pickVerbReplacement(word, new Set([...usedGlobally.keys(), word]));
-        if (!replacement) return match;
+    const verb = extractLeadingVerb(text);
+    if (verb && counts.get(verb) > MAX_GLOBAL_USES) {
+      const replacement = pickVerbReplacement(verb, new Set([...usedGlobally.keys(), verb]));
+      if (replacement) {
         fixes += 1;
         usedGlobally.set(replacement.toLowerCase(), (usedGlobally.get(replacement.toLowerCase()) || 0) + 1);
-        return preserveCase(match, replacement);
-      });
+        current = replaceLeadingVerb(current, replacement);
+      }
     }
     const intra = dedupeIntraSentenceRepetition(current, usedGlobally);
     fixes += intra.fixes;
@@ -300,21 +297,13 @@ function collectAllSourceBullets(sourceExperience) {
 }
 
 function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets) {
-  const metricSources = allSourceBullets.filter((s) => hasQuantifiedImpact(s));
-  const roleMetricClauses = roleSourceBullets
-    .map((s) => extractMetricClause(s))
-    .filter(Boolean);
-  const globalMetricClauses = metricSources
-    .map((s) => extractMetricClause(s))
-    .filter(Boolean);
-  let roleMetricIdx = 0;
-  let globalMetricIdx = 0;
+  const metricSources = roleSourceBullets.filter((s) => hasQuantifiedImpact(s));
 
   return bullets.map((b) => {
     if (hasQuantifiedImpact(b)) return { bullet: b, enriched: false };
-    let result = enrichBulletWithSourceMetric(b, roleSourceBullets);
-    if (!result.enriched) result = enrichBulletWithSourceMetric(b, allSourceBullets);
-    if (!result.enriched && metricSources.length > 0) {
+    
+    // Attempt to enrich with overlap-based match from the same role
+    if (metricSources.length > 0) {
       let best = null;
       let bestOverlap = 0;
       for (const src of metricSources) {
@@ -324,7 +313,7 @@ function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets) 
           best = src;
         }
       }
-      if (best) {
+      if (best && bestOverlap >= 2) {
         const metric = extractMetricClause(best);
         if (metric) {
           const trimmed = String(b).trim().replace(/\.$/, '');
@@ -334,23 +323,8 @@ function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets) 
         }
       }
     }
-    if (!result.enriched && !hasQuantifiedImpact(result.bullet) && roleMetricClauses[roleMetricIdx]) {
-      const metric = roleMetricClauses[roleMetricIdx];
-      roleMetricIdx += 1;
-      const trimmed = String(result.bullet).trim().replace(/\.$/, '');
-      if (!trimmed.toLowerCase().includes(metric.toLowerCase())) {
-        return { bullet: `${trimmed}, ${metric}.`, enriched: true };
-      }
-    }
-    if (!result.enriched && !hasQuantifiedImpact(result.bullet) && globalMetricClauses[globalMetricIdx]) {
-      const metric = globalMetricClauses[globalMetricIdx];
-      globalMetricIdx += 1;
-      const trimmed = String(result.bullet).trim().replace(/\.$/, '');
-      if (!trimmed.toLowerCase().includes(metric.toLowerCase())) {
-        return { bullet: `${trimmed}, ${metric}.`, enriched: true };
-      }
-    }
-    return result;
+    
+    return { bullet: b, enriched: false };
   });
 }
 
