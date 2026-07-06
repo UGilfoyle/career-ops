@@ -78,6 +78,68 @@ function buildDiscoveryQuery(q) {
   return `site:${site} ${baseQuery}`.trim();
 }
 
+function cleanDuckDuckGoUrl(url) {
+  try {
+    const parsed = new URL(url, 'https://duckduckgo.com');
+    if (parsed.searchParams.has('uddg')) {
+      return decodeURIComponent(parsed.searchParams.get('uddg'));
+    }
+  } catch (e) {
+    // ignore
+  }
+  return url;
+}
+
+function extractCompany(title, url, fallback) {
+  try {
+    const cleanUrl = cleanDuckDuckGoUrl(url);
+    const parsed = new URL(cleanUrl, 'https://duckduckgo.com');
+    const host = parsed.hostname.toLowerCase();
+    
+    // Check Greenhouse
+    if (host.includes('greenhouse.io')) {
+      const parts = parsed.pathname.split('/');
+      if (parts[1] === 'embed' || parts[1] === 'xyz') return parts[2] || 'Greenhouse';
+      return parts[1] || 'Greenhouse';
+    }
+    // Check Lever
+    if (host.includes('lever.co')) {
+      const parts = parsed.pathname.split('/');
+      return parts[1] || 'Lever';
+    }
+    
+    // Parse from title
+    if (title) {
+      // Split by |, -, or —
+      const parts = title.split(/\s*\|\s*|\s+-\s+|\s+—\s+/);
+      if (parts.length > 1) {
+        const lastPart = parts[parts.length - 1].trim();
+        if (/india|pune|bengaluru|mumbai|remote|hyderabad|delhi|maharashtra/i.test(lastPart) && parts.length > 2) {
+          return parts[parts.length - 2].trim();
+        }
+        return lastPart;
+      }
+      const atMatch = title.match(/\s+at\s+([A-Za-z0-9\s\-_]+)/i);
+      if (atMatch) {
+        return atMatch[1].trim();
+      }
+    }
+    
+    // Try domain name
+    const domainParts = host.replace(/^www\./, '').split('.');
+    if (domainParts[0] && !['indeed', 'linkedin', 'naukri', 'instahyre', 'flexiple', 'cutshort'].includes(domainParts[0])) {
+      return domainParts[0].charAt(0).toUpperCase() + domainParts[0].slice(1);
+    }
+  } catch (e) {
+    // ignore
+  }
+  
+  if (fallback && (fallback.toLowerCase().includes('software engineer') || fallback.toLowerCase().includes('developer'))) {
+    return 'Unknown';
+  }
+  return fallback || 'Unknown';
+}
+
 async function discoverJobsWithoutBrowser(query, portalName = 'General') {
   const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
   const jobs = [];
@@ -110,10 +172,14 @@ async function discoverJobsWithoutBrowser(query, portalName = 'General') {
         .replace(/\s+/g, ' ')
         .trim();
       if (!title) continue;
+
+      const cleanUrl = cleanDuckDuckGoUrl(url);
+      const realCompany = extractCompany(title, cleanUrl, portalName);
+
       jobs.push({
-        url,
+        url: cleanUrl,
         title,
-        company: portalName,
+        company: realCompany,
         source: `Discovery - ${portalName}`,
       });
     }
@@ -442,7 +508,9 @@ async function run() {
           const duration = ((Date.now() - scanStart) / 1000).toFixed(1);
           stats.discovery.found += results.length;
           results.forEach(j => {
-            const res = tryAdd(j.url, j.company, j.title, j.source);
+            const cleanUrl = cleanDuckDuckGoUrl(j.url);
+            const realCompany = extractCompany(j.title, cleanUrl, j.company);
+            const res = tryAdd(cleanUrl, realCompany, j.title, j.source);
             if (res === 'added') stats.discovery.added++;
           });
           console.log(`      ✓ Done: ${results.length} jobs found (${duration}s)`);
