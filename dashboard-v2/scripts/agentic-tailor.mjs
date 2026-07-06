@@ -804,11 +804,30 @@ async function scrapeJD(url) {
   const chromium = await getChromium();
   if (chromium) {
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      viewport: { width: 1280, height: 800 },
+      extraHTTPHeaders: {
+        'Accept-Language': 'en-US,en;q=0.9',
+      }
+    });
+    const page = await context.newPage();
     try {
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForTimeout(2000);
-      const text = await page.evaluate(() => document.body.innerText);
+      
+      let text = '';
+      if (targetUrl.includes('indeed.com')) {
+        text = await page.evaluate(() => {
+          const jdContainer = document.getElementById('jobDescriptionText') || 
+                              document.querySelector('.jobsearch-JobComponent-description') ||
+                              document.querySelector('.jobsearch-BodyContainer');
+          return jdContainer ? jdContainer.innerText : document.body.innerText;
+        });
+      } else {
+        text = await page.evaluate(() => document.body.innerText);
+      }
+      
       await browser.close();
       return text.trim();
     } catch (err) {

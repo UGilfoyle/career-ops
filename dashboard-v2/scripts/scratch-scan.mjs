@@ -574,6 +574,70 @@ async function run() {
     VALUES ('Multi-Source Scan', ${totalFound}, ${Date.now() - startTime}, ${userId})
   `;
 
+  // ── Auto-scoring / Ranking integration ──────────────────────────────
+  console.log('\n🎯 Auto-scoring and ranking jobs in pipeline...');
+  try {
+    const [profile] = await sql`SELECT targeting_keywords FROM user_profiles WHERE user_id = ${userId}`;
+    const keywords = profile?.targeting_keywords || { positive: [], negative: [] };
+
+    // Fetch recent 500 jobs to score/rank
+    const jobs = await sql`
+      SELECT id, url, company, title, source, company_type FROM jobs
+      WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+      LIMIT 500
+    `;
+
+    // Score helper matching rank-pipeline.mjs
+    const scoreJobInline = (title, company, companyType) => {
+      const combined = ((title || '') + ' ' + (company || '')).toLowerCase();
+      
+      const negativeKws = [...(keywords.negative || []), 'manager', 'director', 'vp'];
+      const hasNegative = negativeKws.some(nw => combined.includes(nw.toLowerCase()));
+      if (hasNegative) return 0.0;
+
+      const positiveKws = [...(keywords.positive || [])];
+      if (positiveKws.length === 0) {
+        positiveKws.push('software engineer', 'developer', 'engineer', 'backend', 'full-stack');
+      }
+
+      let matchedCount = 0;
+      positiveKws.forEach(pw => {
+        if (combined.includes(pw.toLowerCase())) matchedCount++;
+      });
+
+      const seniorityKws = ['staff', 'principal', 'lead', 'senior', 'remote'];
+      let seniorityMatches = 0;
+      seniorityKws.forEach(sk => {
+        if (combined.includes(sk)) seniorityMatches += 0.2;
+      });
+
+      const matchRatio = matchedCount / positiveKws.length;
+      let scoreVal = (matchRatio * 8.0) + (seniorityMatches);
+      scoreVal = Math.min(10.0, scoreVal);
+
+      if (companyType === 'GCC') {
+        scoreVal = Math.min(10.0, scoreVal + 1.5);
+      } else if (companyType === 'Services') {
+        scoreVal = Math.max(0.0, scoreVal - 3.0);
+      }
+
+      return parseFloat(scoreVal.toFixed(1));
+    };
+
+    const scoredJobs = jobs.map(j => ({
+      id: j.id,
+      score: scoreJobInline(j.title, j.company, j.company_type)
+    }));
+
+    await Promise.all(scoredJobs.map(j => 
+      sql`UPDATE jobs SET score = ${j.score} WHERE id = ${j.id}`
+    ));
+    console.log(`  ✓ Successfully scored and updated ${scoredJobs.length} pipeline jobs.`);
+  } catch (rankErr) {
+    console.error(`  ✗ Auto-scoring failed: ${rankErr.message}`);
+  }
+
   } finally {
     clearTimeout(timeoutId);
     clearInterval(heartbeat);
