@@ -232,7 +232,7 @@ Save full evaluation in `reports/{###}-{company-slug}-{YYYY-MM-DD}.md`.
 **Date:** {YYYY-MM-DD}
 **URL:**
 **Archetype:** {detected}
-**Score:** {X/5}
+**Score:** {X/10}
 **Legitimacy:** {High Confidence | Proceed with Caution | Suspicious}
 **PDF:** {path or pending}
 

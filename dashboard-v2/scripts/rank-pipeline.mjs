@@ -9,35 +9,52 @@ if (!Number.isFinite(userId)) {
   throw new Error(`Invalid SCAN_USER_ID: ${rawUserId}`);
 }
 
-async function getScores() {
+async function getKeywords() {
   const [profile] = await sql`SELECT targeting_keywords FROM user_profiles WHERE user_id = ${userId}`;
-  const keywords = profile?.targeting_keywords || { positive: [], negative: [] };
-  
-  const scores = {};
-  // User positive keywords get high weight
-  (keywords.positive || []).forEach(kw => {
-    scores[kw.toLowerCase()] = 5;
-  });
-  // User negative keywords get heavy penalty
-  (keywords.negative || []).forEach(kw => {
-    scores[kw.toLowerCase()] = -20;
-  });
-  
-  // Baseline professional seniority (optional but helpful)
-  const baseline = {
-    'staff': 2, 'principal': 2, 'lead': 2, 'senior': 1, 'remote': 0.5,
-    'manager': -5, 'director': -5, 'vp': -10 // conservative defaults
-  };
-  
-  return { ...baseline, ...scores };
+  return profile?.targeting_keywords || { positive: [], negative: [] };
 }
 
-function scoreJob(title, company, scores) {
-  let score = 0;
+function scoreJob(title, company, companyType, keywords) {
   const combined = ((title || '') + ' ' + (company || '')).toLowerCase();
-  for (const [kw, val] of Object.entries(scores)) {
-    if (combined.includes(kw)) score += val;
+  
+  // 1. Negative checks
+  const negativeKws = [...(keywords.negative || []), 'manager', 'director', 'vp'];
+  const hasNegative = negativeKws.some(nw => combined.includes(nw.toLowerCase()));
+  if (hasNegative) {
+    return 0.0;
   }
+  
+  // 2. Positive checks
+  const positiveKws = [...(keywords.positive || [])];
+  if (positiveKws.length === 0) {
+    positiveKws.push('software engineer', 'developer', 'engineer', 'backend', 'full-stack');
+  }
+  
+  let matchedCount = 0;
+  positiveKws.forEach(pw => {
+    if (combined.includes(pw.toLowerCase())) {
+      matchedCount++;
+    }
+  });
+  
+  // Seniority boost: if seniority matches, give small additional credit
+  const seniorityKws = ['staff', 'principal', 'lead', 'senior', 'remote'];
+  let seniorityMatches = 0;
+  seniorityKws.forEach(sk => {
+    if (combined.includes(sk)) seniorityMatches += 0.2;
+  });
+  
+  const matchRatio = matchedCount / positiveKws.length;
+  let score = (matchRatio * 8.0) + (seniorityMatches); // max 8.0 from keywords, max 1.0 from seniority = 9.0
+  score = Math.min(10.0, score);
+  
+  // 3. GCC / Services adjustment
+  if (companyType === 'GCC') {
+    score = Math.min(10.0, score + 1.5); // GCC Boost
+  } else if (companyType === 'Services') {
+    score = Math.max(0.0, score - 3.0); // Services Penalty
+  }
+  
   return parseFloat(score.toFixed(1));
 }
 
@@ -45,11 +62,11 @@ async function run() {
   console.log("🎯 Scoring jobs in the pipeline...");
 
   try {
-    const scores = await getScores();
+    const keywords = await getKeywords();
 
     // Optimization: Only score/rank the most recent 500 jobs to keep it fast
     const jobs = await sql`
-      SELECT id, url, company, title, source FROM jobs
+      SELECT id, url, company, title, source, company_type FROM jobs
       WHERE user_id = ${userId}
       ORDER BY created_at DESC
       LIMIT 500
@@ -64,7 +81,7 @@ async function run() {
     console.log("  ⚡ Scoring in progress...");
     const scoredJobs = jobs.map(j => ({
       ...j,
-      score: scoreJob(j.title, j.company, scores)
+      score: scoreJob(j.title, j.company, j.company_type, keywords)
     }));
 
     // push scores to db (Parallelized for speed)

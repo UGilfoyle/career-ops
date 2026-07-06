@@ -1474,8 +1474,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <CompanyAvatar name={job.company} />
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex items-center gap-2">
                               <div className="truncate font-bold text-[#1C1C1E]">{job.company}</div>
+                              {job.company_type === 'GCC' && (
+                                <span className="px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md">
+                                  GCC
+                                </span>
+                              )}
+                              {job.company_type === 'Services' && (
+                                <span className="px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 rounded-md">
+                                  Services
+                                </span>
+                              )}
                             </div>
                           </div>
                         </td>

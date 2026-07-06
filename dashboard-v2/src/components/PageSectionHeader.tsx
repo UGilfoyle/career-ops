@@ -54,9 +54,14 @@ export function CompanyAvatar({ name }: { name?: string | null }) {
 }
 
 export function AiScoreBadge({ score }: { score?: string | number | null }) {
-  const raw = parseFloat(String(score ?? '').replace('/5', ''));
-  const value = Number.isFinite(raw) ? raw : null;
-  const label = value != null ? `${value.toFixed(1)}/5` : '—';
+  const scoreStr = String(score ?? '');
+  const isOutOfFive = scoreStr.includes('/5');
+  const raw = parseFloat(scoreStr.replace('/10', '').replace('/5', ''));
+  let value = Number.isFinite(raw) ? raw : null;
+  if (value != null && isOutOfFive) {
+    value = value * 2;
+  }
+  const label = value != null ? `${value.toFixed(1)}/10` : '—';
 
   return (
     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#1C1C1E] px-2 py-0.5 font-mono text-[10px] text-white whitespace-nowrap">

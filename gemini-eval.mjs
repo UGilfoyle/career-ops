@@ -194,8 +194,8 @@ function validateEvaluationShape(text) {
 
     const score = summaryBlock.match(/^\s*SCORE:\s*([0-9]+(?:\.[0-9]+)?)/mi);
     const scoreValue = score ? Number(score[1]) : NaN;
-    if (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > 5) {
-      issues.push('SCORE_SUMMARY score must be a number between 0 and 5');
+    if (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > 10) {
+      issues.push('SCORE_SUMMARY score must be a number between 0 and 10');
     }
   }
 
@@ -218,7 +218,7 @@ function tsvSafe(value) {
 function normalizedTrackerScore(value) {
   const clean = tsvSafe(value);
   if (!clean || clean === '?') return 'N/A';
-  return /\/5$/i.test(clean) ? clean : `${clean}/5`;
+  return /\/10$/i.test(clean) ? clean : `${clean}/10`;
 }
 
 // Lazy import — only used when saving
@@ -288,7 +288,7 @@ IMPORTANT OPERATING RULES FOR THIS CLI SESSION
 ---SCORE_SUMMARY---
 COMPANY: <company name or "Unknown">
 ROLE: <role title>
-SCORE: <global score as decimal, e.g. 3.8>
+SCORE: <global score as decimal, e.g. 8.5 (must be out of 10.0)>
 ARCHETYPE: <detected archetype>
 LEGITIMACY: <High Confidence | Proceed with Caution | Suspicious>
 ---END_SUMMARY---
@@ -396,7 +396,7 @@ if (saveReport) {
 
 **Date:** ${today}
 **Archetype:** ${archetype}
-**Score:** ${score}/5
+**Score:** ${score}/10
 **Legitimacy:** ${legitimacy}
 **PDF:** pending
 **Tool:** Gemini (${modelName})
@@ -445,5 +445,5 @@ ${evaluationText.replace(/---SCORE_SUMMARY---[\s\S]*?---END_SUMMARY---/, '').tri
 }
 
 console.log('\n' + '─'.repeat(66));
-console.log(`  Score: ${score}/5  |  Archetype: ${archetype}  |  Legitimacy: ${legitimacy}`);
+console.log(`  Score: ${score}/10  |  Archetype: ${archetype}  |  Legitimacy: ${legitimacy}`);
 console.log('─'.repeat(66) + '\n');

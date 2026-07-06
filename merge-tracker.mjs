@@ -417,8 +417,14 @@ function extractReportNum(reportStr) {
  * @returns {number} Parsed score, or 0 when no numeric value is present.
  */
 function parseScore(s) {
-  const m = s.replace(/\*\*/g, '').match(/([\d.]+)/);
-  return m ? parseFloat(m[1]) : 0;
+  const clean = s.replace(/\*\*/g, '').trim();
+  const m = clean.match(/([\d.]+)/);
+  if (!m) return 0;
+  let val = parseFloat(m[1]);
+  if (clean.includes('/5')) {
+    val *= 2;
+  }
+  return val;
 }
 
 // Column layout for the applications.md table. The tracker may use the original
@@ -544,8 +550,8 @@ function parseTsvContent(content, filename) {
     // Heuristic: if col4 looks like a score and col5 looks like a status, they're swapped
     const col4 = parts[4].trim();
     const col5 = parts[5].trim();
-    const col4LooksLikeScore = /^\d+\.?\d*\/5$/.test(col4) || col4 === 'N/A' || col4 === 'DUP';
-    const col5LooksLikeScore = /^\d+\.?\d*\/5$/.test(col5) || col5 === 'N/A' || col5 === 'DUP';
+    const col4LooksLikeScore = /^\d+\.?\d*\/(?:10|5)$/.test(col4) || col4 === 'N/A' || col4 === 'DUP';
+    const col5LooksLikeScore = /^\d+\.?\d*\/(?:10|5)$/.test(col5) || col5 === 'N/A' || col5 === 'DUP';
     const col4LooksLikeStatus = /^(evaluated|applied|responded|interview|offer|rejected|discarded|skip|evaluada|aplicado|respondido|entrevista|oferta|rechazado|descartado|no aplicar|cerrada|duplicado|repost|condicional|hold|monitor)/i.test(col4);
     const col5LooksLikeStatus = /^(evaluated|applied|responded|interview|offer|rejected|discarded|skip|evaluada|aplicado|respondido|entrevista|oferta|rechazado|descartado|no aplicar|cerrada|duplicado|repost|condicional|hold|monitor)/i.test(col5);
 
