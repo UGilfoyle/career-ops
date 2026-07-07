@@ -1,18 +1,29 @@
 'use client';
 
-import { ArrowRight, ShieldCheck, Play, Sparkles, Zap, Target, Eye } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowRight, ShieldCheck, Play, Sparkles, Zap, Target, Eye, X, MessageSquare, Bot } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 export default function LandingPage() {
   const [visitorStats, setVisitorStats] = useState<any>(null);
+  const [showTourModal, setShowTourModal] = useState(false);
 
   useEffect(() => {
     fetch('/api/view')
       .then(r => r.json())
       .then(setVisitorStats)
       .catch(() => {});
+
+    // Auto-open modal once to showcase the new features
+    const hasSeen = localStorage.getItem('career_ops_seen_landing_tour_v2');
+    if (!hasSeen) {
+      const timer = setTimeout(() => {
+        setShowTourModal(true);
+        localStorage.setItem('career_ops_seen_landing_tour_v2', 'true');
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   return (
@@ -30,6 +41,13 @@ export default function LandingPage() {
           <span className="text-xl font-bold tracking-tight text-[#1C1C1E]">Career-Ops <span className="text-[10px] text-[#6B6B6B] font-mono uppercase tracking-widest ml-1">SaaS v2</span></span>
         </div>
         <div className="flex items-center gap-6">
+          <button 
+            type="button" 
+            onClick={() => setShowTourModal(true)} 
+            className="text-sm font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors cursor-pointer"
+          >
+            Tour Features
+          </button>
           <Link href="/login" className="text-sm font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors">
             Sign In
           </Link>
@@ -156,6 +174,111 @@ export default function LandingPage() {
           </a>
         </div>
       </footer>
+
+      {/* Feature Showcase Modal */}
+      <AnimatePresence>
+        {showTourModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100] flex items-center justify-center p-6"
+            onClick={() => setShowTourModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+              className="w-full max-w-2xl bg-[#FAFAF8] rounded-[2.5rem] border border-[#E5E5E0] shadow-2xl overflow-hidden relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setShowTourModal(false)}
+                className="absolute right-6 top-6 h-10 w-10 rounded-full bg-white border border-[#E5E5E0] hover:border-[#1C1C1E] flex items-center justify-center text-[#6B6B6B] hover:text-[#1C1C1E] transition-all cursor-pointer z-10"
+              >
+                <X size={16} />
+              </button>
+
+              {/* Cover Banner */}
+              <div className="bg-[#1C1C1E] p-8 text-white relative overflow-hidden">
+                <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[150%] bg-emerald-500/10 rounded-full blur-[60px]" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-[9px] font-bold uppercase tracking-widest mb-3">
+                  <Sparkles size={10} />
+                  New Feature Release
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight mb-2">Platform Enhancements</h2>
+                <p className="text-white/70 text-xs">Unlock professional career velocity with automated intelligence</p>
+              </div>
+
+              {/* Features List */}
+              <div className="p-8 space-y-6 max-h-[50vh] overflow-y-auto">
+                {/* 1. Chatbot */}
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 bg-[#FAFAF8] border border-[#E5E5E0] rounded-xl flex items-center justify-center text-[#1C1C1E] shrink-0 shadow-sm">
+                    <MessageSquare size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[#1C1C1E] flex items-center gap-2">
+                      Career Copilot Chatbot
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Flagship</span>
+                    </h4>
+                    <p className="text-xs text-[#6B6B6B] leading-relaxed mt-1">
+                      Chat in real-time with an AI that knows your entire profile. Instantly draft personalized LinkedIn recruiter messages, identify skill gaps, and run mock interviews.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2. Scanning */}
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 bg-[#FAFAF8] border border-[#E5E5E0] rounded-xl flex items-center justify-center text-[#1C1C1E] shrink-0 shadow-sm">
+                    <Zap size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[#1C1C1E]">Real-Time Portal Scanning</h4>
+                    <p className="text-xs text-[#6B6B6B] leading-relaxed mt-1">
+                      Continuous, automated checking of top portals (Greenhouse, Ashby, Lever, Indeed, LinkedIn) with built-in unwrapping of redirect links and auto-scoring out of 10.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 3. Tailoring */}
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 bg-[#FAFAF8] border border-[#E5E5E0] rounded-xl flex items-center justify-center text-[#1C1C1E] shrink-0 shadow-sm">
+                    <Target size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[#1C1C1E]">Agentic Tailoring Studio</h4>
+                    <p className="text-xs text-[#6B6B6B] leading-relaxed mt-1">
+                      Generate optimized cover letters and tailored HTML/PDF resumes matching the exact skills and qualifications wanted by recruiters.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Call to Action Footer */}
+              <div className="p-6 bg-[#FAFAF8] border-t border-[#E5E5E0] flex items-center justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={() => setShowTourModal(false)}
+                  className="text-xs font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors cursor-pointer"
+                >
+                  Dismiss Tour
+                </button>
+                <Link
+                  href="/signup"
+                  className="px-6 py-3 bg-[#1C1C1E] text-white text-xs font-bold rounded-xl hover:bg-[#27272a] transition-all shadow-md active:scale-95 flex items-center gap-2"
+                >
+                  Join Platform & Get Started
+                  <ArrowRight size={12} />
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
