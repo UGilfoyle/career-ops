@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { 
+  MessageSquare,
+  Send,
+  Bot,
   BarChart3, 
   Briefcase, 
   CheckCircle2, 
@@ -104,6 +107,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [clearPipelineScope, setClearPipelineScope] = useState<'all' | 'visible'>('all');
   const [clearPipelineLoading, setClearPipelineLoading] = useState(false);
   const [resumeStudioModalOpen, setResumeStudioModalOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
+    {
+      role: 'assistant',
+      content: "Hello! I am your Career-Ops Copilot. I have analyzed your target keywords and resume profile. Ask me anything, or try one of these suggestions below to get started!"
+    }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
   const appendTerminalLine = (line: string) => {
     setLogs((prev) => [...prev, { type: 'stdout', content: `\n${line}\n` }]);
@@ -540,6 +552,40 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         });
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, activeTab]);
+
+  const handleSendChatMessage = async (customText?: string) => {
+    const textToSend = (customText || chatInput).trim();
+    if (!textToSend || chatLoading) return;
+
+    const newMsgs = [...chatMessages, { role: 'user' as const, content: textToSend }];
+    setChatMessages(newMsgs);
+    setChatInput('');
+    setChatLoading(true);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newMsgs }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: `⚠️ Error: ${data.error}` }]);
+      } else {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+      }
+    } catch (err: any) {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `⚠️ Network error: ${err.message}` }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   const handleSaveSettings = async () => {
     if (accountInfo.password && accountInfo.password !== accountInfo.confirmPassword) {
@@ -978,6 +1024,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio' || resumeStudioModalOpen} collapsed={sidebarCollapsed} onClick={() => setResumeStudioModalOpen(true)} />
             <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('generated-docs')} />
             <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('terminal')} />
+            <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('chat')} />
             {SHOW_RESUME_MANAGER_NAV && (
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
             )}
@@ -2714,6 +2761,117 @@ System Initialized — v2.0`}
                     </div>
                  </ConfigSection>
                </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'chat' && (
+            <motion.div
+              key="chat"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 15 }}
+              transition={{ duration: 0.25 }}
+              className="flex flex-col h-[calc(100vh-8rem)] w-full max-w-5xl bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden shadow-sm"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[#E5E5E0] px-6 py-4 bg-[#FAFAF8]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#1C1C1E] flex items-center justify-center text-white">
+                    <Bot size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-[#1C1C1E]">Career Copilot</h2>
+                    <p className="text-[11px] font-medium text-[#6B6B6B]">Always synced with your profile & target goals</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider">Ready to assist</span>
+                </div>
+              </div>
+
+              {/* Message List */}
+              <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-[#FAFAF8]/30">
+                {chatMessages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                        msg.role === 'user'
+                          ? 'bg-[#1C1C1E] text-white shadow-sm font-medium'
+                          : 'bg-white text-[#1C1C1E] border border-[#E5E5E0] shadow-sm whitespace-pre-wrap'
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-white text-[#1C1C1E] border border-[#E5E5E0] rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
+                      <span className="flex h-2 w-2 rounded-full bg-[#1C1C1E] animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="flex h-2 w-2 rounded-full bg-[#1C1C1E] animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="flex h-2 w-2 rounded-full bg-[#1C1C1E] animate-bounce"></span>
+                    </div>
+                  </div>
+                )}
+                
+                <div ref={chatBottomRef} />
+              </div>
+
+              {/* Suggestions Panel */}
+              {chatMessages.length === 1 && (
+                <div className="px-6 py-3 border-t border-[#E5E5E0]/60 bg-[#FAFAF8]/50">
+                  <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-2">Suggested Prompts</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "Draft a LinkedIn message to a recruiter at Microsoft",
+                      "Give me a mock interview question for my target roles",
+                      "Identify potential skill gaps based on my profile",
+                      "Suggest improvements for my resume exit story"
+                    ].map((promptText) => (
+                      <button
+                        key={promptText}
+                        type="button"
+                        onClick={() => handleSendChatMessage(promptText)}
+                        className="text-xs font-bold text-[#1C1C1E] bg-white border border-[#E5E5E0] hover:border-[#1C1C1E] hover:bg-[#FAFAF8] px-3 py-2 rounded-xl transition-all shadow-sm"
+                      >
+                        {promptText}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Input Form */}
+              <div className="border-t border-[#E5E5E0] px-6 py-4 bg-white">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendChatMessage();
+                  }}
+                  className="flex items-center gap-3"
+                >
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Ask Career Copilot anything about your career..."
+                    disabled={chatLoading}
+                    className="flex-1 bg-[#FAFAF8] border border-[#E5E5E0] rounded-xl px-4 py-3 text-sm text-[#1C1C1E] placeholder:text-[#9CA3AF] outline-none focus:border-[#1C1C1E] transition-all disabled:opacity-50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={chatLoading || !chatInput.trim()}
+                    className="h-11 w-11 shrink-0 rounded-xl bg-[#1C1C1E] hover:bg-[#27272a] text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Send size={16} />
+                  </button>
+                </form>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
