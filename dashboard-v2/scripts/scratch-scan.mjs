@@ -117,12 +117,57 @@ async function discoverJobsWithoutBrowser(query, portalName = 'General') {
       const url = rawUrl;
       if (!url || seen.has(url)) continue;
 
-      // ── Skip non-job pages (search index pages, homepages, etc.) ──
+      // ── Skip non-job pages (search index pages, homepages, company boards, etc.) ──
       const lowerUrl = url.toLowerCase();
-      if (lowerUrl.includes('/search?') || lowerUrl.includes('/q-') || lowerUrl.endsWith('.com/') || lowerUrl.endsWith('.com')) {
-        // Skip indeed/naukri search results pages & bare homepages
-        if (!lowerUrl.includes('/viewjob') && !lowerUrl.includes('/job/') && !lowerUrl.includes('/jobs/') && !lowerUrl.includes('/rc/clk')) continue;
+      let shouldSkip = false;
+      try {
+        const parsed = new URL(url);
+        const host = parsed.hostname.toLowerCase();
+        const pathSegments = parsed.pathname.split('/').filter(Boolean);
+
+        // 1. Skip bare homepages (e.g., domain.com or domain.com/)
+        if (pathSegments.length === 0) {
+          shouldSkip = true;
+        }
+        // 2. Greenhouse Board Check
+        else if (host.includes('greenhouse.io')) {
+          // Individual Greenhouse jobs must contain '/jobs/'
+          if (!parsed.pathname.includes('/jobs/')) {
+            shouldSkip = true;
+          }
+        }
+        // 3. Lever Board Check
+        else if (host.includes('lever.co')) {
+          // Individual Lever jobs must have company + job_id (at least 2 path segments)
+          if (pathSegments.length < 2) {
+            shouldSkip = true;
+          }
+        }
+        // 4. Ashby Board Check
+        else if (host.includes('ashbyhq.com')) {
+          // Individual Ashby jobs must have company + job_id (at least 2 path segments)
+          if (pathSegments.length < 2) {
+            shouldSkip = true;
+          }
+        }
+        // 5. Indeed & Naukri List / Search Pages Check
+        else if (host.includes('indeed.com') || host.includes('naukri.com')) {
+          // Indeed/Naukri jobs must contain specific posting subpaths
+          const isIndeedJob = lowerUrl.includes('/viewjob') || lowerUrl.includes('/rc/clk') || lowerUrl.includes('/job/');
+          const isNaukriJob = lowerUrl.includes('-jobs') || lowerUrl.includes('-job-') || lowerUrl.includes('/job-listings');
+          if (!isIndeedJob && !isNaukriJob) {
+            shouldSkip = true;
+          }
+        }
+        // 6. Generic Search Query / Index parameters
+        if (lowerUrl.includes('/search?') || lowerUrl.includes('/q-') || lowerUrl.includes('/jobs-in-') || lowerUrl.includes('/jobs-at-')) {
+          shouldSkip = true;
+        }
+      } catch {
+        if (lowerUrl.length < 25) shouldSkip = true;
       }
+
+      if (shouldSkip) continue;
 
       seen.add(url);
       const title = titleHtml
