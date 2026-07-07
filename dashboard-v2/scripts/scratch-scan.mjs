@@ -154,7 +154,7 @@ async function discoverJobsWithoutBrowser(query, portalName = 'General') {
         else if (host.includes('indeed.com') || host.includes('naukri.com')) {
           // Indeed/Naukri jobs must contain specific posting subpaths
           const isIndeedJob = lowerUrl.includes('/viewjob') || lowerUrl.includes('/rc/clk') || lowerUrl.includes('/job/');
-          const isNaukriJob = lowerUrl.includes('-jobs') || lowerUrl.includes('-job-') || lowerUrl.includes('/job-listings');
+          const isNaukriJob = lowerUrl.includes('-job-') || lowerUrl.includes('/job-listings');
           if (!isIndeedJob && !isNaukriJob) {
             shouldSkip = true;
           }
