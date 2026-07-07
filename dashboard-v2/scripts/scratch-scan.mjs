@@ -78,68 +78,6 @@ function buildDiscoveryQuery(q) {
   return `site:${site} ${baseQuery}`.trim();
 }
 
-function cleanDuckDuckGoUrl(url) {
-  try {
-    const parsed = new URL(url, 'https://duckduckgo.com');
-    if (parsed.searchParams.has('uddg')) {
-      return decodeURIComponent(parsed.searchParams.get('uddg'));
-    }
-  } catch (e) {
-    // ignore
-  }
-  return url;
-}
-
-function extractCompany(title, url, fallback) {
-  try {
-    const cleanUrl = cleanDuckDuckGoUrl(url);
-    const parsed = new URL(cleanUrl, 'https://duckduckgo.com');
-    const host = parsed.hostname.toLowerCase();
-    
-    // Check Greenhouse
-    if (host.includes('greenhouse.io')) {
-      const parts = parsed.pathname.split('/');
-      if (parts[1] === 'embed' || parts[1] === 'xyz') return parts[2] || 'Greenhouse';
-      return parts[1] || 'Greenhouse';
-    }
-    // Check Lever
-    if (host.includes('lever.co')) {
-      const parts = parsed.pathname.split('/');
-      return parts[1] || 'Lever';
-    }
-    
-    // Parse from title
-    if (title) {
-      // Split by |, -, or —
-      const parts = title.split(/\s*\|\s*|\s+-\s+|\s+—\s+/);
-      if (parts.length > 1) {
-        const lastPart = parts[parts.length - 1].trim();
-        if (/india|pune|bengaluru|mumbai|remote|hyderabad|delhi|maharashtra/i.test(lastPart) && parts.length > 2) {
-          return parts[parts.length - 2].trim();
-        }
-        return lastPart;
-      }
-      const atMatch = title.match(/\s+at\s+([A-Za-z0-9\s\-_]+)/i);
-      if (atMatch) {
-        return atMatch[1].trim();
-      }
-    }
-    
-    // Try domain name
-    const domainParts = host.replace(/^www\./, '').split('.');
-    if (domainParts[0] && !['indeed', 'linkedin', 'naukri', 'instahyre', 'flexiple', 'cutshort'].includes(domainParts[0])) {
-      return domainParts[0].charAt(0).toUpperCase() + domainParts[0].slice(1);
-    }
-  } catch (e) {
-    // ignore
-  }
-  
-  if (fallback && (fallback.toLowerCase().includes('software engineer') || fallback.toLowerCase().includes('developer'))) {
-    return 'Unknown';
-  }
-  return fallback || 'Unknown';
-}
-
 async function discoverJobsWithoutBrowser(query, portalName = 'General') {
   const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
   const jobs = [];
@@ -149,7 +87,7 @@ async function discoverJobsWithoutBrowser(query, portalName = 'General') {
     const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
     const res = await fetch(searchUrl, {
-      headers: { 'User-Agent': 'career-ops-scanner/2.0' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36' },
       signal: controller.signal,
     });
     clearTimeout(timeout);
@@ -162,10 +100,30 @@ async function discoverJobsWithoutBrowser(query, portalName = 'General') {
     const linkRegex = /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
     let match;
     while ((match = linkRegex.exec(html)) !== null) {
-      const rawUrl = match[1];
+      let rawUrl = match[1];
       const titleHtml = match[2] || '';
-      const url = rawUrl.replace(/&amp;/g, '&');
+
+      // ── Unwrap DuckDuckGo redirect URLs ──
+      // DDG wraps URLs as: //duckduckgo.com/l/?uddg=ENCODED_REAL_URL&...
+      rawUrl = rawUrl.replace(/&amp;/g, '&');
+      if (rawUrl.includes('duckduckgo.com/l/')) {
+        try {
+          const ddgUrl = new URL(rawUrl.startsWith('//') ? 'https:' + rawUrl : rawUrl);
+          const realUrl = ddgUrl.searchParams.get('uddg');
+          if (realUrl) rawUrl = decodeURIComponent(realUrl);
+        } catch { /* keep rawUrl as-is if parsing fails */ }
+      }
+
+      const url = rawUrl;
       if (!url || seen.has(url)) continue;
+
+      // ── Skip non-job pages (search index pages, homepages, etc.) ──
+      const lowerUrl = url.toLowerCase();
+      if (lowerUrl.includes('/search?') || lowerUrl.includes('/q-') || lowerUrl.endsWith('.com/') || lowerUrl.endsWith('.com')) {
+        // Skip indeed/naukri search results pages & bare homepages
+        if (!lowerUrl.includes('/viewjob') && !lowerUrl.includes('/job/') && !lowerUrl.includes('/jobs/') && !lowerUrl.includes('/rc/clk')) continue;
+      }
+
       seen.add(url);
       const title = titleHtml
         .replace(/<[^>]+>/g, ' ')
@@ -173,13 +131,55 @@ async function discoverJobsWithoutBrowser(query, portalName = 'General') {
         .trim();
       if (!title) continue;
 
-      const cleanUrl = cleanDuckDuckGoUrl(url);
-      const realCompany = extractCompany(title, cleanUrl, portalName);
+      // ── Extract real company name from URL hostname ──
+      let company = portalName;
+      try {
+        const parsed = new URL(url);
+        const host = parsed.hostname.replace(/^www\./, '').replace(/^(in|uk|ca|au|de|fr)\./, '');
+        // Extract company from known portal URL patterns
+        if (host.includes('greenhouse.io')) {
+          // boards.greenhouse.io/companyname/jobs/123
+          const segments = parsed.pathname.split('/').filter(Boolean);
+          company = segments[0] || 'Greenhouse';
+        } else if (host.includes('lever.co')) {
+          // jobs.lever.co/companyname/jobid
+          const segments = parsed.pathname.split('/').filter(Boolean);
+          company = segments[0] || 'Lever';
+        } else if (host.includes('ashbyhq.com')) {
+          const segments = parsed.pathname.split('/').filter(Boolean);
+          company = segments[0] || 'Ashby';
+        } else if (host.includes('workday.com') || host.includes('myworkdayjobs.com')) {
+          const segments = parsed.pathname.split('/').filter(Boolean);
+          company = segments[0] || 'Workday';
+        } else if (host.includes('indeed.com')) {
+          // Try to extract company from Indeed title: "Role - Location | Company"
+          const pipeMatch = title.match(/\|\s*(.+?)$/);
+          const dashCompany = title.match(/(?:at|@)\s+(.+?)(?:\s*[-–|]|$)/i);
+          company = pipeMatch?.[1]?.trim() || dashCompany?.[1]?.trim() || 'Indeed Listing';
+        } else if (host.includes('naukri.com')) {
+          const pipeMatch = title.match(/\|\s*(.+?)$/);
+          company = pipeMatch?.[1]?.trim() || 'Naukri Listing';
+        } else if (host.includes('linkedin.com')) {
+          company = 'LinkedIn Listing';
+        } else if (host.includes('instahyre.com')) {
+          company = 'InstaHyre Listing';
+        } else if (host.includes('cutshort.io')) {
+          company = 'Cutshort Listing';
+        } else {
+          // Generic: use the domain as company name (e.g., careers.microsoft.com → microsoft)
+          const parts = host.split('.');
+          const domainName = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+          company = domainName.charAt(0).toUpperCase() + domainName.slice(1);
+        }
+      } catch { /* keep portalName */ }
+
+      // Clean up company name
+      company = company.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
 
       jobs.push({
-        url: cleanUrl,
+        url,
         title,
-        company: realCompany,
+        company,
         source: `Discovery - ${portalName}`,
       });
     }
@@ -508,9 +508,7 @@ async function run() {
           const duration = ((Date.now() - scanStart) / 1000).toFixed(1);
           stats.discovery.found += results.length;
           results.forEach(j => {
-            const cleanUrl = cleanDuckDuckGoUrl(j.url);
-            const realCompany = extractCompany(j.title, cleanUrl, j.company);
-            const res = tryAdd(cleanUrl, realCompany, j.title, j.source);
+            const res = tryAdd(j.url, j.company, j.title, j.source);
             if (res === 'added') stats.discovery.added++;
           });
           console.log(`      ✓ Done: ${results.length} jobs found (${duration}s)`);
