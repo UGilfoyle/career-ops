@@ -117,51 +117,100 @@ async function discoverJobsWithoutBrowser(query, portalName = 'General') {
       const url = rawUrl;
       if (!url || seen.has(url)) continue;
 
-      // ── Skip non-job pages (search index pages, homepages, company boards, etc.) ──
+      // ── Skip non-job pages (boards, listing pages, homepages, search indexes) ──
+      // Two-tier filter: (1) explicit rules for known ATS domains,
+      // (2) universal heuristics for all other sites.
       const lowerUrl = url.toLowerCase();
       let shouldSkip = false;
       try {
         const parsed = new URL(url);
         const host = parsed.hostname.toLowerCase();
+        const path = parsed.pathname.toLowerCase();
         const pathSegments = parsed.pathname.split('/').filter(Boolean);
 
-        // 1. Skip bare homepages (e.g., domain.com or domain.com/)
+        // ── Tier 1: Known ATS / portal-specific rules ──
+
+        // 1. Skip bare homepages (domain.com or domain.com/)
         if (pathSegments.length === 0) {
           shouldSkip = true;
         }
-        // 2. Greenhouse Board Check
+        // 2. Greenhouse — individual jobs contain '/jobs/<id>'
         else if (host.includes('greenhouse.io')) {
-          // Individual Greenhouse jobs must contain '/jobs/'
-          if (!parsed.pathname.includes('/jobs/')) {
-            shouldSkip = true;
-          }
+          if (!path.includes('/jobs/')) shouldSkip = true;
         }
-        // 3. Lever Board Check
+        // 3. Lever — individual jobs: /company/job-uuid (≥2 segments)
         else if (host.includes('lever.co')) {
-          // Individual Lever jobs must have company + job_id (at least 2 path segments)
-          if (pathSegments.length < 2) {
-            shouldSkip = true;
-          }
+          if (pathSegments.length < 2) shouldSkip = true;
         }
-        // 4. Ashby Board Check
+        // 4. Ashby — individual jobs: /company/job-id (≥2 segments)
         else if (host.includes('ashbyhq.com')) {
-          // Individual Ashby jobs must have company + job_id (at least 2 path segments)
-          if (pathSegments.length < 2) {
+          if (pathSegments.length < 2) shouldSkip = true;
+        }
+        // 5. Workable — individual jobs: /company/j/<shortcode> (≥3 segments with /j/)
+        else if (host.includes('workable.com')) {
+          if (!path.includes('/j/')) shouldSkip = true;
+        }
+        // 6. Indeed — individual jobs contain /viewjob, /rc/clk, or /job/
+        else if (host.includes('indeed.com')) {
+          if (!lowerUrl.includes('/viewjob') && !lowerUrl.includes('/rc/clk') && !lowerUrl.includes('/job/')) {
             shouldSkip = true;
           }
         }
-        // 5. Indeed & Naukri List / Search Pages Check
-        else if (host.includes('indeed.com') || host.includes('naukri.com')) {
-          // Indeed/Naukri jobs must contain specific posting subpaths
-          const isIndeedJob = lowerUrl.includes('/viewjob') || lowerUrl.includes('/rc/clk') || lowerUrl.includes('/job/');
-          const isNaukriJob = lowerUrl.includes('-job-') || lowerUrl.includes('/job-listings');
-          if (!isIndeedJob && !isNaukriJob) {
+        // 7. Naukri — individual jobs contain /job-listings or specific job ID patterns
+        else if (host.includes('naukri.com')) {
+          if (!lowerUrl.includes('-job-') && !lowerUrl.includes('/job-listings')) {
             shouldSkip = true;
           }
         }
-        // 6. Generic Search Query / Index parameters
-        if (lowerUrl.includes('/search?') || lowerUrl.includes('/q-') || lowerUrl.includes('/jobs-in-') || lowerUrl.includes('/jobs-at-')) {
-          shouldSkip = true;
+        // 8. LinkedIn — individual jobs: /jobs/view/<id>
+        else if (host.includes('linkedin.com')) {
+          if (!path.includes('/jobs/view/')) shouldSkip = true;
+        }
+        // 9. Wellfound (AngelList) — individual jobs: /company/jobs/<id> (≥3 segments with /jobs/)
+        else if (host.includes('wellfound.com')) {
+          if (!path.includes('/jobs/') || pathSegments.length < 3) shouldSkip = true;
+        }
+        // 10. Workatastartup / YC — individual jobs contain /jobs/<id>
+        else if (host.includes('workatastartup.com') || host.includes('ycombinator.com')) {
+          if (!path.match(/\/jobs\/\d/)) shouldSkip = true;
+        }
+
+        // ── Tier 2: Universal listing-page heuristics (all other sites) ──
+        if (!shouldSkip) {
+          // Skip search result / query pages
+          if (parsed.searchParams.has('q') || parsed.searchParams.has('query') || parsed.searchParams.has('keywords')) {
+            shouldSkip = true;
+          }
+          // Skip paths that look like listing/category indexes
+          const listingPatterns = [
+            '/search?', '/q-', '/jobs-in-', '/jobs-at-',
+            '/category/', '/categories/', '/tag/', '/tags/',
+            '/department/', '/departments/', '/team/', '/teams/',
+            '/location/', '/locations/',
+          ];
+          for (const pat of listingPatterns) {
+            if (lowerUrl.includes(pat)) { shouldSkip = true; break; }
+          }
+          // Skip paths that end with /jobs, /careers, or -jobs (listing/category pages)
+          // e.g. /careers, /jobs, /openings, /remote-ai-jobs, /remote-jobs/software-dev
+          if (path.match(/\/(jobs|careers|openings|vacancies|positions)\/?$/)) {
+            shouldSkip = true;
+          }
+          // Catch category/tag pages ending with -jobs (e.g. /remote-ai-jobs)
+          const lastSegment = pathSegments[pathSegments.length - 1]?.toLowerCase() || '';
+          if (lastSegment.endsWith('-jobs') || lastSegment.endsWith('-careers')) {
+            shouldSkip = true;
+          }
+          // Skip generic category/subcategory names as final path segment
+          // e.g. /remote-jobs/software-dev, /remote-jobs/engineering
+          const genericCategories = [
+            'software-dev', 'engineering', 'design', 'marketing', 'sales',
+            'product', 'data', 'devops', 'qa', 'finance', 'operations',
+            'customer-service', 'hr', 'legal', 'all', 'featured',
+          ];
+          if (genericCategories.includes(lastSegment)) {
+            shouldSkip = true;
+          }
         }
       } catch {
         if (lowerUrl.length < 25) shouldSkip = true;
