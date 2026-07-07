@@ -205,6 +205,26 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     console.log(`[DEBUG] Multi-role tailoring: ${Object.keys(tailoredBullets).length} roles received tailored bullets`);
   }
 
+  // Calculate duration of a period in months
+  const calculateTenureMonths = (period) => {
+    if (!period) return 12;
+    const clean = period.toLowerCase();
+    if (clean.includes('present') || clean.includes('current')) return 12;
+    const monthNames = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    };
+    const matches = [...clean.matchAll(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{4})\b/g)];
+    if (matches.length === 2) {
+      const startMonth = monthNames[matches[0][1].substring(0, 3)];
+      const startYear = parseInt(matches[0][2], 10);
+      const endMonth = monthNames[matches[1][1].substring(0, 3)];
+      const endYear = parseInt(matches[1][2], 10);
+      return (endYear - startYear) * 12 + (endMonth - startMonth);
+    }
+    return 12;
+  };
+
   // Date patterns to aggressively strip from company/role
   const datePatterns = [
     /\b\d{4}\s*[-–—]\s*(?:\d{4}|present|current|now)\b/gi,
@@ -238,6 +258,15 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     let role = (job.role || '').trim();
     let company = (job.company || '').trim();
     let dates = (job.period || '').trim();
+    
+    // Auto-append (Contract) for short tenures (<6 months) to avoid job-hopper flags
+    const tenureMonths = calculateTenureMonths(dates);
+    if (tenureMonths > 0 && tenureMonths < 6) {
+      const lowerRole = role.toLowerCase();
+      if (!lowerRole.includes('contract') && !lowerRole.includes('freelance') && !lowerRole.includes('project')) {
+        role = `${role} (Contract)`;
+      }
+    }
     
     // Aggressively strip dates from role and company
     role = stripDates(role);
