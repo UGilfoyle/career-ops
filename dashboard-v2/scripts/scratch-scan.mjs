@@ -225,50 +225,94 @@ async function discoverJobsWithoutBrowser(query, portalName = 'General') {
         .trim();
       if (!title) continue;
 
-      // ── Extract real company name from URL hostname ──
-      let company = portalName;
+      // ── Extract real company name from Title or URL ──
+      let company = '';
       try {
         const parsed = new URL(url);
-        const host = parsed.hostname.replace(/^www\./, '').replace(/^(in|uk|ca|au|de|fr)\./, '');
-        // Extract company from known portal URL patterns
+        const host = parsed.hostname.replace(/^www\./, '').replace(/^(in|uk|ca|au|de|fr)\./, '').toLowerCase();
+        
+        // 1. First attempt: Direct ATS url parsing
         if (host.includes('greenhouse.io')) {
-          // boards.greenhouse.io/companyname/jobs/123
           const segments = parsed.pathname.split('/').filter(Boolean);
-          company = segments[0] || 'Greenhouse';
-        } else if (host.includes('lever.co')) {
-          // jobs.lever.co/companyname/jobid
+          company = segments[0] === 'embed' || segments[0] === 'xyz' ? segments[1] : segments[0];
+        } else if (host.includes('lever.co') || host.includes('ashbyhq.com') || host.includes('workable.com')) {
           const segments = parsed.pathname.split('/').filter(Boolean);
-          company = segments[0] || 'Lever';
-        } else if (host.includes('ashbyhq.com')) {
+          company = segments[0];
+        } else if (host.includes('wellfound.com')) {
           const segments = parsed.pathname.split('/').filter(Boolean);
-          company = segments[0] || 'Ashby';
+          if (segments[0] === 'company' && segments[1]) company = segments[1];
         } else if (host.includes('workday.com') || host.includes('myworkdayjobs.com')) {
           const segments = parsed.pathname.split('/').filter(Boolean);
-          company = segments[0] || 'Workday';
-        } else if (host.includes('indeed.com')) {
-          // Try to extract company from Indeed title: "Role - Location | Company"
-          const pipeMatch = title.match(/\|\s*(.+?)$/);
-          const dashCompany = title.match(/(?:at|@)\s+(.+?)(?:\s*[-–|]|$)/i);
-          company = pipeMatch?.[1]?.trim() || dashCompany?.[1]?.trim() || 'Indeed Listing';
-        } else if (host.includes('naukri.com')) {
-          const pipeMatch = title.match(/\|\s*(.+?)$/);
-          company = pipeMatch?.[1]?.trim() || 'Naukri Listing';
-        } else if (host.includes('linkedin.com')) {
-          company = 'LinkedIn Listing';
-        } else if (host.includes('instahyre.com')) {
-          company = 'InstaHyre Listing';
-        } else if (host.includes('cutshort.io')) {
-          company = 'Cutshort Listing';
-        } else {
-          // Generic: use the domain as company name (e.g., careers.microsoft.com → microsoft)
-          const parts = host.split('.');
-          const domainName = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-          company = domainName.charAt(0).toUpperCase() + domainName.slice(1);
+          company = segments[0];
         }
-      } catch { /* keep portalName */ }
+
+        // 2. Second attempt: Parse from title if not extracted via ATS URL
+        if (!company && title) {
+          // e.g. "Software Engineer at OpenAI", "Developer Advocate @ Retool"
+          const atMatch = title.match(/\s+(?:at|@)\s+([A-Za-z0-9\s\-_&.]+)/i);
+          if (atMatch) {
+            const potentialCompany = atMatch[1].trim();
+            const cleanComp = potentialCompany.split(/\s*[-–|]/)[0].trim();
+            if (cleanComp && !/^(?:remote|hybrid|onsite|europe|us|india|pune|bengaluru|london|berlin|singapore|tokyo|toronto|sydney)$/i.test(cleanComp)) {
+              company = cleanComp;
+            }
+          }
+
+          if (!company) {
+            // Split by typical delimiters
+            const delimiters = [/\s*\|\s*/, /\s+-\s+/, /\s+—\s+/, /\s+:\s+/];
+            for (const delim of delimiters) {
+              const parts = title.split(delim).map(p => p.trim()).filter(Boolean);
+              if (parts.length > 1) {
+                const jobKeywords = /engineer|developer|architect|designer|manager|director|lead|senior|junior|staff|principal|head|vp|intern|specialist|expert/i;
+                const isJobPart = parts.map(p => jobKeywords.test(p));
+                if (isJobPart.includes(true)) {
+                  const companyIndex = isJobPart.indexOf(false);
+                  if (companyIndex !== -1 && parts[companyIndex]) {
+                    const compCandidate = parts[companyIndex];
+                    if (!/^(?:remote|hybrid|onsite|europe|us|india|pune|bengaluru|london|berlin|singapore|tokyo|toronto|sydney|linkedin|indeed|naukri|workable|lever|greenhouse|ashby)$/i.test(compCandidate)) {
+                      company = compCandidate;
+                      break;
+                    }
+                  }
+                }
+                // Fallback to last segment if it doesn't look like location or portal
+                const lastPart = parts[parts.length - 1];
+                if (!/^(?:remote|hybrid|onsite|europe|us|india|pune|bengaluru|london|berlin|singapore|tokyo|toronto|sydney|linkedin|indeed|naukri|workable|lever|greenhouse|ashby)$/i.test(lastPart)) {
+                  company = lastPart;
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        // 3. Fallback: Parse domain if it is not a known general job board/portal
+        if (!company) {
+          const parts = host.split('.');
+          const domainName = parts[0];
+          const generalJobBoards = ['indeed', 'linkedin', 'naukri', 'instahyre', 'flexiple', 'cutshort', 'weworkremotely', 'remoteok', 'remotive', 'wellfound', 'ycombinator', 'workatastartup'];
+          if (domainName && !generalJobBoards.includes(domainName)) {
+            company = domainName;
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // If still nothing resolved, fallback to the query portalName
+      if (!company) {
+        // Strip out search suffixes from portalName (e.g., "Wellfound — AI PM" -> "Wellfound")
+        company = portalName.split(/\s*[-–—|:]/)[0].trim();
+      }
 
       // Clean up company name
-      company = company.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
+      company = company
+        .replace(/\b(careers|jobs|hiring|corporation|corp|inc|ltd|solutions|technologies|tech|group)\b/gi, '')
+        .replace(/-/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      company = company.replace(/\b\w/g, c => c.toUpperCase());
 
       jobs.push({
         url,
