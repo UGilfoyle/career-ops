@@ -537,6 +537,10 @@ async function run() {
   const hasUserSearchQueries = Array.isArray(config.search_queries) && config.search_queries.length > 0;
   const shouldRunDiscovery = enableExtendedScan || hasUserSearchQueries;
 
+  let totalAdded = 0;
+  let totalChecked = 0;
+  let totalFound = 0;
+
   try {
     // 1. Direct ATS Scans (Greenhouse, Ashby, Lever, Workable)
     console.log('\n▶ Phase 1: ATS Scans (30s timeout each)...');
@@ -671,9 +675,9 @@ async function run() {
     console.log('\nℹ️ No user search queries configured yet. Add portals in Settings or set ENABLE_EXTENDED_SCAN=true for full extended scan.');
   }
 
-  const totalAdded   = Object.values(stats).reduce((s, v) => s + v.added, 0);
-  const totalChecked = Object.values(stats).reduce((s, v) => s + v.checked, 0);
-  const totalFound   = Object.values(stats).reduce((s, v) => s + v.found, 0);
+  totalAdded   = Object.values(stats).reduce((s, v) => s + v.added, 0);
+  totalChecked = Object.values(stats).reduce((s, v) => s + v.checked, 0);
+  totalFound   = Object.values(stats).reduce((s, v) => s + v.found, 0);
 
   const GCC_COMPANIES = new Set([
     'jpmorgan', 'jpmorgan chase', 'goldman sachs', 'target', 'walmart', 'barclays',
