@@ -1488,7 +1488,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 <div className="flex shrink-0 items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => { setActiveTab('terminal'); runCommand('scan'); }}
+                    onClick={() => { setActiveTab('terminal'); runCommand('scan --deep'); }}
                     className="inline-flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-[#27272a]"
                   >
                     <Zap size={14} />
