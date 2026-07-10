@@ -17,6 +17,37 @@ const TARGET_MAP = 'data/current_eval.json';
 const TEMPLATE = 'templates/ats-template-professional.html';
 const require = createRequire(import.meta.url);
 
+const GCC_COMPANIES = new Set([
+  'jpmorgan', 'jpmorgan chase', 'goldman sachs', 'target', 'walmart', 'barclays',
+  'wells fargo', 'deutsche bank', 'servicenow', 'atlassian', 'stripe',
+  'american express', 'amex', 'visa', 'mastercard', 'morgan stanley', 'citi',
+  'citigroup', 'hsbc', 'ubs', 'credit suisse', 'google', 'microsoft', 'meta',
+  'amazon', 'apple', 'netflix', 'uber', 'airbnb', 'salesforce', 'cisco',
+  'intel', 'nvidia', 'amd', 'qualcomm', 'dell', 'hp', 'ibm', 'oracle',
+  'sap', 'adobe', 'vmware', 'intuit', 'paypal', 'ebay', 'expedia', 'booking.com'
+]);
+
+const IT_SERVICES = new Set([
+  'tcs', 'tata consultancy services', 'infosys', 'wipro', 'hcltech', 'hcl technologies',
+  'tech mahindra', 'cognizant', 'accenture', 'capgemini', 'atos', 'dxc', 'dxc technology',
+  'mphasis', 'ltimindtree', 'l&t', 'mindtree', 'hexaware', 'ust', 'ust global',
+  'persistent systems', 'coforge', 'birlasoft', 'virtusa', 'ey', 'deloitte', 'kpmg', 'pwc'
+]);
+
+function classifyCompany(companyName) {
+  if (!companyName) return 'Other';
+  const name = companyName.toLowerCase().trim();
+  if (GCC_COMPANIES.has(name)) return 'GCC';
+  if (IT_SERVICES.has(name)) return 'Services';
+  for (const gcc of GCC_COMPANIES) {
+    if (name.includes(gcc) || gcc.includes(name)) return 'GCC';
+  }
+  for (const svc of IT_SERVICES) {
+    if (name.includes(svc) || svc.includes(name)) return 'Services';
+  }
+  return 'Other';
+}
+
 function robustJsonParse(str) {
   try {
     return JSON.parse(str);
@@ -1070,7 +1101,7 @@ function coverLetterBodyToHtml(text) {
   return blocks.map((p) => `<p>${escapeHtmlCl(p.replace(/\n+/g, ' '))}</p>`).join('');
 }
 
-async function tailorPackage(jd, profile, companyName) {
+async function tailorPackage(jd, profile, companyName, passedCompanyType) {
   const hfClient = await getHfClient();
   if (hfClient) {
     console.log(`🤖 Generating tailored package with ${HF_MODEL}...`);
@@ -1137,18 +1168,40 @@ ${experienceDigest}`;
     return `  Role ${i}: "${role}" at "${company}"`;
   }).join('\n');
 
+  const companyType = passedCompanyType || classifyCompany(companyName);
+  let companyTypeRule = '';
+  if (companyType === 'GCC') {
+    companyTypeRule = `
+- GCC (Global Capability Center) / Captive Adaptation: The target company is a GCC/captive center of a global enterprise (e.g. financial institution, retail giant, tech product firm). Customize the summary, competencies, and experience bullets to emphasize:
+  1. Product ownership, high engineering standards, and long-term codebase ownership (avoid "client delivery" or "consultancy" framing).
+  2. Direct alignment and collaboration with global stakeholders (e.g. US/EU product and engineering teams).
+  3. Designing robust, highly scalable, and secure systems that directly solve global business objectives.
+  4. Technical leadership, mentoring team members, and taking accountability for end-to-end features.`;
+  } else if (companyType === 'Services') {
+    companyTypeRule = `
+- IT Services / Consulting Adaptation: The target company is an IT services/consulting/outsourcing firm. Customize the summary, competencies, and experience bullets to emphasize:
+  1. Multi-project delivery, strong execution under tight timelines, and client satisfaction.
+  2. Adherence to service-level agreements (SLAs), client requirements gathering, and cross-functional agile coordination.
+  3. Adaptability to work across diverse technologies, domains, and codebases based on client project needs.
+  4. Strong client-facing communication and resourcefulness in scaling systems or fixing client issues.`;
+  }
+
   const prompt = `
 You are a senior technical writer who produces concise, professional business correspondence.
 
 GLOBAL RULES:
 - NO buzzwords: passion, leveraging, synergies, robust, seamless, cutting-edge, proven track record
 - NO AI-sounding phrases
+- Individual Ownership (I, not We): Position all technical achievements, summaries, and cover letters as direct personal contributions. Never use team-oriented language like "we", "our", "us", "assisted with", "participated in", or "worked in a team to". Use first-person singular "I" or strong active verbs (e.g. "I built...", "I engineered...", "Architected...", "Designed...") to show individual ownership of the work.
+- 100% JD-Alignment: Every single sentence in the summary, every single core competency, and every single experience bullet MUST align directly to a requirement, technology, or domain mentioned in the JD. Omit or re-frame any skill, tool, or accomplishment from the candidate's history that is not relevant to the JD. The tailored resume must read as though it was custom-built specifically and exclusively for this single job posting.
 - Use short sentences, active voice, specific numbers where they appear in the digest
-- Lead with substance, not filler
-- Highlight Applied AI & GenAI/LLM: For Software Engineer roles and above, if the candidate has experience building GenAI features, prompt engineering, RAG, or integrating LLM APIs, ensure these achievements are prominently highlighted and woven into the summary, core competencies, and bullets.
+- Lead with substance, not filler${companyTypeRule}
+- Highlight Applied AI & GenAI/LLM: If the JD requires or mentions AI, Generative AI, Large Language Models (LLMs), RAG, vector databases, or machine learning, prioritize and weave the candidate's AI experience (e.g., ChromaDB document ingestion pipeline with multiprocessing, conversation query-rewriting, Anthropic Claude/OpenAI GPT integrations with tenacity backoff retry, self-correcting validation loops for LLMs) into the summary, core competencies, and tailored experience bullets.
+- Freelance / Contract / Temporary Role Adaptation: If the JD indicates a freelance, contract, or temporary role, adapt the summary and cover letter to emphasize high autonomy, rapid team integration, immediate contribution, and deliverables-oriented execution. DO NOT change the candidate's existing job titles on the resume to "Freelance" or "Contractor". Keep professional titles (e.g., "Senior Software Engineer") as-is. Avoid adding clunky "doing freelancing" or "freelancing work" phrasing.
 - CRITICAL ATS OPTIMIZATION (88+ ATS Score Target): Maximize exact keyword matching. Extract the primary languages, frameworks, databases, cloud platforms, and technical skills from the JD and weave them verbatim into the Summary, Core Competencies, and Rewritten Bullets. Match terminology exactly (e.g. if the JD writes "PostgreSQL", do not write "Postgres" or "SQL database").
 - CRITICAL — QUANTIFIED IMPACT (88+ target): Enforce strong quantification. Wherever a metric is present in the candidate's experience digest (%, dollar amounts, latency, throughput, CPU reduction, uptime, speedups), preserve and highlight it in the rewritten bullets. Never invent or fabricate metrics.
 - CRITICAL — VERB VARIETY: Start each bullet with a unique, strong action verb (e.g., architected, engineered, streamlined, deployed, accelerated). Avoid repeating the same verb in consecutive bullet points.
+
 
 TASK:
 1. RESUME TAILORING — every output field MUST be aligned to the JD below:
@@ -1361,6 +1414,10 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     if (audit.repeatedWords.length > 0) {
       console.warn(`⚠ Remaining repeated words: ${audit.repeatedWords.join(', ')}`);
     }
+    if (audit.withoutMetrics > 0 && audit.totalBullets > 0) {
+      const pct = Math.round(((audit.totalBullets - audit.withoutMetrics) / audit.totalBullets) * 100);
+      console.log(`📈 Quantified impact coverage: ${pct}% of bullets (${audit.totalBullets - audit.withoutMetrics}/${audit.totalBullets})`);
+    }
     data.ats_content_score = stats.atsContentScore ?? null;
   }
 
@@ -1380,7 +1437,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       entry.url = idOrUrl;
       try {
         const [jobRecord] = await sql`
-          SELECT id, user_id, url, company, title
+          SELECT id, user_id, url, company, title, company_type
           FROM jobs
           WHERE url = ${idOrUrl} AND user_id = ${userId}
           LIMIT 1
@@ -1413,7 +1470,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
             const resolvedUrl = mapping[jobId].url;
             // Now lookup by URL
             const [jobRecord] = await sql`
-              SELECT id, user_id, url, company, title
+              SELECT id, user_id, url, company, title, company_type
               FROM jobs
               WHERE url = ${resolvedUrl} AND user_id = ${userId}
               LIMIT 1
@@ -1435,7 +1492,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       if (!entry.url && jobId > 0 && jobId < 1000) {
         const offset = Math.max(0, jobId - 1);
         const [jobRecord] = await sql`
-          SELECT id, user_id, url, company, title
+          SELECT id, user_id, url, company, title, company_type
           FROM jobs
           WHERE user_id = ${userId}
           ORDER BY (score IS NULL) ASC, score DESC, created_at DESC
@@ -1451,7 +1508,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       // If entry still empty (not resolved from map), try direct DB lookup by ID
       if (!entry.url) {
         const [jobRecord] = await sql`
-          SELECT id, user_id, url, company, title
+          SELECT id, user_id, url, company, title, company_type
           FROM jobs
           WHERE id = ${jobId} AND user_id = ${userId}
         `;
@@ -1482,7 +1539,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     console.log(`🎯 Target identified: ${entry.company}`);
     const jdText = await scrapeJD(entry.url);
     const canonicalUrl = canonicalizeUrl(entry.url);
-    const result = await tailorPackage(jdText, profile, entry.company);
+    const result = await tailorPackage(jdText, profile, entry.company, entry.company_type);
     const tailoring = result.resume;
 
     // Debug: Log tailored bullets
@@ -1641,7 +1698,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
           ADD COLUMN IF NOT EXISTS ats_content_score INTEGER;
       `;
       
-      // Extract job title from JD text if available
+      // Job title for DB (same as filename role segment)
       const inferredTitle = roleTitle;
 
       // We assume entry.id exists if it came from DB, else we try to find it by URL or insert it
