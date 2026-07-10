@@ -1,0 +1,56 @@
+candidate:
+  full_name: "Akash Kaintura"
+  email: "akash.k96.official@gmail.com"
+  phone: "+91 8979594537"
+  location: "Pune, India"
+  linkedin: "linkedin.com/in/akashkaintura"
+  portfolio_url: "https://github.com/UGilfoyle"
+  github: "github.com/UGilfoyle"
+
+target_roles:
+  primary:
+    - "Senior Software Engineer"
+    - "Senior Full-Stack Developer"
+    - "Senior Backend Engineer"
+  archetypes:
+    - name: "AI Software Engineer"
+      level: "Senior"
+      fit: "primary"
+    - name: "AI Software Engineer / GenAI SWE"
+      level: "Senior"
+      fit: "primary"
+    - name: "Senior Software Engineer (AI-Native)"
+      level: "Senior"
+      fit: "primary"
+    - name: "Full-Stack Developer"
+      level: "Senior"
+      fit: "primary"
+
+narrative:
+  headline: "Senior Software Engineer specializing in scalable backends, microservices, AWS, and AI-native workflows"
+  exit_story: "7+ years of experience leading monolithic-to-microservices transitions, optimizing cloud cluster infrastructure, and leveraging AI tools to accelerate development velocity."
+  superpowers:
+    - "Monolith-to-microservices transition"
+    - "AWS cluster and cost optimization"
+    - "High-throughput RESTful API design"
+    - "AI-native tool integration (Cursor, Claude Code, GPTs)"
+  proof_points:
+    - name: "AWS Cluster Optimization"
+      hero_metric: "Reduced infrastructure costs by 30%"
+    - name: "Parallel Ingestion & Retrieval"
+      hero_metric: "Built multi-process ingestion (multiprocessing.Pool) and ChromaDB query-rewriting retrieval, reducing context lookup time"
+
+compensation:
+  target_range: "$50K-70K" # Adjusted for market rate in India / remote roles
+  currency: "USD"
+  minimum: "$45K"
+  location_flexibility: "Remote preferred"
+
+location:
+  country: "India"
+  city: "Pune"
+  timezone: "IST"
+  visa_status: "No sponsorship needed for India"
+
+cover_letter:
+  show_date: false

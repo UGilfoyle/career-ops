@@ -19,9 +19,7 @@ batch/tracker-additions/**/*.tsv
 !batch/tracker-additions/.gitkeep
 jds/*
 !jds/.gitkeep
-
 # User config and customization (never auto-updated)
-config/profile.yml
 portals.yml
 modes/_profile.md
 .update-dismissed
@@ -43,7 +41,6 @@ career-dashboard
 package-lock.json
 
 # Personal CV and instructions (user-specific, never push)
-cv.md
 INSTRUCTIONS.md
 article-digest.md
 interview-prep/*.md

@@ -26,6 +26,7 @@ const sql = postgres(cleanDbUrl, {
 import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -127,6 +128,32 @@ async function main() {
   console.log('═══════════════════════════════════════════');
 
   const specificUserId = process.env.SCAN_USER_ID;
+
+  // Auto-sync local config/profile.yml to PostgreSQL database if present
+  const profilePath = path.resolve(ROOT, 'config', 'profile.yml');
+  if (fs.existsSync(profilePath)) {
+    try {
+      console.log("🔄 Auto-syncing config/profile.yml to PostgreSQL database...");
+      const { default: yaml } = await import('js-yaml');
+      const yamlContent = fs.readFileSync(profilePath, 'utf8');
+      const p = yaml.load(yamlContent);
+      const uid = specificUserId || '19'; // Default user ID
+      const keywords = p.target_roles?.primary || [];
+      
+      await sql`
+        INSERT INTO user_profiles (user_id, resume_context, targeting_keywords)
+        VALUES (${uid}, ${p}, ${keywords})
+        ON CONFLICT (user_id) 
+        DO UPDATE SET 
+          resume_context = ${p},
+          targeting_keywords = ${keywords},
+          updated_at = NOW()
+      `;
+      console.log(`✅ Database profile synced successfully for user [${uid}].`);
+    } catch (syncErr) {
+      console.warn("⚠ Could not auto-sync local profile.yml to database:", syncErr.message);
+    }
+  }
   let failed = 0;
 
   if (specificUserId) {
