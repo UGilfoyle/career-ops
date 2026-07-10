@@ -1817,7 +1817,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     }
 
   } catch (err) {
-    console.error("❌ Agentic Tailor Failed:", err.message);
+    console.error("❌ Agentic Tailor Failed:", err);
     process.exit(1);
   } finally {
     process.exit(0);

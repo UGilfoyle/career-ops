@@ -1101,7 +1101,7 @@ function coverLetterBodyToHtml(text) {
   return blocks.map((p) => `<p>${escapeHtmlCl(p.replace(/\n+/g, ' '))}</p>`).join('');
 }
 
-async function tailorPackage(jd, profile, companyName) {
+async function tailorPackage(jd, profile, companyName, passedCompanyType) {
   const hfClient = await getHfClient();
   if (hfClient) {
     console.log(`🤖 Generating tailored package with ${HF_MODEL}...`);
@@ -1168,7 +1168,7 @@ ${experienceDigest}`;
     return `  Role ${i}: "${role}" at "${company}"`;
   }).join('\n');
 
-  const companyType = entry.company_type || classifyCompany(entry.company);
+  const companyType = passedCompanyType || classifyCompany(companyName);
   let companyTypeRule = '';
   if (companyType === 'GCC') {
     companyTypeRule = `
@@ -1539,7 +1539,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     console.log(`🎯 Target identified: ${entry.company}`);
     const jdText = await scrapeJD(entry.url);
     const canonicalUrl = canonicalizeUrl(entry.url);
-    const result = await tailorPackage(jdText, profile, entry.company);
+    const result = await tailorPackage(jdText, profile, entry.company, entry.company_type);
     const tailoring = result.resume;
 
     // Debug: Log tailored bullets
@@ -1817,7 +1817,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     }
 
   } catch (err) {
-    console.error("❌ Agentic Tailor Failed:", err.message);
+    console.error("❌ Agentic Tailor Failed:", err);
     process.exit(1);
   } finally {
     process.exit(0);
