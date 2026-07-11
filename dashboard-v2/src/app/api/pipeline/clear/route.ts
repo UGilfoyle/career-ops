@@ -19,10 +19,9 @@ function pipelineSubquery(tx: any, userId: string | number) {
       AND j.cover_letter_pdf_key IS NULL
       AND j.resume_pdf IS NULL
       AND j.cover_letter_pdf IS NULL
-      AND j.id NOT IN (
-        SELECT a.job_id
-        FROM applications a
-        WHERE a.user_id = ${userId}
+      AND NOT EXISTS (
+        SELECT 1 FROM applications a
+        WHERE a.user_id = ${userId} AND a.job_id = j.id
       )
   `;
 }
@@ -76,8 +75,9 @@ export async function POST(req: Request) {
             FROM jobs j
             WHERE j.user_id = ${userId}
               AND (j.score IS NULL OR COALESCE(j.score, 0) >= 0)
-              AND j.id NOT IN (
-                SELECT a.job_id FROM applications a WHERE a.user_id = ${userId}
+              AND NOT EXISTS (
+                SELECT 1 FROM applications a
+                WHERE a.user_id = ${userId} AND a.job_id = j.id
               )
               AND j.id = ANY(${ids}::int[])
           )
@@ -90,8 +90,9 @@ export async function POST(req: Request) {
             FROM jobs j
             WHERE j.user_id = ${userId}
               AND (j.score IS NULL OR COALESCE(j.score, 0) >= 0)
-              AND j.id NOT IN (
-                SELECT a.job_id FROM applications a WHERE a.user_id = ${userId}
+              AND NOT EXISTS (
+                SELECT 1 FROM applications a
+                WHERE a.user_id = ${userId} AND a.job_id = j.id
               )
               AND j.id = ANY(${ids}::int[])
           )

@@ -84,8 +84,32 @@ export async function getDashboardData(userId: string) {
   };
 
   const fetchPipeline = async () => {
+    const notInApplications = sql`
+      AND NOT EXISTS (
+        SELECT 1 FROM applications a
+        WHERE a.user_id = ${userId} AND a.job_id = jobs.id
+      )
+    `;
+    const scoreFilter = sql`AND (score IS NULL OR COALESCE(score, 0) >= 0)`;
+    const orderBy = sql`ORDER BY score DESC NULLS LAST, created_at DESC`;
+
+    const mapRow = (p: Record<string, unknown>, extras: Record<string, unknown> = {}) => ({
+      pipeline_id: p.pipeline_id,
+      url: p.url,
+      canonical_url: p.canonical_url ?? p.url,
+      title: p.title,
+      company: p.company,
+      score: p.score,
+      source: p.source,
+      created_at: p.created_at,
+      company_type: p.company_type ?? null,
+      gcc_signal_score: p.gcc_signal_score ?? null,
+      gcc_high_value: p.gcc_high_value ?? false,
+      is_tailored: Boolean(extras.is_tailored),
+    });
+
     try {
-      return await sql`
+      const rows = await sql`
         SELECT
           id as pipeline_id,
           url,
@@ -104,24 +128,54 @@ export async function getDashboardData(userId: string) {
           ) AS is_tailored
         FROM jobs
         WHERE user_id = ${userId}
-          AND (score IS NULL OR COALESCE(score, 0) >= 0)
-          AND id NOT IN (SELECT job_id FROM applications WHERE user_id = ${userId})
-        ORDER BY score DESC NULLS LAST, created_at DESC
+        ${scoreFilter}
+        ${notInApplications}
+        ${orderBy}
       `;
-    } catch {
-      try {
-        const pipeline = await sql`
-          SELECT id as pipeline_id, url, title, company, score, source, created_at, company_type, gcc_signal_score, gcc_high_value
-          FROM jobs
-          WHERE user_id = ${userId}
-            AND (score IS NULL OR COALESCE(score, 0) >= 0)
-            AND id NOT IN (SELECT job_id FROM applications WHERE user_id = ${userId})
-          ORDER BY score DESC NULLS LAST, created_at DESC
-        `;
-        return pipeline.map((p: any) => ({ ...p, canonical_url: p.url, is_tailored: false }));
-      } catch {
-        return [];
-      }
+      return rows.map((p: Record<string, unknown>) =>
+        mapRow(p, { is_tailored: p.is_tailored })
+      );
+    } catch (errFull) {
+      console.warn('[fetchPipeline] full query failed, trying fallback:', (errFull as Error).message);
+    }
+
+    try {
+      const rows = await sql`
+        SELECT
+          id as pipeline_id,
+          url,
+          title,
+          company,
+          score,
+          source,
+          created_at,
+          company_type,
+          gcc_signal_score,
+          gcc_high_value
+        FROM jobs
+        WHERE user_id = ${userId}
+        ${scoreFilter}
+        ${notInApplications}
+        ${orderBy}
+      `;
+      return rows.map((p: Record<string, unknown>) => mapRow(p));
+    } catch (errMid) {
+      console.warn('[fetchPipeline] mid query failed, trying minimal:', (errMid as Error).message);
+    }
+
+    try {
+      const rows = await sql`
+        SELECT id as pipeline_id, url, title, company, score, source, created_at
+        FROM jobs
+        WHERE user_id = ${userId}
+        ${scoreFilter}
+        ${notInApplications}
+        ${orderBy}
+      `;
+      return rows.map((p: Record<string, unknown>) => mapRow(p));
+    } catch (errMin) {
+      console.error('[fetchPipeline] all queries failed:', (errMin as Error).message);
+      return [];
     }
   };
 
