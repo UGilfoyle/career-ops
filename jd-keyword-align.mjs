@@ -4,15 +4,17 @@
 
 const KNOWN_TECH = [
   'JavaScript', 'TypeScript', 'Python', 'Java', 'Go', 'Golang', 'Rust', 'C#', '.NET', 'Ruby', 'PHP', 'Kotlin', 'Swift', 'Scala',
-  'React', 'React.js', 'Angular', 'Vue.js', 'Next.js', 'NestJS', 'Express', 'FastAPI', 'Django', 'Spring Boot', 'Node.js',
+  'React', 'React.js', 'Redux', 'Angular', 'Vue.js', 'Next.js', 'NestJS', 'Express', 'FastAPI', 'Django', 'Spring Boot', 'Node.js',
   'PostgreSQL', 'Postgres', 'MySQL', 'MongoDB', 'Redis', 'DynamoDB', 'Elasticsearch', 'Aurora',
   'AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD',
   'ECS', 'Lambda', 'S3', 'EC2', 'CloudFormation', 'IAM', 'VPC', 'SQS', 'SNS',
-  'Kafka', 'RabbitMQ', 'GraphQL', 'REST API', 'gRPC',
+  'Kafka', 'RabbitMQ', 'GraphQL', 'REST API', 'RESTful API', 'gRPC',
   'Jenkins', 'GitHub Actions', 'GitLab CI', 'Prometheus', 'Grafana', 'Datadog',
   'Jest', 'Cypress', 'Playwright', 'Webpack', 'Vite',
   'Git', 'Agile', 'Scrum', 'Microservices', 'System Design',
   'Machine Learning', 'ML', 'LLM', 'RAG', 'LangChain', 'PyTorch', 'TensorFlow',
+  'Cursor', 'Copilot', 'GitHub Copilot', 'Github Copilot',
+  '.NET Core', '.NET', 'C#',
   'Snowflake', 'Spark', 'Airflow', 'dbt', 'Databricks',
 ];
 
@@ -52,9 +54,12 @@ function findKnownTechInText(text) {
   const sorted = [...KNOWN_TECH].sort((a, b) => b.length - a.length);
 
   for (const tech of sorted) {
+    const escaped = escapeRe(tech);
     const pattern = tech.includes(' ') || tech.includes('/')
-      ? escapeRe(tech)
-      : `\\b${escapeRe(tech)}\\b`;
+      ? escaped
+      : /[#.]/.test(tech)
+        ? `(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`
+        : `\\b${escaped}\\b`;
     const re = new RegExp(pattern, 'gi');
     let m;
     while ((m = re.exec(text)) !== null) {
