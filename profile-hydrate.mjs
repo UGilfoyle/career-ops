@@ -78,6 +78,54 @@ function parseCvMarkdown(text) {
   return { experience, education };
 }
 
+function extractEducationYears(text) {
+  const years = [...String(text || '').matchAll(/\b(19|20)\d{2}\b/g)].map((m) => parseInt(m[0], 10));
+  const unique = [...new Set(years)].sort((a, b) => a - b);
+  if (unique.length === 0) return '';
+  if (unique.length === 1) return String(unique[0]);
+  return `${unique[0]} – ${unique[unique.length - 1]}`;
+}
+
+function stripEducationDateNoise(text) {
+  return String(text || '')
+    .replace(/\s*\([^)]*\d{4}[^)]*\)\s*/g, ' ')
+    .replace(/\s*\b(19|20)\d{2}\s*[,/]\s*(19|20)\d{2}\b/g, '')
+    .replace(/\s*\b(19|20)\d{2}\s*[—–-]\s*(19|20)\d{2}\b/g, '')
+    .replace(/\s+\b(19|20)\d{2}\b\s*$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Normalize one education row — fixes duplicated years in school/period fields. */
+export function normalizeEducationEntry(entry) {
+  const raw = entry && typeof entry === 'object' ? entry : {};
+  let degree = stripEducationDateNoise(raw.degree);
+  let school = stripEducationDateNoise(raw.school);
+  const combined = `${raw.degree || ''} ${raw.school || ''} ${raw.period || ''}`;
+  let period = extractEducationYears(combined);
+
+  // If degree accidentally contains school after comma, split once
+  if (!school && degree.includes(',')) {
+    const idx = degree.indexOf(',');
+    school = stripEducationDateNoise(degree.slice(idx + 1));
+    degree = stripEducationDateNoise(degree.slice(0, idx));
+  }
+
+  return {
+    degree,
+    school,
+    period,
+    ...(raw.location ? { location: String(raw.location).trim() } : {}),
+  };
+}
+
+export function normalizeEducationList(education) {
+  if (!Array.isArray(education)) return [];
+  return education
+    .map(normalizeEducationEntry)
+    .filter((e) => e.degree || e.school);
+}
+
 function mergeProfile(base, incoming) {
   const out = { ...(base || {}) };
   if (!incoming || typeof incoming !== 'object') return out;
@@ -107,40 +155,42 @@ export function hydrateResumeProfile(profile) {
   const hadExp = Array.isArray(next.experience) && next.experience.length > 0;
   const hadEdu = Array.isArray(next.education) && next.education.length > 0;
 
-  if (hadExp && hadEdu) {
-    return { profile: next, hydrated: false, sources };
-  }
-
-  const yamlPaths = [
-    'config/profile.yml',
-    'runtime-assets/config/profile.yml',
-    '../config/profile.yml',
-  ];
-  for (const rel of yamlPaths) {
-    const fromYaml = loadYamlAt(rel);
-    if (fromYaml) {
-      next = mergeProfile(next, fromYaml);
-      sources.push(rel);
-      break;
-    }
-  }
-
-  const stillNoExp = !Array.isArray(next.experience) || next.experience.length === 0;
-  const stillNoEdu = !Array.isArray(next.education) || next.education.length === 0;
-
-  if (stillNoExp || stillNoEdu) {
-    const cvRaw = readFileAt('cv.md') || readFileAt('../cv.md');
-    if (cvRaw) {
-      const parsed = parseCvMarkdown(cvRaw);
-      if (stillNoExp && parsed.experience.length > 0) {
-        next.experience = parsed.experience;
-        sources.push('cv.md');
-      }
-      if (stillNoEdu && parsed.education.length > 0) {
-        next.education = parsed.education;
-        sources.push('cv.md');
+  if (!(hadExp && hadEdu)) {
+    const yamlPaths = [
+      'config/profile.yml',
+      'runtime-assets/config/profile.yml',
+      '../config/profile.yml',
+    ];
+    for (const rel of yamlPaths) {
+      const fromYaml = loadYamlAt(rel);
+      if (fromYaml) {
+        next = mergeProfile(next, fromYaml);
+        sources.push(rel);
+        break;
       }
     }
+
+    const stillNoExp = !Array.isArray(next.experience) || next.experience.length === 0;
+    const stillNoEdu = !Array.isArray(next.education) || next.education.length === 0;
+
+    if (stillNoExp || stillNoEdu) {
+      const cvRaw = readFileAt('cv.md') || readFileAt('../cv.md');
+      if (cvRaw) {
+        const parsed = parseCvMarkdown(cvRaw);
+        if (stillNoExp && parsed.experience.length > 0) {
+          next.experience = parsed.experience;
+          sources.push('cv.md');
+        }
+        if (stillNoEdu && parsed.education.length > 0) {
+          next.education = parsed.education;
+          sources.push('cv.md');
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(next.education) && next.education.length > 0) {
+    next.education = normalizeEducationList(next.education);
   }
 
   const hydrated =

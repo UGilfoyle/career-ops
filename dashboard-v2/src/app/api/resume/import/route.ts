@@ -178,15 +178,27 @@ function parseEducation(text: string) {
     const years = line.match(yearPattern);
     
     if (hasDegree && years) {
-      // Extract school name
-      const parts = line.split(/[-–—]/);
-      const degreePart = parts[0].trim();
-      const schoolPart = parts.length > 1 ? parts[1].trim() : '';
-      
+      const uniqueYears = [...new Set(years.map((y) => parseInt(y, 10)))].sort((a, b) => a - b);
+      const period =
+        uniqueYears.length === 1
+          ? String(uniqueYears[0])
+          : `${uniqueYears[0]} – ${uniqueYears[uniqueYears.length - 1]}`;
+
+      // Strip year/date fragments before splitting degree vs school
+      const cleanLine = line
+        .replace(/\s*\([^)]*\d{4}[^)]*\)/g, '')
+        .replace(/\s*\b(19|20)\d{2}\s*[—–-]\s*(19|20)\d{2}\b/g, '')
+        .replace(/\s+\b(19|20)\d{2}\b/g, ' ')
+        .trim();
+
+      const parts = cleanLine.split(/\s*[-–—|]\s*/);
+      const degreePart = (parts[0] || '').trim();
+      const schoolPart = (parts[1] || '').trim();
+
       out.push({
         degree: degreePart,
         school: schoolPart,
-        period: years.join(' — '),
+        period,
       });
     }
     

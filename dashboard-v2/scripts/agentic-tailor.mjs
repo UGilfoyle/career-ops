@@ -16,7 +16,7 @@ import {
 } from '../../jd-keyword-align.mjs';
 import { buildApplicationDocumentPaths } from '../../document-filename.mjs';
 import { classifyCompany } from '../../gcc-classify.mjs';
-import { hydrateResumeProfile } from '../../profile-hydrate.mjs';
+import { hydrateResumeProfile, normalizeEducationEntry } from '../../profile-hydrate.mjs';
 import {
   analyzeJdProfileFit,
   formatHonestKeywordBlock,
@@ -285,15 +285,9 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     let role = (job.role || '').trim();
     let company = (job.company || '').trim();
     let dates = (job.period || '').trim();
-    
-    // Auto-append (Contract) for short tenures (<6 months) to avoid job-hopper flags
-    const tenureMonths = calculateTenureMonths(dates);
-    if (tenureMonths > 0 && tenureMonths < 6) {
-      const lowerRole = role.toLowerCase();
-      if (!lowerRole.includes('contract') && !lowerRole.includes('freelance') && !lowerRole.includes('project')) {
-        role = `${role} (Contract)`;
-      }
-    }
+
+    // Show role title only — never append (Contract) / (Freelance) labels
+    role = role.replace(/\s*\((?:contract|freelance|temporary|project)\)\s*/gi, '').trim();
     
     // Aggressively strip dates from role and company
     role = stripDates(role);
@@ -353,9 +347,11 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
 
 function renderEducation(edu) {
   if (!Array.isArray(edu) || edu.length === 0) return '';
-  return edu.map(e => `
-    <div>${e.degree}${e.school ? `, ${e.school}` : ''}${e.period ? ` (${e.period})` : ''}</div>
-  `).join('');
+  return edu.map((e) => {
+    const n = normalizeEducationEntry(e);
+    const left = n.school ? `${n.degree}, ${n.school}` : n.degree;
+    return `<div>${left}${n.period ? ` (${n.period})` : ''}</div>`;
+  }).join('');
 }
 
 function renderProjects(projects) {
