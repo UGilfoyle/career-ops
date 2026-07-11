@@ -8,6 +8,22 @@ import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
+/** Parse `verb <target> [--deep]` preserving full URLs (incl. query strings). */
+function parseCommandWithDeep(q: string, verb: string) {
+  const trimmed = q.trim();
+  const deep = /\s--deep\s*$/i.test(trimmed);
+  const target = trimmed
+    .replace(new RegExp(`^${verb}\\s+`, 'i'), '')
+    .replace(/\s+--deep\s*$/i, '')
+    .trim();
+  return { target, deep };
+}
+
+function tailorUsage(cmd: string, deep = false) {
+  const flag = deep ? ' --deep' : '';
+  return `Usage: ${cmd} <job_id_or_url>${flag}\n  Example: ${cmd} 42${flag}\n  Example: ${cmd} https://job-boards.greenhouse.io/company/jobs/123${flag}\n`;
+}
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const q = searchParams.get('q') || ''; // The full command string
@@ -57,43 +73,47 @@ export async function GET(req: NextRequest) {
           }
           scriptName = 'scratch-scan.mjs';
         } else if (cmd === 'tailor' || cmd === 'offer-match') {
-          if (args.includes('--deep')) {
-            const jobId = args.find(a => a !== '--deep');
-            if (!jobId) {
-              send({ type: 'stderr', content: `Usage: ${cmd} <id> --deep\n` });
+          const { target, deep } = parseCommandWithDeep(q, cmd);
+          const useDeep = deep || process.env.VERCEL === '1';
+          if (useDeep) {
+            if (!target) {
+              send({ type: 'stderr', content: tailorUsage(cmd, true) });
               send({ type: 'done', code: 1 });
               controller.close();
               return;
             }
-            await triggerGitHubAction(send, controller, userId, 'agentic-tailor.mjs', jobId);
+            await triggerGitHubAction(send, controller, userId, 'agentic-tailor.mjs', target);
             return;
           }
           scriptName = 'agentic-tailor.mjs';
-          if (args.length === 0) {
-            send({ type: 'stderr', content: `Usage: ${cmd} <job_id_or_url>\n  Example: ${cmd} 42\n  Example: ${cmd} https://linkedin.com/jobs/view/123\n` });
+          if (!target) {
+            send({ type: 'stderr', content: tailorUsage(cmd, false) });
             send({ type: 'done', code: 1 });
             controller.close();
             return;
           }
+          scriptArgs = [target];
         } else if (cmd === 'apply') {
-          if (args.includes('--deep')) {
-            const jobId = args.find(a => a !== '--deep');
-            if (!jobId) {
-              send({ type: 'stderr', content: `Usage: apply <id> --deep\n` });
+          const { target, deep } = parseCommandWithDeep(q, cmd);
+          const useDeep = deep || process.env.VERCEL === '1';
+          if (useDeep) {
+            if (!target) {
+              send({ type: 'stderr', content: `Usage: apply <job_id_or_url> --deep\n  Example: apply 42 --deep\n  Example: apply https://job-boards.greenhouse.io/company/jobs/123 --deep\n` });
               send({ type: 'done', code: 1 });
               controller.close();
               return;
             }
-            await triggerGitHubAction(send, controller, userId, 'auto-apply.mjs', jobId);
+            await triggerGitHubAction(send, controller, userId, 'auto-apply.mjs', target);
             return;
           }
           scriptName = 'auto-apply.mjs';
-          if (args.length === 0) {
+          if (!target) {
             send({ type: 'stderr', content: `Usage: apply <job_id_or_url>\n  Example: apply 42\n  Example: apply https://linkedin.com/jobs/view/123\n` });
             send({ type: 'done', code: 1 });
             controller.close();
             return;
           }
+          scriptArgs = [target];
         } else if (cmd === 'ls') {
           send({ type: 'stdout', content: 'config/  data/  output/  templates/  agentic-tailor.mjs  auto-apply.mjs  rank-pipeline.mjs  scratch-scan.mjs\n' });
           send({ type: 'done', code: 0 });
@@ -139,12 +159,12 @@ export async function GET(req: NextRequest) {
   │  THE CAREER-OPS SEQUENCE                             │
   │    1. scan --deep      Auto-discover new job matches │
   │    2. rank --deep      Score & rank discovered roles │
-  │    3. tailor <id> --deep Generate hyper-custom Resumes │
-  │    4. apply <id> --deep Automatically apply to role  │
+  │    3. tailor <id|url> --deep  Generate hyper-custom Resumes │
+  │    4. apply <id|url> --deep   Automatically apply to role  │
   │                                                     │
   │  UTILITIES                                          │
   │    scan              Quick discovery check           │
-  │    tailor <id>       Quick Resume preview            │
+  │    tailor <id|url>   Quick Resume preview (local)  │
   │    sync-stories      Sync STAR stories to master bank│
   │    ls                List project files              │
   │    clear             Clear terminal screen           │
@@ -154,6 +174,25 @@ export async function GET(req: NextRequest) {
 \n`;
           send({ type: 'stdout', content: helpText });
           send({ type: 'done', code: 0 });
+          controller.close();
+          return;
+        } else if (cmd === 'terminal') {
+          const rest = q.trim().replace(/^terminal\s+/i, '').trim();
+          if (rest) {
+            const fixed = rest.toLowerCase().startsWith('tailor ')
+              ? rest
+              : `tailor ${rest}${/\s--deep\s*$/i.test(rest) ? '' : ' --deep'}`;
+            send({
+              type: 'stderr',
+              content: `'terminal' is not a command (it's the UI tab name).\nDid you mean:\n  ${fixed}\n`,
+            });
+          } else {
+            send({
+              type: 'stderr',
+              content: `'terminal' is the UI tab — not a command.\nTry: tailor <job_id_or_url> --deep\n`,
+            });
+          }
+          send({ type: 'done', code: 127 });
           controller.close();
           return;
         } else {
@@ -544,10 +583,12 @@ export async function POST(req: NextRequest) {
         scriptArgs = q.replace(/^add\s+/i, '').trim();
       } else if (cmd === 'tailor' || cmd === 'offer-match') {
         script = 'agentic-tailor.mjs';
-        scriptArgs = args.find((a: string) => a !== '--deep') || '';
+        const { target } = parseCommandWithDeep(q, cmd);
+        scriptArgs = target || args.find((a: string) => a !== '--deep') || '';
       } else if (cmd === 'apply') {
         script = 'auto-apply.mjs';
-        scriptArgs = args.find((a: string) => a !== '--deep') || '';
+        const { target } = parseCommandWithDeep(q, 'apply');
+        scriptArgs = target || args.find((a: string) => a !== '--deep') || '';
       } else if (cmd === 'scan') {
         script = 'scratch-scan.mjs';
         scriptArgs = '';
