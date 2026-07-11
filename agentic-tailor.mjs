@@ -16,7 +16,7 @@ import {
 } from './jd-keyword-align.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
 import { classifyCompany } from './gcc-classify.mjs';
-import { hydrateResumeProfile, normalizeEducationEntry } from './profile-hydrate.mjs';
+import { hydrateResumeProfile, formatEducationLine } from './profile-hydrate.mjs';
 import {
   analyzeJdProfileFit,
   formatHonestKeywordBlock,
@@ -350,11 +350,7 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
 
 function renderEducation(edu) {
   if (!Array.isArray(edu) || edu.length === 0) return '';
-  return edu.map((e) => {
-    const n = normalizeEducationEntry(e);
-    const left = n.school ? `${n.degree}, ${n.school}` : n.degree;
-    return `<div>${left}${n.period ? ` (${n.period})` : ''}</div>`;
-  }).join('');
+  return edu.map((e) => `<div>${escapeHtml(formatEducationLine(e))}</div>`).join('');
 }
 
 function renderAchievements(proofPoints) {
@@ -1623,17 +1619,22 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     if (!profileRow) throw new Error(`Profile not configured for user ${userId}. Please setup via the Dashboard Settings.`);
 
     let profile = profileRow.resume_context;
-    const { profile: hydratedProfile, hydrated, sources } = hydrateResumeProfile(profile);
+    const { profile: hydratedProfile, hydrated, educationRepaired, sources } = hydrateResumeProfile(profile);
+    profile = hydratedProfile;
     if (hydrated) {
       console.log(`💧 Hydrated profile from: ${sources.join(', ')}`);
-      profile = hydratedProfile;
+    }
+    if (educationRepaired) {
+      console.log('🎓 Repaired corrupted education date fields in profile.');
+    }
+    if (hydrated || educationRepaired) {
       try {
         await sql`
           UPDATE user_profiles
           SET resume_context = ${JSON.stringify(hydratedProfile)}::jsonb, updated_at = CURRENT_TIMESTAMP
           WHERE user_id = ${userId}
         `;
-        console.log('💾 Synced hydrated experience/education back to database.');
+        console.log('💾 Synced profile fixes back to database.');
       } catch (syncErr) {
         console.warn(`⚠ Could not persist hydrated profile: ${syncErr.message}`);
       }

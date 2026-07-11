@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
 import bcrypt from 'bcryptjs';
+import { normalizeEducationList } from '../../../../../profile-hydrate.mjs';
 
 function mergeResumeContext(existing: Record<string, unknown>, incoming: Record<string, unknown>) {
   const base = existing && typeof existing === 'object' ? { ...existing } : {};
@@ -23,7 +24,7 @@ function mergeResumeContext(existing: Record<string, unknown>, incoming: Record<
 
   const incomingEdu = Array.isArray(next.education) ? next.education : [];
   const baseEdu = Array.isArray(base.education) ? base.education : [];
-  merged.education = incomingEdu.length > 0 ? incomingEdu : baseEdu;
+  merged.education = normalizeEducationList(incomingEdu.length > 0 ? incomingEdu : baseEdu);
 
   return merged;
 }
@@ -55,6 +56,9 @@ export async function GET() {
       targeting_keywords: { positive: [], negative: [] }
     };
     const resumeContext = baseProfile.resume_context || {};
+    if (Array.isArray(resumeContext.education) && resumeContext.education.length > 0) {
+      resumeContext.education = normalizeEducationList(resumeContext.education);
+    }
     const hasSearchPortals = Array.isArray(resumeContext?.search?.portals) && resumeContext.search.portals.length > 0;
     const userEmail = userRow[0]?.email || '';
 

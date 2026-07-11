@@ -87,13 +87,20 @@ function extractEducationYears(text) {
 }
 
 function stripEducationDateNoise(text) {
-  return String(text || '')
-    .replace(/\s*\([^)]*\d{4}[^)]*\)\s*/g, ' ')
-    .replace(/\s*\b(19|20)\d{2}\s*[,/]\s*(19|20)\d{2}\b/g, '')
-    .replace(/\s*\b(19|20)\d{2}\s*[—–-]\s*(19|20)\d{2}\b/g, '')
-    .replace(/\s+\b(19|20)\d{2}\b\s*$/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  let s = String(text || '');
+  // Repeat until stable — strips nested "(2016, 2018) (2016 – 2018)" chunks
+  for (let i = 0; i < 6; i++) {
+    const next = s
+      .replace(/\s*\([^)]*\d{4}[^)]*\)\s*/g, ' ')
+      .replace(/\s*\b(19|20)\d{2}\s*[,/]\s*(19|20)\d{2}\b/g, '')
+      .replace(/\s*\b(19|20)\d{2}\s*[—–-]\s*(19|20)\d{2}\b/g, '')
+      .replace(/\s+\b(19|20)\d{2}\b\s*$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (next === s) break;
+    s = next;
+  }
+  return s;
 }
 
 /** Normalize one education row — fixes duplicated years in school/period fields. */
@@ -104,11 +111,27 @@ export function normalizeEducationEntry(entry) {
   const combined = `${raw.degree || ''} ${raw.school || ''} ${raw.period || ''}`;
   let period = extractEducationYears(combined);
 
-  // If degree accidentally contains school after comma, split once
-  if (!school && degree.includes(',')) {
+  // Degree field sometimes embeds "Degree, School 2016 (2016, 2018)" — split out school
+  if (degree.includes(',')) {
     const idx = degree.indexOf(',');
-    school = stripEducationDateNoise(degree.slice(idx + 1));
-    degree = stripEducationDateNoise(degree.slice(0, idx));
+    const degreePart = stripEducationDateNoise(degree.slice(0, idx));
+    const schoolPart = stripEducationDateNoise(degree.slice(idx + 1));
+    if (schoolPart.length > 2) {
+      degree = degreePart;
+      if (!school || schoolPart.length >= school.length) school = schoolPart;
+    }
+  }
+
+  // Drop duplicate school token if still embedded in degree
+  if (school && degree.toLowerCase().includes(school.toLowerCase())) {
+    degree = stripEducationDateNoise(
+      degree.replace(new RegExp(`,?\\s*${school.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'), '')
+    );
+  }
+
+  // Prefer longer clean school name when both fields mention university
+  if (school && degree && degree.toLowerCase() === school.toLowerCase()) {
+    degree = '';
   }
 
   return {
@@ -117,6 +140,13 @@ export function normalizeEducationEntry(entry) {
     period,
     ...(raw.location ? { location: String(raw.location).trim() } : {}),
   };
+}
+
+/** Plain-text education line for resume/PDF. */
+export function formatEducationLine(entry) {
+  const n = normalizeEducationEntry(entry);
+  const left = n.school ? `${n.degree}, ${n.school}` : n.degree;
+  return n.period ? `${left} (${n.period})` : left;
 }
 
 export function normalizeEducationList(education) {
@@ -147,13 +177,14 @@ function mergeProfile(base, incoming) {
 
 /**
  * @param {object} profile resume_context from DB
- * @returns {{ profile: object, hydrated: boolean, sources: string[] }}
+ * @returns {{ profile: object, hydrated: boolean, educationRepaired: boolean, sources: string[] }}
  */
 export function hydrateResumeProfile(profile) {
   let next = profile && typeof profile === 'object' ? { ...profile } : {};
   const sources = [];
   const hadExp = Array.isArray(next.experience) && next.experience.length > 0;
   const hadEdu = Array.isArray(next.education) && next.education.length > 0;
+  const educationBefore = JSON.stringify(next.education || []);
 
   if (!(hadExp && hadEdu)) {
     const yamlPaths = [
@@ -196,8 +227,9 @@ export function hydrateResumeProfile(profile) {
   const hydrated =
     (!hadExp && Array.isArray(next.experience) && next.experience.length > 0)
     || (!hadEdu && Array.isArray(next.education) && next.education.length > 0);
+  const educationRepaired = educationBefore !== JSON.stringify(next.education || []);
 
-  return { profile: next, hydrated, sources };
+  return { profile: next, hydrated, educationRepaired, sources };
 }
 
 /**
@@ -226,9 +258,9 @@ export function mergeResumeContext(existing, incoming) {
   }
 
   if (Array.isArray(next.education) && next.education.length > 0) {
-    merged.education = next.education;
+    merged.education = normalizeEducationList(next.education);
   } else if (Array.isArray(base.education) && base.education.length > 0) {
-    merged.education = base.education;
+    merged.education = normalizeEducationList(base.education);
   } else {
     merged.education = next.education || [];
   }
