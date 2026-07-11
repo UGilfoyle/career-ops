@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { formatEducationLine, normalizeEducationEntry, hydrateResumeProfile } from './profile-hydrate.mjs';
+import { formatEducationLine } from './education-format.mjs';
+import { hydrateResumeProfile } from './profile-hydrate.mjs';
 
 const corrupted = {
   degree: 'Master of Computer Applications (MCA)',
@@ -28,7 +29,7 @@ if (!bca.includes('(2013 – 2016)') || bca.includes('2013 – 2013')) {
   process.exit(1);
 }
 
-const { profile, educationRepaired } = hydrateResumeProfile({
+const { educationRepaired } = hydrateResumeProfile({
   experience: [{ role: 'x', company: 'y', period: 'Jan 2020 - Present', bullets: ['did stuff'] }],
   education: [corrupted, {
     degree: 'Bachelor of Computer Applications (BCA)',

@@ -16,7 +16,8 @@ import {
 } from '../../jd-keyword-align.mjs';
 import { buildApplicationDocumentPaths } from '../../document-filename.mjs';
 import { classifyCompany } from '../../gcc-classify.mjs';
-import { hydrateResumeProfile, formatEducationLine } from '../../profile-hydrate.mjs';
+import { hydrateResumeProfile } from '../../profile-hydrate.mjs';
+import { formatEducationLine } from '../../education-format.mjs';
 import {
   analyzeJdProfileFit,
   formatHonestKeywordBlock,

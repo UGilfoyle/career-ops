@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
       "../gcc-signal-engine.mjs",
       "../jd-keyword-align.mjs",
       "../jd-profile-match.mjs",
+      "../education-format.mjs",
       "../profile-hydrate.mjs",
       "../resume-quality.mjs",
       "../templates/gcc-companies.yml",

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
 import bcrypt from 'bcryptjs';
-import { normalizeEducationList } from '../../../../../profile-hydrate.mjs';
+import { normalizeEducationList } from '@/lib/education-format';
 
 function mergeResumeContext(existing: Record<string, unknown>, incoming: Record<string, unknown>) {
   const base = existing && typeof existing === 'object' ? { ...existing } : {};
