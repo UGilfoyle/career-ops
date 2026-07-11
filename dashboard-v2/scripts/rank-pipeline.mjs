@@ -1,5 +1,6 @@
 import sql from './db/client.mjs';
 import fs from 'fs';
+import { scoreGccSignals } from '../../gcc-signal-engine.mjs';
 
 const OUTPUT_JSON = 'data/current_eval.json';
 
@@ -66,7 +67,7 @@ async function run() {
 
     // Optimization: Only score/rank the most recent 500 jobs to keep it fast
     const jobs = await sql`
-      SELECT id, url, company, title, source, company_type FROM jobs
+      SELECT id, url, company, title, source, company_type, jd_text FROM jobs
       WHERE user_id = ${userId}
       ORDER BY created_at DESC
       LIMIT 500
@@ -79,15 +80,25 @@ async function run() {
     }
 
     console.log("  ⚡ Scoring in progress...");
-    const scoredJobs = jobs.map(j => ({
-      ...j,
-      score: scoreJob(j.title, j.company, j.company_type, keywords)
-    }));
+    const scoredJobs = jobs.map(j => {
+      const gcc = scoreGccSignals({
+        company: j.company,
+        title: j.title,
+        jdText: j.jd_text || '',
+        companyType: j.company_type,
+      });
+      return {
+        ...j,
+        score: scoreJob(j.title, j.company, j.company_type, keywords),
+        gcc_signal_score: gcc.score,
+        gcc_high_value: gcc.highValue,
+      };
+    });
 
     // push scores to db (Parallelized for speed)
     console.log("  💾 Saving scores...");
-    await Promise.all(scoredJobs.map(j => 
-       sql`UPDATE jobs SET score = ${j.score} WHERE id = ${j.id}`
+    await Promise.all(scoredJobs.map(j =>
+      sql`UPDATE jobs SET score = ${j.score}, gcc_signal_score = ${j.gcc_signal_score}, gcc_high_value = ${j.gcc_high_value} WHERE id = ${j.id}`
     ));
     console.log("  ✓ Database updated.");
 

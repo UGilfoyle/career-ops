@@ -28,9 +28,9 @@ Before running any evaluation, confirm the posting is still live. The Step 0 Pla
 
 Do not continue to Step 1 until this gate is resolved.
 
-## Step 1 — A-G Evaluation
+## Step 1 — A-H Evaluation
 
-Execute the same as the `oferta` mode (read `modes/oferta.md` for all A-F blocks + Block G Posting Legitimacy).
+Execute the same as the `oferta` mode (read `modes/oferta.md` for blocks A-G + Block H GCC Signal Score when company is GCC).
 
 ## Step 2 — Save Report .md
 
@@ -50,7 +50,7 @@ If the final score is >= 4.5, generate a draft of responses for the application 
 
 1. **Extract form questions**: Use Playwright to navigate to the form and take a snapshot. If they cannot be extracted, use the generic questions.
 2. **Generate responses** following the tone (see below).
-3. **Save in the report** as section `## H) Draft Application Answers`.
+3. **Save in the report** as section `## I) Draft Application Answers`.
 
 ### Generic questions (use if they cannot be extracted from the form)
 

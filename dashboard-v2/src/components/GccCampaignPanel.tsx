@@ -48,11 +48,13 @@ type Props = {
   campaign: GccCampaign;
   onChange: (next: GccCampaign) => void;
   onSave: () => void;
+  onImportHighValue?: () => void;
+  highValueCount?: number;
   isSaving: boolean;
   saveStatus: 'idle' | 'saving' | 'success' | 'error';
 };
 
-export function GccCampaignPanel({ campaign, onChange, onSave, isSaving, saveStatus }: Props) {
+export function GccCampaignPanel({ campaign, onChange, onSave, onImportHighValue, highValueCount = 0, isSaving, saveStatus }: Props) {
   const day = todayKey();
   const daily = campaign.daily_log[day] || { connections: 0, applications: 0, mock_interview: false };
 
@@ -112,7 +114,18 @@ export function GccCampaignPanel({ campaign, onChange, onSave, isSaving, saveSta
         title="GCC Campaign"
         subtitle="30-day break-in system — connections, curated outreach, and interview tracking"
         actions={
-          <button
+                 <div className="flex items-center gap-3">
+                   {onImportHighValue && highValueCount > 0 && (
+                     <button
+                       type="button"
+                       onClick={onImportHighValue}
+                       className="flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs font-bold text-violet-800 transition-all hover:bg-violet-100"
+                     >
+                       <Target size={14} />
+                       Import {highValueCount} high-value
+                     </button>
+                   )}
+                   <button
             type="button"
             onClick={onSave}
             disabled={isSaving}
@@ -122,6 +135,7 @@ export function GccCampaignPanel({ campaign, onChange, onSave, isSaving, saveSta
           >
             {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'success' ? <><CheckCircle2 size={18} /> Saved</> : 'Save Campaign'}
           </button>
+                 </div>
         }
       />
 

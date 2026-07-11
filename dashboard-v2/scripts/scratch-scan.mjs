@@ -2,6 +2,7 @@
 
 import sql from './db/client.mjs';
 import { classifyCompany } from '../../gcc-classify.mjs';
+import { scoreGccSignals } from '../../gcc-signal-engine.mjs';
 
 const rawUserId = process.env.SCAN_USER_ID || process.argv[2] || 1;
 const userId = Number.parseInt(String(rawUserId), 10);
@@ -731,7 +732,9 @@ async function run() {
         ALTER TABLE jobs
           ADD COLUMN IF NOT EXISTS canonical_url TEXT,
           ADD COLUMN IF NOT EXISTS jd_text TEXT,
-          ADD COLUMN IF NOT EXISTS company_type TEXT;
+          ADD COLUMN IF NOT EXISTS company_type TEXT,
+          ADD COLUMN IF NOT EXISTS gcc_signal_score INTEGER,
+          ADD COLUMN IF NOT EXISTS gcc_high_value BOOLEAN DEFAULT FALSE;
       `;
     } catch {
       // ignore
@@ -760,7 +763,7 @@ async function run() {
 
     // Fetch recent 500 jobs to score/rank
     const jobs = await sql`
-      SELECT id, url, company, title, source, company_type FROM jobs
+      SELECT id, url, company, title, source, company_type, jd_text FROM jobs
       WHERE user_id = ${userId}
       ORDER BY created_at DESC
       LIMIT 500
@@ -803,13 +806,23 @@ async function run() {
       return parseFloat(scoreVal.toFixed(1));
     };
 
-    const scoredJobs = jobs.map(j => ({
-      id: j.id,
-      score: scoreJobInline(j.title, j.company, j.company_type)
-    }));
+    const scoredJobs = jobs.map(j => {
+      const gcc = scoreGccSignals({
+        company: j.company,
+        title: j.title,
+        jdText: j.jd_text || '',
+        companyType: j.company_type,
+      });
+      return {
+        id: j.id,
+        score: scoreJobInline(j.title, j.company, j.company_type),
+        gcc_signal_score: gcc.score,
+        gcc_high_value: gcc.highValue,
+      };
+    });
 
-    await Promise.all(scoredJobs.map(j => 
-      sql`UPDATE jobs SET score = ${j.score} WHERE id = ${j.id}`
+    await Promise.all(scoredJobs.map(j =>
+      sql`UPDATE jobs SET score = ${j.score}, gcc_signal_score = ${j.gcc_signal_score}, gcc_high_value = ${j.gcc_high_value} WHERE id = ${j.id}`
     ));
     console.log(`  ✓ Successfully scored and updated ${scoredJobs.length} pipeline jobs.`);
   } catch (rankErr) {

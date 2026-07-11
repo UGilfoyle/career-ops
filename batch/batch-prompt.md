@@ -201,9 +201,13 @@ top_strengths:
 risk_level: "{Low | Medium | High}"
 confidence: "{Low | Medium | High}"
 next_action: "{one concrete next step}"
+company_type: "{GCC | Services | Other}"
+gcc_signal_score: {0-5 or null}
+gcc_high_value: {true | false}
 ```
 
 Rules:
+- Include `company_type`, `gcc_signal_score`, and `gcc_high_value` when Block H was evaluated; use `null` / `false` when not GCC.
 - Use `[]` for `hard_stops`, `soft_gaps`, or `top_strengths` when empty.
 - `score` is numeric only, without `/5`.
 - `final_decision` must reflect the full evaluation, not only the CV match.
@@ -251,6 +255,9 @@ top_strengths:
 risk_level: "{Low | Medium | High}"
 confidence: "{Low | Medium | High}"
 next_action: "{one concrete next step}"
+company_type: "{GCC | Services | Other}"
+gcc_signal_score: {0-5 or null}
+gcc_high_value: {true | false}
 ```
 
 ## A) Resumen del Rol

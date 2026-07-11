@@ -96,6 +96,8 @@ export async function getDashboardData(userId: string) {
           source,
           created_at,
           company_type,
+          gcc_signal_score,
+          gcc_high_value,
           (
             resume_pdf_key IS NOT NULL OR cover_letter_pdf_key IS NOT NULL
             OR resume_html IS NOT NULL OR cover_letter_html IS NOT NULL
@@ -109,7 +111,7 @@ export async function getDashboardData(userId: string) {
     } catch {
       try {
         const pipeline = await sql`
-          SELECT id as pipeline_id, url, title, company, score, source, created_at, company_type
+          SELECT id as pipeline_id, url, title, company, score, source, created_at, company_type, gcc_signal_score, gcc_high_value
           FROM jobs
           WHERE user_id = ${userId}
             AND (score IS NULL OR COALESCE(score, 0) >= 0)

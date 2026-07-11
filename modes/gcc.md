@@ -24,7 +24,7 @@ When evaluating a company or JD, score each signal. **3+ = high-value GCC target
 | 4 | Leadership signals | New VP/CXO hires from tier-1 firms |
 | 5 | Future domains | fintech, UPI, EV, climate, cyber, compliance, data platforms |
 
-Add to evaluation report as **Block H — GCC Signal Score** when company type is GCC or user is in GCC campaign mode.
+Add to evaluation report as **Block H — GCC Signal Score** when company type is GCC or user is in GCC campaign mode. Use `node -e "import('./gcc-signal-engine.mjs').then(m => console.log(m.scoreGccSignals({company:'Stripe',title:'Senior Engineer',jdText:'platform ownership reliability'})))"` for programmatic scoring in scripts; agents run full Block H with WebSearch for signals 1, 2, and 4.
 
 ## PAR resume bullets (GCC targets)
 

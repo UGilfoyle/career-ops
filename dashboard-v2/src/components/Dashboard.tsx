@@ -630,6 +630,78 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
   };
 
+  const addToGccCampaign = (company: string, role: string) => {
+    const exists = gccCampaign.targets.some(
+      (t) => t.company.toLowerCase() === company.toLowerCase()
+        && (t.role || '').toLowerCase() === (role || '').toLowerCase()
+    );
+    if (exists) {
+      setToast({ show: true, message: `${company} is already in GCC Campaign` });
+      setActiveTab('gcc');
+      return;
+    }
+    setGccCampaign({
+      ...gccCampaign,
+      targets: [
+        ...gccCampaign.targets,
+        {
+          id: `gcc-${Date.now()}`,
+          company,
+          role: role || '',
+          dm_sent: false,
+          email_sent: false,
+          connection_sent: false,
+          story_used: '',
+          interview: false,
+          follow_up: '',
+          notes: '',
+        },
+      ],
+    });
+    setToast({ show: true, message: `Added ${company} to GCC Campaign — click Save Campaign` });
+    setActiveTab('gcc');
+  };
+
+  const importHighValueGccFromPipeline = () => {
+    const highValue = (data?.pipeline || []).filter((j: any) => j.gcc_high_value);
+    if (highValue.length === 0) {
+      setToast({ show: true, message: 'No high-value GCC jobs in pipeline yet. Run scan + rank first.' });
+      return;
+    }
+    const existing = new Set(
+      gccCampaign.targets.map((t) => `${t.company.toLowerCase()}|${(t.role || '').toLowerCase()}`)
+    );
+    const added = highValue.filter((j: any) => {
+      const key = `${String(j.company || '').toLowerCase()}|${String(j.title || '').toLowerCase()}`;
+      return !existing.has(key);
+    });
+    if (added.length === 0) {
+      setToast({ show: true, message: 'All high-value GCC jobs are already tracked' });
+      setActiveTab('gcc');
+      return;
+    }
+    setGccCampaign({
+      ...gccCampaign,
+      targets: [
+        ...gccCampaign.targets,
+        ...added.map((j: any) => ({
+          id: `gcc-${j.pipeline_id}-${Date.now()}`,
+          company: j.company || '',
+          role: j.title || '',
+          dm_sent: false,
+          email_sent: false,
+          connection_sent: false,
+          story_used: '',
+          interview: false,
+          follow_up: '',
+          notes: `Signal ${j.gcc_signal_score ?? '?'}/5 · score ${j.score ?? '—'}`,
+        })),
+      ],
+    });
+    setToast({ show: true, message: `Imported ${added.length} high-value GCC job(s) — click Save Campaign` });
+    setActiveTab('gcc');
+  };
+
   const handleSaveGccCampaign = async () => {
     setIsSaving(true);
     setSaveStatus('saving');
@@ -1566,6 +1638,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   GCC
                                 </span>
                               )}
+                              {job.gcc_signal_score != null && job.company_type === 'GCC' && (
+                                <span className="px-1.5 py-0.5 text-[8px] font-bold bg-slate-100 text-slate-700 border border-slate-200 rounded-md">
+                                  {job.gcc_signal_score}/5
+                                </span>
+                              )}
+                              {job.gcc_high_value && (
+                                <span className="px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider bg-violet-100 text-violet-800 border border-violet-200 rounded-md">
+                                  High Value
+                                </span>
+                              )}
                               {job.company_type === 'Services' && (
                                 <span className="px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 rounded-md">
                                   Services
@@ -1592,6 +1674,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             >
                               Tailor
                             </button>
+                            {(job.company_type === 'GCC' || job.gcc_high_value) && (
+                              <button
+                                type="button"
+                                onClick={() => addToGccCampaign(String(job.company || ''), String(job.title || ''))}
+                                className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-bold text-violet-800 transition-all hover:bg-violet-100"
+                                title="Add to GCC Campaign tracker"
+                              >
+                                <Target size={14} className="inline" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() =>
@@ -2178,6 +2270,8 @@ System Initialized — v2.0`}
               campaign={gccCampaign}
               onChange={setGccCampaign}
               onSave={handleSaveGccCampaign}
+              onImportHighValue={importHighValueGccFromPipeline}
+              highValueCount={(data?.pipeline || []).filter((j: any) => j.gcc_high_value).length}
               isSaving={isSaving}
               saveStatus={saveStatus}
             />

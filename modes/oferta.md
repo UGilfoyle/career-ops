@@ -155,7 +155,49 @@ Analyze the job posting for signals that indicate whether this is a real, active
 
 ---
 
-## Cover Letter Draft (auto-generated after Block G)
+## Block H — GCC Signal Score (when company is GCC or captive)
+
+Run when `classifyCompany(company)` is **GCC**, or when the user is in GCC campaign mode. Read `modes/gcc.md` and use `gcc-signal-engine.mjs` logic.
+
+### Five signals (score 0–5, one point each)
+
+| # | Signal | How to assess |
+|---|--------|----------------|
+| 1 | Expansion fuel | WebSearch: `"{company}" India GCC expansion {year}` — launch news, new campus, funding |
+| 2 | Hiring velocity | WebSearch: `"{company}" careers India` or Greenhouse/Lever — 30+ open roles, repeat hiring |
+| 3 | Scope language | JD mentions: platform, global OKRs, reliability, telemetry, product ownership |
+| 4 | Leadership signals | WebSearch: `"{company}" VP engineering India hire` — tier-1 leadership hires |
+| 5 | Future domains | JD/domain: fintech, UPI, EV, climate, cyber, compliance, data platforms |
+
+**High-Value GCC Target:** score **≥ 3** AND company type is GCC.
+
+### Output format
+
+```markdown
+## H) GCC Signal Score
+
+**Score:** {X}/5
+**High-Value GCC Target:** {Yes | No}
+**Company Type:** {GCC | Services | Other}
+**Recommendation:** {one line — e.g. "Prioritize curated email/DM outreach"}
+
+| Signal | Hit | Finding |
+|--------|-----|---------|
+| Expansion fuel | ✓/— | {finding with source} |
+| Hiring velocity | ✓/— | {finding} |
+| Scope language | ✓/— | {keywords found in JD} |
+| Leadership signals | ✓/— | {finding or —} |
+| Future domains | ✓/— | {domains matched} |
+
+**Outreach next step:** {Suggest contacto mode — value DM or curated email, not Apply Now}
+```
+
+If company is **not** GCC, skip Block H and note: `N/A — not a GCC/captive employer`.
+
+---
+
+## Block I — Draft Application Answers (only if score >= 4.5)
+
 
 After saving the report and recording in the tracker, append a cover letter draft to the report file under `## Cover Letter Draft`. This is a starting point — not the final letter. The user completes it via `/career-ops cover {slug}`.
 
@@ -214,7 +256,7 @@ Apply all language rules from `_shared.md` Professional Writing section to the d
 
 ## Post-evaluation
 
-**ALWAYS** after generating blocks A-G:
+**ALWAYS** after generating blocks A-H (or A-G + H when not GCC):
 
 ### 1. Save report .md
 
@@ -234,6 +276,8 @@ Save full evaluation in `reports/{###}-{company-slug}-{YYYY-MM-DD}.md`.
 **Archetype:** {detected}
 **Score:** {X/10}
 **Legitimacy:** {High Confidence | Proceed with Caution | Suspicious}
+**GCC Signals:** {X/5 — include only when company is GCC; omit otherwise}
+**High-Value GCC:** {Yes | No | N/A}
 **PDF:** {path or pending}
 
 ---
@@ -259,7 +303,10 @@ Save full evaluation in `reports/{###}-{company-slug}-{YYYY-MM-DD}.md`.
 ## G) Posting Legitimacy
 (full content of block G)
 
-## H) Draft Application Answers
+## H) GCC Signal Score
+(full content of block H — or N/A if not GCC)
+
+## I) Draft Application Answers
 (only if score >= 4.5 — draft answers for the application form)
 
 ---
