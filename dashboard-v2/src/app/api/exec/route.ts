@@ -483,7 +483,8 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
 
       send({ type: 'done', code: 0 });
     } else {
-      send({ type: 'stderr', content: `[ERR] ✗ Could not start the task. Please check your settings or try again shortly.\n` });
+      const errText = await res.text().catch(() => '');
+      send({ type: 'stderr', content: `[ERR] ✗ GitHub API returned HTTP ${res.status}: ${errText || 'No error details provided.'}\n` });
       send({ type: 'done', code: 1 });
     }
   } catch (err: any) {
