@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
       "../gcc-classify.mjs",
       "../gcc-signal-engine.mjs",
       "../jd-keyword-align.mjs",
+      "../profile-hydrate.mjs",
       "../resume-quality.mjs",
       "../templates/gcc-companies.yml",
       "./portals/**/*",

@@ -16,6 +16,7 @@ import {
 } from './jd-keyword-align.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
 import { classifyCompany } from './gcc-classify.mjs';
+import { hydrateResumeProfile } from './profile-hydrate.mjs';
 
 let hf = null;
 let hfUnavailable = false;
@@ -180,6 +181,17 @@ async function uploadToR2({ key, body, contentType }) {
 
 // ── UTILITIES ──
 
+function stripBulletMarkdown(text) {
+  return String(text || '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/^[•\-*▸]\s*/, '')
+    .trim();
+}
+
+function formatBulletHtml(text) {
+  return escapeHtml(stripBulletMarkdown(text));
+}
+
 function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
   if (!Array.isArray(exp) || exp.length === 0) return '';
 
@@ -326,7 +338,7 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
         <div class="job-dates">${dates}</div>
       </div>
       <ul>
-        ${bullets.map(b => `<li>${b}</li>`).join('')}
+        ${bullets.map(b => `<li>${formatBulletHtml(b)}</li>`).join('')}
       </ul>
     </div>
   `}).join('');
@@ -1568,7 +1580,22 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     const [profileRow] = await sql`SELECT resume_context, hf_token FROM user_profiles WHERE user_id = ${userId}`;
     if (!profileRow) throw new Error(`Profile not configured for user ${userId}. Please setup via the Dashboard Settings.`);
 
-    const profile = profileRow.resume_context;
+    let profile = profileRow.resume_context;
+    const { profile: hydratedProfile, hydrated, sources } = hydrateResumeProfile(profile);
+    if (hydrated) {
+      console.log(`💧 Hydrated profile from: ${sources.join(', ')}`);
+      profile = hydratedProfile;
+      try {
+        await sql`
+          UPDATE user_profiles
+          SET resume_context = ${JSON.stringify(hydratedProfile)}::jsonb, updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = ${userId}
+        `;
+        console.log('💾 Synced hydrated experience/education back to database.');
+      } catch (syncErr) {
+        console.warn(`⚠ Could not persist hydrated profile: ${syncErr.message}`);
+      }
+    }
 
     // Debug profile data
     console.log(`[DEBUG] Profile loaded: hasExperience=${Array.isArray(profile?.experience)}, expCount=${profile?.experience?.length || 0}, hasEducation=${Array.isArray(profile?.education)}, eduCount=${profile?.education?.length || 0}`);

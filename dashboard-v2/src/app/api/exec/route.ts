@@ -189,9 +189,30 @@ export async function GET(req: NextRequest) {
         const resolveExistingPath = (candidates: string[]) =>
           candidates.find((candidate) => fs.existsSync(candidate));
 
-        // Write the profile.yml for the script to read
-        const profileYaml = yaml.dump(profile.resume_context);
-        fs.writeFileSync(path.join(configDir, 'profile.yml'), profileYaml);
+        // Write the profile.yml for the script to read (merge runtime seed if DB profile is thin)
+        let resumeContext = { ...(profile.resume_context || {}) } as Record<string, unknown>;
+        const profileSeedPath = resolveExistingPath([
+          path.join(process.cwd(), 'runtime-assets', 'config', 'profile.yml'),
+          path.join(process.cwd(), '..', 'config', 'profile.yml'),
+        ]);
+        if (profileSeedPath) {
+          const seed = yaml.load(fs.readFileSync(profileSeedPath, 'utf8')) as Record<string, unknown>;
+          const seedExp = Array.isArray(seed?.experience) ? seed.experience : [];
+          const seedEdu = Array.isArray(seed?.education) ? seed.education : [];
+          const ctxExp = Array.isArray(resumeContext.experience) ? resumeContext.experience : [];
+          const ctxEdu = Array.isArray(resumeContext.education) ? resumeContext.education : [];
+          if (seedExp.length > 0 && ctxExp.length === 0) resumeContext.experience = seedExp;
+          if (seedEdu.length > 0 && ctxEdu.length === 0) resumeContext.education = seedEdu;
+        }
+        fs.writeFileSync(path.join(configDir, 'profile.yml'), yaml.dump(resumeContext));
+
+        const cvSeedPath = resolveExistingPath([
+          path.join(process.cwd(), 'runtime-assets', 'cv.md'),
+          path.join(process.cwd(), '..', 'cv.md'),
+        ]);
+        if (cvSeedPath) {
+          fs.copyFileSync(cvSeedPath, path.join(userTmpDir, 'cv.md'));
+        }
         
         // Write keywords to a separate file if needed by scripts
         fs.writeFileSync(path.join(configDir, 'keywords.json'), JSON.stringify(profile.targeting_keywords));
@@ -645,7 +666,26 @@ export async function POST(req: NextRequest) {
         SELECT resume_context, targeting_keywords FROM user_profiles WHERE user_id = ${userId}
       `;
       const profile = profileRows[0] || { resume_context: {}, targeting_keywords: { positive: [], negative: [] } };
-      fs.writeFileSync(path.join(configDir, 'profile.yml'), yaml.dump(profile.resume_context));
+      let resumeContext = { ...(profile.resume_context || {}) } as Record<string, unknown>;
+      const profileSeedPath = [
+        path.join(process.cwd(), 'runtime-assets', 'config', 'profile.yml'),
+        path.join(process.cwd(), '..', 'config', 'profile.yml'),
+      ].find((p) => fs.existsSync(p));
+      if (profileSeedPath) {
+        const seed = yaml.load(fs.readFileSync(profileSeedPath, 'utf8')) as Record<string, unknown>;
+        const seedExp = Array.isArray(seed?.experience) ? seed.experience : [];
+        const seedEdu = Array.isArray(seed?.education) ? seed.education : [];
+        const ctxExp = Array.isArray(resumeContext.experience) ? resumeContext.experience : [];
+        const ctxEdu = Array.isArray(resumeContext.education) ? resumeContext.education : [];
+        if (seedExp.length > 0 && ctxExp.length === 0) resumeContext.experience = seedExp;
+        if (seedEdu.length > 0 && ctxEdu.length === 0) resumeContext.education = seedEdu;
+      }
+      fs.writeFileSync(path.join(configDir, 'profile.yml'), yaml.dump(resumeContext));
+      const cvSeedPath = [
+        path.join(process.cwd(), 'runtime-assets', 'cv.md'),
+        path.join(process.cwd(), '..', 'cv.md'),
+      ].find((p) => fs.existsSync(p));
+      if (cvSeedPath) fs.copyFileSync(cvSeedPath, path.join(userTmpDir, 'cv.md'));
       fs.writeFileSync(path.join(configDir, 'keywords.json'), JSON.stringify(profile.targeting_keywords));
 
       // Resolve portals

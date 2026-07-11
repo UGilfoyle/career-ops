@@ -28,5 +28,7 @@ copyDirIfExists(
   path.join(repoRoot, 'templates'),
   path.join(runtimeRoot, 'templates')
 );
+copyFileIfExists(path.join(repoRoot, 'config', 'profile.yml'), path.join(runtimeRoot, 'config', 'profile.yml'));
+copyFileIfExists(path.join(repoRoot, 'cv.md'), path.join(runtimeRoot, 'cv.md'));
 
 console.log('Prepared runtime-assets bundle for serverless execution.');
