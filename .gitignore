@@ -20,6 +20,8 @@ batch/tracker-additions/**/*.tsv
 jds/*
 !jds/.gitkeep
 # User config and customization (never auto-updated)
+config/profile.yml
+cv.md
 portals.yml
 modes/_profile.md
 .update-dismissed
