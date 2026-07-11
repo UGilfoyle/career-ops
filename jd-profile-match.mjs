@@ -159,18 +159,13 @@ function enhanceBulletHonest(bullet, honestKeywords) {
   if (!text) return text;
 
   const lower = text.toLowerCase();
-  const present = honestKeywords.filter((kw) => lower.includes(normalizeKey(kw)));
 
-  // Prefer RESTful API phrasing when APIs are mentioned
-  if (/api/i.test(text) && !/restful/i.test(lower)) {
+  // Prefer RESTful API phrasing when APIs are mentioned (avoid "REST RESTful")
+  if (/\bapis?\b/i.test(text) && !/restful/i.test(lower)) {
     text = text.replace(/\bAPIs?\b/i, 'RESTful APIs');
   }
   if (/microservice/i.test(lower) && !/event-driven/i.test(lower) && /event|stream|queue/i.test(lower)) {
     text = text.replace(/\.$/, '') + ' in an event-driven architecture.';
-  }
-  if (present.length === 0 && honestKeywords.length > 0) {
-    // Don't inject tech not in bullet — return as-is
-    return text.endsWith('.') ? text : `${text}.`;
   }
   return text.endsWith('.') ? text : `${text}.`;
 }
@@ -179,19 +174,20 @@ function enhanceBulletHonest(bullet, honestKeywords) {
  * Rebuild per-role tailored bullets from profile source, ranked by JD relevance.
  * Uses only facts from profile bullets — never invents stacks.
  */
-export function reframeExperienceFromProfile(profileExperience, jdText, honestKeywords, rolesCount = 4) {
+export function reframeExperienceFromProfile(profileExperience, jdText, honestKeywords, rolesCount = 7) {
   const exp = Array.isArray(profileExperience) ? profileExperience : [];
   const count = Math.min(rolesCount, exp.length);
   const out = {};
 
   for (let i = 0; i < count; i++) {
+    const bulletCap = i < 3 ? 5 : i < 5 ? 3 : 2;
     const bullets = (exp[i]?.bullets || []).map(stripMarkdown).filter((b) => b.length > 20);
     const ranked = [...bullets].sort(
       (a, b) => scoreBulletForJd(b, jdText, honestKeywords) - scoreBulletForJd(a, jdText, honestKeywords)
     );
-    const top = ranked.slice(0, 4);
+    const top = ranked.slice(0, bulletCap);
     out[String(i)] = top.map((b) => enhanceBulletHonest(b, honestKeywords));
-    while (out[String(i)].length < 4 && ranked.length > 0) {
+    while (out[String(i)].length < bulletCap && ranked.length > 0) {
       const next = ranked[out[String(i)].length % ranked.length];
       if (!out[String(i)].includes(next)) out[String(i)].push(enhanceBulletHonest(next, honestKeywords));
       else break;

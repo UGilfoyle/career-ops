@@ -202,8 +202,11 @@ function formatBulletHtml(text) {
 function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
   if (!Array.isArray(exp) || exp.length === 0) return '';
 
-  // Limit bullets per job based on page count
-  const maxBulletsPerJob = maxPages >= 3 ? 6 : maxPages >= 2 ? 4 : 3;
+  const bulletsBudgetForRole = (roleIndex) => {
+    if (maxPages >= 3) return roleIndex < 3 ? 6 : roleIndex < 5 ? 4 : 3;
+    if (maxPages >= 2) return roleIndex < 3 ? 5 : roleIndex < 5 ? 3 : 2;
+    return roleIndex < 2 ? 4 : 3;
+  };
 
   // tailoredBullets can be:
   //   (a) a flat array of strings → legacy single-role mode (applied to most-relevant role)
@@ -279,8 +282,8 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       console.log(`[DEBUG] Applying ${roleBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
     }
     const bullets = roleBullets
-      ? roleBullets.slice(0, maxBulletsPerJob)
-      : (job.bullets || []).slice(0, maxBulletsPerJob);
+      ? roleBullets.slice(0, bulletsBudgetForRole(idx))
+      : (job.bullets || []).slice(0, bulletsBudgetForRole(idx));
 
     let role = (job.role || '').trim();
     let company = (job.company || '').trim();
@@ -361,6 +364,15 @@ function renderProjects(projects) {
       <span style="font-weight: bold;">${p.name}:</span> ${p.hero_metric}
     </div>
   `).join('');
+}
+
+function renderAchievements(proofPoints) {
+  if (!Array.isArray(proofPoints) || proofPoints.length === 0) return '';
+  return `<ul>${proofPoints.map((p) => {
+    const name = escapeHtml(p?.name || 'Achievement');
+    const metric = escapeHtml(p?.hero_metric || '');
+    return `<li><strong>${name}:</strong> ${metric}</li>`;
+  }).join('')}</ul>`;
 }
 
 function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
@@ -467,42 +479,62 @@ function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
   return html;
 }
 
-// Calculate years of experience from experience array
+// Career span from earliest role start → latest end (or present)
+function parseJobMonthIndex(periodStr, which = 'start') {
+  const monthNames = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  };
+  const parts = String(periodStr || '').split(/[-–—]/);
+  const target = which === 'start' ? parts[0] : (parts[1] || parts[0]);
+  const clean = (target || '').trim().toLowerCase();
+  if (/present|current|now/.test(clean)) {
+    const now = new Date();
+    return now.getFullYear() * 12 + now.getMonth();
+  }
+  const m = clean.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{4})\b/);
+  if (m) return parseInt(m[2], 10) * 12 + monthNames[m[1].substring(0, 3)];
+  const y = clean.match(/\b(19|20)\d{2}\b/);
+  if (y) return parseInt(y[0], 10) * 12;
+  return null;
+}
+
 function calculateYearsOfExperience(experience) {
   if (!Array.isArray(experience) || experience.length === 0) return 0;
 
-  let totalYears = 0;
-  const currentYear = new Date().getFullYear();
+  let earliest = Infinity;
+  let latest = 0;
+  const nowMonths = new Date().getFullYear() * 12 + new Date().getMonth();
 
   for (const job of experience) {
-    if (!job.period) continue;
-    const period = job.period;
-
-    // Parse various date formats
-    // Format: "2020–Present", "2018-2022", "Jan 2020 - Dec 2022"
-    const parts = period.split(/[-–—]/);
-    if (parts.length === 2) {
-      const startStr = parts[0].trim();
-      const endStr = parts[1].trim();
-
-      // Extract year from start
-      const startMatch = startStr.match(/\d{4}/);
-      const startYear = startMatch ? parseInt(startMatch[0]) : currentYear;
-
-      // Extract year from end
-      let endYear;
-      if (/present|current|now/i.test(endStr)) {
-        endYear = currentYear;
-      } else {
-        const endMatch = endStr.match(/\d{4}/);
-        endYear = endMatch ? parseInt(endMatch[0]) : currentYear;
-      }
-
-      totalYears += Math.max(0, endYear - startYear);
-    }
+    const start = parseJobMonthIndex(job.period, 'start');
+    const end = parseJobMonthIndex(job.period, 'end');
+    if (start != null) earliest = Math.min(earliest, start);
+    if (end != null) latest = Math.max(latest, end);
+    else if (start != null) latest = Math.max(latest, nowMonths);
   }
 
-  return totalYears;
+  if (!Number.isFinite(earliest) || earliest === Infinity) return 0;
+  const months = Math.max(0, latest - earliest);
+  return Math.max(1, Math.round(months / 12));
+}
+
+function narrativeYearsHint(profile) {
+  const story = `${profile?.narrative?.exit_story || ''} ${profile?.narrative?.headline || ''}`;
+  const m = story.match(/(\d+)\+?\s*years/i);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function effectiveYearsOfExperience(profile) {
+  const span = calculateYearsOfExperience(profile?.experience || []);
+  return Math.max(span, narrativeYearsHint(profile));
+}
+
+function resolveResumePageBudget(yearsExp, roleCount) {
+  if (yearsExp >= 10 || roleCount >= 8) return 3;
+  if (yearsExp >= 6 || roleCount >= 5) return 2;
+  if (yearsExp >= 4 || roleCount >= 4) return 2;
+  return 1;
 }
 
 function buildExperienceDigestForPrompt(experience, maxRoles = 6) {
@@ -1155,7 +1187,7 @@ async function tailorPackage(jd, profile, companyName, passedCompanyType) {
   } else if (hfTokenInUse) {
     console.log(`🤖 Using direct Hugging Face API with ${HF_MODEL}...`);
   } else {
-    const y = calculateYearsOfExperience(profile?.experience);
+    const y = effectiveYearsOfExperience(profile);
     const fallbackResume = {
       summary: buildHonestSummary(profile?.narrative?.exit_story || '', y, honestKeywords, jd),
       core_competencies: buildHonestCompetencies(honestKeywords, profile, jd),
@@ -1163,7 +1195,7 @@ async function tailorPackage(jd, profile, companyName, passedCompanyType) {
         profile?.experience || [],
         jd,
         honestKeywords,
-        Math.min(4, (profile?.experience || []).length)
+        Math.min(7, (profile?.experience || []).length)
       ),
     };
     const { resume: aligned } = alignResumeToJd(fallbackResume, honestKeywords, profile?.experience || []);
@@ -1178,7 +1210,7 @@ async function tailorPackage(jd, profile, companyName, passedCompanyType) {
     };
   }
 
-  const yearsExp = calculateYearsOfExperience(profile?.experience);
+  const yearsExp = effectiveYearsOfExperience(profile);
   const experienceDigest = buildExperienceDigestForPrompt(profile?.experience);
   const candidateName = profile?.candidate?.full_name || '';
   const candidateEmail = profile?.candidate?.email || '';
@@ -1196,7 +1228,7 @@ Superpowers / keywords: ${(profile?.narrative?.superpowers || []).join(', ')}
 Recent roles — fact base for what you worked on (paraphrase; do not fabricate employers or metrics):
 ${experienceDigest}`;
   // Determine how many roles to tailor (top 4 most relevant to cover 2022-2026)
-  const rolesToTailor = Math.min(4, (profile?.experience || []).length);
+  const rolesToTailor = Math.min(7, (profile?.experience || []).length);
   const roleDigest = (profile?.experience || []).slice(0, rolesToTailor).map((e, i) => {
     const role = e?.role || e?.title || 'Role';
     const company = e?.company || 'Company';
@@ -1417,7 +1449,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     throw lastError || new Error("Failed to generate tailored CV from all providers.");
   }
 
-  const y = calculateYearsOfExperience(profile?.experience);
+    const y = effectiveYearsOfExperience(profile);
   if (data?.resume?.summary) {
     data.resume.summary = normalizeResumeSummaryPlain(data.resume.summary, y);
   }
@@ -1458,14 +1490,14 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     data.ats_content_score = stats.atsContentScore ?? null;
 
     // Honest JD reframe: bullets from profile facts, ranked by JD relevance (no fabrication)
-    const y = calculateYearsOfExperience(profile?.experience);
+    const y = effectiveYearsOfExperience(profile);
     data.resume.summary = buildHonestSummary(data.resume.summary, y, honestKeywords, jd);
     data.resume.core_competencies = buildHonestCompetencies(honestKeywords, profile, jd);
     data.resume.experience = reframeExperienceFromProfile(
       profile?.experience || [],
       jd,
       honestKeywords,
-      Math.min(4, (profile?.experience || []).length)
+      Math.min(7, (profile?.experience || []).length)
     );
 
     if (honestKeywords.length > 0) {
@@ -1666,7 +1698,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     }
 
     // Calculate Years of Experience
-    const yearsExp = calculateYearsOfExperience(profile.experience);
+    const yearsExp = effectiveYearsOfExperience(profile);
     console.log(`📊 Years of Experience: ${yearsExp}`);
 
     // Warn if no experience data
@@ -1677,10 +1709,9 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       console.warn('⚠ No education data in profile. Resume will be incomplete. Please update your profile via Dashboard Settings.');
     }
 
-    // Determine resume length based on experience
-    // 0-5 years: 1 page, 6-11 years: 2 pages, 12-20 years: up to 4 pages
-    const maxPages = yearsExp <= 5 ? 1 : yearsExp <= 11 ? 2 : Math.min(4, Math.ceil(yearsExp / 5));
-    console.log(`📄 Resume length: up to ${maxPages} page${maxPages > 1 ? 's' : ''}`);
+    const roleCount = (profile.experience || []).length;
+    const maxPages = resolveResumePageBudget(yearsExp, roleCount);
+    console.log(`📄 Resume length: up to ${maxPages} page${maxPages > 1 ? 's' : ''} (${roleCount} roles, ${yearsExp}+ years)`);
 
     // Prepare common replacements
     const c = profile.candidate;
@@ -1713,8 +1744,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     const hasExperience = Array.isArray(experienceToShow) && experienceToShow.length > 0;
     const hasEducation = Array.isArray(profile.education) && profile.education.length > 0;
 
-    // Determine if projects section should show
-    const hasProjects = maxPages >= 2 && profile.narrative?.proof_points && profile.narrative.proof_points.length > 0;
+    const hasAchievements = Array.isArray(profile.narrative?.proof_points) && profile.narrative.proof_points.length > 0;
 
     const yearsInline = yearsExp > 0 ? ` • ${yearsExp}+ years` : '';
 
@@ -1726,6 +1756,8 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       SUMMARY_TEXT: formatResumeSummaryHtml(tailoring?.summary, yearsExp),
       EXPERIENCE: hasExperience ? renderExperience(experienceToShow, tailoring.experience, jdText, maxPages) : '',
       EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
+      ACHIEVEMENTS: hasAchievements ? renderAchievements(profile.narrative.proof_points) : '',
+      ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',
       EDUCATION: hasEducation ? renderEducation(profile.education) : '',
       EDUCATION_DISPLAY: hasEducation ? 'block' : 'none',
       SKILLS_LINES: skillsLines,
