@@ -35,10 +35,39 @@ const STOPWORDS = new Set([
   'including', 'within', 'across', 'using', 'other', 'well', 'also', 'able', 'both', 'each',
   'job', 'title', 'company', 'description', 'location', 'department',
   'requirements', 'qualifications', 'responsibilities', 'skills',
+  'build', 'own', 'design', 'develop', 'implement', 'support', 'ensure', 'drive',
 ]);
 
 function normalizeKeyword(kw) {
   return String(kw || '').trim().replace(/\s+/g, ' ');
+}
+
+function escapeRe(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function findKnownTechInText(text) {
+  const found = [];
+  const occupied = [];
+  const sorted = [...KNOWN_TECH].sort((a, b) => b.length - a.length);
+
+  for (const tech of sorted) {
+    const pattern = tech.includes(' ') || tech.includes('/')
+      ? escapeRe(tech)
+      : `\\b${escapeRe(tech)}\\b`;
+    const re = new RegExp(pattern, 'gi');
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const start = m.index;
+      const end = start + m[0].length;
+      const overlaps = occupied.some(([s, e]) => start < e && end > s);
+      if (!overlaps) {
+        found.push(m[0]);
+        occupied.push([start, end]);
+      }
+    }
+  }
+  return found;
 }
 
 function uniqueCasePreserved(items) {
@@ -62,18 +91,7 @@ export function extractJdKeywords(jdText, limit = 20) {
   if (!jdText || String(jdText).length < 30) return [];
 
   const text = String(jdText);
-  const lower = text.toLowerCase();
-  const found = [];
-
-  // 1. Known tech stacks (exact JD terminology preserved)
-  for (const tech of KNOWN_TECH) {
-    if (lower.includes(tech.toLowerCase())) {
-      // Prefer exact casing from JD when possible
-      const re = new RegExp(tech.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-      const m = text.match(re);
-      found.push(m ? m[0] : tech);
-    }
-  }
+  const found = [...findKnownTechInText(text)];
 
   // 2. Bullet lines and requirement-like phrases
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
@@ -83,11 +101,8 @@ export function extractJdKeywords(jdText, limit = 20) {
       || /^\d+\.\s/.test(line);
     if (!isReqLine) continue;
 
-    const techInLine = KNOWN_TECH.filter((t) => line.toLowerCase().includes(t.toLowerCase()));
-    for (const t of techInLine) {
-      const re = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-      const m = line.match(re);
-      found.push(m ? m[0] : t);
+    for (const t of findKnownTechInText(line)) {
+      found.push(t);
     }
 
     // Capitalized multi-word skills (e.g. "Platform Engineering")
@@ -100,6 +115,7 @@ export function extractJdKeywords(jdText, limit = 20) {
   }
 
   // 3. Frequent meaningful tokens (4+ chars) in JD
+  const lower = text.toLowerCase();
   const freq = {};
   for (const m of lower.matchAll(/\b[a-z][a-z0-9+#.]{3,}\b/g)) {
     const w = m[0];
@@ -187,7 +203,7 @@ function weaveKeywordIntoBullet(bullet, keyword) {
   return `${b.replace(/\.$/, '')}, applying ${kw} in production.`;
 }
 
-function weaveKeywordsIntoSummary(summary, keywords, minCount = 3) {
+function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   let text = String(summary || '').trim();
   if (!text) return text;
   const lower = text.toLowerCase();
@@ -197,7 +213,7 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 3) {
   const lines = text.split('\n').filter(Boolean);
   if (lines.length === 0) lines.push(text);
 
-  const inject = toAdd.slice(0, 3).join(', ');
+  const inject = toAdd.slice(0, 5).join(', ');
   if (lines[0].length < 120) {
     lines[0] = `${lines[0].replace(/\.$/, '')} — ${inject}.`;
   } else {
