@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
       "./templates/**/*",
       "../gcc-classify.mjs",
       "../gcc-signal-engine.mjs",
+      "../jd-keyword-align.mjs",
+      "../resume-quality.mjs",
       "../templates/gcc-companies.yml",
       "./portals/**/*",
       "./runtime-assets/**/*",

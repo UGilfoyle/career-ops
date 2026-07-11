@@ -7,6 +7,13 @@ import { pathToFileURL } from 'url';
 import sql from './db/client.mjs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { polishTailoredResume, auditResumeQuality } from '../../resume-quality.mjs';
+import {
+  extractJdKeywords,
+  measureJdAlignment,
+  alignResumeToJd,
+  formatJdKeywordBlock,
+  ensureAllRolesTailored,
+} from '../../jd-keyword-align.mjs';
 import { buildApplicationDocumentPaths } from '../../document-filename.mjs';
 import { classifyCompany } from '../../gcc-classify.mjs';
 
@@ -538,8 +545,22 @@ function formatResumeSummaryHtml(rawSummary, yearsExp) {
  * This is NOT the same as third-party checkers (parse rate, grammar, quantified impact).
  */
 function calculateATSScore(profile, jdText, tailoring) {
-  if (!jdText || !profile) {
-    return { score: 0, matched: 0, total: 0, totalMatched: 0, matchedSample: [] };
+  if (!jdText || !tailoring) {
+    return { score: 0, matched: 0, total: 0, totalMatched: 0, matchedSample: [], missing: [] };
+  }
+
+  const jdKeywords = extractJdKeywords(jdText, 25);
+  if (jdKeywords.length > 0) {
+    const alignment = measureJdAlignment(tailoring, jdKeywords);
+    return {
+      score: alignment.score,
+      matched: alignment.matched.length,
+      total: jdKeywords.length,
+      totalMatched: alignment.matched.length,
+      matchedSample: alignment.matched.slice(0, 10),
+      missing: alignment.missing,
+      jdKeywords,
+    };
   }
 
   const jdLower = String(jdText).toLowerCase();
@@ -998,6 +1019,32 @@ async function scrapeJD(url) {
   }
 }
 
+async function resolveJdText(entry) {
+  let jdText = String(entry?.jd_text || '').trim();
+  if (jdText.length >= 200) {
+    console.log(`📄 Using stored JD text from database (${jdText.length} chars).`);
+    return jdText;
+  }
+
+  try {
+    const scraped = await scrapeJD(entry.url);
+    if (scraped && scraped.length > jdText.length) {
+      return scraped;
+    }
+    if (jdText.length > 0) {
+      console.warn(`⚠️ JD scrape returned limited content; using stored partial JD (${jdText.length} chars).`);
+      return jdText;
+    }
+    return scraped || '';
+  } catch (err) {
+    if (jdText.length > 0) {
+      console.warn(`⚠️ JD scrape failed (${err.message}); using stored partial JD (${jdText.length} chars).`);
+      return jdText;
+    }
+    throw err;
+  }
+}
+
 function canonicalizeUrl(value) {
   if (!value) return '';
   const raw = String(value).trim();
@@ -1072,6 +1119,7 @@ function coverLetterBodyToHtml(text) {
 }
 
 async function tailorPackage(jd, profile, companyName, passedCompanyType) {
+  const jdKeywords = extractJdKeywords(jd, 20);
   const hfClient = await getHfClient();
   if (hfClient) {
     console.log(`🤖 Generating tailored package with ${HF_MODEL}...`);
@@ -1079,37 +1127,36 @@ async function tailorPackage(jd, profile, companyName, passedCompanyType) {
     console.log(`🤖 Using direct Hugging Face API with ${HF_MODEL}...`);
   } else {
     const y = calculateYearsOfExperience(profile?.experience);
-    // Extract tech stacks from JD for the fallback (no-AI) path
-    const jdLower = String(jd || '').toLowerCase();
-    const knownTechs = [
-      'JavaScript', 'TypeScript', 'Python', 'Java', 'Go', 'Rust', 'C#', '.NET', 'Ruby', 'PHP', 'Kotlin', 'Swift', 'Scala',
-      'React', 'Angular', 'Vue.js', 'Next.js', 'NestJS', 'Express', 'FastAPI', 'Django', 'Spring Boot', 'Node.js',
-      'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'DynamoDB', 'Elasticsearch', 'Aurora',
-      'AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD',
-      'ECS', 'Lambda', 'S3', 'EC2', 'CloudFormation', 'IAM', 'VPC', 'SQS', 'SNS',
-      'Kafka', 'RabbitMQ', 'GraphQL', 'REST API', 'gRPC',
-      'Jenkins', 'GitHub Actions', 'GitLab CI', 'Prometheus', 'Grafana', 'Datadog',
-      'Jest', 'Cypress', 'Playwright', 'Webpack', 'Vite',
-      'Git', 'Jira', 'Agile', 'Scrum',
-    ];
-    const jdTechExtract = knownTechs.filter(t => jdLower.includes(t.toLowerCase()));
     const fallbackCompetencies = [
-      ...jdTechExtract.slice(0, 8),
-      ...(profile?.narrative?.superpowers || []).slice(0, 5),
+      ...jdKeywords.slice(0, 8),
+      ...(profile?.narrative?.superpowers || []).slice(0, 4),
     ].slice(0, 12);
+    const rolesToFill = Math.min(4, (profile?.experience || []).length);
+    const experience = {};
+    for (let i = 0; i < rolesToFill; i++) {
+      const src = (profile.experience[i]?.bullets || []).slice(0, 4);
+      experience[String(i)] = src.map((b, bi) => {
+        const kw = jdKeywords[bi % Math.max(jdKeywords.length, 1)] || 'production systems';
+        return `${String(b).replace(/\.$/, '')}, applying ${kw} in production.`;
+      });
+    }
+    const fallbackResume = {
+      summary: normalizeResumeSummaryPlain(
+        profile?.narrative?.exit_story ||
+          `Engineer with ${y || 'several'}+ years building production systems and APIs.`,
+        y
+      ),
+      core_competencies: fallbackCompetencies,
+      experience,
+    };
+    const { resume: aligned } = alignResumeToJd(fallbackResume, jdKeywords, profile?.experience || []);
+    ensureAllRolesTailored(aligned, profile?.experience, jdKeywords);
     return {
-      resume: {
-        summary: normalizeResumeSummaryPlain(
-          profile?.narrative?.exit_story ||
-            `Engineer with ${y || 'several'}+ years building production systems and APIs.`,
-          y
-        ),
-        core_competencies: fallbackCompetencies,
-        experience: (profile?.experience?.[0]?.bullets || []).slice(0, 3),
-      },
+      resume: aligned,
       cover_letter: (() => {
-        return `I am writing to express my interest in opportunities with ${companyName} that align with the technical requirements described in the posting. The role emphasizes delivery in production environments; my background includes building and operating backend systems with a focus on reliability and measurable performance.\n\nMy recent work aligns with several themes in the job description, including ${(profile?.narrative?.superpowers || []).slice(0, 3).join(', ') || 'the stacks and outcomes summarized in the profile context below'}. I am prepared to contribute on day one and to collaborate closely with engineering and operations partners.\n\nI would welcome the opportunity to discuss fit and next steps.`;
-      })()
+        const jdHook = jdKeywords.slice(0, 3).join(', ') || 'the technical requirements described in the posting';
+        return `I am writing to express my interest in opportunities with ${companyName} that align with the technical requirements described in the posting. The role emphasizes delivery in production environments; my background includes building and operating backend systems with a focus on reliability and measurable performance.\n\nMy recent work aligns with several themes in the job description, including ${jdHook}. I am prepared to contribute on day one and to collaborate closely with engineering and operations partners.\n\nI would welcome the opportunity to discuss fit and next steps.`;
+      })(),
     };
   }
 
@@ -1210,6 +1257,9 @@ ${roleDigest}
    - Para 1 (2 sentences): Interest at ${companyName}; reference a concrete JD requirement
    - Para 2 (2-3 sentences): Map experience to JD requirements with tools and outcomes
    - Para 3 (1-2 sentences): Closing and next steps (e.g. welcoming an interview or expressing interest in next steps). Do NOT restate the candidate's name, email, phone number, location, or contact details in the body, as they are already printed in the header.
+
+MANDATORY JD KEYWORDS — use these EXACT terms verbatim in summary, core_competencies, and experience bullets (at least 70% must appear):
+${formatJdKeywordBlock(jdKeywords)}
 
 JD:
 ${jd.substring(0, 4000)}
@@ -1390,6 +1440,30 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       console.log(`📈 Quantified impact coverage: ${pct}% of bullets (${audit.totalBullets - audit.withoutMetrics}/${audit.totalBullets})`);
     }
     data.ats_content_score = stats.atsContentScore ?? null;
+
+    if (jdKeywords.length > 0) {
+      let { resume: aligned, stats: alignStats } = alignResumeToJd(
+        data.resume,
+        jdKeywords,
+        profile?.experience || []
+      );
+      ensureAllRolesTailored(aligned, profile?.experience, jdKeywords);
+      let alignment = measureJdAlignment(aligned, jdKeywords);
+      if (alignment.score < 65 && alignment.missing.length > 0) {
+        const retry = alignResumeToJd(aligned, alignment.missing, profile?.experience || []);
+        aligned = retry.resume;
+        ensureAllRolesTailored(aligned, profile?.experience, jdKeywords);
+        alignment = measureJdAlignment(aligned, jdKeywords);
+      }
+      data.resume = aligned;
+      data.jd_alignment_score = alignment.score;
+      console.log(
+        `🎯 JD keyword alignment: ${alignment.score}% (${alignment.matched.length}/${jdKeywords.length} keywords; +${alignStats.competenciesAdded} competencies, ${alignStats.bulletsAligned} bullets patched)`
+      );
+      if (alignment.missing.length > 0) {
+        console.warn(`⚠ Still missing JD terms: ${alignment.missing.slice(0, 8).join(', ')}`);
+      }
+    }
   }
 
   return data;
@@ -1408,7 +1482,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       entry.url = idOrUrl;
       try {
         const [jobRecord] = await sql`
-          SELECT id, user_id, url, company, title, company_type
+          SELECT id, user_id, url, company, title, company_type, jd_text
           FROM jobs
           WHERE url = ${idOrUrl} AND user_id = ${userId}
           LIMIT 1
@@ -1441,7 +1515,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
             const resolvedUrl = mapping[jobId].url;
             // Now lookup by URL
             const [jobRecord] = await sql`
-              SELECT id, user_id, url, company, title, company_type
+              SELECT id, user_id, url, company, title, company_type, jd_text
               FROM jobs
               WHERE url = ${resolvedUrl} AND user_id = ${userId}
               LIMIT 1
@@ -1463,7 +1537,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       if (!entry.url && jobId > 0 && jobId < 1000) {
         const offset = Math.max(0, jobId - 1);
         const [jobRecord] = await sql`
-          SELECT id, user_id, url, company, title, company_type
+          SELECT id, user_id, url, company, title, company_type, jd_text
           FROM jobs
           WHERE user_id = ${userId}
           ORDER BY (score IS NULL) ASC, score DESC, created_at DESC
@@ -1479,7 +1553,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       // If entry still empty (not resolved from map), try direct DB lookup by ID
       if (!entry.url) {
         const [jobRecord] = await sql`
-          SELECT id, user_id, url, company, title, company_type
+          SELECT id, user_id, url, company, title, company_type, jd_text
           FROM jobs
           WHERE id = ${jobId} AND user_id = ${userId}
         `;
@@ -1508,7 +1582,10 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     }
 
     console.log(`🎯 Target identified: ${entry.company}`);
-    const jdText = await scrapeJD(entry.url);
+    const jdText = await resolveJdText(entry);
+    if (!jdText || jdText.length < 100) {
+      console.warn(`⚠️ JD text is very short (${jdText?.length || 0} chars). Resume tailoring may be generic. Re-scan or paste JD into pipeline.`);
+    }
     const canonicalUrl = canonicalizeUrl(entry.url);
     const result = await tailorPackage(jdText, profile, entry.company, entry.company_type);
     const tailoring = result.resume;
@@ -1537,12 +1614,15 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     // Calculate ATS Score
     const atsScore = calculateATSScore(profile, jdText, tailoring);
     console.log(
-      `📊 ATS Score: ${atsScore.score}/100 (${atsScore.totalMatched}/${atsScore.total} resume lines share JD tokens)`
+      `📊 ATS Score: ${atsScore.score}/100 (${atsScore.totalMatched}/${atsScore.total} JD keywords matched in resume)`
     );
+    if (atsScore.missing?.length) {
+      console.warn(`⚠️  Missing JD keywords in resume: ${atsScore.missing.slice(0, 8).join(', ')}`);
+    }
     if (atsScore.totalMatched === 0) {
-      console.warn(`\n⚠️  WARNING: 0 resume lines matched the job description.`);
-      console.warn(`   This usually happens when the target site is a JavaScript-rendered SPA (like BambooHR or Greenhouse) and Playwright is unavailable in this runtime.`);
-      console.warn(`👉 To scrape dynamic content accurately and calculate a true ATS score, run with the --deep flag (e.g., tailor <id> --deep).\n`);
+      console.warn(`\n⚠️  WARNING: 0 JD keywords matched in tailored resume.`);
+      console.warn(`   JD may be empty or scrape failed (common on JS-rendered career pages without Playwright).`);
+      console.warn(`👉 Run with --deep for Playwright scrape, or ensure jd_text is stored on the job record.\n`);
     }
 
     // Calculate Years of Experience
