@@ -2685,22 +2685,22 @@ System Initialized — v2.0`}
                       <TagInput
                         label="Targeted Roles & Skills"
                         placeholder="Type a role or skill, press Enter..."
-                        tags={profileFormData.targeting_keywords.positive}
+                        tags={profileFormData.targeting_keywords?.positive || []}
                         inputValue={tagInputPositive}
                         onInputChange={setTagInputPositive}
-                        onAdd={(tag) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, positive: [...profileFormData.targeting_keywords.positive, tag]}})}
-                        onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, positive: profileFormData.targeting_keywords.positive.filter((_: string, idx: number) => idx !== i)}})}
+                        onAdd={(tag) => setProfileFormData({...profileFormData, targeting_keywords: { positive: [], negative: [], ...profileFormData.targeting_keywords, positive: [...(profileFormData.targeting_keywords?.positive || []), tag]}})}
+                        onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: { positive: [], negative: [], ...profileFormData.targeting_keywords, positive: (profileFormData.targeting_keywords?.positive || []).filter((_: string, idx: number) => idx !== i)}})}
                         color="emerald"
                       />
                       <div className="pt-6 border-t border-[#F5F5F0]">
                         <TagInput
                           label="Exclusion Keywords"
                           placeholder="Type a keyword to exclude, press Enter..."
-                          tags={profileFormData.targeting_keywords.negative}
+                          tags={profileFormData.targeting_keywords?.negative || []}
                           inputValue={tagInputNegative}
                           onInputChange={setTagInputNegative}
-                          onAdd={(tag) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, negative: [...profileFormData.targeting_keywords.negative, tag]}})}
-                          onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, negative: profileFormData.targeting_keywords.negative.filter((_: string, idx: number) => idx !== i)}})}
+                          onAdd={(tag) => setProfileFormData({...profileFormData, targeting_keywords: { positive: [], negative: [], ...profileFormData.targeting_keywords, negative: [...(profileFormData.targeting_keywords?.negative || []), tag]}})}
+                          onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: { positive: [], negative: [], ...profileFormData.targeting_keywords, negative: (profileFormData.targeting_keywords?.negative || []).filter((_: string, idx: number) => idx !== i)}})}
                           color="rose"
                         />
                       </div>
