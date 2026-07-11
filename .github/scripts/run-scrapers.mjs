@@ -140,16 +140,20 @@ async function main() {
       const uid = specificUserId || '19'; // Default user ID
       const keywords = p.target_roles?.primary || [];
       
+      const [existingRow] = await sql`SELECT resume_context FROM user_profiles WHERE user_id = ${uid}`;
+      const existingContext = existingRow?.resume_context || {};
+      const merged = { ...existingContext, ...p };
+
       await sql`
         INSERT INTO user_profiles (user_id, resume_context, targeting_keywords)
-        VALUES (${uid}, ${p}, ${keywords})
+        VALUES (${uid}, ${sql.json(merged)}, ${sql.json(keywords)})
         ON CONFLICT (user_id) 
         DO UPDATE SET 
-          resume_context = ${p},
-          targeting_keywords = ${keywords},
+          resume_context = EXCLUDED.resume_context,
+          targeting_keywords = EXCLUDED.targeting_keywords,
           updated_at = NOW()
       `;
-      console.log(`✅ Database profile synced successfully for user [${uid}].`);
+      console.log(`✅ Database profile synced and merged successfully for user [${uid}].`);
     } catch (syncErr) {
       console.warn("⚠ Could not auto-sync local profile.yml to database:", syncErr.message);
     }

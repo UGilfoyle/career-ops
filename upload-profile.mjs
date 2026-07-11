@@ -45,13 +45,17 @@ async function main() {
     
     const keywords = p.target_roles?.primary || [];
     
+    const [existingRow] = await sql`SELECT resume_context FROM user_profiles WHERE user_id = ${userId}`;
+    const existingContext = existingRow?.resume_context || {};
+    const merged = { ...existingContext, ...p };
+
     await sql`
       INSERT INTO user_profiles (user_id, resume_context, targeting_keywords)
-      VALUES (${userId}, ${p}, ${keywords})
+      VALUES (${userId}, ${sql.json(merged)}, ${sql.json(keywords)})
       ON CONFLICT (user_id) 
       DO UPDATE SET 
-        resume_context = ${p},
-        targeting_keywords = ${keywords},
+        resume_context = EXCLUDED.resume_context,
+        targeting_keywords = EXCLUDED.targeting_keywords,
         updated_at = NOW()
     `;
     
