@@ -36,10 +36,33 @@ export async function GET() {
     // Seed sensible defaults, especially for Akash's account, while preserving existing user data.
     if (!hasSearchPortals && userEmail === 'akash.k96.official@gmail.com') {
       resumeContext.search = { portals: DEFAULT_PORTALS };
+      if (!resumeContext.gcc_campaign) {
+        resumeContext.gcc_campaign = {
+          started_at: new Date().toISOString().slice(0, 10),
+          daily_log: {},
+          targets: [],
+        };
+      }
+      if (!baseProfile.targeting_keywords?.positive?.length) {
+        baseProfile.targeting_keywords = {
+          positive: [
+            'Global Capability Center', 'GCC', 'platform ownership', 'senior software engineer',
+            'data engineer', 'ML engineer', 'DevOps', 'SRE', 'product engineering',
+          ],
+          negative: ['bench', 'staff augmentation', 'body shopping', 'internship', '0-2 years'],
+        };
+      }
     }
+
+    const targetingKeywords = baseProfile.targeting_keywords || {};
+    const normalizedTargeting = {
+      positive: Array.isArray(targetingKeywords.positive) ? targetingKeywords.positive : [],
+      negative: Array.isArray(targetingKeywords.negative) ? targetingKeywords.negative : [],
+    };
 
     return NextResponse.json({
       ...baseProfile,
+      targeting_keywords: normalizedTargeting,
       resume_context: resumeContext,
       email: userEmail
     });

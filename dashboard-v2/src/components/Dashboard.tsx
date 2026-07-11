@@ -40,7 +40,8 @@ import {
   Sparkles,
   Files,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  Target
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -48,6 +49,7 @@ import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHea
 import ResumeStudioModal from './ResumeStudioModal';
 import ResumeStudioTeaser from './ResumeStudioTeaser';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
+import { GccCampaignPanel, defaultGccCampaign, type GccCampaign } from './GccCampaignPanel';
 
 /** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
 const SHOW_RESUME_MANAGER_NAV = false;
@@ -107,6 +109,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [clearPipelineScope, setClearPipelineScope] = useState<'all' | 'visible'>('all');
   const [clearPipelineLoading, setClearPipelineLoading] = useState(false);
   const [resumeStudioModalOpen, setResumeStudioModalOpen] = useState(false);
+  const [gccCampaign, setGccCampaign] = useState<GccCampaign>(defaultGccCampaign);
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
     {
       role: 'assistant',
@@ -535,7 +538,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'settings') {
+    if (activeTab === 'settings' || activeTab === 'gcc') {
       fetch('/api/settings')
         .then(res => res.json())
         .then(d => {
@@ -548,6 +551,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             search: d.resume_context?.search || { portals: ['linkedin', 'naukri', 'indeed', 'instahyre', 'flexiple', 'greenhouse', 'lever', 'japan-dev'] },
             github_settings: d.resume_context?.github_settings || { pat: '', repo: 'UGilfoyle/career-ops' }
           });
+          setGccCampaign(d.resume_context?.gcc_campaign || defaultGccCampaign());
           setAccountInfo(prev => ({ ...prev, email: d.email || '' }));
         });
     }
@@ -620,6 +624,39 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         setSaveStatus('error');
       }
     } catch (e) {
+      setSaveStatus('error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveGccCampaign = async () => {
+    setIsSaving(true);
+    setSaveStatus('saving');
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_context: {
+            candidate: profileFormData.candidate,
+            narrative: profileFormData.narrative,
+            experience: profileFormData.experience,
+            education: profileFormData.education,
+            search: profileFormData.search,
+            github_settings: profileFormData.github_settings,
+            gcc_campaign: gccCampaign,
+          },
+          targeting_keywords: profileFormData.targeting_keywords,
+        }),
+      });
+      if (res.ok) {
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      } else {
+        setSaveStatus('error');
+      }
+    } catch {
       setSaveStatus('error');
     } finally {
       setIsSaving(false);
@@ -1021,6 +1058,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('dashboard')} />
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('pipeline')} />
             <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('apps')} />
+            <NavItem id="nav-gcc" icon={<Target size={18}/>} label="GCC Campaign" active={activeTab === 'gcc'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('gcc')} />
             <NavItemSoon id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio' || resumeStudioModalOpen} collapsed={sidebarCollapsed} onClick={() => setResumeStudioModalOpen(true)} />
             <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('generated-docs')} />
             <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('terminal')} />
@@ -2135,6 +2173,16 @@ System Initialized — v2.0`}
             </motion.div>
           )}
 
+          {activeTab === 'gcc' && (
+            <GccCampaignPanel
+              campaign={gccCampaign}
+              onChange={setGccCampaign}
+              onSave={handleSaveGccCampaign}
+              isSaving={isSaving}
+              saveStatus={saveStatus}
+            />
+          )}
+
           {activeTab === 'settings' && (
             <motion.div key="settings" className="w-full max-w-5xl space-y-8">
                <PageSectionHeader
@@ -2685,22 +2733,22 @@ System Initialized — v2.0`}
                       <TagInput
                         label="Targeted Roles & Skills"
                         placeholder="Type a role or skill, press Enter..."
-                        tags={profileFormData.targeting_keywords?.positive || []}
+                        tags={profileFormData.targeting_keywords?.positive ?? []}
                         inputValue={tagInputPositive}
                         onInputChange={setTagInputPositive}
-                        onAdd={(tag) => setProfileFormData({...profileFormData, targeting_keywords: { positive: [], negative: [], ...profileFormData.targeting_keywords, positive: [...(profileFormData.targeting_keywords?.positive || []), tag]}})}
-                        onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: { positive: [], negative: [], ...profileFormData.targeting_keywords, positive: (profileFormData.targeting_keywords?.positive || []).filter((_: string, idx: number) => idx !== i)}})}
+                        onAdd={(tag) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, positive: [...(profileFormData.targeting_keywords?.positive ?? []), tag]}})}
+                        onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, positive: (profileFormData.targeting_keywords?.positive ?? []).filter((_: string, idx: number) => idx !== i)}})}
                         color="emerald"
                       />
-                      <div className="pt-6 border-t border-[#F5F5F0]">
+                      <div className="pt-6 border-t border-[#E5E5E0]">
                         <TagInput
                           label="Exclusion Keywords"
                           placeholder="Type a keyword to exclude, press Enter..."
-                          tags={profileFormData.targeting_keywords?.negative || []}
+                          tags={profileFormData.targeting_keywords?.negative ?? []}
                           inputValue={tagInputNegative}
                           onInputChange={setTagInputNegative}
-                          onAdd={(tag) => setProfileFormData({...profileFormData, targeting_keywords: { positive: [], negative: [], ...profileFormData.targeting_keywords, negative: [...(profileFormData.targeting_keywords?.negative || []), tag]}})}
-                          onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: { positive: [], negative: [], ...profileFormData.targeting_keywords, negative: (profileFormData.targeting_keywords?.negative || []).filter((_: string, idx: number) => idx !== i)}})}
+                          onAdd={(tag) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, negative: [...(profileFormData.targeting_keywords?.negative ?? []), tag]}})}
+                          onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, negative: (profileFormData.targeting_keywords?.negative ?? []).filter((_: string, idx: number) => idx !== i)}})}
                           color="rose"
                         />
                       </div>

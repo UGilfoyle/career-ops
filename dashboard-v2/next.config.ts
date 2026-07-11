@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     "/*": [
       "./scripts/**/*",
       "./templates/**/*",
+      "../gcc-classify.mjs",
+      "../templates/gcc-companies.yml",
       "./portals/**/*",
       "./runtime-assets/**/*",
       "./config/**/*",

@@ -8,6 +8,7 @@ import sql from './db/client.mjs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { polishTailoredResume, auditResumeQuality } from './resume-quality.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
+import { classifyCompany } from './gcc-classify.mjs';
 
 let hf = null;
 let hfUnavailable = false;
@@ -16,37 +17,6 @@ const HF_MODEL = process.env.HF_MODEL || 'MiniMaxAI/MiniMax-M2.7';
 const TARGET_MAP = 'data/current_eval.json';
 const TEMPLATE = 'templates/ats-template-professional.html';
 const require = createRequire(import.meta.url);
-
-const GCC_COMPANIES = new Set([
-  'jpmorgan', 'jpmorgan chase', 'goldman sachs', 'target', 'walmart', 'barclays',
-  'wells fargo', 'deutsche bank', 'servicenow', 'atlassian', 'stripe',
-  'american express', 'amex', 'visa', 'mastercard', 'morgan stanley', 'citi',
-  'citigroup', 'hsbc', 'ubs', 'credit suisse', 'google', 'microsoft', 'meta',
-  'amazon', 'apple', 'netflix', 'uber', 'airbnb', 'salesforce', 'cisco',
-  'intel', 'nvidia', 'amd', 'qualcomm', 'dell', 'hp', 'ibm', 'oracle',
-  'sap', 'adobe', 'vmware', 'intuit', 'paypal', 'ebay', 'expedia', 'booking.com'
-]);
-
-const IT_SERVICES = new Set([
-  'tcs', 'tata consultancy services', 'infosys', 'wipro', 'hcltech', 'hcl technologies',
-  'tech mahindra', 'cognizant', 'accenture', 'capgemini', 'atos', 'dxc', 'dxc technology',
-  'mphasis', 'ltimindtree', 'l&t', 'mindtree', 'hexaware', 'ust', 'ust global',
-  'persistent systems', 'coforge', 'birlasoft', 'virtusa', 'ey', 'deloitte', 'kpmg', 'pwc'
-]);
-
-function classifyCompany(companyName) {
-  if (!companyName) return 'Other';
-  const name = companyName.toLowerCase().trim();
-  if (GCC_COMPANIES.has(name)) return 'GCC';
-  if (IT_SERVICES.has(name)) return 'Services';
-  for (const gcc of GCC_COMPANIES) {
-    if (name.includes(gcc) || gcc.includes(name)) return 'GCC';
-  }
-  for (const svc of IT_SERVICES) {
-    if (name.includes(svc) || svc.includes(name)) return 'Services';
-  }
-  return 'Other';
-}
 
 function robustJsonParse(str) {
   try {
@@ -1176,7 +1146,8 @@ ${experienceDigest}`;
   1. Product ownership, high engineering standards, and long-term codebase ownership (avoid "client delivery" or "consultancy" framing).
   2. Direct alignment and collaboration with global stakeholders (e.g. US/EU product and engineering teams).
   3. Designing robust, highly scalable, and secure systems that directly solve global business objectives.
-  4. Technical leadership, mentoring team members, and taking accountability for end-to-end features.`;
+  4. Technical leadership, mentoring team members, and taking accountability for end-to-end features.
+  5. PAR bullet structure for every rewritten experience bullet: [Problem context]. [Action I took]. [Quantified result]. Example: "Payment failures caused revenue leakage. I redesigned retry logic and monitoring. Failure rate dropped 42%."`;
   } else if (companyType === 'Services') {
     companyTypeRule = `
 - IT Services / Consulting Adaptation: The target company is an IT services/consulting/outsourcing firm. Customize the summary, competencies, and experience bullets to emphasize:

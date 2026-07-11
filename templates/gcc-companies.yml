@@ -1,0 +1,152 @@
+# Global Capability Center (GCC) / captive employer name fragments.
+# Used by gcc-classify.mjs for resume tailoring and pipeline tagging.
+# Match is case-insensitive substring on normalized company name.
+
+gcc:
+  # Financial services
+  - jpmorgan
+  - jpmorgan chase
+  - goldman sachs
+  - morgan stanley
+  - barclays
+  - wells fargo
+  - deutsche bank
+  - citi
+  - citigroup
+  - hsbc
+  - ubs
+  - credit suisse
+  - standard chartered
+  - american express
+  - amex
+  - visa
+  - mastercard
+  - bank of america
+  - bny mellon
+  - state street
+  - blackrock
+  - fidelity
+  - paypal
+  - stripe
+  - razorpay
+  - phonepe
+  - paytm
+
+  # Big tech product captives
+  - google
+  - microsoft
+  - meta
+  - amazon
+  - apple
+  - netflix
+  - uber
+  - airbnb
+  - salesforce
+  - adobe
+  - oracle
+  - sap
+  - vmware
+  - cisco
+  - intel
+  - nvidia
+  - amd
+  - qualcomm
+  - dell
+  - hp
+  - ibm
+  - intuit
+  - ebay
+  - expedia
+  - booking.com
+  - linkedin
+  - twitter
+  - spotify
+  - snap
+  - pinterest
+  - zoom
+  - servicenow
+  - atlassian
+  - workday
+  - snowflake
+  - databricks
+  - palantir
+  - twilio
+  - okta
+  - zscaler
+  - crowdstrike
+  - cloudflare
+
+  # Retail / consumer / manufacturing GCCs
+  - walmart
+  - target
+  - costco
+  - home depot
+  - lowe
+  - nike
+  - adidas
+  - ikea
+  - shark ninja
+  - sharkninja
+  - johnson
+  - merck
+  - pfizer
+  - boeing
+  - ge aerospace
+  - general electric
+  - ford
+  - gm
+  - general motors
+  - samsung
+  - lg electronics
+  - sony
+  - bosch
+  - siemens
+  - philips
+  - unilever
+  - procter
+  - p&g
+  - nestle
+  - coca-cola
+  - pepsico
+
+  # India-born / India-heavy product GCCs
+  - flipkart
+  - myntra
+  - swiggy
+  - zomato
+  - ola
+  - cred
+  - zerodha
+  - freshworks
+  - zoho
+  - postman
+  - meesho
+
+it_services:
+  - tcs
+  - tata consultancy services
+  - infosys
+  - wipro
+  - hcltech
+  - hcl technologies
+  - tech mahindra
+  - cognizant
+  - accenture
+  - capgemini
+  - atos
+  - dxc
+  - dxc technology
+  - mphasis
+  - ltimindtree
+  - mindtree
+  - hexaware
+  - ust
+  - ust global
+  - persistent systems
+  - coforge
+  - birlasoft
+  - virtusa
+  - ey
+  - deloitte
+  - kpmg
+  - pwc

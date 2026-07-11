@@ -61,6 +61,20 @@ Examples of legitimate reformulation:
 
 **NEVER add skills that the candidate does not have. Only reword real experience using the exact JD vocabulary.**
 
+## PAR bullet format (GCC / platform-owner roles)
+
+When the target is a GCC, captive center, or product/platform role, rewrite each experience bullet as **Problem → Action → Result**:
+
+1. **Problem** — business or technical pain (latency, revenue leakage, failed releases)
+2. **Action** — what **I** did (active voice, first person or implied I)
+3. **Result** — quantified outcome (%, $, ms, uptime, NPS)
+
+Example:
+- Weak: "Worked on backend services for payment module"
+- Strong: "Payment failures caused revenue leakage. I redesigned retry logic and monitoring. Failure rate dropped 42%."
+
+Use **I**, not **we**. Never invent metrics — only use numbers from `cv.md` or `article-digest.md`.
+
 ## Template HTML
 
 Use the template in `cv-template.html`. Replace the `{{...}}` placeholders with personalized content:

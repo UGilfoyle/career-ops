@@ -1,6 +1,7 @@
 // scanner - check greenhouse, ashby, lever, workable for new jobs
 
 import sql from './db/client.mjs';
+import { classifyCompany } from '../../gcc-classify.mjs';
 
 const rawUserId = process.env.SCAN_USER_ID || process.argv[2] || 1;
 const userId = Number.parseInt(String(rawUserId), 10);
@@ -722,37 +723,6 @@ async function run() {
   totalAdded   = Object.values(stats).reduce((s, v) => s + v.added, 0);
   totalChecked = Object.values(stats).reduce((s, v) => s + v.checked, 0);
   totalFound   = Object.values(stats).reduce((s, v) => s + v.found, 0);
-
-  const GCC_COMPANIES = new Set([
-    'jpmorgan', 'jpmorgan chase', 'goldman sachs', 'target', 'walmart', 'barclays',
-    'wells fargo', 'deutsche bank', 'servicenow', 'atlassian', 'stripe',
-    'american express', 'amex', 'visa', 'mastercard', 'morgan stanley', 'citi',
-    'citigroup', 'hsbc', 'ubs', 'credit suisse', 'google', 'microsoft', 'meta',
-    'amazon', 'apple', 'netflix', 'uber', 'airbnb', 'salesforce', 'cisco',
-    'intel', 'nvidia', 'amd', 'qualcomm', 'dell', 'hp', 'ibm', 'oracle',
-    'sap', 'adobe', 'vmware', 'intuit', 'paypal', 'ebay', 'expedia', 'booking.com'
-  ]);
-
-  const IT_SERVICES = new Set([
-    'tcs', 'tata consultancy services', 'infosys', 'wipro', 'hcltech', 'hcl technologies',
-    'tech mahindra', 'cognizant', 'accenture', 'capgemini', 'atos', 'dxc', 'dxc technology',
-    'mphasis', 'ltimindtree', 'l&t', 'mindtree', 'hexaware', 'ust', 'ust global',
-    'persistent systems', 'coforge', 'birlasoft', 'virtusa', 'ey', 'deloitte', 'kpmg', 'pwc'
-  ]);
-
-  function classifyCompany(companyName) {
-    if (!companyName) return 'Other';
-    const name = companyName.toLowerCase().trim();
-    if (GCC_COMPANIES.has(name)) return 'GCC';
-    if (IT_SERVICES.has(name)) return 'Services';
-    for (const gcc of GCC_COMPANIES) {
-      if (name.includes(gcc) || gcc.includes(name)) return 'GCC';
-    }
-    for (const svc of IT_SERVICES) {
-      if (name.includes(svc) || svc.includes(name)) return 'Services';
-    }
-    return 'Other';
-  }
 
   if (totalAdded > 0) {
     console.log(`\n📦 UPSERTing ${totalAdded} new jobs to PostgreSQL...`);
