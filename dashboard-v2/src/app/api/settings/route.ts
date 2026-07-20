@@ -15,6 +15,7 @@ function mergeResumeContext(existing: Record<string, unknown>, incoming: Record<
     narrative: { ...(base.narrative as object || {}), ...(next.narrative as object || {}) },
     search: { ...(base.search as object || {}), ...(next.search as object || {}) },
     github_settings: { ...(base.github_settings as object || {}), ...(next.github_settings as object || {}) },
+    studio: { ...(base.studio as object || {}), ...(next.studio as object || {}) },
     gcc_campaign: next.gcc_campaign ?? base.gcc_campaign,
   };
 
@@ -110,20 +111,26 @@ export async function POST(req: Request) {
     const data = await req.json();
 
     const resumeContext = data.resume_context || {};
-    const targetingKeywords = data.targeting_keywords || { positive: [], negative: [] };
-    const openaiKey = data.openai_key || null;
-    const hfToken = data.hf_token || null;
+    const hasTargeting = Object.prototype.hasOwnProperty.call(data, 'targeting_keywords');
+    const targetingKeywords = hasTargeting
+      ? data.targeting_keywords || { positive: [], negative: [] }
+      : null;
+    const openaiKey = Object.prototype.hasOwnProperty.call(data, 'openai_key') ? data.openai_key : undefined;
+    const hfToken = Object.prototype.hasOwnProperty.call(data, 'hf_token') ? data.hf_token : undefined;
 
     const [existingRow] = await sql`
-      SELECT resume_context FROM user_profiles WHERE user_id = ${userId}
+      SELECT resume_context, targeting_keywords, openai_key, hf_token FROM user_profiles WHERE user_id = ${userId}
     `;
     const existingContext = (existingRow as { resume_context?: Record<string, unknown> })?.resume_context || {};
     const mergedContext = mergeResumeContext(existingContext, resumeContext);
+    const nextTargeting = targetingKeywords ?? (existingRow as { targeting_keywords?: unknown })?.targeting_keywords ?? { positive: [], negative: [] };
+    const nextOpenai = openaiKey !== undefined ? openaiKey : (existingRow as { openai_key?: string | null })?.openai_key ?? null;
+    const nextHf = hfToken !== undefined ? hfToken : (existingRow as { hf_token?: string | null })?.hf_token ?? null;
 
     // 1. Update Profile (JSON fields)
     await sql`
       INSERT INTO user_profiles (user_id, resume_context, targeting_keywords, openai_key, hf_token)
-      VALUES (${userId}, ${sql.json(mergedContext as never)}, ${sql.json(targetingKeywords)}, ${openaiKey}, ${hfToken})
+      VALUES (${userId}, ${sql.json(mergedContext as never)}, ${sql.json(nextTargeting as never)}, ${nextOpenai}, ${nextHf})
       ON CONFLICT (user_id) DO UPDATE SET 
         resume_context = EXCLUDED.resume_context,
         targeting_keywords = EXCLUDED.targeting_keywords,

@@ -1,0 +1,296 @@
+'use client';
+
+import { useCallback, useMemo, useState } from 'react';
+import { Files, Sparkles } from 'lucide-react';
+import { SectionAccordion } from './SectionAccordion';
+import { StudioToolbar } from './StudioToolbar';
+import { LivePreview } from './LivePreview';
+import { PersonalInfoSection } from './sections/PersonalInfoSection';
+import { SummarySection } from './sections/SummarySection';
+import { CompetenciesSection } from './sections/CompetenciesSection';
+import { ExperienceSection } from './sections/ExperienceSection';
+import { EducationSection } from './sections/EducationSection';
+import { useResumeStudioStore } from './useResumeStudioStore';
+import { fillAtsTemplate } from '@/lib/resume/fill-template';
+import { parseResumeForExport, validateResumeDraft } from '@/lib/resume/schema';
+import { getCompetencies, type ResumeContext } from '@/lib/resume/types';
+
+type ResumeStudioProps = {
+  initialProfile?: ResumeContext | null;
+  onProfileSaved?: (ctx: ResumeContext) => void;
+  onOpenGeneratedDocs?: () => void;
+};
+
+async function saveResumeContext(draft: ResumeContext) {
+  const res = await fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      resume_context: {
+        ...draft,
+        studio: { template_id: draft.studio?.template_id || 'ats-professional' },
+      },
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error || 'Failed to save resume');
+}
+
+function downloadBlob(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export default function ResumeStudio({
+  initialProfile,
+  onProfileSaved,
+  onOpenGeneratedDocs,
+}: ResumeStudioProps) {
+  const [zoom, setZoom] = useState(100);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [banner, setBanner] = useState<string | null>(null);
+
+  const onAutosave = useCallback(
+    async (draft: ResumeContext) => {
+      await saveResumeContext(draft);
+      onProfileSaved?.(draft);
+    },
+    [onProfileSaved]
+  );
+
+  const store = useResumeStudioStore({
+    initial: initialProfile,
+    onAutosave,
+  });
+
+  const {
+    draft,
+    openSection,
+    setOpenSection,
+    saveStatus,
+    saveError,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    updateCandidate,
+    updateNarrative,
+    updateCompetencies,
+    updateExperience,
+    updateEducation,
+    replaceFromImport,
+  } = store;
+
+  const competencies = useMemo(() => getCompetencies(draft), [draft]);
+  const isEmpty =
+    !draft.candidate?.full_name?.trim() &&
+    !(draft.experience || []).length &&
+    !(draft.education || []).length;
+
+  const toggleSection = (id: string) => {
+    setOpenSection((prev) => (prev === id ? '' : id));
+  };
+
+  const handleImport = async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/api/resume/import', { method: 'POST', body: form });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json?.error || 'Import failed');
+
+    const extracted = json?.extracted || json;
+    const next: ResumeContext = {
+      ...draft,
+      experience: Array.isArray(extracted.experience) && extracted.experience.length
+        ? extracted.experience
+        : draft.experience,
+      education: Array.isArray(extracted.education) && extracted.education.length
+        ? extracted.education
+        : draft.education,
+      studio: { template_id: 'ats-professional', ...(draft.studio || {}) },
+    };
+    replaceFromImport(next);
+    setBanner(
+      `Import applied — ${(extracted.experience || []).length} roles, ${(extracted.education || []).length} education entries. Review and autosave will persist.`
+    );
+    setTimeout(() => setBanner(null), 5000);
+  };
+
+  const handleExportJson = () => {
+    try {
+      const parsed = parseResumeForExport(draft);
+      const name = (parsed.candidate.full_name || 'resume').replace(/\s+/g, '_');
+      downloadBlob(
+        `${name}_master_resume.json`,
+        new Blob([JSON.stringify(parsed, null, 2)], { type: 'application/json' })
+      );
+    } catch {
+      const { errors } = validateResumeDraft(draft);
+      setBanner(errors[0] || 'Fix required fields before exporting JSON.');
+      setTimeout(() => setBanner(null), 5000);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    setBanner(null);
+    try {
+      const res = await fetch('/api/resume/export-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resume_context: draft }),
+      });
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        // Fallback: download HTML from same fill path
+        if (res.status === 501 || json?.html) {
+          const html = json.html || fillAtsTemplate(draft);
+          const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
+          downloadBlob(`${name}_master_resume.html`, new Blob([html], { type: 'text/html' }));
+          setBanner(json?.error || 'PDF engine unavailable — downloaded HTML instead (same layout).');
+          setTimeout(() => setBanner(null), 6000);
+          return;
+        }
+        throw new Error(json?.error || 'PDF export failed');
+      }
+      if (contentType.includes('application/pdf')) {
+        const blob = await res.blob();
+        const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
+        downloadBlob(`${name}_master_resume.pdf`, blob);
+      } else {
+        const json = await res.json();
+        const html = json.html || fillAtsTemplate(draft);
+        const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
+        downloadBlob(`${name}_master_resume.html`, new Blob([html], { type: 'text/html' }));
+        setBanner(json.message || 'Downloaded HTML preview (PDF unavailable on this host).');
+        setTimeout(() => setBanner(null), 6000);
+      }
+    } catch (e: unknown) {
+      setBanner(e instanceof Error ? e.message : 'Export failed');
+      setTimeout(() => setBanner(null), 5000);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  return (
+    <div className="flex h-[calc(100vh-2rem)] min-h-[640px] flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-[#FAFAF8] shadow-sm">
+      <StudioToolbar
+        saveStatus={saveStatus}
+        saveError={saveError}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        onImportFile={handleImport}
+        onExportJson={handleExportJson}
+        onExportPdf={handleExportPdf}
+        exportingPdf={exportingPdf}
+      />
+
+      {banner ? (
+        <div className="border-b border-[#E5E5E0] bg-[#F5F5F0] px-4 py-2 text-xs font-medium text-[#1C1C1E]">
+          {banner}
+        </div>
+      ) : null}
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
+        {/* Editor pane */}
+        <div className="min-h-0 overflow-y-auto border-b border-[#E5E5E0] lg:border-b-0 lg:border-r">
+          <div className="space-y-3 p-4">
+            {isEmpty ? (
+              <div className="rounded-2xl border border-dashed border-[#E5E5E0] bg-white p-8 text-center space-y-3">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C1C1E] text-white">
+                  <Sparkles size={20} />
+                </div>
+                <h3 className="text-lg font-bold text-[#1C1C1E]">Start your master resume</h3>
+                <p className="text-sm text-[#6B6B6B] max-w-md mx-auto">
+                  Import a PDF/DOCX or fill the sections below. Autosave writes to the same profile tailor already uses.
+                </p>
+              </div>
+            ) : null}
+
+            <SectionAccordion
+              id="personal"
+              title="Personal Info"
+              open={openSection === 'personal'}
+              onToggle={() => toggleSection('personal')}
+            >
+              <PersonalInfoSection candidate={draft.candidate || {}} onChange={updateCandidate} />
+            </SectionAccordion>
+
+            <SectionAccordion
+              id="summary"
+              title="Professional Summary"
+              open={openSection === 'summary'}
+              onToggle={() => toggleSection('summary')}
+            >
+              <SummarySection
+                headline={draft.narrative?.headline || ''}
+                exitStory={draft.narrative?.exit_story || ''}
+                onChange={updateNarrative}
+              />
+            </SectionAccordion>
+
+            <SectionAccordion
+              id="competencies"
+              title="Core Competencies"
+              open={openSection === 'competencies'}
+              onToggle={() => toggleSection('competencies')}
+              badge={`${competencies.length}`}
+            >
+              <CompetenciesSection tags={competencies} onChange={updateCompetencies} />
+            </SectionAccordion>
+
+            <SectionAccordion
+              id="experience"
+              title="Experience"
+              open={openSection === 'experience'}
+              onToggle={() => toggleSection('experience')}
+              badge={`${(draft.experience || []).length}`}
+            >
+              <ExperienceSection
+                experience={draft.experience || []}
+                onChange={updateExperience}
+              />
+            </SectionAccordion>
+
+            <SectionAccordion
+              id="education"
+              title="Education"
+              open={openSection === 'education'}
+              onToggle={() => toggleSection('education')}
+              badge={`${(draft.education || []).length}`}
+            >
+              <EducationSection
+                education={draft.education || []}
+                onChange={updateEducation}
+              />
+            </SectionAccordion>
+
+            {onOpenGeneratedDocs ? (
+              <button
+                type="button"
+                onClick={onOpenGeneratedDocs}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-[#E5E5E0] bg-white px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#1C1C1E] hover:border-[#1C1C1E]/30 transition-colors"
+              >
+                <Files size={14} />
+                Open Generated Docs
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Preview pane */}
+        <div className="min-h-[420px] lg:min-h-0">
+          <LivePreview draft={draft} zoom={zoom} onZoomChange={setZoom} />
+        </div>
+      </div>
+    </div>
+  );
+}

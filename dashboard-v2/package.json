@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "node scripts/prepare-runtime-assets.mjs && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:resume": "npx tsx src/lib/resume/fill-template.test.ts"
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.11.2",
