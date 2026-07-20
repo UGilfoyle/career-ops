@@ -54,6 +54,28 @@ import { GccCampaignPanel, defaultGccCampaign, type GccCampaign } from './GccCam
 /** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
 const SHOW_RESUME_MANAGER_NAV = false;
 
+function formatRelativeTime(dateStr?: string | null) {
+  if (!dateStr) return '—';
+  const then = new Date(dateStr).getTime();
+  if (!Number.isFinite(then)) return '—';
+  const days = Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
+  if (days < 0) return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function statusChipClass(status?: string | null) {
+  const s = String(status || '').toUpperCase();
+  if (['APPLIED', 'RESPONDED', 'SENT'].includes(s)) return 'bg-sky-50 text-sky-700 border-sky-200';
+  if (['INTERVIEW', 'ENTREVISTA', 'INTERVIEWING'].includes(s)) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (['OFFER', 'OFERTA'].includes(s)) return 'bg-purple-50 text-purple-700 border-purple-200';
+  if (['REJECTED', 'DISCARDED', 'SKIP', 'RECHAZADO', 'DESCARTADO'].includes(s)) return 'bg-stone-100 text-stone-600 border-stone-200';
+  return 'bg-amber-50 text-amber-700 border-amber-200';
+}
+
 export default function Dashboard({ initialData }: { initialData?: any }) {
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.email === 'admin@career-ops.local';
@@ -62,6 +84,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [appsViewMode, setAppsViewMode] = useState<'kanban' | 'table'>('kanban');
   const [appsSortBy, setAppsSortBy] = useState<'score' | 'date'>('score');
+  const [appsStageFocus, setAppsStageFocus] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [cmdInput, setCmdInput] = useState('');
@@ -167,7 +190,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       gradient: 'from-amber-400 to-amber-600',
       textColor: 'text-amber-600',
       tooltipTitle: `${pipelineCount} Sourced Jobs`,
-      tooltipDesc: 'Discovered in live pipeline'
+      tooltipDesc: 'Click to open Job Pipeline'
     },
     {
       key: 'applied',
@@ -177,7 +200,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       gradient: 'from-stone-500 to-stone-800',
       textColor: 'text-stone-800',
       tooltipTitle: `${appliedCount} Applications`,
-      tooltipDesc: 'Submitted & active tracking'
+      tooltipDesc: 'Click to filter Applications'
     },
     {
       key: 'interviews',
@@ -187,7 +210,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       gradient: 'from-emerald-400 to-emerald-600',
       textColor: 'text-emerald-600',
       tooltipTitle: `${interviewCount} Interviews`,
-      tooltipDesc: 'Active dialogue & test loops'
+      tooltipDesc: interviewCount === 0 && appliedCount > 0
+        ? 'Move an Applied role forward'
+        : 'Click to filter Applications'
     },
     {
       key: 'offers',
@@ -197,9 +222,38 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       gradient: 'from-purple-500 to-purple-700',
       textColor: 'text-purple-600',
       tooltipTitle: `${offerCount} Offers Secured`,
-      tooltipDesc: 'Job offers received'
+      tooltipDesc: 'Click to filter Applications'
     }
   ];
+
+  const profileDone = Boolean(
+    data?.profile?.candidate?.full_name?.trim() || profileFormData.candidate?.full_name?.trim()
+  );
+  const targetingDone =
+    (profileFormData.targeting_keywords?.positive?.length ?? 0) > 0 ||
+    (data?.targeting_keywords?.positive?.length ?? 0) > 0;
+  const githubDone = Boolean(
+    profileFormData.github_settings?.pat?.trim() ||
+    data?.resume_context?.github_settings?.pat?.trim()
+  );
+  const scanDone = pipelineCount > 0;
+  const tailorDone = (data?.pdfs?.length ?? 0) > 0;
+
+  const openFunnelStage = (key: string) => {
+    if (key === 'sourced') {
+      setAppsStageFocus(null);
+      setActiveTab('pipeline');
+      return;
+    }
+    const stageMap: Record<string, string> = {
+      applied: 'APPLIED',
+      interviews: 'INTERVIEWING',
+      offers: 'OFFER',
+    };
+    setAppsStageFocus(stageMap[key] || null);
+    setAppsViewMode('kanban');
+    setActiveTab('apps');
+  };
 
   useEffect(() => {
     try {
@@ -1216,40 +1270,109 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 actions={searchActions}
               />
                {/* Onboarding Checklist */}
-               {(!data?.profile?.candidate?.full_name) && (
+               {(() => {
+                 const checklistSteps = [
+                   {
+                     id: 'profile',
+                     label: 'Complete Profile Identity',
+                     hint: 'Name, contact, and headline in Settings',
+                     done: profileDone,
+                     onClick: () => setActiveTab('settings'),
+                   },
+                   {
+                     id: 'targeting',
+                     label: 'Set target roles & keywords',
+                     hint: 'Positive keywords drive AI scoring',
+                     done: targetingDone,
+                     onClick: () => setActiveTab('settings'),
+                   },
+                   {
+                     id: 'github',
+                     label: 'Connect GitHub automation',
+                     hint: 'PAT unlocks deep scan & tailor jobs',
+                     done: githubDone,
+                     onClick: () => setActiveTab('settings'),
+                   },
+                   {
+                     id: 'scan',
+                     label: 'Run first job scan',
+                     hint: 'Discover roles across your portals',
+                     done: scanDone,
+                     onClick: () => { setActiveTab('terminal'); runCommand('scan --deep'); },
+                   },
+                   {
+                     id: 'tailor',
+                     label: 'Tailor a top match',
+                     hint: 'Generate an ATS-optimized resume',
+                     done: tailorDone,
+                     onClick: () => setActiveTab('pipeline'),
+                   },
+                 ];
+                 const doneCount = checklistSteps.filter((s) => s.done).length;
+                 const incomplete = doneCount < checklistSteps.length;
+                 if (!incomplete) return null;
+
+                 return (
                  <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-[#F5F5F0] border border-[#E5E5E0] p-10 rounded-[2.5rem] relative overflow-hidden"
+                    className="bg-[#F5F5F0] border border-[#E5E5E0] p-8 md:p-10 rounded-[2.5rem] relative overflow-hidden"
                  >
-                   <div className="relative z-10 max-w-xl">
-                      <h3 className="text-2xl font-bold mb-3 flex items-center gap-3 text-[#1C1C1E]">
-                        <Zap className="text-[#1C1C1E]" size={22} />
-                        Launch Checklist
-                      </h3>
-                      <p className="text-[#6B6B6B] mb-8 font-medium">Complete these steps to activate your AI discovery engine.</p>
+                   <div className="relative z-10 max-w-2xl">
+                      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+                        <div>
+                          <h3 className="text-2xl font-bold mb-2 flex items-center gap-3 text-[#1C1C1E]">
+                            <Zap className="text-[#1C1C1E]" size={22} />
+                            Launch Checklist
+                          </h3>
+                          <p className="text-[#6B6B6B] font-medium">Complete these steps to activate your AI discovery engine.</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-[#1C1C1E]">{doneCount}/{checklistSteps.length} done</div>
+                          <div className="mt-2 h-1.5 w-32 rounded-full bg-white border border-[#E5E5E0] overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-[#1C1C1E] transition-all"
+                              style={{ width: `${(doneCount / checklistSteps.length) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
                       
-                       <div className="grid grid-cols-1 gap-4">
-                         <button 
-                           onClick={() => setActiveTab('settings')}
-                           className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${data?.profile?.candidate?.full_name ? 'bg-white border-[#E5E5E0] text-[#1C1C1E]' : 'bg-white border-[#E5E5E0] hover:bg-[#F5F5F0]'}`}
-                         >
-                           <span className="text-sm font-bold">Complete Profile Identity</span>
-                           {data?.profile?.candidate?.full_name ? <CheckCircle2 size={16} className="text-emerald-500" /> : <ChevronRight size={16} />}
-                         </button>
+                       <div className="grid grid-cols-1 gap-3">
+                         {checklistSteps.map((step) => (
+                           <button 
+                             key={step.id}
+                             type="button"
+                             onClick={step.onClick}
+                             className={`flex items-center justify-between gap-4 p-4 md:p-5 rounded-2xl border transition-all text-left ${
+                               step.done
+                                 ? 'bg-white/70 border-[#E5E5E0] text-[#6B6B6B]'
+                                 : 'bg-white border-[#E5E5E0] hover:bg-[#FAFAF8] hover:border-[#1C1C1E]/30'
+                             }`}
+                           >
+                             <div className="min-w-0">
+                               <span className={`text-sm font-bold block ${step.done ? 'line-through decoration-[#9CA3AF]' : 'text-[#1C1C1E]'}`}>
+                                 {step.label}
+                               </span>
+                               <span className="text-xs text-[#9CA3AF] font-medium">{step.hint}</span>
+                             </div>
+                             {step.done ? <CheckCircle2 size={18} className="text-emerald-500 shrink-0" /> : <ChevronRight size={16} className="shrink-0 text-[#9CA3AF]" />}
+                           </button>
+                         ))}
                        </div>
                    </div>
                  </motion.div>
-               )}
+                 );
+               })()}
 
-               <div className="grid grid-cols-2 gap-12">
-                  <div className="bg-[#F5F5F0] p-10 rounded-[2.5rem] border border-[#E5E5E0] aspect-video flex flex-col justify-between">
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+                  <div className="bg-[#F5F5F0] p-8 md:p-10 rounded-[2.5rem] border border-[#E5E5E0] flex flex-col justify-between min-h-[280px]">
                       <div className="flex items-center justify-between gap-4">
                         <div>
                           <h3 className="text-2xl font-bold mb-1 text-[#1C1C1E]">Application Funnel</h3>
                           <p className="text-[#9CA3AF] font-medium text-xs flex items-center gap-1.5">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Real-time status tracking
+                            Click a stage to jump in
                           </p>
                         </div>
                         <div className="text-[10px] font-mono text-[#6B6B6B] uppercase tracking-wider bg-white/60 px-2.5 py-1 rounded-full border border-[#E5E5E0]/50">
@@ -1260,7 +1383,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       <div className="flex items-end justify-between gap-1 sm:gap-2 h-44 mt-4 px-2">
                         {funnelStages.map((stage, i) => (
                           <div key={stage.key} className="flex-1 flex items-stretch gap-1 sm:gap-2 h-full">
-                            <div className="flex-1 flex flex-col justify-end items-center group relative h-full">
+                            <button
+                              type="button"
+                              onClick={() => openFunnelStage(stage.key)}
+                              className="flex-1 flex flex-col justify-end items-center group relative h-full cursor-pointer rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1C1C1E] focus-visible:ring-offset-2"
+                              title={`Open ${stage.label}`}
+                            >
                               {/* Custom Interactive Tooltip */}
                               <div className="absolute bottom-full mb-3 opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 bg-[#1C1C1E] text-[#FAFAF8] text-[10px] font-bold px-3 py-2 rounded-xl shadow-xl whitespace-nowrap z-30 flex flex-col items-center border border-[#44403c]">
                                 <span>{stage.tooltipTitle}</span>
@@ -1274,7 +1402,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </div>
 
                               {/* Interactive dynamic bar */}
-                              <div className="w-full bg-white border border-[#E5E5E0] rounded-2xl overflow-hidden flex items-end h-24 shadow-inner relative">
+                              <div className="w-full bg-white border border-[#E5E5E0] rounded-2xl overflow-hidden flex items-end h-24 shadow-inner relative group-hover:border-[#1C1C1E]/40 transition-colors">
                                 <motion.div
                                   initial={{ height: 0 }}
                                   animate={{ height: stage.height }}
@@ -1285,10 +1413,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </div>
 
                               {/* Label */}
-                              <div className="mt-2 text-[10px] font-extrabold text-[#6B6B6B] uppercase tracking-widest text-center">
+                              <div className="mt-2 text-[10px] font-extrabold text-[#6B6B6B] uppercase tracking-widest text-center group-hover:text-[#1C1C1E] transition-colors">
                                 {stage.label}
                               </div>
-                            </div>
+                            </button>
                             
                             {/* Visual directional arrow to indicate progression */}
                             {i < 3 && (
@@ -1299,23 +1427,81 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           </div>
                         ))}
                       </div>
+                      {interviewCount === 0 && appliedCount > 0 && (
+                        <p className="mt-4 text-xs font-medium text-[#6B6B6B]">
+                          No interviews yet — move an Applied role forward on the Applications board.
+                        </p>
+                      )}
                    </div>
-                  <div className="bg-white p-10 rounded-[2.5rem] border border-[#E5E5E0]">
-                     <h3 className="text-2xl font-bold mb-8 text-[#1C1C1E]">Recent Activity</h3>
+                  <div className="bg-white p-8 md:p-10 rounded-[2.5rem] border border-[#E5E5E0]">
+                     <div className="flex items-center justify-between gap-3 mb-6">
+                       <h3 className="text-2xl font-bold text-[#1C1C1E]">Recent Activity</h3>
+                       {(data?.applications?.length ?? 0) > 0 && (
+                         <button
+                           type="button"
+                           onClick={() => { setAppsStageFocus(null); setActiveTab('apps'); }}
+                           className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors"
+                         >
+                           View all
+                         </button>
+                       )}
+                     </div>
                      <div className="space-y-0 divide-y divide-[#E5E5E0] text-sm">
-                       {data?.applications?.length > 0 ? data.applications.slice(0, 4).map((app: any, i: number) => (
-                         <div key={i} className="flex items-center justify-between py-4 first:pt-0">
-                           <div className="flex min-w-0 items-center gap-3">
-                              <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#9CA3AF]" />
-                              <span className="truncate font-bold text-[#1C1C1E]">
-                                {app.company}{app.role ? ` — ${app.role}` : ''}
-                              </span>
+                       {data?.applications?.length > 0 ? data.applications.slice(0, 4).map((app: any, i: number) => {
+                         const statusLabel = String(app.status || 'EVALUATED').toUpperCase();
+                         const tailorId = app.job_id || app.pipeline_id;
+                         return (
+                         <div key={app.app_id || i} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                           <div className="flex min-w-0 items-start gap-3">
+                              <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#9CA3AF]" />
+                              <div className="min-w-0">
+                                <div className="truncate font-bold text-[#1C1C1E]">
+                                  {app.company}{app.role ? ` — ${app.role}` : ''}
+                                </div>
+                                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusChipClass(statusLabel)}`}>
+                                    {statusLabel}
+                                  </span>
+                                  <AiScoreBadge score={app.score} />
+                                  <span className="text-xs text-[#9CA3AF]">
+                                    {formatRelativeTime(app.applied_at)}
+                                  </span>
+                                </div>
+                              </div>
                            </div>
-                           <span className="shrink-0 pl-4 text-xs text-[#9CA3AF]">
-                             {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : '—'}
-                           </span>
+                           <div className="flex shrink-0 items-center gap-2 pl-4 sm:pl-0">
+                             {app?.job_id && (
+                               <button
+                                 type="button"
+                                 onClick={() => openJobDetails(Number(app.job_id))}
+                                 className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-1.5 text-[11px] font-bold text-[#1C1C1E] hover:bg-[#FAFAF8] transition-colors"
+                               >
+                                 Open
+                               </button>
+                             )}
+                             {tailorId && (
+                               <button
+                                 type="button"
+                                 onClick={() => { setActiveTab('terminal'); runCommand(`tailor ${tailorId} --deep`); }}
+                                 className="rounded-xl bg-[#1C1C1E] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#27272a] transition-colors"
+                               >
+                                 Tailor
+                               </button>
+                             )}
+                             {app?.url && !app?.job_id && (
+                               <a
+                                 href={app.url}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-1.5 text-[11px] font-bold text-[#1C1C1E] hover:bg-[#FAFAF8] transition-colors"
+                               >
+                                 Open
+                               </a>
+                             )}
+                           </div>
                          </div>
-                       )) : (
+                         );
+                       }) : (
                          <p className="text-[#9CA3AF] italic font-medium">No recent activity detected.</p>
                        )}
                      </div>
@@ -1346,6 +1532,21 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   subtitle={`${activeApplicationCount} active application${activeApplicationCount === 1 ? '' : 's'} across 5 stages`}
                   actions={appsHeaderActions}
                 />
+              {appsStageFocus && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E5E5E0] bg-[#F5F5F0] px-4 py-3">
+                  <p className="text-sm font-medium text-[#1C1C1E]">
+                    Showing focus: <span className="font-bold">{appsStageFocus}</span>
+                    <span className="text-[#6B6B6B]"> — from Application Funnel</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setAppsStageFocus(null)}
+                    className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:bg-[#FAFAF8] transition-colors"
+                  >
+                    Clear focus
+                  </button>
+                </div>
+              )}
               <div className="overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white shadow-sm">
                 {/* Reminders Panel */}
                 {followUpReminders.length > 0 && (
@@ -1490,7 +1691,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               updateApplicationStatus(appId, col.statuses[0]);
                             }
                           }}
-                          className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#E5E5E0] bg-white"
+                          className={`flex min-h-0 flex-col overflow-hidden rounded-xl border bg-white transition-all ${
+                            appsStageFocus === col.id
+                              ? 'border-[#1C1C1E] ring-2 ring-[#1C1C1E]/15 shadow-md'
+                              : appsStageFocus
+                                ? 'border-[#E5E5E0] opacity-40'
+                                : 'border-[#E5E5E0]'
+                          }`}
                         >
                           <div className={`h-1 shrink-0 ${col.bar}`} />
                           <div className="flex shrink-0 items-center justify-between border-b border-[#F5F5F0] px-3 py-2.5">
