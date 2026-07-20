@@ -31,8 +31,21 @@ let hfUnavailable = false;
 let hfTokenInUse = '';
 const HF_MODEL = process.env.HF_MODEL || 'MiniMaxAI/MiniMax-M2.7';
 const TARGET_MAP = 'data/current_eval.json';
-const TEMPLATE = 'templates/ats-template-professional.html';
+const TEMPLATE_FILES = {
+  'ats-professional': 'templates/ats-template-professional.html',
+  'ats-modern-compact': 'templates/ats-template-modern-compact.html',
+  'ats-technical': 'templates/ats-template-technical.html',
+  'ats-minimal': 'templates/ats-template-minimal.html',
+};
+const TEMPLATE = TEMPLATE_FILES['ats-professional'];
 const require = createRequire(import.meta.url);
+
+function resolveTemplatePath(profile) {
+  const id = profile?.studio?.template_id || 'ats-professional';
+  const file = TEMPLATE_FILES[id] || TEMPLATE_FILES['ats-professional'];
+  if (fs.existsSync(file)) return file;
+  return TEMPLATE;
+}
 
 function robustJsonParse(str) {
   try {
@@ -1779,7 +1792,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       PORTFOLIO_LINK: portfolioLink
     };
 
-    let resumeHtml = fs.readFileSync(TEMPLATE, 'utf8');
+    let resumeHtml = fs.readFileSync(resolveTemplatePath(profile), 'utf8');
     Object.entries(resumeReps).forEach(([key, val]) => {
       resumeHtml = resumeHtml.replace(new RegExp(`{{${key}}}`, 'g'), val || '');
     });

@@ -1,10 +1,13 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Files, Sparkles } from 'lucide-react';
 import { SectionAccordion } from './SectionAccordion';
 import { StudioToolbar } from './StudioToolbar';
 import { LivePreview } from './LivePreview';
+import { TemplateGallery } from './TemplateGallery';
+import { JdMatchPanel, type PipelineJobOption } from './JdMatchPanel';
+import { JobReviewLite } from './JobReviewLite';
 import { PersonalInfoSection } from './sections/PersonalInfoSection';
 import { SummarySection } from './sections/SummarySection';
 import { CompetenciesSection } from './sections/CompetenciesSection';
@@ -12,6 +15,7 @@ import { ExperienceSection } from './sections/ExperienceSection';
 import { EducationSection } from './sections/EducationSection';
 import { useResumeStudioStore } from './useResumeStudioStore';
 import { fillAtsTemplate } from '@/lib/resume/fill-template';
+import { getTemplateMeta } from '@/lib/resume/ats-professional-template';
 import { parseResumeForExport, validateResumeDraft } from '@/lib/resume/schema';
 import { getCompetencies, type ResumeContext } from '@/lib/resume/types';
 
@@ -19,6 +23,17 @@ type ResumeStudioProps = {
   initialProfile?: ResumeContext | null;
   onProfileSaved?: (ctx: ResumeContext) => void;
   onOpenGeneratedDocs?: () => void;
+  pipeline?: PipelineJobOption[];
+  onTailorJob?: (jobId: number) => void;
+  initialJobId?: number | null;
+  reviewJob?: {
+    jobId: number;
+    company?: string;
+    title?: string;
+    score?: string | number | null;
+    ats_content_score?: number | null;
+  } | null;
+  onClearReviewJob?: () => void;
 };
 
 async function saveResumeContext(draft: ResumeContext) {
@@ -49,10 +64,26 @@ export default function ResumeStudio({
   initialProfile,
   onProfileSaved,
   onOpenGeneratedDocs,
+  pipeline = [],
+  onTailorJob,
+  initialJobId = null,
+  reviewJob = null,
+  onClearReviewJob,
 }: ResumeStudioProps) {
   const [zoom, setZoom] = useState(100);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? reviewJob?.jobId ?? null);
+  const [liveAts, setLiveAts] = useState<{ score: number | null; source: 'jd' | 'structure' }>({
+    score: null,
+    source: 'structure',
+  });
+
+  useEffect(() => {
+    const next = initialJobId ?? reviewJob?.jobId ?? null;
+    if (next != null) setSelectedJobId(next);
+  }, [initialJobId, reviewJob?.jobId]);
 
   const onAutosave = useCallback(
     async (draft: ResumeContext) => {
@@ -82,10 +113,12 @@ export default function ResumeStudio({
     updateCompetencies,
     updateExperience,
     updateEducation,
+    setTemplateId,
     replaceFromImport,
   } = store;
 
   const competencies = useMemo(() => getCompetencies(draft), [draft]);
+  const templateMeta = getTemplateMeta(draft.studio?.template_id);
   const isEmpty =
     !draft.candidate?.full_name?.trim() &&
     !(draft.experience || []).length &&
@@ -111,11 +144,11 @@ export default function ResumeStudio({
       education: Array.isArray(extracted.education) && extracted.education.length
         ? extracted.education
         : draft.education,
-      studio: { template_id: 'ats-professional', ...(draft.studio || {}) },
+      studio: { template_id: draft.studio?.template_id || 'ats-professional', ...(draft.studio || {}) },
     };
     replaceFromImport(next);
     setBanner(
-      `Import applied — ${(extracted.experience || []).length} roles, ${(extracted.education || []).length} education entries. Review and autosave will persist.`
+      `Import applied — ${(extracted.experience || []).length} roles, ${(extracted.education || []).length} education entries.`
     );
     setTimeout(() => setBanner(null), 5000);
   };
@@ -147,12 +180,11 @@ export default function ResumeStudio({
       const contentType = res.headers.get('content-type') || '';
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        // Fallback: download HTML from same fill path
         if (res.status === 501 || json?.html) {
           const html = json.html || fillAtsTemplate(draft);
           const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
           downloadBlob(`${name}_master_resume.html`, new Blob([html], { type: 'text/html' }));
-          setBanner(json?.error || 'PDF engine unavailable — downloaded HTML instead (same layout).');
+          setBanner(json?.error || 'PDF unavailable — downloaded HTML (same template).');
           setTimeout(() => setBanner(null), 6000);
           return;
         }
@@ -167,7 +199,7 @@ export default function ResumeStudio({
         const html = json.html || fillAtsTemplate(draft);
         const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
         downloadBlob(`${name}_master_resume.html`, new Blob([html], { type: 'text/html' }));
-        setBanner(json.message || 'Downloaded HTML preview (PDF unavailable on this host).');
+        setBanner(json.message || 'Downloaded HTML preview.');
         setTimeout(() => setBanner(null), 6000);
       }
     } catch (e: unknown) {
@@ -177,6 +209,10 @@ export default function ResumeStudio({
       setExportingPdf(false);
     }
   };
+
+  const onAtsUpdate = useCallback((score: number | null, source: 'jd' | 'structure') => {
+    setLiveAts({ score, source });
+  }, []);
 
   return (
     <div className="flex h-[calc(100vh-2rem)] min-h-[640px] flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-[#FAFAF8] shadow-sm">
@@ -191,6 +227,8 @@ export default function ResumeStudio({
         onExportJson={handleExportJson}
         onExportPdf={handleExportPdf}
         exportingPdf={exportingPdf}
+        templateLabel={templateMeta.name}
+        onOpenTemplates={() => setGalleryOpen(true)}
       />
 
       {banner ? (
@@ -200,7 +238,6 @@ export default function ResumeStudio({
       ) : null}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
-        {/* Editor pane */}
         <div className="min-h-0 overflow-y-auto border-b border-[#E5E5E0] lg:border-b-0 lg:border-r">
           <div className="space-y-3 p-4">
             {isEmpty ? (
@@ -210,9 +247,32 @@ export default function ResumeStudio({
                 </div>
                 <h3 className="text-lg font-bold text-[#1C1C1E]">Start your master resume</h3>
                 <p className="text-sm text-[#6B6B6B] max-w-md mx-auto">
-                  Import a PDF/DOCX or fill the sections below. Autosave writes to the same profile tailor already uses.
+                  Import a PDF/DOCX or fill the sections below. Then pick a pipeline job for JD match + ATS.
                 </p>
               </div>
+            ) : null}
+
+            <JdMatchPanel
+              draft={draft}
+              pipeline={pipeline}
+              selectedJobId={selectedJobId}
+              onSelectJob={(id) => {
+                setSelectedJobId(id);
+              }}
+              onTailor={onTailorJob}
+              onAtsUpdate={onAtsUpdate}
+            />
+
+            {reviewJob ? (
+              <JobReviewLite
+                draft={draft}
+                jobId={reviewJob.jobId}
+                company={reviewJob.company}
+                title={reviewJob.title}
+                pipelineScore={reviewJob.score}
+                atsContentScore={reviewJob.ats_content_score}
+                onClose={onClearReviewJob}
+              />
             ) : null}
 
             <SectionAccordion
@@ -254,10 +314,7 @@ export default function ResumeStudio({
               onToggle={() => toggleSection('experience')}
               badge={`${(draft.experience || []).length}`}
             >
-              <ExperienceSection
-                experience={draft.experience || []}
-                onChange={updateExperience}
-              />
+              <ExperienceSection experience={draft.experience || []} onChange={updateExperience} />
             </SectionAccordion>
 
             <SectionAccordion
@@ -267,10 +324,7 @@ export default function ResumeStudio({
               onToggle={() => toggleSection('education')}
               badge={`${(draft.education || []).length}`}
             >
-              <EducationSection
-                education={draft.education || []}
-                onChange={updateEducation}
-              />
+              <EducationSection education={draft.education || []} onChange={updateEducation} />
             </SectionAccordion>
 
             {onOpenGeneratedDocs ? (
@@ -286,11 +340,28 @@ export default function ResumeStudio({
           </div>
         </div>
 
-        {/* Preview pane */}
         <div className="min-h-[420px] lg:min-h-0">
-          <LivePreview draft={draft} zoom={zoom} onZoomChange={setZoom} />
+          <LivePreview
+            draft={draft}
+            zoom={zoom}
+            onZoomChange={setZoom}
+            onOpenTemplates={() => setGalleryOpen(true)}
+            externalAtsScore={liveAts.score}
+            externalAtsSource={liveAts.source}
+          />
         </div>
       </div>
+
+      <TemplateGallery
+        open={galleryOpen}
+        selectedId={draft.studio?.template_id || 'ats-professional'}
+        onClose={() => setGalleryOpen(false)}
+        onSelect={(id) => {
+          setTemplateId(id);
+          setBanner(`Template switched to ${getTemplateMeta(id).name}`);
+          setTimeout(() => setBanner(null), 3000);
+        }}
+      />
     </div>
   );
 }

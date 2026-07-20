@@ -1,43 +1,47 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo } from 'react';
 import { estimateMasterAtsScore, fillAtsTemplate } from '@/lib/resume/fill-template';
+import { getTemplateMeta } from '@/lib/resume/ats-professional-template';
 import type { ResumeContext } from '@/lib/resume/types';
-
-const PREVIEW_DEBOUNCE_MS = 280;
 
 export function LivePreview({
   draft,
   zoom,
   onZoomChange,
+  onOpenTemplates,
+  externalAtsScore,
+  externalAtsSource,
 }: {
   draft: ResumeContext;
   zoom: number;
   onZoomChange: (z: number) => void;
+  onOpenTemplates?: () => void;
+  externalAtsScore?: number | null;
+  externalAtsSource?: 'jd' | 'structure' | null;
 }) {
-  const [html, setHtml] = useState('');
-  const [syncing, setSyncing] = useState(false);
+  const deferredDraft = useDeferredValue(draft);
+  const html = useMemo(() => fillAtsTemplate(deferredDraft), [deferredDraft]);
+  const syncing = deferredDraft !== draft;
 
-  useEffect(() => {
-    setSyncing(true);
-    const t = setTimeout(() => {
-      setHtml(fillAtsTemplate(draft));
-      setSyncing(false);
-    }, PREVIEW_DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [draft]);
-
-  const atsScore = useMemo(() => estimateMasterAtsScore(draft), [draft]);
+  const structureScore = useMemo(() => estimateMasterAtsScore(draft), [draft]);
+  const atsScore = externalAtsScore != null ? externalAtsScore : structureScore;
+  const atsLabel = externalAtsSource === 'jd' ? 'JD ATS' : 'Profile';
   const missingName = !String(draft.candidate?.full_name || '').trim();
+  const templateMeta = getTemplateMeta(draft.studio?.template_id);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3">
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold text-[#1C1C1E]">Live Preview</span>
-          <span className="rounded-full border border-[#E5E5E0] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
-            ATS Classic
-          </span>
+          <button
+            type="button"
+            onClick={onOpenTemplates}
+            className="rounded-full border border-[#E5E5E0] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#1C1C1E] hover:border-[#1C1C1E]/40"
+          >
+            {templateMeta.name}
+          </button>
           {syncing ? (
             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Syncing…</span>
           ) : (
@@ -45,8 +49,11 @@ export function LivePreview({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-[#1C1C1E] px-2.5 py-1 font-mono text-[10px] text-white">
-            ATS ~{atsScore}/100
+          <span
+            className="rounded-full bg-[#1C1C1E] px-2.5 py-1 font-mono text-[10px] text-white"
+            title={externalAtsSource === 'jd' ? 'Honest JD keyword coverage' : 'Profile completeness estimate'}
+          >
+            {atsLabel} ~{atsScore}/100
           </span>
           {[75, 100, 125].map((z) => (
             <button
@@ -81,7 +88,6 @@ export function LivePreview({
             marginBottom: zoom < 100 ? `${(100 - zoom) * 2.2}mm` : undefined,
           }}
         >
-          {/* Paper chrome — A4 sheet with shadow */}
           <div
             className="bg-white overflow-hidden"
             style={{

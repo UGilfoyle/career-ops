@@ -106,6 +106,8 @@ export async function getDashboardData(userId: string) {
       gcc_signal_score: p.gcc_signal_score ?? null,
       gcc_high_value: p.gcc_high_value ?? false,
       is_tailored: Boolean(extras.is_tailored),
+      ats_content_score:
+        extras.ats_content_score != null ? Number(extras.ats_content_score) : null,
     });
 
     try {
@@ -122,6 +124,7 @@ export async function getDashboardData(userId: string) {
           company_type,
           gcc_signal_score,
           gcc_high_value,
+          ats_content_score,
           (
             resume_pdf_key IS NOT NULL OR cover_letter_pdf_key IS NOT NULL
             OR resume_html IS NOT NULL OR cover_letter_html IS NOT NULL
@@ -133,7 +136,7 @@ export async function getDashboardData(userId: string) {
         ${orderBy}
       `;
       return rows.map((p: Record<string, unknown>) =>
-        mapRow(p, { is_tailored: p.is_tailored })
+        mapRow(p, { is_tailored: p.is_tailored, ats_content_score: p.ats_content_score })
       );
     } catch (errFull) {
       console.warn('[fetchPipeline] full query failed, trying fallback:', (errFull as Error).message);

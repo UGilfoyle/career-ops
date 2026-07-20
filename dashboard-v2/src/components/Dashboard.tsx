@@ -131,6 +131,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [clearPipelineScope, setClearPipelineScope] = useState<'all' | 'visible'>('all');
   const [clearPipelineLoading, setClearPipelineLoading] = useState(false);
   const [gccCampaign, setGccCampaign] = useState<GccCampaign>(defaultGccCampaign);
+  const [studioReviewJob, setStudioReviewJob] = useState<{
+    jobId: number;
+    company?: string;
+    title?: string;
+    score?: string | number | null;
+    ats_content_score?: number | null;
+  } | null>(null);
+  const [studioInitialJobId, setStudioInitialJobId] = useState<number | null>(null);
+  const [betaBannerDismissed, setBetaBannerDismissed] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
     {
       role: 'assistant',
@@ -236,6 +245,27 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   );
   const scanDone = pipelineCount > 0;
   const tailorDone = (data?.pdfs?.length ?? 0) > 0;
+  const studioDone = Boolean(
+    profileFormData?.studio?.template_id ||
+      data?.profile?.studio?.template_id ||
+      (profileFormData?.experience || []).length > 0 ||
+      (data?.profile?.experience || []).length > 0
+  );
+  const showBetaBanner =
+    (process.env.NEXT_PUBLIC_BETA_MODE === '1' || process.env.NEXT_PUBLIC_BETA_MODE === 'true') &&
+    !betaBannerDismissed;
+
+  const openInStudio = (job: {
+    jobId: number;
+    company?: string;
+    title?: string;
+    score?: string | number | null;
+    ats_content_score?: number | null;
+  }) => {
+    setStudioReviewJob(job);
+    setStudioInitialJobId(job.jobId);
+    setActiveTab('resume-studio');
+  };
 
   const openFunnelStage = (key: string) => {
     if (key === 'sourced') {
@@ -256,6 +286,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   useEffect(() => {
     try {
       setSidebarCollapsed(localStorage.getItem('career-ops-sidebar-collapsed') === '1');
+      setBetaBannerDismissed(localStorage.getItem('career-ops-beta-banner-dismissed') === '1');
     } catch {
       // ignore
     }
@@ -430,6 +461,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       } else if (data.type === 'clear') {
         setLogs([]);
       } else {
+        const content = String(data.content || '');
+        if (data.type === 'stderr' && /GITHUB_PAT not configured/i.test(content)) {
+          setToast({
+            show: true,
+            message: 'Add a GitHub PAT in Settings (workflow scope) to run deep tailor/scan.',
+          });
+        }
         setLogs(prev => [...prev, data]);
       }
     };
@@ -1184,7 +1222,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('pipeline')} />
             <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('apps')} />
             <NavItem id="nav-gcc" icon={<Target size={18}/>} label="GCC Campaign" active={activeTab === 'gcc'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('gcc')} />
-            <NavItem id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('resume-studio')} />
+            <NavItem id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('resume-studio')} badge={showBetaBanner || process.env.NEXT_PUBLIC_BETA_MODE === '1' ? 'Beta' : undefined} />
             <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('generated-docs')} />
             <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('terminal')} />
             <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('chat')} />
@@ -1268,15 +1306,61 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 welcomeName={displayName}
                 actions={searchActions}
               />
+              {showBetaBanner ? (
+                <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="rounded-full bg-amber-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                        Beta
+                      </span>
+                      <span className="text-sm font-bold text-[#1C1C1E]">Aug 1 preview — try this path</span>
+                    </div>
+                    <p className="text-xs text-[#6B6B6B] font-medium leading-relaxed">
+                      1) Resume Studio → pick a template · 2) Select a pipeline job for JD match + ATS · 3) Tailor → Generated Docs. PDF uses deep tailor when your GitHub PAT is set.
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('resume-studio')}
+                      className="rounded-xl bg-[#1C1C1E] px-4 py-2 text-xs font-bold text-white hover:bg-[#27272a]"
+                    >
+                      Open Studio
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBetaBannerDismissed(true);
+                        try {
+                          localStorage.setItem('career-ops-beta-banner-dismissed', '1');
+                        } catch {
+                          // ignore
+                        }
+                      }}
+                      className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold text-[#6B6B6B] hover:text-[#1C1C1E]"
+                      aria-label="Dismiss beta banner"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
                {/* Onboarding Checklist */}
                {(() => {
                  const checklistSteps = [
                    {
                      id: 'profile',
                      label: 'Complete Profile Identity',
-                     hint: 'Name, contact, and headline in Settings',
+                     hint: 'Name, contact, and headline in Settings or Resume Studio',
                      done: profileDone,
-                     onClick: () => setActiveTab('settings'),
+                     onClick: () => setActiveTab('resume-studio'),
+                   },
+                   {
+                     id: 'studio',
+                     label: 'Try Resume Studio',
+                     hint: 'Pick a template, then match a pipeline JD for real ATS',
+                     done: studioDone,
+                     onClick: () => setActiveTab('resume-studio'),
                    },
                    {
                      id: 'targeting',
@@ -1288,7 +1372,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    {
                      id: 'github',
                      label: 'Connect GitHub automation',
-                     hint: 'PAT unlocks deep scan & tailor jobs',
+                     hint: 'PAT (workflow scope) unlocks deep scan & tailor',
                      done: githubDone,
                      onClick: () => setActiveTab('settings'),
                    },
@@ -1302,7 +1386,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    {
                      id: 'tailor',
                      label: 'Tailor a top match',
-                     hint: 'Generate an ATS-optimized resume',
+                     hint: 'Generate an ATS-optimized resume from Studio or Pipeline',
                      done: tailorDone,
                      onClick: () => setActiveTab('pipeline'),
                    },
@@ -1880,6 +1964,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             >
                               Tailor
                             </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openInStudio({
+                                  jobId: Number(job.pipeline_id),
+                                  company: job.company,
+                                  title: job.title,
+                                  score: job.score,
+                                  ats_content_score: job.ats_content_score ?? null,
+                                })
+                              }
+                              className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
+                              title="Open in Resume Studio"
+                            >
+                              <Sparkles size={14} className="inline" />
+                            </button>
                             {(job.company_type === 'GCC' || job.gcc_high_value) && (
                               <button
                                 type="button"
@@ -1910,8 +2010,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     ))}
                     {filteredPipeline.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-6 py-16 text-center text-xs font-bold uppercase tracking-widest text-[#9CA3AF]">
-                          No jobs in pipeline
+                        <td colSpan={4} className="px-6 py-16 text-center">
+                          <p className="text-sm font-semibold text-[#1C1C1E]">No jobs in pipeline yet</p>
+                          <p className="mt-2 text-xs font-medium text-[#6B6B6B]">
+                            Run a scan to discover roles, then open Resume Studio to match a JD.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => { setActiveTab('terminal'); runCommand('scan --deep'); }}
+                            className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#27272a]"
+                          >
+                            <Zap size={14} />
+                            Scan jobs
+                          </button>
                         </td>
                       </tr>
                     )}
@@ -1934,6 +2045,17 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     ? profileFormData
                     : data?.profile || profileFormData || null
                 }
+                pipeline={(data?.pipeline || []).slice(0, 40)}
+                initialJobId={studioInitialJobId}
+                reviewJob={studioReviewJob}
+                onClearReviewJob={() => {
+                  setStudioReviewJob(null);
+                  setStudioInitialJobId(null);
+                }}
+                onTailorJob={(jobId) => {
+                  setActiveTab('terminal');
+                  runCommand(`tailor ${jobId} --deep`);
+                }}
                 onProfileSaved={(ctx) => {
                   setProfileFormData((prev: any) => ({
                     ...prev,
@@ -1976,6 +2098,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               docs={data?.pdfs || []}
               onDelete={openDeleteConfirm}
               onOpenPipeline={() => setActiveTab('pipeline')}
+              onOpenInStudio={(doc) =>
+                openInStudio({
+                  jobId: Number(doc.id),
+                  company: doc.company,
+                  title: doc.title,
+                  score: null,
+                  ats_content_score: doc.ats_content_score ?? null,
+                })
+              }
             />
             </div>
           )}
@@ -3123,7 +3254,7 @@ System Initialized — v2.0`}
                           github_settings: { ...(profileFormData.github_settings || {}), pat: v }
                         })}
                         placeholder="ghp_..."
-                        hint="Requires 'workflow' scope to trigger deep scans and tailoring actions"
+                        hint="Create a classic PAT with workflow scope, paste it here, then retry scan/tailor --deep. Missing PAT shows a clear toast — not a raw stderr dump."
                       />
                       <Input
                         label="GitHub Repository Name"
@@ -3319,6 +3450,22 @@ System Initialized — v2.0`}
 
               {!jobDetailsLoading && !jobDetailsError && jobDetails && (
                 <div className="p-6 bg-[#FAFAF8] border-t border-[#E5E5E0] flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setJobDetailsOpen(false);
+                      openInStudio({
+                        jobId: Number(jobDetails.id),
+                        company: jobDetails.company,
+                        title: jobDetails.title,
+                        score: jobDetails.score,
+                        ats_content_score: jobDetails.ats_content_score ?? null,
+                      });
+                    }}
+                    className="px-5 py-2.5 bg-white border border-[#E5E5E0] text-[#1C1C1E] rounded-xl font-bold text-xs hover:bg-[#F5F5F0] transition-all inline-flex items-center gap-2"
+                  >
+                    <Sparkles size={14} />
+                    Open in Studio
+                  </button>
                   <button
                     onClick={() => { setJobDetailsOpen(false); setActiveTab('terminal'); runCommand(`tailor ${jobDetails.id} --deep`); }}
                     className="px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs hover:bg-[#27272a] transition-all"
@@ -3637,19 +3784,55 @@ System Initialized — v2.0`}
   );
 }
 
-function NavItem({ id, icon, label, active, collapsed, onClick }: { id?: string, icon: any, label: string, active: boolean, collapsed?: boolean, onClick: () => void }) {
+function NavItem({
+  id,
+  icon,
+  label,
+  active,
+  collapsed,
+  onClick,
+  badge,
+}: {
+  id?: string;
+  icon: any;
+  label: string;
+  active: boolean;
+  collapsed?: boolean;
+  onClick: () => void;
+  badge?: string;
+}) {
   return (
     <button
       id={id}
       type="button"
-      title={collapsed ? label : undefined}
+      title={collapsed ? (badge ? `${label} (${badge})` : label) : undefined}
       onClick={onClick}
       className={`w-full flex items-center rounded-xl transition-all ${
         collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
       } ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-md' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}
     >
-      <span className="shrink-0">{icon}</span>
-      {!collapsed && <span className="truncate text-sm text-left">{label}</span>}
+      <span className="relative shrink-0">
+        {icon}
+        {collapsed && badge && !active ? (
+          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-[#F5F5F0]" aria-hidden />
+        ) : null}
+      </span>
+      {!collapsed && (
+        <>
+          <span className="flex-1 truncate text-sm text-left">{label}</span>
+          {badge ? (
+            <span
+              className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                active
+                  ? 'bg-white/20 text-white'
+                  : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              {badge}
+            </span>
+          ) : null}
+        </>
+      )}
     </button>
   );
 }

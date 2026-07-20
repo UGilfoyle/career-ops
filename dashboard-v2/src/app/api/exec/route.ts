@@ -365,7 +365,13 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
   }
 
   if (!pat) {
-    send({ type: 'stderr', content: '⚠ GITHUB_PAT not configured.\nPlease set your GitHub Personal Access Token in Settings or Vercel environment variables to enable deep actions.\n' });
+    send({
+      type: 'stderr',
+      content:
+        'GITHUB_PAT not configured.\n' +
+        'Open Settings → GitHub Automation, paste a classic PAT with the workflow scope, save, then retry.\n' +
+        'Deep scan/tailor needs this to dispatch GitHub Actions.\n',
+    });
     send({ type: 'done', code: 1 });
     controller.close();
     return;
@@ -621,7 +627,13 @@ export async function POST(req: NextRequest) {
       }
 
       if (!pat) {
-        return NextResponse.json({ error: 'GITHUB_PAT not configured. Please set your GitHub Personal Access Token in Settings.' }, { status: 400 });
+        return NextResponse.json(
+          {
+            error:
+              'GITHUB_PAT not configured. Open Settings → GitHub Automation, add a classic PAT with workflow scope, then retry deep scan/tailor.',
+          },
+          { status: 400 }
+        );
       }
 
       const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;

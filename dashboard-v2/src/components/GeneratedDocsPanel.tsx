@@ -9,6 +9,7 @@ import {
   Eye,
   Download,
   X,
+  Sparkles,
 } from 'lucide-react';
 
 export type GeneratedDoc = {
@@ -37,6 +38,7 @@ type GeneratedDocsPanelProps = {
   docs: GeneratedDoc[];
   onDelete: (id: number, company: string, title: string) => void;
   onOpenPipeline: () => void;
+  onOpenInStudio?: (doc: GeneratedDoc) => void;
 };
 
 function formatDocDate(value?: string) {
@@ -104,6 +106,7 @@ export default function GeneratedDocsPanel({
   docs,
   onDelete,
   onOpenPipeline,
+  onOpenInStudio,
 }: GeneratedDocsPanelProps) {
   const [filter, setFilter] = useState<DocFilter>('all');
   const [query, setQuery] = useState('');
@@ -258,6 +261,30 @@ export default function GeneratedDocsPanel({
                     <Eye size={14} />
                     Preview
                   </button>
+                  {onOpenInStudio ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenInStudio({
+                          id: card.id,
+                          company: card.company,
+                          title: card.title,
+                          ats_content_score: card.ats_content_score,
+                          has_resume_html: card.has_resume_html,
+                          has_resume_pdf: card.has_resume_pdf,
+                          has_cover_letter_html: card.has_cover_letter_html,
+                          has_cover_letter_pdf: card.has_cover_letter_pdf,
+                          mtime: card.mtime,
+                          url: card.url,
+                        })
+                      }
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-xs font-semibold text-[#1C1C1E] transition-colors hover:border-[#1C1C1E] hover:bg-[#FAFAF8]"
+                      title="Compare master vs tailored in Resume Studio"
+                    >
+                      <Sparkles size={14} />
+                      Studio
+                    </button>
+                  ) : null}
                   {pdfUrl ? (
                     <a
                       href={pdfUrl}

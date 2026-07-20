@@ -5,6 +5,7 @@ import {
   Download,
   FileJson,
   FileText,
+  LayoutTemplate,
   Loader2,
   Redo2,
   Undo2,
@@ -23,6 +24,8 @@ export function StudioToolbar({
   onExportJson,
   onExportPdf,
   exportingPdf,
+  templateLabel,
+  onOpenTemplates,
 }: {
   saveStatus: SaveStatus;
   saveError: string | null;
@@ -34,6 +37,8 @@ export function StudioToolbar({
   onExportJson: () => void;
   onExportPdf: () => Promise<void>;
   exportingPdf: boolean;
+  templateLabel?: string;
+  onOpenTemplates?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [importing, setImporting] = useState(false);
@@ -105,6 +110,15 @@ export function StudioToolbar({
           title="Redo (⌘⇧Z)"
         >
           <Redo2 size={14} />
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenTemplates}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 text-xs font-bold text-[#1C1C1E] hover:bg-[#FAFAF8]"
+        >
+          <LayoutTemplate size={14} />
+          {templateLabel || 'Templates'}
         </button>
 
         <input

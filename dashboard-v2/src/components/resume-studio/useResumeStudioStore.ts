@@ -37,7 +37,10 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
   const hydratedRef = useRef(false);
   const skipHistoryRef = useRef(false);
   const draftRef = useRef(draft);
-  draftRef.current = draft;
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   // Hydrate when parent profile arrives / changes substantially
   useEffect(() => {
@@ -53,6 +56,8 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
     if (!hydratedRef.current) {
       hydratedRef.current = true;
       skipHistoryRef.current = true;
+      // Intentional: sync local draft once when settings/profile load
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from server props
       setDraftState(next);
       setHistory([]);
       setFuture([]);
@@ -67,6 +72,7 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
       !(draftRef.current.education || []).length;
     if (currentEmpty && hasContent && saveStatus === 'idle') {
       skipHistoryRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot fill of empty studio
       setDraftState(next);
       setHistory([]);
       setFuture([]);
@@ -196,6 +202,16 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
     [setDraft]
   );
 
+  const setTemplateId = useCallback(
+    (templateId: string) => {
+      setDraft((prev) => ({
+        ...prev,
+        studio: { ...(prev.studio || {}), template_id: templateId },
+      }));
+    },
+    [setDraft]
+  );
+
   const replaceFromImport = useCallback(
     (incoming: ResumeContext) => {
       setDraft((prev) => ({
@@ -227,6 +243,7 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
     updateCompetencies,
     updateExperience,
     updateEducation,
+    setTemplateId,
     replaceFromImport,
   };
 }
