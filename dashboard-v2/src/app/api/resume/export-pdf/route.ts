@@ -16,42 +16,23 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+/**
+ * Attempt PDF via generate-pdf.mjs (Playwright) when available on the host.
+ * Vercel serverless typically lacks Chromium — callers should accept HTML fallback (501).
+ */
 async function tryRenderPdf(html: string): Promise<Buffer | null> {
-  // Prefer playwright if installed in this package or hoisted from monorepo tools.
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pw: any = await import('playwright');
-    const chromium = pw.chromium;
-    const browser = await chromium.launch({ headless: true });
-    try {
-      const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'load' });
-      await page.evaluate(() => document.fonts.ready);
-      const pdf = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' },
-        preferCSSPageSize: true,
-      });
-      return Buffer.from(pdf);
-    } finally {
-      await browser.close();
-    }
-  } catch {
-    // fall through
-  }
-
   try {
     const id = randomUUID();
-    const dir = join(tmpdir(), 'career-ops-studio');
+    const dir = join(/* turbopackIgnore: true */ tmpdir(), 'career-ops-studio');
     await mkdir(dir, { recursive: true });
     const htmlPath = join(dir, `${id}.html`);
     const pdfPath = join(dir, `${id}.pdf`);
     await writeFile(htmlPath, html, 'utf8');
 
+    const cwd = /* turbopackIgnore: true */ process.cwd();
     const candidates = [
-      join(process.cwd(), 'runtime-assets', 'generate-pdf.mjs'),
-      join(process.cwd(), '..', 'generate-pdf.mjs'),
+      join(cwd, 'runtime-assets', 'generate-pdf.mjs'),
+      join(cwd, '..', 'generate-pdf.mjs'),
     ];
 
     let ran = false;
@@ -64,7 +45,7 @@ async function tryRenderPdf(html: string): Promise<Buffer | null> {
         ran = true;
         break;
       } catch {
-        // try next
+        // try next candidate
       }
     }
 
@@ -91,7 +72,6 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const resumeContext = (body.resume_context || {}) as ResumeContext;
     const validation = validateResumeDraft(resumeContext);
-    // Soft gate: allow export with warnings but require name for filename sanity
     if (!resumeContext.candidate?.full_name?.trim()) {
       return NextResponse.json(
         { error: 'Full name is required before export.', issues: validation.errors },
@@ -119,7 +99,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          'PDF engine unavailable on this host (Playwright not installed). HTML uses the same ATS template — download below or run tailor --deep via GitHub Actions for PDF.',
+          'PDF engine unavailable on this host (Playwright/Chromium not installed). HTML uses the same ATS template — download below or run tailor --deep via GitHub Actions for PDF.',
         html,
         message: 'PDF unavailable — HTML returned for download.',
       },
