@@ -214,10 +214,30 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   const maxPages = resolveResumePageBudget(yearsExp, experience.length);
 
   const linkedinRaw = String(c.linkedin || '').trim();
-  const githubRaw = String(c.github || c.portfolio_url || '').trim();
-  const portfolioLink = githubRaw
-    ? ` | <a href="${escapeHtml(normalizeHref(githubRaw))}">${escapeHtml(displayLink(githubRaw).replace(/^github\.com\//i, ''))}</a>`
-    : '';
+  const githubRaw = String(c.github || '').trim();
+  const portfolioRaw = String(c.portfolio_url || '').trim();
+
+  const contactParts = [c.location, c.email, c.phone]
+    .map((x) => String(x || '').trim())
+    .filter(Boolean);
+  const contactLine = escapeHtml(contactParts.join(' · '));
+
+  const linkParts: string[] = [];
+  if (linkedinRaw) {
+    linkParts.push(
+      `<a href="${escapeHtml(normalizeHref(linkedinRaw))}">${escapeHtml(displayLink(linkedinRaw))}</a>`
+    );
+  }
+  if (githubRaw) {
+    linkParts.push(
+      `<a href="${escapeHtml(normalizeHref(githubRaw))}">${escapeHtml(displayLink(githubRaw).replace(/^github\.com\//i, 'github.com/'))}</a>`
+    );
+  } else if (portfolioRaw) {
+    linkParts.push(
+      `<a href="${escapeHtml(normalizeHref(portfolioRaw))}">${escapeHtml(displayLink(portfolioRaw))}</a>`
+    );
+  }
+  const linksLine = linkParts.join(' · ');
 
   const skillsLines = renderSkillsLines(profile.narrative?.superpowers);
   const hasSkills = Boolean(skillsLines.trim());
@@ -226,13 +246,19 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   const hasAchievements =
     Array.isArray(profile.narrative?.proof_points) && profile.narrative!.proof_points!.length > 0;
 
+  const displayName = String(c.full_name || '').trim() || 'Your Name';
+
   const reps: Record<string, string> = {
-    NAME: escapeHtml(c.full_name || 'Your Name'),
+    NAME: escapeHtml(displayName),
+    CONTACT_LINE: contactLine,
+    LINKS_LINE: linksLine,
+    // Legacy placeholders (kept for older template copies)
     EMAIL: escapeHtml(c.email || ''),
     LOCATION: escapeHtml(c.location || ''),
     PHONE: escapeHtml(c.phone || ''),
     LINKEDIN_URL: linkedinRaw ? escapeHtml(normalizeHref(linkedinRaw)) : '#',
-    LINKEDIN_DISPLAY: escapeHtml(displayLink(linkedinRaw) || 'LinkedIn'),
+    LINKEDIN_DISPLAY: escapeHtml(displayLink(linkedinRaw)),
+    PORTFOLIO_LINK: '',
     SUMMARY_TEXT: escapeHtml(normalizeResumeSummaryPlain(masterSummaryText(profile), yearsExp)),
     EXPERIENCE: hasExperience ? renderExperienceHtml(experience, maxPages) : '',
     EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
@@ -242,7 +268,6 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     EDUCATION_DISPLAY: hasEducation ? 'block' : 'none',
     SKILLS_LINES: skillsLines,
     SKILLS_DISPLAY: hasSkills ? 'block' : 'none',
-    PORTFOLIO_LINK: portfolioLink,
     YEARS_EXP: String(yearsExp),
     MAX_PAGES: String(maxPages),
   };

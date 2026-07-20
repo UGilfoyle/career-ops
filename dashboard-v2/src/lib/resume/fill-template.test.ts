@@ -40,11 +40,23 @@ const sample: ResumeContext = {
 function run() {
   const html = fillAtsTemplate(sample);
   assert.ok(html.includes('Akash Kaintura'), 'name rendered');
+  assert.ok(html.includes('Bengaluru'), 'location in contact line');
+  assert.ok(html.includes('akash@example.com'), 'email in contact line');
+  assert.ok(!html.includes(' ·  · '), 'no empty contact separators');
   assert.ok(html.includes('Example Corp'), 'company rendered');
   assert.ok(html.includes('TypeScript'), 'skills rendered');
   assert.ok(html.includes('Professional Summary'), 'summary section');
   assert.ok(!html.includes('{{NAME}}'), 'no leftover NAME placeholder');
   assert.ok(!html.includes('{{EXPERIENCE}}'), 'no leftover EXPERIENCE placeholder');
+  assert.ok(!html.includes('{{CONTACT_LINE}}'), 'contact line filled');
+
+  const emptyContact: ResumeContext = {
+    ...emptyResumeContext(),
+    candidate: { full_name: 'Only Name' },
+  };
+  const emptyContactHtml = fillAtsTemplate(emptyContact);
+  assert.ok(!emptyContactHtml.includes('LinkedIn'), 'no LinkedIn placeholder when empty');
+  assert.ok(!emptyContactHtml.includes(' · '), 'no stray separators when contact empty');
 
   const expHtml = renderExperienceHtml(sample.experience, 2);
   assert.ok(expHtml.includes('job-company'), 'experience markup');

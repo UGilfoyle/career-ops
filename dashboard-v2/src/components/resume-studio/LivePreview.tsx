@@ -28,13 +28,14 @@ export function LivePreview({
   }, [draft]);
 
   const atsScore = useMemo(() => estimateMasterAtsScore(draft), [draft]);
+  const missingName = !String(draft.candidate?.full_name || '').trim();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E5E0] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3">
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold text-[#1C1C1E]">Live Preview</span>
-          <span className="rounded-full border border-[#E5E5E0] bg-[#F5F5F0] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
+          <span className="rounded-full border border-[#E5E5E0] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
             ATS Classic
           </span>
           {syncing ? (
@@ -64,23 +65,40 @@ export function LivePreview({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8E3] p-6 flex justify-center items-start">
+      {missingName ? (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-900">
+          Add your full name in Personal Info — preview is showing the placeholder “Your Name”.
+        </div>
+      ) : null}
+
+      <div className="flex-1 min-h-0 overflow-auto bg-[#D6D3D1] px-6 py-8 flex justify-center items-start">
         <div
-          className="bg-white shadow-lg origin-top transition-transform"
+          className="relative origin-top transition-transform"
           style={{
             width: '210mm',
-            minHeight: '297mm',
             transform: `scale(${zoom / 100})`,
             transformOrigin: 'top center',
+            marginBottom: zoom < 100 ? `${(100 - zoom) * 2.2}mm` : undefined,
           }}
         >
-          <iframe
-            title="Resume preview"
-            srcDoc={html}
-            className="w-full border-0"
-            style={{ height: '297mm', minHeight: '297mm' }}
-            sandbox=""
-          />
+          {/* Paper chrome — A4 sheet with shadow */}
+          <div
+            className="bg-white overflow-hidden"
+            style={{
+              width: '210mm',
+              minHeight: '297mm',
+              boxShadow:
+                '0 1px 2px rgba(28,28,30,0.06), 0 12px 40px rgba(28,28,30,0.12), 0 0 0 1px rgba(28,28,30,0.06)',
+            }}
+          >
+            <iframe
+              title="Resume preview"
+              srcDoc={html}
+              className="w-full border-0 block bg-white"
+              style={{ width: '210mm', height: '297mm', minHeight: '297mm' }}
+              sandbox=""
+            />
+          </div>
         </div>
       </div>
     </div>
