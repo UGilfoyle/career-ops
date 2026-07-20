@@ -1716,16 +1716,29 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     console.log(`📄 Resume length: up to ${maxPages} page${maxPages > 1 ? 's' : ''} (${roleCount} roles, ${yearsExp}+ years)`);
 
     // Prepare common replacements
-    const c = profile.candidate;
+    const c = profile.candidate || {};
+    const contactParts = [c.location, c.email, c.phone].map((x) => String(x || '').trim()).filter(Boolean);
+    const linkedinRaw = String(c.linkedin || '').trim().replace(/^https?:\/\//i, '');
+    const githubRaw = String(c.github || '').trim().replace(/^https?:\/\//i, '');
+    const linkParts = [];
+    if (linkedinRaw) {
+      linkParts.push(`<a href="https://${linkedinRaw}">${linkedinRaw}</a>`);
+    }
+    if (githubRaw) {
+      linkParts.push(`<a href="https://${githubRaw}">${githubRaw.replace(/^github\.com\//i, '')}</a>`);
+    }
+
     const commonReps = {
-      NAME: c.full_name,
-      EMAIL: c.email,
-      LOCATION: c.location,
-      PHONE: c.phone,
-      LINKEDIN_URL: `https://${c.linkedin}`,
-      LINKEDIN_DISPLAY: c.linkedin,
-      PORTFOLIO_URL: c.github ? `https://${c.github}` : '#',
-      PORTFOLIO_DISPLAY: c.github || 'Github',
+      NAME: c.full_name || 'Your Name',
+      EMAIL: c.email || '',
+      LOCATION: c.location || '',
+      PHONE: c.phone || '',
+      CONTACT_LINE: contactParts.join(' · '),
+      LINKS_LINE: linkParts.join(' · '),
+      LINKEDIN_URL: linkedinRaw ? `https://${linkedinRaw}` : '#',
+      LINKEDIN_DISPLAY: linkedinRaw || '',
+      PORTFOLIO_URL: githubRaw ? `https://${githubRaw}` : '#',
+      PORTFOLIO_DISPLAY: githubRaw || '',
       DATE: (profile?.cover_letter?.show_date !== false) ? new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '',
       COMPANY_NAME: entry.company,
       JOB_TITLE: entry.title || 'Open role',
@@ -1737,10 +1750,8 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     // 1. GENERATE RESUME - Show ALL experience entries, just limit bullets per job based on page budget
     const experienceToShow = profile.experience || [];
 
-    // Build portfolio link (conditional)
-    const portfolioLink = c.github
-      ? ` | <a href="https://${c.github}">${c.github.replace(/^github.com\//, '')}</a>`
-      : '';
+    // Build portfolio link (conditional) — legacy slot; prefer LINKS_LINE
+    const portfolioLink = '';
 
     // Hide sections if missing data (never show blank Education/Experience)
     const hasExperience = Array.isArray(experienceToShow) && experienceToShow.length > 0;
