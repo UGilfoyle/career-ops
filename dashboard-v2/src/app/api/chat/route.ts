@@ -4,6 +4,36 @@ import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
+/** Normalize GitHub Models base URL → .../inference/chat/completions */
+function resolveGithubModelsUrl(baseUrl: string): string {
+  let u = (baseUrl || 'https://models.github.ai/inference').trim().replace(/\/$/, '');
+  if (u.endsWith('/chat/completions')) return u;
+  // OpenAI-compat clients often append /v1 — GitHub Models does not use it
+  u = u.replace(/\/v1$/, '');
+  if (u.includes('models.github.ai') && !u.includes('/inference')) {
+    u = 'https://models.github.ai/inference';
+  }
+  return `${u}/chat/completions`;
+}
+
+/** GitHub Models requires {publisher}/{model} (e.g. openai/gpt-4o-mini) */
+function resolveGithubModelId(model: string): string {
+  const m = (model || 'openai/gpt-4o-mini').trim();
+  if (m.includes('/')) return m;
+  return `openai/${m}`;
+}
+
+function isPlaceholderKey(key: string): boolean {
+  if (!key) return true;
+  const lower = key.toLowerCase();
+  return (
+    lower.includes('your_') ||
+    lower.includes('placeholder') ||
+    lower === 'your' ||
+    lower.startsWith('your')
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Authenticate user
@@ -19,9 +49,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Messages are required' }, { status: 400 });
     }
 
-    // 3. Fetch user profile context
+    // 3. Fetch user profile context (include GitHub PAT + openai_key for Models)
     const profileRows = await sql`
-      SELECT resume_context, targeting_keywords, hf_token
+      SELECT resume_context, targeting_keywords, hf_token, openai_key
       FROM user_profiles
       WHERE user_id = ${userId}
       LIMIT 1
@@ -30,6 +60,9 @@ export async function POST(req: NextRequest) {
     const resumeContext = profile.resume_context || {};
     const targetingKeywords = profile.targeting_keywords || { positive: [], negative: [] };
     const userHfToken = profile.hf_token || '';
+    const githubPatFromProfile =
+      (resumeContext as { github_settings?: { pat?: string } })?.github_settings?.pat || '';
+    const openaiKeyFromProfile = profile.openai_key || '';
 
     // 4. Construct System Instructions
     const systemPrompt = `You are Career-Ops Copilot, an elite AI career strategist and job coach. Your job is to help the user navigate their job search, prepare for interviews, analyze skill gaps, draft cover letters, and suggest outreach messages (e.g., for LinkedIn).
@@ -47,34 +80,44 @@ Instructions:
 3. If the user asks for LinkedIn outreach messages, draft messages that are concise, conversational, and personalized. Avoid spammy-sounding templates.
 4. If writing code snippets, explain them briefly.`;
 
-    // 5. Gather all keys from environment and DB
-    const fallbackKey = process.env.FALLBACK_API_KEY || '';
-    const fallbackUrl = process.env.FALLBACK_BASE_URL || 'https://models.github.ai/inference/v1';
-    const fallbackModel = process.env.FALLBACK_MODEL || 'gpt-4o-mini';
+    // 5. Resolve GitHub Models credentials (env → profile PAT → openai_key)
+    const fallbackKey =
+      process.env.FALLBACK_API_KEY ||
+      process.env.GITHUB_PAT ||
+      process.env.GITHUB_TOKEN ||
+      githubPatFromProfile ||
+      openaiKeyFromProfile ||
+      '';
+    const fallbackUrl = process.env.FALLBACK_BASE_URL || 'https://models.github.ai/inference';
+    const fallbackModel = resolveGithubModelId(process.env.FALLBACK_MODEL || 'openai/gpt-4o-mini');
 
     const deepseekKey = process.env.DEEPSEEK_API_KEY || '';
     const geminiKey = process.env.GEMINI_API_KEY || '';
     const hfToken = process.env.HUGGINGFACE_TOKEN || userHfToken || '';
 
-    // We will attempt providers in priority order. If one fails (e.g., insufficient balance or invalid key), 
-    // we log the error and try the next one in the chain.
-    const attempts = [];
+    // Attempt providers in priority order. Prefer GitHub Models (included with GitHub).
+    const attempts: Array<() => Promise<{ content: string; provider: string }>> = [];
 
-    // ── Attempt 1: GitHub Models / Custom OpenAI Fallback ──
-    if (fallbackKey && !fallbackKey.includes('your_github') && !fallbackKey.includes('placeholder')) {
+    // ── Attempt 1: GitHub Models ──
+    if (!isPlaceholderKey(fallbackKey)) {
       attempts.push(async () => {
-        const cleanUrl = fallbackUrl.replace(/\/$/, '') + '/chat/completions';
+        const cleanUrl = resolveGithubModelsUrl(fallbackUrl);
         const response = await fetch(cleanUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${fallbackKey}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            Authorization: `Bearer ${fallbackKey}`,
           },
           body: JSON.stringify({
             model: fallbackModel,
             messages: [
               { role: 'system', content: systemPrompt },
-              ...messages.map(m => ({ role: m.role, content: m.content })),
+              ...messages.map((m: { role: string; content: string }) => ({
+                role: m.role,
+                content: m.content,
+              })),
             ],
             temperature: 0.7,
           }),
@@ -84,42 +127,17 @@ Instructions:
           throw new Error(`GitHub Models failed with status ${response.status}: ${await response.text()}`);
         }
         const result = await response.json();
-        return { content: result.choices?.[0]?.message?.content || '', provider: `GitHub Models (${fallbackModel})` };
+        return {
+          content: result.choices?.[0]?.message?.content || '',
+          provider: `GitHub Models (${fallbackModel})`,
+        };
       });
     }
 
-    // ── Attempt 2: DeepSeek Chat ──
-    if (deepseekKey && !deepseekKey.includes('your_deepseek')) {
+    // ── Attempt 2: Gemini ──
+    if (geminiKey && !isPlaceholderKey(geminiKey)) {
       attempts.push(async () => {
-        const response = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${deepseekKey}`,
-          },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages.map(m => ({ role: m.role, content: m.content })),
-            ],
-            temperature: 0.7,
-          }),
-        });
-
-        if (!response.ok) {
-          const body = await response.text();
-          throw new Error(`DeepSeek API failed with status ${response.status}: ${body}`);
-        }
-        const result = await response.json();
-        return { content: result.choices?.[0]?.message?.content || '', provider: 'DeepSeek' };
-      });
-    }
-
-    // ── Attempt 3: Gemini ──
-    if (geminiKey && !geminiKey.includes('your_gemini')) {
-      attempts.push(async () => {
-        const contents = messages.map(m => ({
+        const contents = messages.map((m: { role: string; content: string }) => ({
           role: m.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: m.content }],
         }));
@@ -151,21 +169,55 @@ Instructions:
       });
     }
 
-    // ── Attempt 4: Hugging Face Router ──
-    if (hfToken) {
+    // ── Attempt 3: DeepSeek Chat ──
+    if (deepseekKey && !isPlaceholderKey(deepseekKey)) {
       attempts.push(async () => {
-        const hfModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${deepseekKey}`,
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...messages.map((m: { role: string; content: string }) => ({
+                role: m.role,
+                content: m.content,
+              })),
+            ],
+            temperature: 0.7,
+          }),
+        });
+
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(`DeepSeek API failed with status ${response.status}: ${body}`);
+        }
+        const result = await response.json();
+        return { content: result.choices?.[0]?.message?.content || '', provider: 'DeepSeek' };
+      });
+    }
+
+    // ── Attempt 4: Hugging Face Router (working free-tier model) ──
+    if (hfToken && !isPlaceholderKey(hfToken)) {
+      attempts.push(async () => {
+        const hfModel = process.env.HUGGINGFACE_MODEL || 'HuggingFaceH4/zephyr-7b-beta';
         const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${hfToken}`,
+            Authorization: `Bearer ${hfToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             model: hfModel,
             messages: [
               { role: 'system', content: systemPrompt },
-              ...messages.map(m => ({ role: m.role, content: m.content })),
+              ...messages.map((m: { role: string; content: string }) => ({
+                role: m.role,
+                content: m.content,
+              })),
             ],
             temperature: 0.7,
             max_tokens: 2048,
@@ -176,21 +228,25 @@ Instructions:
           throw new Error(`HuggingFace API failed with status ${response.status}: ${await response.text()}`);
         }
         const result = await response.json();
-        return { content: result.choices?.[0]?.message?.content || '', provider: `HuggingFace (${hfModel})` };
+        return {
+          content: result.choices?.[0]?.message?.content || '',
+          provider: `HuggingFace (${hfModel})`,
+        };
       });
     }
 
     // Run attempts sequentially. If one fails, catch and log, then move to the next.
     let finalResult = null;
-    const errors = [];
+    const errors: string[] = [];
 
     for (let i = 0; i < attempts.length; i++) {
       try {
         finalResult = await attempts[i]();
-        break; // Successfully got a response, break loop!
-      } catch (err: any) {
-        console.warn(`Attempt ${i + 1} failed: ${err.message}`);
-        errors.push(err.message);
+        break;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(`Attempt ${i + 1} failed: ${message}`);
+        errors.push(message);
       }
     }
 
@@ -198,7 +254,6 @@ Instructions:
       return NextResponse.json(finalResult);
     }
 
-    // If all configured attempts failed
     if (errors.length > 0) {
       return NextResponse.json(
         { error: `All configured LLM providers failed:\n${errors.join('\n')}` },
@@ -207,11 +262,14 @@ Instructions:
     }
 
     return NextResponse.json(
-      { error: 'No LLM Provider configured. Please set DEEPSEEK_API_KEY, GEMINI_API_KEY, HUGGINGFACE_TOKEN, or FALLBACK_API_KEY in environment.' },
+      {
+        error:
+          'No LLM Provider configured. Set FALLBACK_API_KEY (GitHub PAT with models:read), or add a GitHub PAT in Settings → GitHub Automation. Optionally: GEMINI_API_KEY, DEEPSEEK_API_KEY, HUGGINGFACE_TOKEN.',
+      },
       { status: 400 }
     );
-
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
