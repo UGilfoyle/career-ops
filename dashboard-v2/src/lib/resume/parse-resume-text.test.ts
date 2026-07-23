@@ -88,6 +88,32 @@ Developed and deployed backend endpoints using Node.js and Express with payment 
   assert.equal(nameOnly.full_name, 'Jane Q Public');
   assert.equal(nameOnly.email, 'jane@example.com');
 
+  // Regression: Sept (4-letter) + full month name must not merge into prior role
+  const artisansRubico = parseExperience(`Artisanssoft — Associate Developer | Feb 2019 - Jul 2019
+Built backend endpoints using Node.js and Express for client projects.
+
+Rubico Pvt Ltd — Associate Software Developer | Sept 2019 - August 2021
+Developed comprehensive backend web systems spanning MongoDB schema design.`);
+
+  assert.equal(
+    artisansRubico.length,
+    2,
+    `expected 2 jobs (Artisanssoft + Rubico), got ${artisansRubico.length}: ${JSON.stringify(artisansRubico.map((j) => j.company))}`
+  );
+  assert.match(artisansRubico[0].company, /Artisanssoft/i);
+  assert.match(artisansRubico[0].role, /Associate Developer/i);
+  assert.match(artisansRubico[0].period, /Feb 2019\s*[-–—]\s*Jul 2019/i);
+  assert.match(artisansRubico[1].company, /Rubico Pvt Ltd/i);
+  assert.match(artisansRubico[1].role, /Associate Software Developer/i);
+  assert.match(artisansRubico[1].period, /Sept 2019\s*[-–—]\s*August 2021/i);
+
+  // Prose "to" + full month names
+  const toRange = parseExperience(`Acme Corp — Software Engineer | September 2019 to August 2021
+Shipped production APIs and background job workers for enterprise clients.`);
+  assert.equal(toRange.length, 1);
+  assert.match(toRange[0].period, /September 2019\s+to\s+August 2021/i);
+  assert.match(toRange[0].company, /Acme/i);
+
   console.log('parse-resume-text tests: all passed');
 }
 

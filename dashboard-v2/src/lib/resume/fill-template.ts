@@ -41,15 +41,22 @@ function parseJobMonthIndex(periodStr: string | undefined, which: 'start' | 'end
     jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
     jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
   };
-  const parts = String(periodStr || '').split(/[-–—]/);
+  // Split on dashes or prose "to" (same forms accepted by parse-resume-text)
+  const parts = String(periodStr || '').split(/\s*(?:[-–—]|to)\s*/i);
   const target = which === 'start' ? parts[0] : parts[1] || parts[0];
   const clean = (target || '').trim().toLowerCase();
-  if (/present|current|now/.test(clean)) {
+  if (/^(?:present|current|now)$/.test(clean)) {
     const now = new Date();
     return now.getFullYear() * 12 + now.getMonth();
   }
-  const m = clean.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{4})\b/);
-  if (m) return parseInt(m[2], 10) * 12 + monthNames[m[1].substring(0, 3)];
+  // Full names, Sept, and 3-letter abbreviations (case already lowercased)
+  const m = clean.match(
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.?\s+(\d{4})\b/
+  );
+  if (m) {
+    const key = m[1].slice(0, 3);
+    return parseInt(m[2], 10) * 12 + monthNames[key];
+  }
   const y = clean.match(/\b(19|20)\d{2}\b/);
   if (y) return parseInt(y[0], 10) * 12;
   return null;
@@ -87,8 +94,8 @@ function bulletsBudgetForRole(roleIndex: number, maxPages: number): number {
 
 function stripDates(text: string): string {
   const datePatterns = [
-    /\b\d{4}\s*[-–—]\s*(?:\d{4}|present|current|now)\b/gi,
-    /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}\b/gi,
+    /\b\d{4}\s*(?:[-–—]|to)\s*(?:\d{4}|present|current|now)\b/gi,
+    /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Sept|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s*\d{4}\b/gi,
     /\b20\d{2}\b/g,
     /\b(?:present|current|now)\b/gi,
   ];

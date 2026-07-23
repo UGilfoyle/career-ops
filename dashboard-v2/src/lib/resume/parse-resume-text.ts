@@ -35,10 +35,22 @@ export type ParsedResume = {
 const ROLE_KEYWORDS =
   /\b(?:Software|Engineer|Developer|Manager|Architect|Lead|Senior|Junior|Principal|Staff|Director|Head|VP|Analyst|Consultant|Specialist|Administrator|Intern|Trainee|Full-Stack|Full Stack|Back-End|Back End|Front-End|Front End|DevOps|Data|Machine Learning|Product|Project|QA|Test|Security|Cloud|Infrastructure|Support|Technician|Designer|Writer|Editor|Marketing|Sales|Business|Operations|Finance|HR|Recruiter|Coordinator|Assistant|Associate|Representative|Supervisor|Executive|Officer|Partner|Founder|Owner|Freelance)\b/i;
 
-const MONTH_DATE =
-  /((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\s*[-–—]\s*(?:Present|Current|Now|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|\d{4}))/i;
+/** Full names + 3-letter + Sept (common 4-letter). Longer forms first. */
+const MONTH =
+  /(?:January|February|March|April|May|June|July|August|September|October|November|December|Sept|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?/i;
 
-const YEAR_RANGE = /\b((?:19|20)\d{2})\s*[-–—]\s*((?:19|20)\d{2}|Present|Current|Now)\b/i;
+/** Dash variants and prose "to". */
+const RANGE_SEP = /(?:[-–—]|to)/i;
+
+const MONTH_DATE = new RegExp(
+  `\\b((?:${MONTH.source})\\s+\\d{4}\\s*${RANGE_SEP.source}\\s*(?:Present|Current|Now|(?:${MONTH.source})\\s+\\d{4}|\\d{4}))\\b`,
+  'i'
+);
+
+const YEAR_RANGE = new RegExp(
+  `\\b((?:19|20)\\d{2})\\s*${RANGE_SEP.source}\\s*((?:19|20)\\d{2}|Present|Current|Now)\\b`,
+  'i'
+);
 
 const YEAR_TOKEN = /\b(20\d{2}|19\d{2})\b/;
 

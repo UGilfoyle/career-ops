@@ -251,11 +251,11 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
       jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
     };
-    const matches = [...clean.matchAll(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{4})\b/g)];
+    const matches = [...clean.matchAll(/\b(january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.?\s+(\d{4})\b/g)];
     if (matches.length === 2) {
-      const startMonth = monthNames[matches[0][1].substring(0, 3)];
+      const startMonth = monthNames[matches[0][1].slice(0, 3)];
       const startYear = parseInt(matches[0][2], 10);
-      const endMonth = monthNames[matches[1][1].substring(0, 3)];
+      const endMonth = monthNames[matches[1][1].slice(0, 3)];
       const endYear = parseInt(matches[1][2], 10);
       return (endYear - startYear) * 12 + (endMonth - startMonth);
     }
@@ -264,8 +264,8 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
 
   // Date patterns to aggressively strip from company/role
   const datePatterns = [
-    /\b\d{4}\s*[-–—]\s*(?:\d{4}|present|current|now)\b/gi,
-    /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}\b/gi,
+    /\b\d{4}\s*(?:[-–—]|to)\s*(?:\d{4}|present|current|now)\b/gi,
+    /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Sept|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s*\d{4}\b/gi,
     /\b20\d{2}\b/g,
     /\b(?:present|current|now)\b/gi,
   ];
@@ -488,15 +488,17 @@ function parseJobMonthIndex(periodStr, which = 'start') {
     jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
     jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
   };
-  const parts = String(periodStr || '').split(/[-–—]/);
+  const parts = String(periodStr || '').split(/\s*(?:[-–—]|to)\s*/i);
   const target = which === 'start' ? parts[0] : (parts[1] || parts[0]);
   const clean = (target || '').trim().toLowerCase();
-  if (/present|current|now/.test(clean)) {
+  if (/^(?:present|current|now)$/.test(clean)) {
     const now = new Date();
     return now.getFullYear() * 12 + now.getMonth();
   }
-  const m = clean.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{4})\b/);
-  if (m) return parseInt(m[2], 10) * 12 + monthNames[m[1].substring(0, 3)];
+  const m = clean.match(
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.?\s+(\d{4})\b/
+  );
+  if (m) return parseInt(m[2], 10) * 12 + monthNames[m[1].slice(0, 3)];
   const y = clean.match(/\b(19|20)\d{2}\b/);
   if (y) return parseInt(y[0], 10) * 12;
   return null;
