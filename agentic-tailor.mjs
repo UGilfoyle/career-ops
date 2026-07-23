@@ -25,6 +25,12 @@ import {
   buildHonestCompetencies,
   buildHonestSummary,
 } from './jd-profile-match.mjs';
+import {
+  buildSourceResumeFromProfile,
+  validateResumeAlignment,
+  printAlignmentConfirmation,
+  writeAlignmentReport,
+} from './resume-alignment-validator.mjs';
 
 let hf = null;
 let hfUnavailable = false;
@@ -1210,7 +1216,7 @@ async function tailorPackage(jd, profile, companyName, passedCompanyType) {
     };
     const { resume: aligned } = alignResumeToJd(fallbackResume, honestKeywords, profile?.experience || []);
     ensureAllRolesTailored(aligned, profile?.experience, honestKeywords);
-    return {
+    const offlinePackage = {
       resume: aligned,
       cover_letter: (() => {
         const jdHook = honestKeywords.slice(0, 3).join(', ') || 'the technical requirements described in the posting';
@@ -1218,6 +1224,7 @@ async function tailorPackage(jd, profile, companyName, passedCompanyType) {
       })(),
       jd_gap_keywords: gapKeywords,
     };
+    return applyAlignmentGate(offlinePackage, jd, profile, companyName, aligned);
   }
 
   const yearsExp = effectiveYearsOfExperience(profile);
@@ -1477,6 +1484,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   if (data?.resume) {
     const { resume: polished, stats } = polishTailoredResume(data.resume, profile?.experience || []);
     data.resume = polished;
+    const llmDraft = JSON.parse(JSON.stringify(polished));
     const audit = auditResumeQuality(data.resume);
     const fixes = [
       stats.verbsRotated > 0 ? `${stats.verbsRotated} verb(s) rotated` : null,
@@ -1500,8 +1508,8 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     data.ats_content_score = stats.atsContentScore ?? null;
 
     // Honest JD reframe: bullets from profile facts, ranked by JD relevance (no fabrication)
-    const y = effectiveYearsOfExperience(profile);
-    data.resume.summary = buildHonestSummary(data.resume.summary, y, honestKeywords, jd);
+    const yExp = effectiveYearsOfExperience(profile);
+    data.resume.summary = buildHonestSummary(data.resume.summary, yExp, honestKeywords, jd);
     data.resume.core_competencies = buildHonestCompetencies(honestKeywords, profile, jd);
     data.resume.experience = reframeExperienceFromProfile(
       profile?.experience || [],
@@ -1511,7 +1519,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     );
 
     if (honestKeywords.length > 0) {
-      let { resume: aligned, stats: alignStats } = alignResumeToJd(
+      let { resume: aligned } = alignResumeToJd(
         data.resume,
         honestKeywords,
         profile?.experience || []
@@ -1528,8 +1536,39 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
         console.warn(`⚠ Not claiming on resume: ${gapKeywords.slice(0, 8).join(', ')}`);
       }
     }
+
+    return applyAlignmentGate(data, jd, profile, companyName, llmDraft);
   }
 
+  return data;
+}
+
+/** Compare source / LLM / aligned resumes; keep the strongest honest candidate or throw. */
+function applyAlignmentGate(data, jd, profile, companyName, llmDraft) {
+  const alignment = validateResumeAlignment({
+    jdText: jd,
+    profile,
+    sourceResume: buildSourceResumeFromProfile(profile, jd),
+    llmDraft: llmDraft || data.resume,
+    finalResume: data.resume,
+    meta: { company: companyName || '' },
+  });
+  printAlignmentConfirmation(alignment);
+  data.alignment_confirmation = alignment;
+  data.resume = alignment.selectedResume || data.resume;
+  if (alignment.selected?.ats != null) {
+    data.ats_content_score = alignment.selected.ats;
+  }
+  if (alignment.selected?.honestCoverage != null) {
+    data.jd_alignment_score = alignment.selected.honestCoverage;
+  }
+  if (alignment.verdict !== 'PASS') {
+    const err = new Error(
+      `Resume–JD alignment gate FAILED:\n${(alignment.reasons || []).map((r) => `  - ${r}`).join('\n')}`
+    );
+    err.alignmentResult = alignment;
+    throw err;
+  }
   return data;
 }
 
@@ -1816,6 +1855,19 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     const clPathPdf = docPaths.coverPdf;
 
     if (!fs.existsSync('output')) fs.mkdirSync('output');
+
+    // Persist alignment confirmation beside the resume (PASS path)
+    if (result.alignment_confirmation) {
+      result.alignment_confirmation.meta = {
+        ...(result.alignment_confirmation.meta || {}),
+        company: entry.company || '',
+        role: roleTitle,
+        resumePath: resumePathHtml,
+      };
+      const written = writeAlignmentReport(result.alignment_confirmation, resumePathHtml);
+      console.log(`🧾 Alignment report: ${written.mdPath}`);
+    }
+
     fs.writeFileSync(resumePathHtml, resumeHtml);
 
     // 2. GENERATE COVER LETTER
@@ -1966,9 +2018,20 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     }
 
   } catch (err) {
-    console.error("❌ Agentic Tailor Failed:", err);
-    process.exit(1);
-  } finally {
-    process.exit(0);
+    console.error("❌ Agentic Tailor Failed:", err.message || err);
+    if (err?.alignmentResult) {
+      try {
+        if (!fs.existsSync('output')) fs.mkdirSync('output');
+        const failBase = path.join(
+          'output',
+          `alignment-failed-${Date.now()}`
+        );
+        const written = writeAlignmentReport(err.alignmentResult, failBase);
+        console.error(`🧾 Alignment FAIL report: ${written.mdPath}`);
+      } catch (reportErr) {
+        console.error(`⚠ Could not write alignment fail report: ${reportErr.message}`);
+      }
+    }
+    process.exitCode = 1;
   }
 })();

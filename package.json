@@ -24,6 +24,7 @@
     "tracker": "node tracker.mjs",
     "patterns": "node analyze-patterns.mjs",
     "gemini:eval": "node gemini-eval.mjs",
+    "simulate:align": "node simulate-jd-align.mjs",
     "postinstall": "npx playwright install chromium --with-deps || npx playwright install chromium --with-deps"
   },
   "keywords": [
