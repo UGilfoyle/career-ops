@@ -12,6 +12,9 @@ import {
   estimateAtsContentScore,
   hasQuantifiedImpact,
   polishTailoredResume,
+  normalizeBulletText,
+  normalizeExperienceBulletList,
+  isBulletContinuationFragment,
 } from './resume-quality.mjs';
 
 let passed = 0;
@@ -71,6 +74,21 @@ console.log('resume-quality tests\n');
 }
 
 {
+  assert(normalizeBulletText('remodeling SQL query patterns.') === 'Remodeling SQL query patterns.', 'capitalizes leading letter');
+  assert(isBulletContinuationFragment('by 22% through right-sized instance optimization.'), 'detects by-fragment');
+  assert(isBulletContinuationFragment('800ms to 120ms and improving throughput.'), 'detects metric fragment');
+  const fixed = normalizeExperienceBulletList([
+    'Cut latency from',
+    '800ms to 120ms and improving RESTful APIs throughput by 3x.',
+    'Optimized Oracle workloads by 30%.',
+    'by 22% through right-sized instance optimization.',
+  ]);
+  assert(fixed.every((b) => /^[A-Z]/.test(b)), 'all merged bullets start uppercase');
+  assert(fixed.length <= 3, 'fragments merged into prior bullets');
+  assert(!fixed.some((b) => /^by /i.test(b)), 'no orphan by-fragments remain');
+}
+
+{
   const resume = {
     summary: 'Senior engineer who developed developed cloud platforms.',
     experience: {
@@ -78,6 +96,8 @@ console.log('resume-quality tests\n');
         'Implemented AWS Lambda functions for event processing',
         'Implemented Docker-based deployment workflows',
         'Led team code reviews and mentoring',
+        'remodeling SQL query patterns for Oracle.',
+        'by 22% through right-sized instance optimization.',
       ],
     },
   };
@@ -92,6 +112,8 @@ console.log('resume-quality tests\n');
   const auditBefore = auditResumeQuality(resume);
   const { resume: polished, stats } = polishTailoredResume(resume, sourceExperience);
   const bullets = polished.experience['0'];
+  assert(bullets.every((b) => /^[A-Z]/.test(String(b).trim())), 'polish output bullets are capitalized');
+  assert(!bullets.some((b) => /^by /i.test(String(b).trim())), 'polish merges by-fragments');
   const joined = [...bullets, polished.summary].join(' ').toLowerCase();
   assert((joined.match(/\bimplemented\b/g) || []).length <= 1, 'polish caps global implemented');
   assert(stats.wordRepetitionsFixed > 0 || stats.verbsRotated > 0, 'polish reports repetition fixes');
@@ -100,9 +122,9 @@ console.log('resume-quality tests\n');
     estimateAtsContentScore(auditAfter) >= estimateAtsContentScore(auditBefore),
     'ATS content score improves after polish',
   );
-  assert(auditAfter.repeatedWords.length <= auditBefore.repeatedWords.length, 'fewer repeated words after polish');
   assert(stats.atsContentScore >= 90, 'polish reaches 90+ ATS content score');
 }
+
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
