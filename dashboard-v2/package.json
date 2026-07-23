@@ -36,7 +36,7 @@
     "unpdf": "^1.6.2",
     "zod": "^4.3.6",
     "puppeteer-core": "^24.15.0",
-    "@sparticuz/chromium": "^138.0.0"
+    "@sparticuz/chromium-min": "^138.0.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

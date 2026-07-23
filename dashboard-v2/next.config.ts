@@ -1,7 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  // Keep Chromium/Puppeteer out of the Turbopack/webpack bundle — load at runtime only.
+  serverExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core"],
+  // Do NOT trace Chromium into the Serverless Function zip (symlink / invalid package on Vercel).
+  outputFileTracingExcludes: {
+    "/api/resume/export-pdf": [
+      "./node_modules/@sparticuz/chromium/**/*",
+      "./node_modules/@sparticuz/chromium-min/**/*.br",
+      "./node_modules/puppeteer-core/.local-chromium/**/*",
+    ],
+  },
   outputFileTracingIncludes: {
     "/*": [
       "./scripts/**/*",
@@ -20,10 +29,7 @@ const nextConfig: NextConfig = {
       "./data/**/*",
       "./fonts/**/*",
     ],
-    "/api/resume/export-pdf": [
-      "./node_modules/@sparticuz/chromium/**/*",
-      "./runtime-assets/generate-pdf.mjs",
-    ],
+    "/api/resume/export-pdf": ["./runtime-assets/generate-pdf.mjs"],
   },
 };
 
