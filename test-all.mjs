@@ -66,6 +66,7 @@ const scripts = [
   { name: 'dedup-tracker.mjs', expectExit: 0 },
   { name: 'merge-tracker.mjs', expectExit: 0 },
   { name: 'update-system.mjs check', expectExit: 0 },
+  { name: 'resume-alignment-validator-tests.mjs', expectExit: 0 },
   { name: 'simulate-jd-align.mjs', expectExit: 0 },
 ];
 

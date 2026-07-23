@@ -82,9 +82,6 @@ export function resumeCorpus(resume) {
 }
 
 export function buildSourceResumeFromProfile(profile, jdText = '') {
-  const fit = analyzeJdProfileFit(jdText || 'software engineer typescript react node', profile);
-  const honest = fit.honest.length ? fit.honest : extractJdKeywords(jdText, 12);
-  const years = Number(profile?.candidate?.years_experience) || 0;
   const experience = {};
   (profile?.experience || []).slice(0, 7).forEach((role, i) => {
     experience[String(i)] = (role?.bullets || []).slice(0, 5).map(String);
@@ -93,10 +90,8 @@ export function buildSourceResumeFromProfile(profile, jdText = '') {
     summary:
       profile?.narrative?.exit_story
       || profile?.narrative?.headline
-      || buildHonestSummary('', years, honest, jdText),
-    core_competencies:
-      (profile?.narrative?.superpowers || []).slice(0, 12).map(String)
-      || buildHonestCompetencies(honest, profile, jdText),
+      || '',
+    core_competencies: (profile?.narrative?.superpowers || []).slice(0, 12).map(String),
     experience,
   };
 }
@@ -202,27 +197,48 @@ export function stripUnverifiedMetrics(resume, profile) {
   return copy;
 }
 
-const TECHISH_GAP = /[#.]|[A-Z][a-z]+[A-Z]|\b(js|sql|db|api|aws|gcp|azure|llm|rag|ci\/cd|redux|react|node\.?js|python|java|kotlin|swift|golang|rust|docker|kubernetes|kafka|redis|mongo|postgres|oracle|jest|cypress|fastapi|django|spring|\.net|c#|chroma|openai|graphql)\b/i;
+const HARD_SKILLS = new Set([
+  'javascript', 'typescript', 'python', 'java', 'go', 'golang', 'rust', 'c#',
+  '.net', '.net core', 'ruby', 'php', 'kotlin', 'swift', 'scala',
+  'react', 'react.js', 'redux', 'angular', 'vue.js', 'next.js', 'nestjs',
+  'express', 'fastapi', 'django', 'spring boot', 'node.js', 'nodejs',
+  'postgresql', 'postgres', 'mysql', 'mongodb', 'redis', 'dynamodb',
+  'elasticsearch', 'oracle', 'aws', 'gcp', 'azure', 'docker', 'kubernetes',
+  'terraform', 'ecs', 'lambda', 's3', 'ec2', 'cloudformation', 'kafka',
+  'rabbitmq', 'graphql', 'grpc', 'jenkins', 'github actions', 'gitlab ci',
+  'prometheus', 'grafana', 'datadog', 'jest', 'cypress', 'playwright',
+  'webpack', 'vite', 'llm', 'rag', 'langchain', 'pytorch', 'tensorflow',
+  'chromadb', 'openai', 'claude', 'gpt', 'cursor', 'copilot',
+  'github copilot', 'snowflake', 'spark', 'airflow', 'dbt', 'databricks',
+]);
 
-function isActionableGap(gap) {
-  const g = normalizeKey(gap);
-  if (!g || g.length < 3) return false;
-  // Soft / narrative words — never treat as hard fabrication signals
-  if (/^(develop|improve|collaborate|familiarity|hands|deliver|advance|partner|bonus|ship|integrate|own|build|design|create|evaluation|vector|observability|production|workflows|pipelines|features|stack|event)\b/.test(g)) {
-    return false;
-  }
-  // Multi-word non-tech phrases from JD sentences
-  if (g.split(/\s+/).length >= 2 && !TECHISH_GAP.test(gap)) return false;
-  return TECHISH_GAP.test(gap);
+function normalizedSkill(gap) {
+  return normalizeKey(gap)
+    .replace(/^github\s+copilot$/i, 'github copilot')
+    .replace(/^node\s*js$/i, 'nodejs');
 }
 
-function findUnsupportedClaims(resume, gaps) {
+function isActionableGap(gap) {
+  return HARD_SKILLS.has(normalizedSkill(gap));
+}
+
+function exactTermInCorpus(corpus, term) {
+  const escaped = String(term || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!escaped) return false;
+  const left = /^[A-Za-z0-9]/.test(term) ? '(?<![A-Za-z0-9])' : '';
+  const right = /[A-Za-z0-9]$/.test(term) ? '(?![A-Za-z0-9])' : '';
+  return new RegExp(`${left}${escaped}${right}`, 'i').test(String(corpus || ''));
+}
+
+function findUnsupportedClaims(resume, gaps, provenCorpus = '') {
   const corpus = resumeCorpus(resume).toLowerCase();
   const unsupported = [];
   for (const gap of gaps || []) {
     if (!isActionableGap(gap)) continue;
-    const g = normalizeKey(gap);
-    if (corpus.includes(g)) {
+    // The canonical source CV is proof. This also covers profile-normalization
+    // misses (for example, narrative data stored outside expected fields).
+    if (exactTermInCorpus(provenCorpus, gap)) continue;
+    if (exactTermInCorpus(corpus, gap)) {
       unsupported.push({
         term: gap,
         evidence: findEvidence(resumeCorpus(resume), gap),
@@ -236,7 +252,7 @@ function findUnsupportedClaims(resume, gaps) {
  * Score one resume candidate against a JD + profile.
  * Weights: 50% honest coverage, 20% responsibility language, 15% metrics, 15% ATS.
  */
-export function scoreCandidate(resume, jdText, profile, fit = null) {
+export function scoreCandidate(resume, jdText, profile, fit = null, provenCorpus = '') {
   const jdFit = fit || analyzeJdProfileFit(jdText, profile);
   const honest = jdFit.honest || [];
   const gaps = jdFit.gaps || [];
@@ -247,7 +263,7 @@ export function scoreCandidate(resume, jdText, profile, fit = null) {
   const metrics = verifyMetricsAgainstProfile(cleaned, profile);
   const audit = auditResumeQuality(cleaned);
   const ats = estimateAtsContentScore(audit);
-  const unsupported = findUnsupportedClaims(cleaned, gaps);
+  const unsupported = findUnsupportedClaims(cleaned, gaps, provenCorpus);
 
   const metricScore = metrics.claimed.length === 0
     ? 70
@@ -323,10 +339,14 @@ export function validateResumeAlignment({
     llm: { id: 'llm', label: 'LLM draft', resume: llm },
     aligned: { id: 'aligned', label: 'Aligned & polished', resume: aligned },
   };
+  const provenCorpus = [
+    collectProfileCorpus(profile),
+    resumeCorpus(source),
+  ].filter(Boolean).join('\n');
 
   const scores = {};
   for (const [id, c] of Object.entries(candidates)) {
-    const scored = scoreCandidate(c.resume, jdText, profile, fit);
+    const scored = scoreCandidate(c.resume, jdText, profile, fit, provenCorpus);
     // Prefer sanitized resume (unverified synthetic metrics stripped)
     if (scored.cleanedResume) {
       candidates[id].resume = scored.cleanedResume;
@@ -375,7 +395,7 @@ export function validateResumeAlignment({
         const cleaned = stripUnverifiedMetrics(polished, profile);
         candidates[current.id].resume = cleaned;
         current = {
-          ...scoreCandidate(cleaned, jdText, profile, fit),
+          ...scoreCandidate(cleaned, jdText, profile, fit, provenCorpus),
           label: cand.label,
           id: cand.id,
         };
