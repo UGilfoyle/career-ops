@@ -1671,9 +1671,13 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft) {
     const [profileRow] = await sql`SELECT resume_context, hf_token FROM user_profiles WHERE user_id = ${userId}`;
     if (!profileRow) throw new Error(`Profile not configured for user ${userId}. Please setup via the Dashboard Settings.`);
 
-    let profile = profileRow.resume_context;
+    const rawProfile = profileRow.resume_context;
+    let profile = rawProfile;
     const { profile: hydratedProfile, hydrated, educationRepaired, sources } = hydrateResumeProfile(profile);
     profile = hydratedProfile;
+    if (typeof rawProfile === 'string' || rawProfile?.resume_context || rawProfile?.profile) {
+      console.log('🧩 Normalized serialized/nested resume_context from database.');
+    }
     if (hydrated) {
       console.log(`💧 Hydrated profile from: ${sources.join(', ')}`);
     }
@@ -1696,6 +1700,13 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft) {
     // Debug profile data
     console.log(`[DEBUG] Profile loaded: hasExperience=${Array.isArray(profile?.experience)}, expCount=${profile?.experience?.length || 0}, hasEducation=${Array.isArray(profile?.education)}, eduCount=${profile?.education?.length || 0}`);
     console.log(`[DEBUG] Profile narrative: headline="${profile?.narrative?.headline || 'N/A'}", hasSuperpowers=${Array.isArray(profile?.narrative?.superpowers)}, superpowersCount=${profile?.narrative?.superpowers?.length || 0}`);
+    if (!Array.isArray(profile?.experience) || profile.experience.length === 0) {
+      throw new Error(
+        `Profile incomplete for user ${userId}: no experience entries were found after normalization. `
+        + 'Open Dashboard → Settings, import/save the resume, then retry tailor --deep. '
+        + 'Tailoring stopped before calling an LLM because alignment cannot be verified without source evidence.'
+      );
+    }
 
     // Override HuggingFace global instance if the user has provided their own token
     if (profileRow.hf_token) {

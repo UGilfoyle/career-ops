@@ -101,11 +101,64 @@ function mergeProfile(base, incoming) {
 }
 
 /**
+ * Normalize resume_context values returned by different DB/client boundaries.
+ * PostgreSQL JSONB normally arrives as an object, but older writes and proxies
+ * may return JSON strings or wrap the payload in resume_context/profile.
+ */
+export function normalizeResumeContext(value) {
+  let parsed = value;
+  for (let depth = 0; depth < 3 && typeof parsed === 'string'; depth += 1) {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return {};
+    }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+
+  let normalized = { ...parsed };
+  for (const key of ['resume_context', 'profile']) {
+    let nested = normalized[key];
+    for (let depth = 0; depth < 2 && typeof nested === 'string'; depth += 1) {
+      try {
+        nested = JSON.parse(nested);
+      } catch {
+        nested = null;
+      }
+    }
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      const nestedRecord = { ...nested };
+      normalized = {
+        ...normalized,
+        ...nestedRecord,
+        candidate: {
+          ...(normalized.candidate || {}),
+          ...(nestedRecord.candidate || {}),
+        },
+        narrative: {
+          ...(normalized.narrative || {}),
+          ...(nestedRecord.narrative || {}),
+        },
+      };
+      if (Array.isArray(nestedRecord.experience) && nestedRecord.experience.length > 0) {
+        normalized.experience = nestedRecord.experience;
+      }
+      if (Array.isArray(nestedRecord.education) && nestedRecord.education.length > 0) {
+        normalized.education = nestedRecord.education;
+      }
+    }
+  }
+  delete normalized.resume_context;
+  delete normalized.profile;
+  return normalized;
+}
+
+/**
  * @param {object} profile resume_context from DB
  * @returns {{ profile: object, hydrated: boolean, educationRepaired: boolean, sources: string[] }}
  */
 export function hydrateResumeProfile(profile) {
-  let next = profile && typeof profile === 'object' ? { ...profile } : {};
+  let next = normalizeResumeContext(profile);
   const sources = [];
   const hadExp = Array.isArray(next.experience) && next.experience.length > 0;
   const hadEdu = Array.isArray(next.education) && next.education.length > 0;

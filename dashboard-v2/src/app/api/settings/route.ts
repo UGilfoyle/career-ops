@@ -4,9 +4,41 @@ import { auth } from '@/auth';
 import bcrypt from 'bcryptjs';
 import { normalizeEducationList } from '@/lib/education-format';
 
+function normalizeContext(value: unknown): Record<string, unknown> {
+  let parsed = value;
+  for (let depth = 0; depth < 3 && typeof parsed === 'string'; depth += 1) {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return {};
+    }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+
+  const outer = { ...(parsed as Record<string, unknown>) };
+  for (const key of ['resume_context', 'profile']) {
+    let nested = outer[key];
+    if (typeof nested === 'string') {
+      try {
+        nested = JSON.parse(nested);
+      } catch {
+        nested = null;
+      }
+    }
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      delete outer[key];
+      return {
+        ...outer,
+        ...(nested as Record<string, unknown>),
+      };
+    }
+  }
+  return outer;
+}
+
 function mergeResumeContext(existing: Record<string, unknown>, incoming: Record<string, unknown>) {
-  const base = existing && typeof existing === 'object' ? { ...existing } : {};
-  const next = incoming && typeof incoming === 'object' ? { ...incoming } : {};
+  const base = normalizeContext(existing);
+  const next = normalizeContext(incoming);
 
   const merged: Record<string, unknown> = {
     ...base,
@@ -56,11 +88,12 @@ export async function GET() {
       resume_context: {},
       targeting_keywords: { positive: [], negative: [] }
     };
-    const resumeContext = baseProfile.resume_context || {};
+    const resumeContext = normalizeContext(baseProfile.resume_context);
     if (Array.isArray(resumeContext.education) && resumeContext.education.length > 0) {
       resumeContext.education = normalizeEducationList(resumeContext.education);
     }
-    const hasSearchPortals = Array.isArray(resumeContext?.search?.portals) && resumeContext.search.portals.length > 0;
+    const search = resumeContext.search as { portals?: unknown[] } | undefined;
+    const hasSearchPortals = Array.isArray(search?.portals) && search.portals.length > 0;
     const userEmail = userRow[0]?.email || '';
 
     // Seed sensible defaults, especially for Akash's account, while preserving existing user data.
@@ -110,7 +143,7 @@ export async function POST(req: Request) {
     const userId = session.user.id;
     const data = await req.json();
 
-    const resumeContext = data.resume_context || {};
+    const resumeContext = normalizeContext(data.resume_context);
     const hasTargeting = Object.prototype.hasOwnProperty.call(data, 'targeting_keywords');
     const targetingKeywords = hasTargeting
       ? data.targeting_keywords || { positive: [], negative: [] }
@@ -121,7 +154,9 @@ export async function POST(req: Request) {
     const [existingRow] = await sql`
       SELECT resume_context, targeting_keywords, openai_key, hf_token FROM user_profiles WHERE user_id = ${userId}
     `;
-    const existingContext = (existingRow as { resume_context?: Record<string, unknown> })?.resume_context || {};
+    const existingContext = normalizeContext(
+      (existingRow as { resume_context?: Record<string, unknown> })?.resume_context
+    );
     const mergedContext = mergeResumeContext(existingContext, resumeContext);
     const nextTargeting = targetingKeywords ?? (existingRow as { targeting_keywords?: unknown })?.targeting_keywords ?? { positive: [], negative: [] };
     const nextOpenai = openaiKey !== undefined ? openaiKey : (existingRow as { openai_key?: string | null })?.openai_key ?? null;
