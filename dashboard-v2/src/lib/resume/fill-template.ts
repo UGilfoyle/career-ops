@@ -18,8 +18,24 @@ function stripBulletMarkdown(text: string): string {
     .trim();
 }
 
+/** Capitalize first letter; fix trailing junk truncations. */
+function normalizeBulletText(text: string): string {
+  let t = stripBulletMarkdown(text)
+    .replace(/,\s*\./g, '.')
+    .replace(/\.\s*\./g, '.')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (!t) return '';
+  t = t.replace(/\b(the continuous|advancing the continuous|cut|from|and|with|to|of|by)\s*[.,]*$/i, '').trim();
+  t = t.replace(/[,:;]\s*$/g, '').trim();
+  if (!t) return '';
+  t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
+  if (!/[.!?]$/.test(t)) t += '.';
+  return t;
+}
+
 function formatBulletHtml(text: string): string {
-  return escapeHtml(stripBulletMarkdown(text));
+  return escapeHtml(normalizeBulletText(text) || stripBulletMarkdown(text));
 }
 
 function normalizeHref(raw: string): string {

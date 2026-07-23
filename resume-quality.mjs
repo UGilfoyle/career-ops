@@ -239,38 +239,6 @@ export function dedupeGlobalWordFrequency(texts, usedGlobally = new Map()) {
     return intra.text;
   });
 
-  // Soft-cap mid-sentence overuse of replaceable verbs (allow 2 uses; rewrite 3+)
-  const midCounts = new Map();
-  for (const text of out) {
-    for (const m of String(text).matchAll(/\b([A-Za-z]{5,})\b/g)) {
-      const lower = m[1].toLowerCase();
-      if (!isReplaceableWord(lower)) continue;
-      midCounts.set(lower, (midCounts.get(lower) || 0) + 1);
-    }
-  }
-
-  out = out.map((text) => {
-    let current = text;
-    for (const [word, total] of midCounts) {
-      if (total < 3) continue;
-      const local = (current.match(new RegExp(`\\b${escapeRegex(word)}\\b`, 'gi')) || []).length;
-      if (local === 0) continue;
-      // Replace last occurrence in this bullet if word is still over-budget
-      if ((midCounts.get(word) || 0) >= 3) {
-        const replacement = pickVerbReplacement(word, new Set([...usedGlobally.keys(), word]));
-        if (!replacement) continue;
-        const before = current;
-        current = replaceNthWord(current, word, replacement, local);
-        if (current !== before) {
-          fixes += 1;
-          midCounts.set(word, (midCounts.get(word) || 1) - 1);
-          usedGlobally.set(replacement.toLowerCase(), (usedGlobally.get(replacement.toLowerCase()) || 0) + 1);
-        }
-      }
-    }
-    return current;
-  });
-
   return { texts: out, fixes };
 }
 
@@ -347,10 +315,10 @@ function synthesizeMetric(bullet) {
     return 'reducing response latency by 35% on critical API paths';
   }
   if (text.includes('database') || text.includes('sql') || text.includes('postgresql') || text.includes('postgres') || text.includes('mongodb') || text.includes('query') || text.includes('index')) {
-    return 'optimizing queries to decrease server CPU utilization by 25%';
+    return 'cutting server CPU utilization by 25% through query tuning';
   }
   if (text.includes('react') || text.includes('ui') || text.includes('frontend') || text.includes('dashboard') || text.includes('interface')) {
-    return 'supporting 25,000+ monthly active users and enhancing user retention';
+    return 'supporting 25,000+ monthly active users and lifting retention';
   }
   if (text.includes('ci/cd') || text.includes('github actions') || text.includes('pipeline') || text.includes('deploy') || text.includes('automation') || text.includes('script')) {
     return 'reducing manual deployment errors by 85%';
@@ -359,9 +327,90 @@ function synthesizeMetric(bullet) {
     return 'safely processing 5,000+ daily data events with zero failures';
   }
   if (text.includes('mentor') || text.includes('lead') || text.includes('team') || text.includes('review') || text.includes('collaborat')) {
-    return 'enhancing overall team sprint delivery velocity by 15%';
+    return 'raising team sprint delivery velocity by 15%';
   }
   return 'improving execution efficiency and system throughput by 20%';
+}
+
+/**
+ * Force professional bullet casing and punctuation.
+ * Every bullet must start with A–Z (or a digit for metrics that belong mid-clause).
+ */
+export function normalizeBulletText(bullet) {
+  let t = String(bullet || '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/^[•\-*▸]\s*/, '')
+    .replace(/,\s*\./g, '.')
+    .replace(/\.\s*\./g, '.')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (!t) return '';
+  // Drop trailing junk truncations left by scrubbers / bad LLM cuts (repeat until stable)
+  let prev = '';
+  while (t !== prev) {
+    prev = t;
+    t = t.replace(/,?\s*(advancing the continuous|the continuous)\s*[.,]*$/i, '').trim();
+    t = t.replace(/\s+\b(and|with|to|of|by|from|cut)\s*[.,]*$/i, '').trim();
+    t = t.replace(/[,:;]\s*$/g, '').trim();
+  }
+  if (!t) return '';
+  // Capitalize first alphabetic character
+  t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
+  if (!/[.!?]$/.test(t)) t += '.';
+  return t;
+}
+
+/** True when a "bullet" is clearly a broken continuation of the previous line. */
+export function isBulletContinuationFragment(bullet) {
+  const t = String(bullet || '').trim();
+  if (!t) return true;
+  // Preposition / conjunction crumbs — never standalone bullets
+  if (/^(by|and|with|to|from|into|of|for|on|in|at|as|while|which|that|or|via)\b/i.test(t)) {
+    return true;
+  }
+  // Metric-only continuations: "800ms to 120ms..." / "$1.2M savings..."
+  if (/^[\d$]/.test(t) && t.length < 90) return true;
+  // Short lowercase crumbs only (full lowercase sentences get capitalized, not merged)
+  if (/^[a-z]/.test(t) && t.length < 40) return true;
+  return false;
+}
+
+/**
+ * Merge continuation crumbs into the previous bullet, then normalize casing.
+ */
+export function normalizeExperienceBulletList(bullets) {
+  const raw = (Array.isArray(bullets) ? bullets : []).map((b) => String(b || '').trim()).filter(Boolean);
+  const merged = [];
+  for (const bullet of raw) {
+    if (merged.length > 0 && isBulletContinuationFragment(bullet)) {
+      const prev = merged[merged.length - 1].replace(/[.!?,;:\s]+$/g, '');
+      let cont = bullet.trim();
+      // Avoid "by by 22%" when previous already ends with the same preposition
+      cont = cont.replace(/^(by|and|with|to|from|into|of|for)\s+/i, (m, prep) => {
+        if (new RegExp(`\\b${prep}$`, 'i').test(prev)) return '';
+        return m;
+      }).trim();
+      if (cont) merged[merged.length - 1] = `${prev} ${cont}`;
+      continue;
+    }
+    merged.push(bullet);
+  }
+  return merged.map(normalizeBulletText).filter((b) => b.length >= 20);
+}
+
+export function normalizeResumeBullets(resume) {
+  if (!resume || typeof resume !== 'object') return resume;
+  const exp = resume.experience;
+  if (Array.isArray(exp)) {
+    resume.experience = normalizeExperienceBulletList(exp);
+  } else if (exp && typeof exp === 'object') {
+    for (const key of Object.keys(exp)) {
+      if (Array.isArray(exp[key])) {
+        exp[key] = normalizeExperienceBulletList(exp[key]);
+      }
+    }
+  }
+  return resume;
 }
 
 function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets) {
@@ -502,6 +551,10 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
       break;
     }
   }
+
+  normalizeResumeBullets(resume);
+  audit = auditResumeQuality(resume);
+  atsContentScore = estimateAtsContentScore(audit, scoreOpts());
 
   return {
     resume,

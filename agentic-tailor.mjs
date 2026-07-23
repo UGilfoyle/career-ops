@@ -6,7 +6,7 @@ import { createRequire } from 'module';
 import { pathToFileURL } from 'url';
 import sql from './db/client.mjs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { polishTailoredResume, auditResumeQuality } from './resume-quality.mjs';
+import { polishTailoredResume, auditResumeQuality, normalizeBulletText } from './resume-quality.mjs';
 import {
   extractJdKeywords,
   extractJdTechKeywords,
@@ -218,7 +218,8 @@ function stripBulletMarkdown(text) {
 }
 
 function formatBulletHtml(text) {
-  return escapeHtml(stripBulletMarkdown(text));
+  // Defense-in-depth: never render a lowercase-starting experience bullet
+  return escapeHtml(normalizeBulletText(stripBulletMarkdown(text)) || stripBulletMarkdown(text));
 }
 
 function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
