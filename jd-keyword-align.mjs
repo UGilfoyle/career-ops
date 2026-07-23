@@ -38,7 +38,16 @@ const STOPWORDS = new Set([
   'job', 'title', 'company', 'description', 'location', 'department',
   'requirements', 'qualifications', 'responsibilities', 'skills',
   'build', 'own', 'design', 'develop', 'implement', 'support', 'ensure', 'drive',
+  // Generic JD filler — never put these on a resume as "skills"
+  'software', 'application', 'applications', 'system', 'systems', 'platform', 'platforms',
+  'service', 'services', 'product', 'products', 'solution', 'solutions', 'tool', 'tools',
+  'engineer', 'engineering', 'developer', 'development', 'technology', 'technologies',
+  'computer', 'code', 'coding', 'project', 'projects', 'business', 'process', 'processes',
+  'quality', 'delivery', 'deliver', 'maintain', 'create', 'manage', 'leading', 'senior',
+  'junior', 'level', 'knowledge', 'understanding', 'familiar', 'proficient', 'expertise',
 ]);
+
+const KNOWN_TECH_LOWER = new Set(KNOWN_TECH.map((t) => t.toLowerCase()));
 
 function normalizeKeyword(kw) {
   return String(kw || '').trim().replace(/\s+/g, ' ');
@@ -46,6 +55,44 @@ function normalizeKeyword(kw) {
 
 function escapeRe(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** True when a token is a real tech/skill worth putting on a resume. */
+export function isWeaveableKeyword(kw) {
+  const raw = normalizeKeyword(kw);
+  if (!raw || raw.length < 2) return false;
+  const lower = raw.toLowerCase();
+  if (STOPWORDS.has(lower)) return false;
+  if (KNOWN_TECH_LOWER.has(lower)) return true;
+  // Allow known-tech aliases with loose punctuation (node js → node.js)
+  const compact = lower.replace(/[.\s]/g, '');
+  for (const tech of KNOWN_TECH_LOWER) {
+    const techCompact = tech.replace(/[.\s]/g, '');
+    if (techCompact === compact) return true;
+  }
+  // Multi-word Title Case skill phrases (e.g. "System Design") — not single junk nouns
+  if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}$/.test(raw)) {
+    const words = lower.split(/\s+/);
+    if (words.every((w) => !STOPWORDS.has(w))) return true;
+  }
+  return false;
+}
+
+/** Keep only resume-worthy JD keywords (drops "Software", "applications", etc.). */
+export function filterWeaveableKeywords(keywords) {
+  return uniqueCasePreserved((keywords || []).map(normalizeKeyword).filter(isWeaveableKeyword));
+}
+
+/** Canonical casing for known tech when available. */
+export function canonicalizeTechKeyword(kw) {
+  const raw = normalizeKeyword(kw);
+  if (!raw) return raw;
+  const lower = raw.toLowerCase();
+  const exact = KNOWN_TECH.find((t) => t.toLowerCase() === lower);
+  if (exact) return exact;
+  const compact = lower.replace(/[.\s]/g, '');
+  const loose = KNOWN_TECH.find((t) => t.toLowerCase().replace(/[.\s]/g, '') === compact);
+  return loose || raw;
 }
 
 function findKnownTechInText(text) {
@@ -141,10 +188,12 @@ export function extractJdKeywords(jdText, limit = 20) {
 
   const deduped = uniqueCasePreserved(found.map(normalizeKeyword).filter(Boolean));
   // Drop partial tokens subsumed by a longer keyword (e.g. "PostgreS" when "PostgreSQL" exists)
-  return deduped.filter((kw, i, arr) => {
+  const collapsed = deduped.filter((kw, i, arr) => {
     const lower = kw.toLowerCase();
     return !arr.some((other, j) => j !== i && other.toLowerCase().includes(lower) && other.length > kw.length);
-  }).slice(0, limit);
+  });
+  // Prefer real tech / skill phrases — never ship "Software", "applications", etc.
+  return filterWeaveableKeywords(collapsed).map(canonicalizeTechKeyword).slice(0, limit);
 }
 
 function resumeTexts(resume) {
@@ -197,33 +246,36 @@ function bulletMissingJd(bullet, jdKeywords) {
 function weaveKeywordIntoBullet(bullet, keyword) {
   const b = String(bullet || '').trim();
   if (!b) return b;
-  const kw = String(keyword).trim();
+  const kw = canonicalizeTechKeyword(keyword);
+  if (!isWeaveableKeyword(kw)) return b;
   const lower = b.toLowerCase();
   if (lower.includes(kw.toLowerCase())) return b;
 
-  // Prepend context clause with JD term
-  if (/^[A-Z]/.test(b) && !/^(I |Built|Led|Designed|Engineered|Architected|Developed|Implemented)/i.test(b)) {
-    return `${b.replace(/\.$/, '')} using ${kw}.`;
+  // Natural integration — never ", applying X in production"
+  const base = b.replace(/\.$/, '');
+  if (/\b(using|with|via|on)\b/i.test(base.slice(-48))) {
+    return `${base} and ${kw}.`;
   }
-  return `${b.replace(/\.$/, '')}, applying ${kw} in production.`;
+  if (/\b(API|APIs|service|services|pipeline|pipelines|platform|backend|frontend|microservice)/i.test(base)) {
+    return `${base} with ${kw}.`;
+  }
+  return `${base} using ${kw}.`;
 }
 
 function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   let text = String(summary || '').trim();
   if (!text) return text;
+  const weaveable = filterWeaveableKeywords(keywords).map(canonicalizeTechKeyword);
   const lower = text.toLowerCase();
-  const toAdd = keywords.filter((kw) => !lower.includes(String(kw).toLowerCase())).slice(0, minCount);
+  const toAdd = weaveable.filter((kw) => !lower.includes(String(kw).toLowerCase())).slice(0, minCount);
   if (toAdd.length === 0) return text;
 
   const lines = text.split('\n').filter(Boolean);
   if (lines.length === 0) lines.push(text);
 
   const inject = toAdd.slice(0, 5).join(', ');
-  if (lines[0].length < 120) {
-    lines[0] = `${lines[0].replace(/\.$/, '')} — ${inject}.`;
-  } else {
-    lines.push(`Core stacks: ${inject}.`);
-  }
+  // Fold into the opening sentence — never append junk like "Core stacks: Software"
+  lines[0] = `${lines[0].replace(/\.$/, '')} Core stack: ${inject}.`;
   return lines.slice(0, 4).join('\n');
 }
 
@@ -240,10 +292,15 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = []) {
   let bulletsAligned = 0;
   let summaryPatched = false;
 
+  const keywords = filterWeaveableKeywords(jdKeywords).map(canonicalizeTechKeyword);
+  if (!keywords.length) {
+    return { resume: copy, stats: { competenciesAdded: 0, bulletsAligned: 0, summaryPatched: false } };
+  }
+
   // Core competencies: ensure top JD keywords appear first
   const comps = Array.isArray(copy.core_competencies) ? [...copy.core_competencies] : [];
   const compLower = comps.map((c) => String(c).toLowerCase());
-  const priority = jdKeywords.slice(0, 10);
+  const priority = keywords.slice(0, 10);
   const newComps = [];
   for (const kw of priority) {
     if (!compLower.some((c) => c.includes(String(kw).toLowerCase()))) {
@@ -255,25 +312,24 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = []) {
 
   // Summary: weave top missing keywords
   const beforeSummary = copy.summary;
-  copy.summary = weaveKeywordsIntoSummary(copy.summary, jdKeywords, 3);
+  copy.summary = weaveKeywordsIntoSummary(copy.summary, keywords, 3);
   summaryPatched = beforeSummary !== copy.summary;
 
   // Experience bullets: ensure each bullet references at least one JD keyword
-  const groups = collectExperienceArrays(copy.experience);
   const sourceBullets = (sourceExperience || []).flatMap((e) => e?.bullets || []);
 
   let kwIdx = 0;
   const alignGroup = (bullets, groupIdx) => {
     if (!Array.isArray(bullets)) return bullets;
     return bullets.map((bullet, bi) => {
-      if (!bulletMissingJd(bullet, jdKeywords)) return bullet;
-      const kw = jdKeywords[kwIdx % jdKeywords.length];
+      if (!bulletMissingJd(bullet, keywords)) return bullet;
+      const kw = keywords[kwIdx % keywords.length];
       kwIdx += 1;
       bulletsAligned += 1;
       // Prefer weaving into first bullet of each role
       if (bi === 0 && sourceBullets[groupIdx]) {
         const src = String(sourceBullets[groupIdx] || bullet);
-        if (!bulletMissingJd(src, jdKeywords)) {
+        if (!bulletMissingJd(src, keywords)) {
           return weaveKeywordIntoBullet(src, kw);
         }
       }
@@ -302,7 +358,8 @@ export function formatJdKeywordBlock(jdKeywords) {
  * Fill missing per-role tailored bullets from profile + JD keywords (avoids untailored fallback).
  */
 export function ensureAllRolesTailored(resume, profileExperience, jdKeywords, rolesCount = 4) {
-  if (!resume || !jdKeywords?.length) return resume;
+  const keywords = filterWeaveableKeywords(jdKeywords).map(canonicalizeTechKeyword);
+  if (!resume || !keywords.length) return resume;
   const exp = resume.experience;
   const profile = Array.isArray(profileExperience) ? profileExperience : [];
   const count = Math.min(rolesCount, profile.length);
@@ -322,7 +379,7 @@ export function ensureAllRolesTailored(resume, profileExperience, jdKeywords, ro
     if (srcBullets.length === 0) continue;
 
     out[key] = srcBullets.map((bullet) => {
-      const kw = jdKeywords[kwIdx % jdKeywords.length];
+      const kw = keywords[kwIdx % keywords.length];
       kwIdx += 1;
       return weaveKeywordIntoBullet(bullet, kw);
     });

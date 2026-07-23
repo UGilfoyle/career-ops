@@ -2,7 +2,7 @@
  * jd-profile-match.mjs — Match JD requirements to provable profile experience (no fabrication).
  */
 
-import { extractJdKeywords } from './jd-keyword-align.mjs';
+import { extractJdKeywords, canonicalizeTechKeyword, isWeaveableKeyword } from './jd-keyword-align.mjs';
 
 const PROFILE_TECH_PATTERNS = [
   /\bReact(?:\.js)?\b/gi,
@@ -82,14 +82,27 @@ function normalizeKey(s) {
 const FRAGMENT_BLOCKLIST = new Set(['core', 'net', 'end', 'full', 'stack']);
 
 const PROFILE_SYNONYMS = {
-  javascript: ['node.js', 'nodejs', 'ecmascript', 'vanilla javascript'],
-  'ci/cd': ['continuous deployment', 'continuous integration', 'github actions', 'pre-flight validation', 'deployment workflow'],
-  react: ['react.js'],
-  redux: ['redux'],
-  'restful api': ['restful apis', 'backend api', 'high-throughput backend', 'fastapi'],
+  javascript: ['node.js', 'nodejs', 'ecmascript', 'vanilla javascript', 'typescript'],
+  typescript: ['javascript', 'react.js', 'react', 'node.js'],
+  'ci/cd': ['continuous deployment', 'continuous integration', 'github actions', 'pre-flight validation', 'deployment workflow', 'ci pipelines'],
+  'gitlab ci': ['ci/cd', 'continuous integration', 'github actions', 'ci pipelines', 'continuous deployment'],
+  'github actions': ['ci/cd', 'continuous integration', 'ci pipelines'],
+  react: ['react.js', 'typescript', 'frontend'],
+  'react.js': ['react', 'typescript'],
+  nestjs: ['express', 'node.js', 'nodejs', 'fastapi', 'backend api', 'restful'],
+  'nest.js': ['express', 'node.js', 'nodejs', 'fastapi'],
+  express: ['node.js', 'nodejs'],
+  azure: ['aws', 'ec2', 's3', 'ecs', 'lambda', 'cloud'],
+  gcp: ['aws', 'cloud'],
+  docker: ['container', 'ecs', 'aws container', 'container orchestration'],
+  kubernetes: ['ecs', 'docker', 'container'],
+  'restful api': ['restful apis', 'backend api', 'high-throughput backend', 'fastapi', 'restful'],
+  'rest api': ['restful', 'backend api', 'fastapi'],
   llm: ['gpt', 'claude', 'openai', 'chromadb', 'query-rewriting', 'text-embedding', 'pydantic'],
   cursor: ['cursor', 'claude code', 'ai-native tool', 'ai-assisted'],
   copilot: ['copilot', 'github copilot', 'ai-native', 'ai-assisted', 'claude code', 'gpt'],
+  postgresql: ['postgres', 'sql', 'oracle'],
+  postgres: ['postgresql', 'sql'],
   '.net': [],
   'c#': [],
 };
@@ -201,34 +214,55 @@ export function buildHonestCompetencies(honestKeywords, profile, jdText, limit =
   const seen = new Set();
 
   const add = (item) => {
-    const k = normalizeKey(item);
+    const raw = String(item || '').trim();
+    if (!raw) return;
+    const label = isWeaveableKeyword(raw) ? canonicalizeTechKeyword(raw) : raw;
+    const k = normalizeKey(label);
     if (!k || seen.has(k)) return;
+    // Never ship generic junk as a "competency"
+    if (['software', 'applications', 'application', 'development', 'engineering'].includes(k)) return;
     seen.add(k);
-    comps.push(item);
+    comps.push(label);
   };
 
-  for (const kw of honestKeywords.slice(0, 10)) add(kw);
-
+  // 1) Capability phrases first → Core Competencies (human-readable)
   const jdLower = String(jdText || '').toLowerCase();
   const transfers = [
     ['restful', 'RESTful API Design'],
+    ['api', 'RESTful API Design'],
     ['microservice', 'Microservices Architecture'],
     ['ci/cd', 'CI/CD Pipelines'],
+    ['gitlab ci', 'CI/CD Pipelines'],
     ['unit test', 'Unit & Integration Testing'],
     ['observability', 'Observability & Incident Response'],
     ['llm', 'LLM Integration'],
     ['ai agent', 'AI Agent Development'],
     ['full-stack', 'Full-Stack Engineering'],
+    ['fullstack', 'Full-Stack Engineering'],
     ['event-driven', 'Event-Driven Architecture'],
+    ['react', 'Frontend Engineering (React)'],
+    ['typescript', 'TypeScript Engineering'],
+    ['nestjs', 'Node.js / NestJS APIs'],
+    ['nest.js', 'Node.js / NestJS APIs'],
+    ['azure', 'Cloud Platforms (Azure / AWS)'],
+    ['docker', 'Containerized Deployments'],
+    ['kubernetes', 'Container Orchestration'],
+    ['high-traffic', 'High-Traffic Systems'],
+    ['scalability', 'Scalable Backend Systems'],
   ];
   for (const [needle, label] of transfers) {
     if (jdLower.includes(needle)) add(label);
   }
 
+  // 2) JD tech vocabulary (ATS Technical Skills) — exact JD wording
+  for (const kw of honestKeywords.slice(0, 12)) add(kw);
+
+  // 3) Profile superpowers that overlap the JD
   for (const s of profile?.narrative?.superpowers || []) {
     if (jdLower.split(/\W+/).some((w) => w.length > 4 && s.toLowerCase().includes(w))) add(s);
   }
 
+  // Prefer a mix: capability phrases + concrete tech (renderer splits them)
   return comps.slice(0, limit);
 }
 
@@ -236,7 +270,9 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   const y = Number(yearsExp) || 0;
   const lead = honestKeywords
     .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)))
-    .slice(0, 4)
+    .filter((k) => isWeaveableKeyword(k))
+    .map((k) => canonicalizeTechKeyword(k))
+    .slice(0, 5)
     .join(', ');
   const jdLower = String(jdText || '').toLowerCase();
   const lines = [];
@@ -249,12 +285,16 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
 
   if (jdLower.includes('llm') || jdLower.includes('ai')) {
     lines.push('Hands-on with LLM integrations, AI-assisted development (Cursor, Claude), and production API reliability.');
+  } else if (jdLower.includes('azure') || jdLower.includes('aws') || jdLower.includes('cloud')) {
+    lines.push('Deliver cloud-backed services with CI/CD, containerized releases, and strong testing discipline.');
   } else {
     lines.push('Deliver RESTful APIs, microservices, and CI/CD-backed releases with strong testing and code review discipline.');
   }
 
   if (jdLower.includes('observability') || jdLower.includes('high-traffic')) {
     lines.push('Experienced operating high-traffic systems with observability, incident response, and performance tuning.');
+  } else if (jdLower.includes('react') || jdLower.includes('typescript') || jdLower.includes('nestjs')) {
+    lines.push('Partner with product and frontend teams on React/TypeScript UIs and Node.js API layers end to end.');
   } else {
     lines.push('Collaborate with product and engineering partners from design through launch on user-focused features.');
   }
@@ -270,11 +310,11 @@ export function analyzeJdProfileFit(jdText, profile) {
 }
 
 export function formatHonestKeywordBlock(honest, gaps) {
-  const lines = ['PROVEN IN PROFILE (use in resume):'];
+  const lines = ['JD MATCH TERMS (use these exact words in summary + skills):'];
   if (honest.length === 0) lines.push('  (none extracted — lean on digest facts)');
   else honest.forEach((k, i) => lines.push(`  ${i + 1}. ${k}`));
   lines.push('');
-  lines.push('JD GAPS (do NOT claim on resume — omit or use transferable framing only):');
+  lines.push('HARD GAPS (no transferable proof — omit from experience claims; do not invent projects):');
   if (gaps.length === 0) lines.push('  (none)');
   else gaps.slice(0, 12).forEach((k, i) => lines.push(`  ${i + 1}. ${k}`));
   return lines.join('\n');

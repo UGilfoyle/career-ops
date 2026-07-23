@@ -407,18 +407,13 @@ function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
 
   const isTechStack = (text) => {
     const t = text.trim();
-    // Short items (≤30 chars) that look like tool/tech names (few spaces, no verb phrases)
-    if (t.length <= 30 && (t.split(/\s+/).length <= 3)) {
-      // Check against known patterns
-      if (techPatterns.some(p => p.test(t))) return true;
-      // If it's a very short string (single word or two), treat as tech by default
-      // unless it contains management/leadership style words
-      if (t.split(/\s+/).length <= 2 && !/\b(management|leadership|communication|mentoring|strategy|ownership|reviews)\b/i.test(t)) {
-        return true;
-      }
+    if (!t) return false;
+    // Reject generic filler that used to pollute Technical Skills
+    if (/^(software|applications?|development|engineering|systems?|platforms?|services?)$/i.test(t)) {
+      return false;
     }
-    // Longer items — check for tech patterns
-    return techPatterns.some(p => p.test(t));
+    // Only known tech patterns — never treat random short nouns as tech
+    return techPatterns.some((p) => p.test(t));
   };
 
   // Separate competencies into Core Competencies (broad skills) and Technical Skills (tech stacks)
@@ -1312,7 +1307,14 @@ ${roleDigest}
    - Para 2 (2-3 sentences): Map experience to JD requirements with tools and outcomes
    - Para 3 (1-2 sentences): Closing and next steps (e.g. welcoming an interview or expressing interest in next steps). Do NOT restate the candidate's name, email, phone number, location, or contact details in the body, as they are already printed in the header.
 
-HONEST JD ALIGNMENT — use PROVEN IN PROFILE terms in summary, core_competencies, and experience bullets. Do NOT use JD GAPS:
+JD KEYWORD MATCHING (ATS-FIRST):
+- Mirror the JD's exact tech vocabulary in summary + core_competencies whenever the candidate has transferable proof (Node/Express → NestJS, AWS → Azure, ECS/containers → Docker, CI pipelines → GitLab CI).
+- core_competencies MUST include 8–14 items: mix of capability phrases (e.g. "RESTful API Design", "CI/CD Pipelines") AND concrete JD tech (React, TypeScript, Node.js, NestJS, Docker, Azure, etc.).
+- NEVER invent metrics, employers, or titles. NEVER dump generic filler words (Software, applications, development) as skills.
+- NEVER append filler like "applying X in production" — weave JD tech naturally ("using NestJS", "with TypeScript").
+- Prefer PROVEN IN PROFILE terms. For transferable JD gaps, use the JD's wording in skills/summary; keep experience bullets grounded in real work with adjacent stack language.
+
+PROVEN IN PROFILE / TRANSFERABLE vs HARD GAPS:
 ${formatHonestKeywordBlock(honestKeywords, gapKeywords)}
 
 JD:
