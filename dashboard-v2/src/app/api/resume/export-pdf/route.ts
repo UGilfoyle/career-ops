@@ -66,8 +66,9 @@ async function tryPlaywrightPdf(html: string): Promise<Buffer | null> {
 }
 
 /**
- * Vercel / serverless: puppeteer-core + @sparticuz/chromium.
- * Local fallback when Playwright script is missing.
+ * Vercel / serverless: puppeteer-core + @sparticuz/chromium-min (remote pack).
+ * Full @sparticuz/chromium in the function zip breaks Vercel ("invalid deployment package" / symlinks).
+ * Local fallback: system Chrome when Playwright script is missing.
  */
 async function tryPuppeteerPdf(html: string): Promise<Buffer | null> {
   try {
@@ -77,12 +78,16 @@ async function tryPuppeteerPdf(html: string): Promise<Buffer | null> {
 
     let browser;
     if (isServerless) {
-      const chromiumMod = await import('@sparticuz/chromium');
+      const chromiumMod = await import('@sparticuz/chromium-min');
       const chromium = (chromiumMod as any).default ?? chromiumMod;
+      // Pack must match the installed @sparticuz/chromium-min major line.
+      const packUrl =
+        process.env.CHROMIUM_REMOTE_EXEC_PATH
+        || 'https://github.com/Sparticuz/chromium/releases/download/v138.0.2/chromium-v138.0.2-pack.tar';
       browser = await puppeteer.launch({
         args: chromium.args,
         defaultViewport: { width: 1280, height: 720, deviceScaleFactor: 1 },
-        executablePath: await chromium.executablePath(),
+        executablePath: await chromium.executablePath(packUrl),
         headless: true,
       });
     } else {
@@ -182,7 +187,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          'PDF engine failed. Install Chromium locally (`npx playwright install chromium`) or redeploy with @sparticuz/chromium. HTML is not returned for the PDF button.',
+          'PDF engine failed. On Vercel, Chromium pack is downloaded at runtime; locally install Chrome or run `npx playwright install chromium`.',
       },
       { status: 503 }
     );
