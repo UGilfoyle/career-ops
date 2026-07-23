@@ -110,11 +110,16 @@ function assertFixtureExpectations(name, result) {
   if ((result.selected?.ats ?? 0) < 50) {
     fails.push(`ATS ${result.selected?.ats} < 50`);
   }
-  // Trap fixture must not claim .NET / C# / Redux
+  // Trap fixture: experience must not invent .NET / C# / Redux project history
+  // (competencies may list JD target stack for ATS)
   if (name.includes('partial-traps') || name.includes('02-')) {
-    const corpus = JSON.stringify(result.selectedResume || {}).toLowerCase();
+    const exp = result.selectedResume?.experience;
+    const bullets = Array.isArray(exp)
+      ? exp
+      : Object.values(exp || {}).flat();
+    const corpus = bullets.join(' ').toLowerCase();
     for (const bad of ['.net', 'c#', 'redux']) {
-      if (corpus.includes(bad)) fails.push(`fabrication leaked: ${bad}`);
+      if (corpus.includes(bad)) fails.push(`fabrication leaked into experience: ${bad}`);
     }
     const gaps = (result.fit?.gaps || []).map((g) => g.toLowerCase());
     if (!gaps.some((g) => g.includes('.net') || g === 'c#' || g.includes('redux'))) {

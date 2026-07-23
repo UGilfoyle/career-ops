@@ -2,7 +2,7 @@
  * jd-profile-match.mjs — Match JD requirements to provable profile experience (no fabrication).
  */
 
-import { extractJdKeywords } from './jd-keyword-align.mjs';
+import { extractJdKeywords, extractJdTechKeywords, isJunkKeyword } from './jd-keyword-align.mjs';
 
 const PROFILE_TECH_PATTERNS = [
   /\bReact(?:\.js)?\b/gi,
@@ -197,29 +197,56 @@ export function reframeExperienceFromProfile(profileExperience, jdText, honestKe
 }
 
 export function buildHonestCompetencies(honestKeywords, profile, jdText, limit = 14) {
+  return buildJdMatchedCompetencies(honestKeywords, profile, jdText, limit);
+}
+
+/**
+ * JD-first competencies for ATS: full JD tech stack + transferable labels.
+ * Prefer proven terms first, then remaining JD tech (so Core Competencies / Technical Skills are never sparse).
+ */
+export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 14) {
   const comps = [];
   const seen = new Set();
 
   const add = (item) => {
-    const k = normalizeKey(item);
+    const raw = String(item || '').trim();
+    if (!raw || isJunkKeyword(raw)) return;
+    const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
     seen.add(k);
-    comps.push(item);
+    comps.push(raw);
   };
 
-  for (const kw of honestKeywords.slice(0, 10)) add(kw);
+  const jdTech = extractJdTechKeywords(jdText, 18);
+  const { honest } = partitionJdKeywords(
+    [...(jdKeywords || []), ...jdTech].filter((kw) => !isJunkKeyword(kw)),
+    profile
+  );
+
+  // Proven first, then remaining JD tech (ATS match to the posting)
+  for (const kw of honest) add(kw);
+  for (const kw of jdTech) add(kw);
+  for (const kw of jdKeywords || []) add(kw);
 
   const jdLower = String(jdText || '').toLowerCase();
   const transfers = [
     ['restful', 'RESTful API Design'],
+    ['nestjs', 'NestJS Backend Development'],
+    ['react', 'React / TypeScript Frontend'],
+    ['typescript', 'TypeScript'],
+    ['azure', 'Azure Cloud Services'],
+    ['gitlab', 'GitLab CI / CD'],
     ['microservice', 'Microservices Architecture'],
     ['ci/cd', 'CI/CD Pipelines'],
     ['unit test', 'Unit & Integration Testing'],
+    ['integration test', 'Unit & Integration Testing'],
     ['observability', 'Observability & Incident Response'],
     ['llm', 'LLM Integration'],
     ['ai agent', 'AI Agent Development'],
     ['full-stack', 'Full-Stack Engineering'],
     ['event-driven', 'Event-Driven Architecture'],
+    ['docker', 'Docker'],
+    ['node', 'Node.js Services'],
   ];
   for (const [needle, label] of transfers) {
     if (jdLower.includes(needle)) add(label);
@@ -234,10 +261,10 @@ export function buildHonestCompetencies(honestKeywords, profile, jdText, limit =
 
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
   const y = Number(yearsExp) || 0;
-  const lead = honestKeywords
-    .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)))
-    .slice(0, 4)
-    .join(', ');
+  const jdTech = extractJdTechKeywords(jdText, 8);
+  const leadPool = [...(honestKeywords || []), ...jdTech]
+    .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)) && !isJunkKeyword(k));
+  const lead = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 5).join(', ');
   const jdLower = String(jdText || '').toLowerCase();
   const lines = [];
 
@@ -270,12 +297,14 @@ export function analyzeJdProfileFit(jdText, profile) {
 }
 
 export function formatHonestKeywordBlock(honest, gaps) {
-  const lines = ['PROVEN IN PROFILE (use in resume):'];
+  const lines = ['PROVEN IN PROFILE (prefer in experience bullets):'];
   if (honest.length === 0) lines.push('  (none extracted — lean on digest facts)');
   else honest.forEach((k, i) => lines.push(`  ${i + 1}. ${k}`));
   lines.push('');
-  lines.push('JD GAPS (do NOT claim on resume — omit or use transferable framing only):');
+  lines.push('JD TARGET STACK (MUST appear in core_competencies / Technical Skills for ATS — even if not every item is in digest):');
   if (gaps.length === 0) lines.push('  (none)');
   else gaps.slice(0, 12).forEach((k, i) => lines.push(`  ${i + 1}. ${k}`));
+  lines.push('');
+  lines.push('EXPERIENCE RULE: do not invent detailed work history for gap tools (e.g. "built NestJS microservices at X"). Skills section may list the full JD stack.');
   return lines.join('\n');
 }

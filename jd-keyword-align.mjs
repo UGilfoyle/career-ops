@@ -10,8 +10,8 @@ const KNOWN_TECH = [
   'ECS', 'Lambda', 'S3', 'EC2', 'CloudFormation', 'IAM', 'VPC', 'SQS', 'SNS',
   'Kafka', 'RabbitMQ', 'GraphQL', 'REST API', 'RESTful API', 'gRPC',
   'Jenkins', 'GitHub Actions', 'GitLab CI', 'Prometheus', 'Grafana', 'Datadog',
-  'Jest', 'Cypress', 'Playwright', 'Webpack', 'Vite',
-  'Git', 'Agile', 'Scrum', 'Microservices', 'System Design',
+  'Jest', 'Cypress', 'Playwright', 'Webpack', 'Vite', 'Material UI', 'HTML5', 'CSS3',
+  'Git', 'Agile', 'Scrum', 'Microservices', 'System Design', 'Unit Testing', 'Integration Testing',
   'Machine Learning', 'ML', 'LLM', 'RAG', 'LangChain', 'PyTorch', 'TensorFlow',
   'Cursor', 'Copilot', 'GitHub Copilot', 'Github Copilot',
   '.NET Core', '.NET', 'C#',
@@ -38,7 +38,25 @@ const STOPWORDS = new Set([
   'job', 'title', 'company', 'description', 'location', 'department',
   'requirements', 'qualifications', 'responsibilities', 'skills',
   'build', 'own', 'design', 'develop', 'implement', 'support', 'ensure', 'drive',
+  // Generic filler that must never become "skills" / "Core stacks"
+  'software', 'application', 'applications', 'services', 'service', 'process', 'apply',
+  'development', 'developer', 'engineer', 'engineering', 'technologies', 'technology',
+  'systems', 'platform', 'solutions', 'business', 'projects', 'project', 'tools', 'tool',
 ]);
+
+/** Known tech only — preferred for ATS competency / skills lines. */
+export function extractJdTechKeywords(jdText, limit = 20) {
+  if (!jdText || String(jdText).length < 30) return [];
+  return uniqueCasePreserved(findKnownTechInText(String(jdText))).slice(0, limit);
+}
+
+export function isJunkKeyword(kw) {
+  const k = normalizeKeyword(kw).toLowerCase();
+  if (!k || k.length < 2) return true;
+  if (STOPWORDS.has(k)) return true;
+  if (/^(software|applications?|services?|development|technologies|process|apply)$/i.test(k)) return true;
+  return false;
+}
 
 function normalizeKeyword(kw) {
   return String(kw || '').trim().replace(/\s+/g, ' ');
@@ -139,7 +157,9 @@ export function extractJdKeywords(jdText, limit = 20) {
 
   found.push(...frequent);
 
-  const deduped = uniqueCasePreserved(found.map(normalizeKeyword).filter(Boolean));
+  const deduped = uniqueCasePreserved(
+    found.map(normalizeKeyword).filter((kw) => kw && !isJunkKeyword(kw))
+  );
   // Drop partial tokens subsumed by a longer keyword (e.g. "PostgreS" when "PostgreSQL" exists)
   return deduped.filter((kw, i, arr) => {
     const lower = kw.toLowerCase();
@@ -197,53 +217,70 @@ function bulletMissingJd(bullet, jdKeywords) {
 function weaveKeywordIntoBullet(bullet, keyword) {
   const b = String(bullet || '').trim();
   if (!b) return b;
-  const kw = String(keyword).trim();
+  const kw = String(keyword || '').trim();
+  if (!kw || isJunkKeyword(kw)) return b;
   const lower = b.toLowerCase();
   if (lower.includes(kw.toLowerCase())) return b;
 
-  // Prepend context clause with JD term
-  if (/^[A-Z]/.test(b) && !/^(I |Built|Led|Designed|Engineered|Architected|Developed|Implemented)/i.test(b)) {
+  // Never spam "applying X in production" — integrate tech naturally once.
+  if (/\b(using|with|via|on)\b/i.test(b) && b.length < 220) {
+    return `${b.replace(/\.$/, '')} and ${kw}.`;
+  }
+  if (/^[A-Z]/.test(b) && !/^(I |Built|Led|Designed|Engineered|Architected|Developed|Implemented|Delivered|Shipped)/i.test(b)) {
     return `${b.replace(/\.$/, '')} using ${kw}.`;
   }
-  return `${b.replace(/\.$/, '')}, applying ${kw} in production.`;
+  // Prefer a clean tool-clause over keyword stuffing
+  return `${b.replace(/\.$/, '')} (${kw}).`;
 }
 
 function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   let text = String(summary || '').trim();
   if (!text) return text;
   const lower = text.toLowerCase();
-  const toAdd = keywords.filter((kw) => !lower.includes(String(kw).toLowerCase())).slice(0, minCount);
+  const toAdd = keywords
+    .filter((kw) => !isJunkKeyword(kw) && !lower.includes(String(kw).toLowerCase()))
+    .slice(0, minCount);
   if (toAdd.length === 0) return text;
 
   const lines = text.split('\n').filter(Boolean);
   if (lines.length === 0) lines.push(text);
 
   const inject = toAdd.slice(0, 5).join(', ');
-  if (lines[0].length < 120) {
+  if (lines[0].length < 160) {
     lines[0] = `${lines[0].replace(/\.$/, '')} — ${inject}.`;
-  } else {
-    lines.push(`Core stacks: ${inject}.`);
+  } else if (!lines.some((l) => /^tech stack:/i.test(l))) {
+    lines.push(`Tech stack: ${inject}.`);
   }
   return lines.slice(0, 4).join('\n');
 }
 
 /**
- * Surgically align resume to JD keywords (no fabrication — weave terms into existing content).
+ * Align resume to JD keywords for ATS.
+ * Skills/competencies get the full JD tech list.
+ * Experience bullets only weave lightly (≤1 keyword per role) — no spam.
+ *
+ * @param {object} [opts]
+ * @param {string[]} [opts.bulletKeywords] — subset safe to weave into experience (default: all)
+ * @param {boolean} [opts.weaveEveryBullet=false] — legacy spam mode; keep false
  */
-export function alignResumeToJd(resume, jdKeywords, sourceExperience = []) {
+export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts = {}) {
   if (!resume || !jdKeywords?.length) {
     return { resume, stats: { competenciesAdded: 0, bulletsAligned: 0, summaryPatched: false } };
   }
+
+  const cleanKws = jdKeywords.filter((kw) => !isJunkKeyword(kw));
+  const bulletKws = (opts.bulletKeywords || cleanKws).filter((kw) => !isJunkKeyword(kw));
+  const weaveEvery = opts.weaveEveryBullet === true;
 
   const copy = JSON.parse(JSON.stringify(resume));
   let competenciesAdded = 0;
   let bulletsAligned = 0;
   let summaryPatched = false;
 
-  // Core competencies: ensure top JD keywords appear first
+  // Core competencies: JD tech first (ATS match)
   const comps = Array.isArray(copy.core_competencies) ? [...copy.core_competencies] : [];
   const compLower = comps.map((c) => String(c).toLowerCase());
-  const priority = jdKeywords.slice(0, 10);
+  const priority = cleanKws.slice(0, 12);
   const newComps = [];
   for (const kw of priority) {
     if (!compLower.some((c) => c.includes(String(kw).toLowerCase()))) {
@@ -253,27 +290,28 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = []) {
   }
   copy.core_competencies = uniqueCasePreserved([...newComps, ...comps]).slice(0, 14);
 
-  // Summary: weave top missing keywords
+  // Summary: weave top missing keywords (tech only)
   const beforeSummary = copy.summary;
-  copy.summary = weaveKeywordsIntoSummary(copy.summary, jdKeywords, 3);
+  copy.summary = weaveKeywordsIntoSummary(copy.summary, cleanKws, 4);
   summaryPatched = beforeSummary !== copy.summary;
 
-  // Experience bullets: ensure each bullet references at least one JD keyword
-  const groups = collectExperienceArrays(copy.experience);
   const sourceBullets = (sourceExperience || []).flatMap((e) => e?.bullets || []);
-
   let kwIdx = 0;
+
   const alignGroup = (bullets, groupIdx) => {
-    if (!Array.isArray(bullets)) return bullets;
+    if (!Array.isArray(bullets) || bulletKws.length === 0) return bullets;
+    let weavesThisRole = 0;
     return bullets.map((bullet, bi) => {
-      if (!bulletMissingJd(bullet, jdKeywords)) return bullet;
-      const kw = jdKeywords[kwIdx % jdKeywords.length];
+      if (!bulletMissingJd(bullet, bulletKws)) return bullet;
+      // Default: only lightly touch the first bullet of each role (avoids "applying X" spam)
+      if (!weaveEvery && (bi > 0 || weavesThisRole >= 1)) return bullet;
+      const kw = bulletKws[kwIdx % bulletKws.length];
       kwIdx += 1;
+      weavesThisRole += 1;
       bulletsAligned += 1;
-      // Prefer weaving into first bullet of each role
       if (bi === 0 && sourceBullets[groupIdx]) {
         const src = String(sourceBullets[groupIdx] || bullet);
-        if (!bulletMissingJd(src, jdKeywords)) {
+        if (!bulletMissingJd(src, bulletKws)) {
           return weaveKeywordIntoBullet(src, kw);
         }
       }

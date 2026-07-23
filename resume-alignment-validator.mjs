@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   extractJdKeywords,
+  extractJdTechKeywords,
   measureJdAlignment,
   alignResumeToJd,
 } from './jd-keyword-align.mjs';
@@ -18,6 +19,7 @@ import {
   collectProfileCorpus,
   buildHonestSummary,
   buildHonestCompetencies,
+  buildJdMatchedCompetencies,
   reframeExperienceFromProfile,
 } from './jd-profile-match.mjs';
 import {
@@ -26,7 +28,7 @@ import {
   polishTailoredResume,
 } from './resume-quality.mjs';
 
-export const ATS_MIN_SCORE = 88;
+export const ATS_MIN_SCORE = 90;
 
 const RESPONSIBILITY_PHRASES = [
   'design', 'implement', 'build', 'scale', 'own', 'lead', 'collaborate',
@@ -99,19 +101,26 @@ export function buildSourceResumeFromProfile(profile, jdText = '') {
 export function buildAlignedResumeFromProfile(profile, jdText) {
   const fit = analyzeJdProfileFit(jdText, profile);
   const honest = fit.honest;
+  const jdTech = extractJdTechKeywords(jdText, 18);
+  const atsKeywords = [...new Set([...jdTech, ...honest])].slice(0, 20);
   const years = Number(profile?.candidate?.years_experience) || 0;
   const draft = {
-    summary: buildHonestSummary('', years, honest, jdText),
-    core_competencies: buildHonestCompetencies(honest, profile, jdText),
+    summary: buildHonestSummary('', years, atsKeywords, jdText),
+    core_competencies: buildJdMatchedCompetencies(atsKeywords, profile, jdText),
     experience: reframeExperienceFromProfile(
       profile?.experience || [],
       jdText,
-      honest,
+      honest.length ? honest : atsKeywords,
       Math.min(7, (profile?.experience || []).length)
     ),
   };
-  const { resume: aligned } = alignResumeToJd(draft, honest, profile?.experience || []);
-  const { resume: polished, stats } = polishTailoredResume(aligned, profile?.experience || []);
+  const { resume: aligned } = alignResumeToJd(draft, atsKeywords, profile?.experience || [], {
+    bulletKeywords: honest.length ? honest : atsKeywords.slice(0, 6),
+  });
+  const jdAlign = measureJdAlignment(aligned, atsKeywords);
+  const { resume: polished, stats } = polishTailoredResume(aligned, profile?.experience || [], {
+    jdAlignScore: jdAlign.score,
+  });
   return { resume: polished, fit, polishStats: stats };
 }
 
@@ -230,18 +239,31 @@ function exactTermInCorpus(corpus, term) {
   return new RegExp(`${left}${escaped}${right}`, 'i').test(String(corpus || ''));
 }
 
+function experienceCorpus(resume) {
+  const texts = [];
+  const exp = resume?.experience;
+  if (Array.isArray(exp)) {
+    for (const b of exp) texts.push(String(b || ''));
+  } else if (exp && typeof exp === 'object') {
+    for (const key of Object.keys(exp).sort((a, b) => Number(a) - Number(b))) {
+      for (const b of exp[key] || []) texts.push(String(b || ''));
+    }
+  }
+  return texts.join('\n');
+}
+
 function findUnsupportedClaims(resume, gaps, provenCorpus = '') {
-  const corpus = resumeCorpus(resume).toLowerCase();
+  // Only flag hard-skill gaps claimed inside EXPERIENCE bullets.
+  // Skills / Core Competencies intentionally mirror the JD for ATS matching.
+  const corpus = experienceCorpus(resume).toLowerCase();
   const unsupported = [];
   for (const gap of gaps || []) {
     if (!isActionableGap(gap)) continue;
-    // The canonical source CV is proof. This also covers profile-normalization
-    // misses (for example, narrative data stored outside expected fields).
     if (exactTermInCorpus(provenCorpus, gap)) continue;
     if (exactTermInCorpus(corpus, gap)) {
       unsupported.push({
         term: gap,
-        evidence: findEvidence(resumeCorpus(resume), gap),
+        evidence: findEvidence(experienceCorpus(resume), gap),
       });
     }
   }
@@ -259,10 +281,16 @@ export function scoreCandidate(resume, jdText, profile, fit = null, provenCorpus
   const cleaned = stripUnverifiedMetrics(resume, profile);
 
   const honestAlign = measureJdAlignment(cleaned, honest.length ? honest : extractJdKeywords(jdText, 20));
+  const techKws = extractJdTechKeywords(jdText, 18);
+  const techAlign = measureJdAlignment(cleaned, techKws.length ? techKws : (honest.length ? honest : extractJdKeywords(jdText, 20)));
   const resp = responsibilityCoverage(cleaned, jdText);
   const metrics = verifyMetricsAgainstProfile(cleaned, profile);
   const audit = auditResumeQuality(cleaned);
-  const ats = estimateAtsContentScore(audit);
+  const ats = estimateAtsContentScore(audit, {
+    jdAlignScore: techAlign.score,
+    competencyCount: Array.isArray(cleaned.core_competencies) ? cleaned.core_competencies.length : 0,
+    summaryLines: String(cleaned.summary || '').split('\n').filter(Boolean).length,
+  });
   const unsupported = findUnsupportedClaims(cleaned, gaps, provenCorpus);
 
   const metricScore = metrics.claimed.length === 0
@@ -362,13 +390,8 @@ export function validateResumeAlignment({
   let selected = null;
   const reasons = [];
   const sourceScore = scores.source;
-  // Adaptive floor: hard target remains 88. Multi-role resumes with honest
-  // metric stripping often land 50–65 on the content estimator; require
-  // improvement over source and a minimum usable floor.
-  const adaptiveAtsMin = Math.min(
-    atsMin,
-    Math.max(50, (sourceScore?.ats || 0) + 8)
-  );
+  // Hard floor for generated resumes: 90+ ATS content score
+  const adaptiveAtsMin = atsMin;
 
   if (honestCandidates.length === 0) {
     reasons.push('No honest candidate passed unsupported-claim / metric checks');
@@ -390,7 +413,10 @@ export function validateResumeAlignment({
         const raw = candidates[current.id].resume;
         const { resume: polished } = polishTailoredResume(
           deepClone(raw),
-          profile?.experience || []
+          profile?.experience || [],
+          {
+            jdAlignScore: current.honestCoverage,
+          }
         );
         const cleaned = stripUnverifiedMetrics(polished, profile);
         candidates[current.id].resume = cleaned;

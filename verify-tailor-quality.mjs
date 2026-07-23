@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * verify-tailor-quality.mjs — offline check that polish + naming hit 88+ without DB/LLM.
+ * verify-tailor-quality.mjs — offline check that polish + naming hit 90+ without DB/LLM.
  */
 
 import { polishTailoredResume, auditResumeQuality, estimateAtsContentScore } from './resume-quality.mjs';
@@ -44,7 +44,7 @@ const paths = buildApplicationDocumentPaths({
 });
 
 const ok =
-  stats.atsContentScore >= 88
+  stats.atsContentScore >= 90
   && after.repeatedVerbs.length === 0
   && after.withoutMetrics === 0
   && paths.resumePdf.endsWith('AkashKaintura_Stripe_SrBEEng.pdf')

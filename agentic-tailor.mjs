@@ -9,6 +9,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { polishTailoredResume, auditResumeQuality } from './resume-quality.mjs';
 import {
   extractJdKeywords,
+  extractJdTechKeywords,
   measureJdAlignment,
   alignResumeToJd,
   formatJdKeywordBlock,
@@ -23,6 +24,7 @@ import {
   formatHonestKeywordBlock,
   reframeExperienceFromProfile,
   buildHonestCompetencies,
+  buildJdMatchedCompetencies,
   buildHonestSummary,
 } from './jd-profile-match.mjs';
 import {
@@ -1190,14 +1192,19 @@ function coverLetterBodyToHtml(text) {
 
 async function tailorPackage(jd, profile, companyName, passedCompanyType) {
   const jdKeywords = extractJdKeywords(jd, 20);
+  const jdTechKeywords = extractJdTechKeywords(jd, 18);
   const jdFit = analyzeJdProfileFit(jd, profile);
   const honestKeywords = jdFit.honest;
   const gapKeywords = jdFit.gaps;
+  // ATS alignment set: JD tech stack (full) — competencies/skills mirror the posting
+  const atsKeywords = [...new Set([...jdTechKeywords, ...honestKeywords, ...jdKeywords])]
+    .filter(Boolean)
+    .slice(0, 20);
   if (gapKeywords.length > 0) {
-    console.log(`⚠️ JD gaps (not in profile — will NOT claim): ${gapKeywords.slice(0, 8).join(', ')}`);
+    console.log(`⚠️ JD gaps (skills OK for ATS; not invented in experience): ${gapKeywords.slice(0, 8).join(', ')}`);
   }
-  if (honestKeywords.length > 0) {
-    console.log(`✓ Honest JD match terms: ${honestKeywords.slice(0, 10).join(', ')}`);
+  if (atsKeywords.length > 0) {
+    console.log(`✓ JD ATS match terms: ${atsKeywords.slice(0, 12).join(', ')}`);
   }
   const hfClient = await getHfClient();
   if (hfClient) {
@@ -1207,26 +1214,37 @@ async function tailorPackage(jd, profile, companyName, passedCompanyType) {
   } else {
     const y = effectiveYearsOfExperience(profile);
     const fallbackResume = {
-      summary: buildHonestSummary(profile?.narrative?.exit_story || '', y, honestKeywords, jd),
-      core_competencies: buildHonestCompetencies(honestKeywords, profile, jd),
+      summary: buildHonestSummary(profile?.narrative?.exit_story || '', y, atsKeywords, jd),
+      core_competencies: buildJdMatchedCompetencies(atsKeywords, profile, jd),
       experience: reframeExperienceFromProfile(
         profile?.experience || [],
         jd,
-        honestKeywords,
+        honestKeywords.length ? honestKeywords : atsKeywords,
         Math.min(7, (profile?.experience || []).length)
       ),
     };
-    const { resume: aligned } = alignResumeToJd(fallbackResume, honestKeywords, profile?.experience || []);
-    ensureAllRolesTailored(aligned, profile?.experience, honestKeywords);
+    const { resume: aligned } = alignResumeToJd(fallbackResume, atsKeywords, profile?.experience || [], {
+      bulletKeywords: honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6),
+    });
+    ensureAllRolesTailored(aligned, profile?.experience, honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6));
+    const offlineAlign = measureJdAlignment(aligned, atsKeywords);
+    const { resume: polishedOffline, stats: polishStats } = polishTailoredResume(
+      aligned,
+      profile?.experience || [],
+      { jdAlignScore: offlineAlign.score }
+    );
+    console.log(`📈 Offline ATS content score: ${polishStats.atsContentScore}/100 (target 90+)`);
     const offlinePackage = {
-      resume: aligned,
+      resume: polishedOffline,
       cover_letter: (() => {
-        const jdHook = honestKeywords.slice(0, 3).join(', ') || 'the technical requirements described in the posting';
+        const jdHook = atsKeywords.slice(0, 3).join(', ') || 'the technical requirements described in the posting';
         return `I am writing to express my interest in opportunities with ${companyName} that align with the technical requirements described in the posting. The role emphasizes delivery in production environments; my background includes building and operating backend systems with a focus on reliability and measurable performance.\n\nMy recent work aligns with several themes in the job description, including ${jdHook}. I am prepared to contribute on day one and to collaborate closely with engineering and operations partners.\n\nI would welcome the opportunity to discuss fit and next steps.`;
       })(),
       jd_gap_keywords: gapKeywords,
+      jd_alignment_score: offlineAlign.score,
+      ats_content_score: polishStats.atsContentScore,
     };
-    return applyAlignmentGate(offlinePackage, jd, profile, companyName, aligned);
+    return applyAlignmentGate(offlinePackage, jd, profile, companyName, polishedOffline);
   }
 
   const yearsExp = effectiveYearsOfExperience(profile);
@@ -1280,13 +1298,13 @@ GLOBAL RULES:
 - NO buzzwords: passion, leveraging, synergies, robust, seamless, cutting-edge, proven track record
 - NO AI-sounding phrases
 - Individual Ownership (I, not We): Position all technical achievements, summaries, and cover letters as direct personal contributions. Never use team-oriented language like "we", "our", "us", "assisted with", "participated in", or "worked in a team to". Use first-person singular "I" or strong active verbs (e.g. "I built...", "I engineered...", "Architected...", "Designed...") to show individual ownership of the work.
-- 100% JD-Alignment (HONEST): Align every sentence to the JD using ONLY technologies and outcomes provable in "My Context" below. NEVER claim a JD technology listed under JD GAPS. Map transferable wins (RESTful APIs, microservices, CI/CD, testing, React, TypeScript, LLM work) from the digest instead of inventing stacks.
+- 100% JD-Alignment (ATS-FIRST): Mirror the JD tech stack in Summary + Core Competencies using exact JD terminology. Experience bullets stay grounded in digest facts — do not invent employers or metrics. Skills/competencies MUST include the JD TARGET STACK terms listed below (NestJS, Azure, TypeScript, etc.) even when they are not every item in the digest.
 - Use short sentences, active voice, specific numbers where they appear in the digest
 - Lead with substance, not filler${companyTypeRule}
 - Highlight Applied AI & GenAI/LLM: If the JD requires or mentions AI, Generative AI, Large Language Models (LLMs), RAG, vector databases, or machine learning, prioritize and weave the candidate's AI experience (e.g., ChromaDB document ingestion pipeline with multiprocessing, conversation query-rewriting, Anthropic Claude/OpenAI GPT integrations with tenacity backoff retry, self-correcting validation loops for LLMs) into the summary, core competencies, and tailored experience bullets.
 - Freelance / Contract / Temporary Role Adaptation: If the JD indicates a freelance, contract, or temporary role, adapt the summary and cover letter to emphasize high autonomy, rapid team integration, immediate contribution, and deliverables-oriented execution. DO NOT change the candidate's existing job titles on the resume to "Freelance" or "Contractor". Keep professional titles (e.g., "Senior Software Engineer") as-is. Avoid adding clunky "doing freelancing" or "freelancing work" phrasing.
-- CRITICAL ATS OPTIMIZATION (88+ ATS Score Target): Maximize exact keyword matching. Extract the primary languages, frameworks, databases, cloud platforms, and technical skills from the JD and weave them verbatim into the Summary, Core Competencies, and Rewritten Bullets. Match terminology exactly (e.g. if the JD writes "PostgreSQL", do not write "Postgres" or "SQL database").
-- CRITICAL — QUANTIFIED IMPACT (88+ target): Enforce strong quantification. Wherever a metric is present in the candidate's experience digest (%, dollar amounts, latency, throughput, CPU reduction, uptime, speedups), preserve and highlight it in the rewritten bullets. Never invent or fabricate metrics.
+- CRITICAL ATS OPTIMIZATION (90+ ATS Score Target): Maximize exact keyword matching. Extract the primary languages, frameworks, databases, cloud platforms, and technical skills from the JD and weave them verbatim into the Summary, Core Competencies, and Rewritten Bullets. Match terminology exactly (e.g. if the JD writes "PostgreSQL", do not write "Postgres" or "SQL database").
+- CRITICAL — QUANTIFIED IMPACT (90+ target): Enforce strong quantification. Wherever a metric is present in the candidate's experience digest (%, dollar amounts, latency, throughput, CPU reduction, uptime, speedups), preserve and highlight it in the rewritten bullets. Never invent or fabricate metrics.
 - CRITICAL — VERB VARIETY: Start each bullet with a unique, strong action verb (e.g., architected, engineered, streamlined, deployed, accelerated). Avoid repeating the same verb in consecutive bullet points.
 
 
@@ -1299,16 +1317,17 @@ TASK:
       - Example: if JD says "React, Node.js, PostgreSQL" → summary MUST mention React, Node.js, PostgreSQL.
       - Total under ~90 words. No bullet characters.
 
-   b) **Core competencies** (resume.core_competencies): 10-14 items.
-      - FIRST 6-8 items: EXACT terms from "PROVEN IN PROFILE" list below (JD keywords the candidate actually has).
-      - NEXT 2-4 items: transferable JD themes supported by digest (e.g. "RESTful API Design", "CI/CD Pipelines", "Unit & Integration Testing") — never list JD GAPS like .NET/C#/Redux unless in digest.
+   b) **Core competencies** (resume.core_competencies): 10-14 items — NEVER sparse.
+      - Include EVERY major JD tech term (React, TypeScript, Node.js, NestJS, Azure, GitLab CI, Docker, testing, REST, LLM if mentioned).
+      - Mix exact JD tool names with transferable labels (e.g. "RESTful API Design", "CI/CD Pipelines", "Unit & Integration Testing").
+      - This section is for ATS matching — list the JD stack even when some tools are stretch/adjacent to digest experience.
 
    c) **Experience bullets** (resume.experience): Rewrite bullets for the top ${rolesToTailor} roles.
       Return as an OBJECT keyed by role index ("0", "1", "2", "3"), each with EXACTLY 4 highly descriptive, impactful tailored bullets (never fewer than 4).
 ${roleDigest}
       BULLET RULES:
-      - Each bullet MUST reference at least one PROVEN JD technology or theme from the digest
-      - NEVER use JD GAP technologies (.NET, C#, Redux, etc.) unless explicitly in the digest for that role
+      - Prefer PROVEN JD technologies from the digest; map adjacent stacks with careful phrasing (Node.js ↔ NestJS-style backends) without inventing fake project history
+      - NEVER invent metrics or employers; never append spam like "applying X in production"
       - Each bullet MUST include at least one metric from the digest when the source bullet has one; never fabricate numbers
       - Start each bullet with a UNIQUE action verb — no two bullets may share the same opening verb
       - NEVER repeat the same action verb anywhere in the resume (not just at the start) — max 1 use per verb document-wide
@@ -1325,7 +1344,7 @@ ${roleDigest}
    - Para 2 (2-3 sentences): Map experience to JD requirements with tools and outcomes
    - Para 3 (1-2 sentences): Closing and next steps (e.g. welcoming an interview or expressing interest in next steps). Do NOT restate the candidate's name, email, phone number, location, or contact details in the body, as they are already printed in the header.
 
-HONEST JD ALIGNMENT — use PROVEN IN PROFILE terms in summary, core_competencies, and experience bullets. Do NOT use JD GAPS:
+JD ATS ALIGNMENT — skills/competencies list TARGET STACK; experience prefers PROVEN terms:
 ${formatHonestKeywordBlock(honestKeywords, gapKeywords)}
 
 JD:
@@ -1484,9 +1503,50 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   }
 
   if (data?.resume) {
-    const { resume: polished, stats } = polishTailoredResume(data.resume, profile?.experience || []);
+    const llmDraft = JSON.parse(JSON.stringify(data.resume));
+
+    // JD-first ATS reframe: competencies mirror posting; bullets stay fact-based
+    const yExp = effectiveYearsOfExperience(profile);
+    data.resume.summary = buildHonestSummary(data.resume.summary, yExp, atsKeywords, jd);
+    data.resume.core_competencies = buildJdMatchedCompetencies(atsKeywords, profile, jd);
+    data.resume.experience = reframeExperienceFromProfile(
+      profile?.experience || [],
+      jd,
+      honestKeywords.length ? honestKeywords : atsKeywords,
+      Math.min(4, (profile?.experience || []).length)
+    );
+
+    if (atsKeywords.length > 0) {
+      let { resume: aligned } = alignResumeToJd(
+        data.resume,
+        atsKeywords,
+        profile?.experience || [],
+        { bulletKeywords: honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6) }
+      );
+      ensureAllRolesTailored(
+        aligned,
+        profile?.experience,
+        honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6)
+      );
+      let alignment = measureJdAlignment(aligned, atsKeywords);
+      data.resume = aligned;
+      data.jd_alignment_score = alignment.score;
+      data.jd_gap_keywords = gapKeywords;
+      console.log(
+        `🎯 JD ATS alignment: ${alignment.score}% (${alignment.matched.length}/${atsKeywords.length} terms; experience gaps not invented: ${gapKeywords.length})`
+      );
+      if (gapKeywords.length > 0) {
+        console.warn(`⚠ Experience stays factual — gaps only in skills/ATS: ${gapKeywords.slice(0, 8).join(', ')}`);
+      }
+    }
+
+    // Polish AFTER JD align so ATS score reflects the final resume (target 90+)
+    const { resume: polished, stats } = polishTailoredResume(
+      data.resume,
+      profile?.experience || [],
+      { jdAlignScore: data.jd_alignment_score }
+    );
     data.resume = polished;
-    const llmDraft = JSON.parse(JSON.stringify(polished));
     const audit = auditResumeQuality(data.resume);
     const fixes = [
       stats.verbsRotated > 0 ? `${stats.verbsRotated} verb(s) rotated` : null,
@@ -1496,7 +1556,10 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     if (fixes.length > 0) {
       console.log(`📊 Resume quality polish: ${fixes.join(', ')}`);
     }
-    console.log(`📈 Estimated ATS content score: ${stats.atsContentScore}/100`);
+    console.log(`📈 Estimated ATS content score: ${stats.atsContentScore}/100 (target 90+)`);
+    if (stats.atsContentScore < 90) {
+      console.warn(`⚠ ATS score ${stats.atsContentScore} below 90 — alignment gate will re-polish or fail`);
+    }
     if (audit.repeatedVerbs.length > 0) {
       console.warn(`⚠ Remaining repeated verbs: ${audit.repeatedVerbs.join(', ')}`);
     }
@@ -1508,36 +1571,6 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       console.log(`📈 Quantified impact coverage: ${pct}% of bullets (${audit.totalBullets - audit.withoutMetrics}/${audit.totalBullets})`);
     }
     data.ats_content_score = stats.atsContentScore ?? null;
-
-    // Honest JD reframe: bullets from profile facts, ranked by JD relevance (no fabrication)
-    const yExp = effectiveYearsOfExperience(profile);
-    data.resume.summary = buildHonestSummary(data.resume.summary, yExp, honestKeywords, jd);
-    data.resume.core_competencies = buildHonestCompetencies(honestKeywords, profile, jd);
-    data.resume.experience = reframeExperienceFromProfile(
-      profile?.experience || [],
-      jd,
-      honestKeywords,
-      Math.min(4, (profile?.experience || []).length)
-    );
-
-    if (honestKeywords.length > 0) {
-      let { resume: aligned } = alignResumeToJd(
-        data.resume,
-        honestKeywords,
-        profile?.experience || []
-      );
-      ensureAllRolesTailored(aligned, profile?.experience, honestKeywords);
-      let alignment = measureJdAlignment(aligned, honestKeywords);
-      data.resume = aligned;
-      data.jd_alignment_score = alignment.score;
-      data.jd_gap_keywords = gapKeywords;
-      console.log(
-        `🎯 Honest JD alignment: ${alignment.score}% (${alignment.matched.length}/${honestKeywords.length} proven terms; gaps excluded: ${gapKeywords.length})`
-      );
-      if (gapKeywords.length > 0) {
-        console.warn(`⚠ Not claiming on resume: ${gapKeywords.slice(0, 8).join(', ')}`);
-      }
-    }
 
     return applyAlignmentGate(data, jd, profile, companyName, llmDraft);
   }
