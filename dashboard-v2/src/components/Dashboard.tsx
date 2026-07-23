@@ -112,7 +112,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [resumeImportStatus, setResumeImportStatus] = useState<'idle' | 'uploading' | 'ready' | 'error'>('idle');
   const [resumeImport, setResumeImport] = useState<any>(null);
-  const [resumeImportMode, setResumeImportMode] = useState<'replace' | 'merge'>('replace');
+  // Merge is the safer default — Replace can wipe roles the PDF parser misses.
+  const [resumeImportMode, setResumeImportMode] = useState<'replace' | 'merge'>('merge');
   const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
   const [jobDetails, setJobDetails] = useState<any>(null);
@@ -858,6 +859,121 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     return out;
   };
 
+  const mergeCandidateFields = (prev: any, incoming: any) => {
+    const base = { ...(prev || {}) };
+    const next = incoming && typeof incoming === 'object' ? incoming : {};
+    for (const key of ['full_name', 'email', 'phone', 'location', 'linkedin', 'github']) {
+      const value = typeof next[key] === 'string' ? next[key].trim() : '';
+      if (value) base[key] = value;
+    }
+    return base;
+  };
+
+  const applyResumeImportPayload = async (
+    payload: any,
+    mode: 'replace' | 'merge' = resumeImportMode
+  ) => {
+    const nextExp = normalizeExperience(payload?.experience || []);
+    const nextEdu = normalizeEducation(payload?.education || []);
+    const prevExp = normalizeExperience(profileFormData?.experience || []);
+    const prevEdu = normalizeEducation(profileFormData?.education || []);
+    const nextCandidate = mergeCandidateFields(profileFormData?.candidate, payload?.candidate);
+
+    // Never silently wipe existing experience with an empty/partial Replace parse.
+    if (mode === 'replace') {
+      if (nextExp.length === 0 && prevExp.length > 0) {
+        setToast({
+          show: true,
+          message: '❌ Replace blocked: parser found 0 roles. Keeping your existing experience. Try Merge or re-upload.',
+        });
+        setTimeout(() => setToast({ show: false, message: '' }), 6000);
+        return false;
+      }
+      if (prevExp.length > 0 && nextExp.length < prevExp.length) {
+        const missingHint = prevExp
+          .filter(
+            (p: any) =>
+              !nextExp.some(
+                (n: any) =>
+                  String(n.company || '').toLowerCase() === String(p.company || '').toLowerCase()
+              )
+          )
+          .map((p: any) => p.company)
+          .filter(Boolean)
+          .slice(0, 3)
+          .join(', ');
+        setToast({
+          show: true,
+          message: `❌ Replace blocked: resume only parsed ${nextExp.length}/${prevExp.length} roles${
+            missingHint ? ` (missing: ${missingHint})` : ''
+          }. Switch to Merge to keep existing entries.`,
+        });
+        setTimeout(() => setToast({ show: false, message: '' }), 8000);
+        return false;
+      }
+    }
+
+    const exp =
+      mode === 'replace'
+        ? nextExp
+        : mergeUniqueByKey(prevExp, nextExp, (e) => `${e.company}::${e.role}::${e.period}`.toLowerCase());
+    const education =
+      mode === 'replace'
+        ? nextEdu
+        : mergeUniqueByKey(prevEdu, nextEdu, (e) => `${e.school}::${e.degree}::${e.period}`.toLowerCase());
+
+    setProfileFormData((prev: any) => ({
+      ...prev,
+      candidate: nextCandidate,
+      experience: exp,
+      education,
+    }));
+
+    setIsSaving(true);
+    setSaveStatus('saving');
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_context: {
+            candidate: nextCandidate,
+            narrative: profileFormData.narrative,
+            experience: exp,
+            education: education,
+            search: profileFormData.search,
+            github_settings: profileFormData.github_settings,
+          },
+          targeting_keywords: profileFormData.targeting_keywords,
+          email: accountInfo.email,
+          password: accountInfo.password || undefined,
+        }),
+      });
+      if (res.ok) {
+        setSaveStatus('success');
+        const nameHint = nextCandidate?.full_name ? ` as ${nextCandidate.full_name}` : '';
+        setToast({
+          show: true,
+          message: `[OK] ✔ Resume ${mode === 'merge' ? 'merged' : 'replaced'} and saved${nameHint} (${exp.length} roles).`,
+        });
+        setResumeImportStatus('idle');
+        setResumeImport(null);
+        setTimeout(() => setSaveStatus('idle'), 3000);
+        return true;
+      }
+      setSaveStatus('error');
+      setToast({ show: true, message: '❌ Failed to save imported settings' });
+      return false;
+    } catch {
+      setSaveStatus('error');
+      setToast({ show: true, message: '❌ Error saving imported settings' });
+      return false;
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setToast({ show: false, message: '' }), 5000);
+    }
+  };
+
   const handleResumeImportFile = async (file: File) => {
     setResumeImportStatus('uploading');
     setResumeImport(null);
@@ -875,8 +991,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         throw new Error(msg);
       }
       // API returns both top-level and extracted.*; prefer extracted for shape stability.
-      setResumeImport(payload?.extracted || payload);
+      const extracted = payload?.extracted || payload;
+      setResumeImport(extracted);
       setResumeImportStatus('ready');
+
+      // Auto-save with Merge by default so Settings UI fills immediately without a second click.
+      // Replace still requires an explicit "Replace & Save" after preview (safer).
+      if (resumeImportMode === 'merge') {
+        await applyResumeImportPayload(extracted, 'merge');
+      }
     } catch (e: any) {
       setResumeImportStatus('error');
       setResumeImport({ error: e?.message || 'Import failed' });
@@ -884,59 +1007,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   };
 
   const applyResumeImport = async () => {
-    const nextExp = normalizeExperience(resumeImport?.experience || []);
-    const nextEdu = normalizeEducation(resumeImport?.education || []);
-    const prevExp = normalizeExperience(profileFormData?.experience || []);
-    const prevEdu = normalizeEducation(profileFormData?.education || []);
-    
-    const exp =
-      resumeImportMode === 'replace'
-        ? nextExp
-        : mergeUniqueByKey(prevExp, nextExp, (e) => `${e.company}::${e.role}::${e.period}`.toLowerCase());
-    const education =
-      resumeImportMode === 'replace'
-        ? nextEdu
-        : mergeUniqueByKey(prevEdu, nextEdu, (e) => `${e.school}::${e.degree}::${e.period}`.toLowerCase());
-
-    setProfileFormData((prev: any) => ({ ...prev, experience: exp, education }));
-
-    setIsSaving(true);
-    setSaveStatus('saving');
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resume_context: {
-            candidate: profileFormData.candidate,
-            narrative: profileFormData.narrative,
-            experience: exp,
-            education: education,
-            search: profileFormData.search,
-            github_settings: profileFormData.github_settings
-          },
-          targeting_keywords: profileFormData.targeting_keywords,
-          email: accountInfo.email,
-          password: accountInfo.password || undefined
-        })
-      });
-      if (res.ok) {
-        setSaveStatus('success');
-        setToast({ show: true, message: '[OK] ✔ Resume import applied and saved successfully!' });
-        setResumeImportStatus('idle');
-        setResumeImport(null);
-        setTimeout(() => setSaveStatus('idle'), 3000);
-      } else {
-        setSaveStatus('error');
-        setToast({ show: true, message: '❌ Failed to save imported settings' });
-      }
-    } catch (e) {
-      setSaveStatus('error');
-      setToast({ show: true, message: '❌ Error saving imported settings' });
-    } finally {
-      setIsSaving(false);
-      setTimeout(() => setToast({ show: false, message: '' }), 5000);
-    }
+    if (!resumeImport) return;
+    await applyResumeImportPayload(resumeImport, resumeImportMode);
   };
 
   const openJobDetails = async (jobId: number) => {
@@ -2844,8 +2916,21 @@ System Initialized — v2.0`}
                            {resumeImportStatus === 'idle' && 'Upload your resume (PDF or DOCX)'}
                          </p>
                          <p className="text-xs text-[#6B6B6B] mb-4">
-                           {resumeImportStatus === 'idle' && 'We\'ll extract Experience and Education automatically'}
-                           {resumeImportStatus === 'ready' && `Found ${(resumeImport?.experience || []).length} experience entries and ${(resumeImport?.education || []).length} education entries`}
+                           {resumeImportStatus === 'idle' && 'We\'ll extract name, contact, Experience, and Education — then auto-save (Merge)'}
+                           {resumeImportStatus === 'ready' && (
+                             <>
+                               Found {(resumeImport?.experience || []).length} roles
+                               {(resumeImport?.education || []).length
+                                 ? `, ${(resumeImport?.education || []).length} education`
+                                 : ''}
+                               {resumeImport?.candidate?.full_name
+                                 ? ` · ${resumeImport.candidate.full_name}`
+                                 : ''}
+                               {resumeImportMode === 'replace'
+                                 ? ' — review preview, then Replace & Save'
+                                 : ''}
+                             </>
+                           )}
                            {resumeImportStatus === 'error' && (resumeImport?.error || 'Unknown error')}
                          </p>
 
@@ -2898,7 +2983,7 @@ System Initialized — v2.0`}
                              <span className="text-sm font-bold text-[#1C1C1E]">Merge</span>
                            </div>
                            <p className="text-[10px] text-[#6B6B6B] leading-relaxed">
-                             Keep existing entries and add new ones from resume. No duplicates.
+                             Keep existing entries and add new ones from resume. No duplicates. Default — safer.
                            </p>
                          </button>
 
@@ -2921,7 +3006,7 @@ System Initialized — v2.0`}
                              <span className="text-sm font-bold text-[#1C1C1E]">Replace</span>
                            </div>
                            <p className="text-[10px] text-[#6B6B6B] leading-relaxed">
-                             Delete all existing entries. Use only what's in the uploaded resume.
+                             Delete all existing entries. Blocked if the parse looks incomplete vs your current profile.
                            </p>
                          </button>
                        </div>
@@ -2935,28 +3020,31 @@ System Initialized — v2.0`}
                             <CheckCircle2 size={16} className="text-emerald-600" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-bold text-emerald-800">Ready to import</p>
+                            <p className="text-sm font-bold text-emerald-800">Resume parsed — review before replace</p>
                             <p className="text-xs text-emerald-600 mt-0.5">
-                              {resumeImportMode === 'merge'
-                                ? `Will add ${(resumeImport?.experience || []).length} roles to your existing experience`
-                                : `Will replace with ${(resumeImport?.experience || []).length} roles from resume`}
+                              {(resumeImport?.experience || []).length} roles
+                              {(resumeImport?.education || []).length
+                                ? ` · ${(resumeImport?.education || []).length} education`
+                                : ''}
+                              {resumeImport?.candidate?.full_name
+                                ? ` · ${resumeImport.candidate.full_name}`
+                                : ''}
+                              . Merge auto-saves on upload; Replace requires confirmation below.
                             </p>
+                            {(resumeImport?.experience || []).length > 0 && (
+                              <ul className="mt-2 text-[10px] text-emerald-800 space-y-0.5 max-h-24 overflow-y-auto">
+                                {(resumeImport.experience || []).slice(0, 8).map((job: any, idx: number) => (
+                                  <li key={idx}>
+                                    {(job.role || 'Role') + (job.company ? ` @ ${job.company}` : '')}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </div>
                         </div>
 
                         {/* Replace/Merge Toggle */}
                         <div className="flex bg-slate-100 rounded-lg p-1 mb-3">
-                          <button
-                            type="button"
-                            onClick={() => setResumeImportMode('replace')}
-                            className={`flex-1 px-3 py-2 text-xs font-bold rounded-md transition-all ${
-                              resumeImportMode === 'replace'
-                                ? 'bg-white text-slate-800 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                          >
-                            Replace All
-                          </button>
                           <button
                             type="button"
                             onClick={() => setResumeImportMode('merge')}
@@ -2968,12 +3056,28 @@ System Initialized — v2.0`}
                           >
                             Merge/Add
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setResumeImportMode('replace')}
+                            className={`flex-1 px-3 py-2 text-xs font-bold rounded-md transition-all ${
+                              resumeImportMode === 'replace'
+                                ? 'bg-white text-slate-800 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            Replace All
+                          </button>
                         </div>
 
                         <button
                           type="button"
                           onClick={applyResumeImport}
-                          className="w-full px-4 py-3 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                          disabled={isSaving}
+                          className={`w-full px-4 py-3 text-white text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2 ${
+                            resumeImportMode === 'replace'
+                              ? 'bg-rose-600 hover:bg-rose-700'
+                              : 'bg-emerald-600 hover:bg-emerald-700'
+                          }`}
                         >
                           <Upload size={16} />
                           {resumeImportMode === 'replace' ? 'Replace & Save' : 'Merge & Save'}

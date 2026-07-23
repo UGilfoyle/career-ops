@@ -1792,7 +1792,7 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft) {
     }
 
     const commonReps = {
-      NAME: c.full_name || 'Your Name',
+      NAME: c.full_name || '',
       EMAIL: c.email || '',
       LOCATION: c.location || '',
       PHONE: c.phone || '',

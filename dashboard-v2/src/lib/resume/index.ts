@@ -1,6 +1,7 @@
 export * from './types';
 export * from './schema';
 export * from './fill-template';
+export * from './parse-resume-text';
 export {
   getTemplateHtml,
   getTemplateMeta,

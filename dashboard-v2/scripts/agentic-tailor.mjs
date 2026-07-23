@@ -1768,7 +1768,7 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft) {
     // Prepare common replacements
     const c = profile.candidate;
     const commonReps = {
-      NAME: c.full_name,
+      NAME: c.full_name || '',
       EMAIL: c.email,
       LOCATION: c.location,
       PHONE: c.phone,

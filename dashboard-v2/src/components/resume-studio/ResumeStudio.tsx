@@ -136,19 +136,68 @@ export default function ResumeStudio({
     if (!res.ok) throw new Error(json?.error || 'Import failed');
 
     const extracted = json?.extracted || json;
+    const incomingExp = Array.isArray(extracted.experience) ? extracted.experience : [];
+    const incomingEdu = Array.isArray(extracted.education) ? extracted.education : [];
+    const incomingCandidate =
+      extracted.candidate && typeof extracted.candidate === 'object' ? extracted.candidate : {};
+
+    const mergeByKey = <T,>(base: T[], incoming: T[], keyFn: (v: T) => string) => {
+      const seen = new Set<string>();
+      const out: T[] = [];
+      const push = (v: T) => {
+        const k = keyFn(v);
+        if (!k || seen.has(k)) return;
+        seen.add(k);
+        out.push(v);
+      };
+      base.forEach(push);
+      incoming.forEach(push);
+      return out;
+    };
+
+    const prevExp = draft.experience || [];
+    const prevEdu = draft.education || [];
+    // Prefer merge when parse looks incomplete vs current draft (avoids wiping Rubico etc.)
+    const useReplaceExp =
+      incomingExp.length > 0 && (prevExp.length === 0 || incomingExp.length >= prevExp.length);
+    const useReplaceEdu =
+      incomingEdu.length > 0 && (prevEdu.length === 0 || incomingEdu.length >= prevEdu.length);
+
     const next: ResumeContext = {
       ...draft,
-      experience: Array.isArray(extracted.experience) && extracted.experience.length
-        ? extracted.experience
-        : draft.experience,
-      education: Array.isArray(extracted.education) && extracted.education.length
-        ? extracted.education
-        : draft.education,
+      candidate: {
+        ...(draft.candidate || {}),
+        ...Object.fromEntries(
+          Object.entries(incomingCandidate).filter(
+            ([, v]) => typeof v === 'string' && v.trim().length > 0
+          )
+        ),
+      },
+      experience: useReplaceExp
+        ? incomingExp
+        : incomingExp.length
+          ? mergeByKey(
+              prevExp,
+              incomingExp,
+              (e: any) => `${e.company || ''}::${e.role || ''}::${e.period || ''}`.toLowerCase()
+            )
+          : prevExp,
+      education: useReplaceEdu
+        ? incomingEdu
+        : incomingEdu.length
+          ? mergeByKey(
+              prevEdu,
+              incomingEdu,
+              (e: any) => `${e.school || ''}::${e.degree || ''}::${e.period || ''}`.toLowerCase()
+            )
+          : prevEdu,
       studio: { template_id: draft.studio?.template_id || 'ats-professional', ...(draft.studio || {}) },
     };
     replaceFromImport(next);
     setBanner(
-      `Import applied — ${(extracted.experience || []).length} roles, ${(extracted.education || []).length} education entries.`
+      `Import applied — ${(next.experience || []).length} roles, ${(next.education || []).length} education${
+        next.candidate?.full_name ? ` · ${next.candidate.full_name}` : ''
+      }.`
     );
     setTimeout(() => setBanner(null), 5000);
   };

@@ -36,6 +36,24 @@ function normalizeContext(value: unknown): Record<string, unknown> {
   return outer;
 }
 
+function mergeCandidate(base: unknown, incoming: unknown) {
+  const out: Record<string, unknown> = {
+    ...((base && typeof base === 'object' && !Array.isArray(base) ? base : {}) as Record<string, unknown>),
+  };
+  const next =
+    incoming && typeof incoming === 'object' && !Array.isArray(incoming)
+      ? (incoming as Record<string, unknown>)
+      : {};
+  for (const [key, val] of Object.entries(next)) {
+    if (typeof val === 'string') {
+      if (val.trim()) out[key] = val.trim();
+      continue;
+    }
+    if (val !== undefined && val !== null) out[key] = val;
+  }
+  return out;
+}
+
 function mergeResumeContext(existing: Record<string, unknown>, incoming: Record<string, unknown>) {
   const base = normalizeContext(existing);
   const next = normalizeContext(incoming);
@@ -43,7 +61,7 @@ function mergeResumeContext(existing: Record<string, unknown>, incoming: Record<
   const merged: Record<string, unknown> = {
     ...base,
     ...next,
-    candidate: { ...(base.candidate as object || {}), ...(next.candidate as object || {}) },
+    candidate: mergeCandidate(base.candidate, next.candidate),
     narrative: { ...(base.narrative as object || {}), ...(next.narrative as object || {}) },
     search: { ...(base.search as object || {}), ...(next.search as object || {}) },
     github_settings: { ...(base.github_settings as object || {}), ...(next.github_settings as object || {}) },

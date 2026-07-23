@@ -42,6 +42,19 @@ function loadYamlAt(relPath) {
 function parseCvMarkdown(text) {
   const experience = [];
   const education = [];
+  const candidate = {};
+
+  const h1 = text.match(/^#\s+(.+)$/m);
+  if (h1) candidate.full_name = h1[1].replace(/\*\*/g, '').trim();
+
+  const email = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i);
+  if (email) candidate.email = email[0];
+  const phone = text.match(/\+\d{1,3}[\s-]?\d[\d\s-]{8,}\d/);
+  if (phone) candidate.phone = phone[0].trim();
+  const linkedin = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[A-Za-z0-9_-]+/i);
+  if (linkedin) candidate.linkedin = linkedin[0].replace(/^https?:\/\//i, '');
+  const github = text.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[A-Za-z0-9_-]+/i);
+  if (github) candidate.github = github[0].replace(/^https?:\/\//i, '');
 
   const expSection = text.match(/## Professional Experience\s*([\s\S]*?)(?=\n## |\n---|$)/i);
   if (expSection) {
@@ -78,7 +91,52 @@ function parseCvMarkdown(text) {
     }
   }
 
-  return { experience, education };
+  return { experience, education, candidate };
+}
+
+function mergeCandidate(base, incoming) {
+  const out = { ...(base || {}) };
+  if (!incoming || typeof incoming !== 'object') return out;
+  for (const key of Object.keys(incoming)) {
+    const val = incoming[key];
+    if (typeof val === 'string' && val.trim() && !(typeof out[key] === 'string' && out[key].trim())) {
+      out[key] = val.trim();
+    }
+  }
+  return out;
+}
+
+function experienceKey(job) {
+  return `${String(job?.company || '').toLowerCase()}::${String(job?.role || '').toLowerCase()}`;
+}
+
+function mergeExperiencePreserveMissing(baseList, incomingList) {
+  const base = Array.isArray(baseList) ? baseList : [];
+  const incoming = Array.isArray(incomingList) ? incomingList : [];
+  if (base.length === 0) return incoming;
+  if (incoming.length === 0) return base;
+  const seen = new Set(base.map(experienceKey).filter(Boolean));
+  const merged = [...base];
+  for (const job of incoming) {
+    const key = experienceKey(job);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(job);
+  }
+  return merged;
+}
+
+function shouldBackfillExperience(baseList, incomingList) {
+  const base = Array.isArray(baseList) ? baseList : [];
+  const incoming = Array.isArray(incomingList) ? incomingList : [];
+  if (base.length === 0 && incoming.length > 0) return true;
+  if (incoming.length <= base.length) return false;
+  const incomingCompanies = new Set(
+    incoming.map((j) => String(j?.company || '').toLowerCase()).filter(Boolean)
+  );
+  // Only treat as a partial wipe when at least one current company still matches
+  // the canonical yaml/cv list (avoids appending full CV onto unrelated drafts).
+  return base.some((j) => incomingCompanies.has(String(j?.company || '').toLowerCase()));
 }
 
 function mergeProfile(base, incoming) {
@@ -86,16 +144,33 @@ function mergeProfile(base, incoming) {
   if (!incoming || typeof incoming !== 'object') return out;
 
   if (incoming.candidate && typeof incoming.candidate === 'object') {
-    out.candidate = { ...(out.candidate || {}), ...incoming.candidate };
+    out.candidate = mergeCandidate(out.candidate, incoming.candidate);
   }
   if (incoming.narrative && typeof incoming.narrative === 'object') {
-    out.narrative = { ...(out.narrative || {}), ...incoming.narrative };
+    // Only fill blank narrative fields — don't overwrite user edits with yaml defaults.
+    const narrative = { ...(out.narrative || {}) };
+    for (const [key, val] of Object.entries(incoming.narrative)) {
+      if (Array.isArray(val)) {
+        if (!Array.isArray(narrative[key]) || narrative[key].length === 0) narrative[key] = val;
+      } else if (typeof val === 'string' && val.trim() && !(typeof narrative[key] === 'string' && narrative[key].trim())) {
+        narrative[key] = val;
+      } else if (val && typeof val === 'object' && !narrative[key]) {
+        narrative[key] = val;
+      }
+    }
+    out.narrative = narrative;
   }
   if (Array.isArray(incoming.experience) && incoming.experience.length > 0) {
-    out.experience = incoming.experience;
+    if (!Array.isArray(out.experience) || out.experience.length === 0) {
+      out.experience = incoming.experience;
+    } else if (shouldBackfillExperience(out.experience, incoming.experience)) {
+      out.experience = mergeExperiencePreserveMissing(out.experience, incoming.experience);
+    }
   }
   if (Array.isArray(incoming.education) && incoming.education.length > 0) {
-    out.education = incoming.education;
+    if (!Array.isArray(out.education) || out.education.length === 0) {
+      out.education = incoming.education;
+    }
   }
   return out;
 }
@@ -162,9 +237,14 @@ export function hydrateResumeProfile(profile) {
   const sources = [];
   const hadExp = Array.isArray(next.experience) && next.experience.length > 0;
   const hadEdu = Array.isArray(next.education) && next.education.length > 0;
+  const hadName = Boolean(String(next.candidate?.full_name || '').trim());
   const educationBefore = JSON.stringify(next.education || []);
+  const expCountBefore = Array.isArray(next.experience) ? next.experience.length : 0;
 
-  if (!(hadExp && hadEdu)) {
+  // Always attempt candidate + missing experience backfill from yaml/cv.
+  // Previously we skipped entirely when ANY experience existed — that left
+  // empty full_name and dropped companies (e.g. Rubico) after partial Replace.
+  {
     const yamlPaths = [
       'config/profile.yml',
       'runtime-assets/config/profile.yml',
@@ -179,20 +259,18 @@ export function hydrateResumeProfile(profile) {
       }
     }
 
+    const stillNoName = !String(next.candidate?.full_name || '').trim();
     const stillNoExp = !Array.isArray(next.experience) || next.experience.length === 0;
     const stillNoEdu = !Array.isArray(next.education) || next.education.length === 0;
+    const maybeIncompleteExp = hadExp && Array.isArray(next.experience) && next.experience.length > 0;
 
-    if (stillNoExp || stillNoEdu) {
+    if (stillNoName || stillNoExp || stillNoEdu || maybeIncompleteExp) {
       const cvRaw = readFileAt('cv.md') || readFileAt('../cv.md');
       if (cvRaw) {
         const parsed = parseCvMarkdown(cvRaw);
-        if (stillNoExp && parsed.experience.length > 0) {
-          next.experience = parsed.experience;
-          sources.push('cv.md');
-        }
-        if (stillNoEdu && parsed.education.length > 0) {
-          next.education = parsed.education;
-          sources.push('cv.md');
+        if (stillNoName || stillNoExp || stillNoEdu || maybeIncompleteExp) {
+          next = mergeProfile(next, parsed);
+          if (!sources.includes('cv.md')) sources.push('cv.md');
         }
       }
     }
@@ -202,9 +280,12 @@ export function hydrateResumeProfile(profile) {
     next.education = normalizeEducationList(next.education);
   }
 
+  const expCountAfter = Array.isArray(next.experience) ? next.experience.length : 0;
   const hydrated =
-    (!hadExp && Array.isArray(next.experience) && next.experience.length > 0)
-    || (!hadEdu && Array.isArray(next.education) && next.education.length > 0);
+    (!hadExp && expCountAfter > 0)
+    || (!hadEdu && Array.isArray(next.education) && next.education.length > 0)
+    || (!hadName && Boolean(String(next.candidate?.full_name || '').trim()))
+    || (expCountAfter > expCountBefore);
   const educationRepaired = educationBefore !== JSON.stringify(next.education || []);
 
   return { profile: next, hydrated, educationRepaired, sources };
