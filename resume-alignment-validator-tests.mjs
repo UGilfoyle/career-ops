@@ -59,7 +59,10 @@ assert(
 
 const fabricatedResume = {
   ...baseResume,
-  core_competencies: [...baseResume.core_competencies, 'Docker'],
+  experience: {
+    ...(baseResume.experience || {}),
+    '0': [...((baseResume.experience && baseResume.experience['0']) || []), 'Containerized services with Docker in production.'],
+  },
 };
 const hardSkillCheck = scoreCandidate(
   fabricatedResume,
@@ -71,11 +74,26 @@ const hardSkillCheck = scoreCandidate(
 
 assert(
   hardSkillCheck.unsupported.some((item) => item.term === 'Docker'),
-  'new unsupported hard technology still blocks the candidate',
+  'unsupported hard technology in EXPERIENCE bullets still blocks the candidate',
 );
 assert(
   !hardSkillCheck.unsupported.some((item) => item.term === 'Testing'),
   'generic responsibility words are never treated as hard technologies',
+);
+
+const atsSkillsOnly = scoreCandidate(
+  {
+    ...baseResume,
+    core_competencies: [...baseResume.core_competencies, 'Docker', 'NestJS', 'Azure'],
+  },
+  'Build Node.js APIs using Docker NestJS Azure.',
+  profile,
+  { honest: ['Node.js'], gaps: ['Docker', 'NestJS', 'Azure'] },
+  canonicalCorpus,
+);
+assert(
+  atsSkillsOnly.unsupported.length === 0,
+  'JD target stack in competencies/skills is allowed for ATS matching',
 );
 
 if (failed > 0) {

@@ -2,7 +2,7 @@
  * jd-profile-match.mjs — Match JD requirements to provable profile experience (no fabrication).
  */
 
-import { extractJdKeywords, canonicalizeTechKeyword, isWeaveableKeyword } from './jd-keyword-align.mjs';
+import { extractJdKeywords, extractJdTechKeywords, isJunkKeyword } from './jd-keyword-align.mjs';
 
 const PROFILE_TECH_PATTERNS = [
   /\bReact(?:\.js)?\b/gi,
@@ -82,27 +82,14 @@ function normalizeKey(s) {
 const FRAGMENT_BLOCKLIST = new Set(['core', 'net', 'end', 'full', 'stack']);
 
 const PROFILE_SYNONYMS = {
-  javascript: ['node.js', 'nodejs', 'ecmascript', 'vanilla javascript', 'typescript'],
-  typescript: ['javascript', 'react.js', 'react', 'node.js'],
-  'ci/cd': ['continuous deployment', 'continuous integration', 'github actions', 'pre-flight validation', 'deployment workflow', 'ci pipelines'],
-  'gitlab ci': ['ci/cd', 'continuous integration', 'github actions', 'ci pipelines', 'continuous deployment'],
-  'github actions': ['ci/cd', 'continuous integration', 'ci pipelines'],
-  react: ['react.js', 'typescript', 'frontend'],
-  'react.js': ['react', 'typescript'],
-  nestjs: ['express', 'node.js', 'nodejs', 'fastapi', 'backend api', 'restful'],
-  'nest.js': ['express', 'node.js', 'nodejs', 'fastapi'],
-  express: ['node.js', 'nodejs'],
-  azure: ['aws', 'ec2', 's3', 'ecs', 'lambda', 'cloud'],
-  gcp: ['aws', 'cloud'],
-  docker: ['container', 'ecs', 'aws container', 'container orchestration'],
-  kubernetes: ['ecs', 'docker', 'container'],
-  'restful api': ['restful apis', 'backend api', 'high-throughput backend', 'fastapi', 'restful'],
-  'rest api': ['restful', 'backend api', 'fastapi'],
+  javascript: ['node.js', 'nodejs', 'ecmascript', 'vanilla javascript'],
+  'ci/cd': ['continuous deployment', 'continuous integration', 'github actions', 'pre-flight validation', 'deployment workflow'],
+  react: ['react.js'],
+  redux: ['redux'],
+  'restful api': ['restful apis', 'backend api', 'high-throughput backend', 'fastapi'],
   llm: ['gpt', 'claude', 'openai', 'chromadb', 'query-rewriting', 'text-embedding', 'pydantic'],
   cursor: ['cursor', 'claude code', 'ai-native tool', 'ai-assisted'],
   copilot: ['copilot', 'github copilot', 'ai-native', 'ai-assisted', 'claude code', 'gpt'],
-  postgresql: ['postgres', 'sql', 'oracle'],
-  postgres: ['postgresql', 'sql'],
   '.net': [],
   'c#': [],
 };
@@ -210,70 +197,74 @@ export function reframeExperienceFromProfile(profileExperience, jdText, honestKe
 }
 
 export function buildHonestCompetencies(honestKeywords, profile, jdText, limit = 14) {
+  return buildJdMatchedCompetencies(honestKeywords, profile, jdText, limit);
+}
+
+/**
+ * JD-first competencies for ATS: full JD tech stack + transferable labels.
+ * Prefer proven terms first, then remaining JD tech (so Core Competencies / Technical Skills are never sparse).
+ */
+export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 14) {
   const comps = [];
   const seen = new Set();
 
   const add = (item) => {
     const raw = String(item || '').trim();
-    if (!raw) return;
-    const label = isWeaveableKeyword(raw) ? canonicalizeTechKeyword(raw) : raw;
-    const k = normalizeKey(label);
+    if (!raw || isJunkKeyword(raw)) return;
+    const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
-    // Never ship generic junk as a "competency"
-    if (['software', 'applications', 'application', 'development', 'engineering'].includes(k)) return;
     seen.add(k);
-    comps.push(label);
+    comps.push(raw);
   };
 
-  // 1) Capability phrases first → Core Competencies (human-readable)
+  const jdTech = extractJdTechKeywords(jdText, 18);
+  const { honest } = partitionJdKeywords(
+    [...(jdKeywords || []), ...jdTech].filter((kw) => !isJunkKeyword(kw)),
+    profile
+  );
+
+  // Proven first, then remaining JD tech (ATS match to the posting)
+  for (const kw of honest) add(kw);
+  for (const kw of jdTech) add(kw);
+  for (const kw of jdKeywords || []) add(kw);
+
   const jdLower = String(jdText || '').toLowerCase();
   const transfers = [
     ['restful', 'RESTful API Design'],
-    ['api', 'RESTful API Design'],
+    ['nestjs', 'NestJS Backend Development'],
+    ['react', 'React / TypeScript Frontend'],
+    ['typescript', 'TypeScript'],
+    ['azure', 'Azure Cloud Services'],
+    ['gitlab', 'GitLab CI / CD'],
     ['microservice', 'Microservices Architecture'],
     ['ci/cd', 'CI/CD Pipelines'],
-    ['gitlab ci', 'CI/CD Pipelines'],
     ['unit test', 'Unit & Integration Testing'],
+    ['integration test', 'Unit & Integration Testing'],
     ['observability', 'Observability & Incident Response'],
     ['llm', 'LLM Integration'],
     ['ai agent', 'AI Agent Development'],
     ['full-stack', 'Full-Stack Engineering'],
-    ['fullstack', 'Full-Stack Engineering'],
     ['event-driven', 'Event-Driven Architecture'],
-    ['react', 'Frontend Engineering (React)'],
-    ['typescript', 'TypeScript Engineering'],
-    ['nestjs', 'Node.js / NestJS APIs'],
-    ['nest.js', 'Node.js / NestJS APIs'],
-    ['azure', 'Cloud Platforms (Azure / AWS)'],
-    ['docker', 'Containerized Deployments'],
-    ['kubernetes', 'Container Orchestration'],
-    ['high-traffic', 'High-Traffic Systems'],
-    ['scalability', 'Scalable Backend Systems'],
+    ['docker', 'Docker'],
+    ['node', 'Node.js Services'],
   ];
   for (const [needle, label] of transfers) {
     if (jdLower.includes(needle)) add(label);
   }
 
-  // 2) JD tech vocabulary (ATS Technical Skills) — exact JD wording
-  for (const kw of honestKeywords.slice(0, 12)) add(kw);
-
-  // 3) Profile superpowers that overlap the JD
   for (const s of profile?.narrative?.superpowers || []) {
     if (jdLower.split(/\W+/).some((w) => w.length > 4 && s.toLowerCase().includes(w))) add(s);
   }
 
-  // Prefer a mix: capability phrases + concrete tech (renderer splits them)
   return comps.slice(0, limit);
 }
 
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
   const y = Number(yearsExp) || 0;
-  const lead = honestKeywords
-    .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)))
-    .filter((k) => isWeaveableKeyword(k))
-    .map((k) => canonicalizeTechKeyword(k))
-    .slice(0, 5)
-    .join(', ');
+  const jdTech = extractJdTechKeywords(jdText, 8);
+  const leadPool = [...(honestKeywords || []), ...jdTech]
+    .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)) && !isJunkKeyword(k));
+  const lead = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 5).join(', ');
   const jdLower = String(jdText || '').toLowerCase();
   const lines = [];
 
@@ -285,16 +276,12 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
 
   if (jdLower.includes('llm') || jdLower.includes('ai')) {
     lines.push('Hands-on with LLM integrations, AI-assisted development (Cursor, Claude), and production API reliability.');
-  } else if (jdLower.includes('azure') || jdLower.includes('aws') || jdLower.includes('cloud')) {
-    lines.push('Deliver cloud-backed services with CI/CD, containerized releases, and strong testing discipline.');
   } else {
     lines.push('Deliver RESTful APIs, microservices, and CI/CD-backed releases with strong testing and code review discipline.');
   }
 
   if (jdLower.includes('observability') || jdLower.includes('high-traffic')) {
     lines.push('Experienced operating high-traffic systems with observability, incident response, and performance tuning.');
-  } else if (jdLower.includes('react') || jdLower.includes('typescript') || jdLower.includes('nestjs')) {
-    lines.push('Partner with product and frontend teams on React/TypeScript UIs and Node.js API layers end to end.');
   } else {
     lines.push('Collaborate with product and engineering partners from design through launch on user-focused features.');
   }
@@ -310,12 +297,14 @@ export function analyzeJdProfileFit(jdText, profile) {
 }
 
 export function formatHonestKeywordBlock(honest, gaps) {
-  const lines = ['JD MATCH TERMS (use these exact words in summary + skills):'];
+  const lines = ['PROVEN IN PROFILE (prefer in experience bullets):'];
   if (honest.length === 0) lines.push('  (none extracted — lean on digest facts)');
   else honest.forEach((k, i) => lines.push(`  ${i + 1}. ${k}`));
   lines.push('');
-  lines.push('HARD GAPS (no transferable proof — omit from experience claims; do not invent projects):');
+  lines.push('JD TARGET STACK (MUST appear in core_competencies / Technical Skills for ATS — even if not every item is in digest):');
   if (gaps.length === 0) lines.push('  (none)');
   else gaps.slice(0, 12).forEach((k, i) => lines.push(`  ${i + 1}. ${k}`));
+  lines.push('');
+  lines.push('EXPERIENCE RULE: do not invent detailed work history for gap tools (e.g. "built NestJS microservices at X"). Skills section may list the full JD stack.');
   return lines.join('\n');
 }

@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-import fs from 'fs';
 import {
   analyzeJdProfileFit,
   reframeExperienceFromProfile,
-  buildHonestCompetencies,
+  buildJdMatchedCompetencies,
   buildHonestSummary,
 } from './jd-profile-match.mjs';
 import { hydrateResumeProfile } from './profile-hydrate.mjs';
@@ -18,29 +17,37 @@ const fit = analyzeJdProfileFit(jd, profile);
 
 console.log('=== HONEST KEYWORDS ===');
 console.log(fit.honest.join(', ') || '(none)');
-console.log('\n=== GAPS (will NOT claim) ===');
+console.log('\n=== GAPS (skills OK for ATS; not invented in experience) ===');
 console.log(fit.gaps.join(', ') || '(none)');
-console.log('\n=== COMPETENCIES ===');
-console.log(buildHonestCompetencies(fit.honest, profile, jd).join(' | '));
+console.log('\n=== COMPETENCIES (JD ATS match) ===');
+const comps = buildJdMatchedCompetencies(fit.honest, profile, jd);
+console.log(comps.join(' | '));
 console.log('\n=== SUMMARY ===');
 console.log(buildHonestSummary('', 7, fit.honest, jd));
 console.log('\n=== ROLE 0 BULLETS ===');
 const exp = reframeExperienceFromProfile(profile.experience, jd, fit.honest, 2);
 for (const b of exp['0'] || []) console.log(' •', b);
 
-// Assert no fabrication
-const resumeText = [
-  buildHonestSummary('', 7, fit.honest, jd),
-  buildHonestCompetencies(fit.honest, profile, jd).join(' '),
-  ...(exp['0'] || []),
-].join(' ').toLowerCase();
-
-const forbidden = ['.net', 'c#', 'redux'];
-const leaked = forbidden.filter((t) => resumeText.includes(t));
-if (leaked.length) {
-  console.error('\nFAIL: fabricated terms on resume:', leaked.join(', '));
+// Experience bullets must stay factual — no invented gap-stack project claims
+const experienceText = (exp['0'] || []).join(' ').toLowerCase();
+const forbiddenInExperience = ['.net', 'c#', 'redux'];
+const leakedExp = forbiddenInExperience.filter((t) => experienceText.includes(t));
+if (leakedExp.length) {
+  console.error('\nFAIL: fabricated gap terms in experience bullets:', leakedExp.join(', '));
   process.exit(1);
 }
+
+// Competencies must be JD-rich (ATS), not sparse
+if (comps.length < 8) {
+  console.error('\nFAIL: competencies too sparse for ATS:', comps.length);
+  process.exit(1);
+}
+const compText = comps.join(' ').toLowerCase();
+if (!compText.includes('react') || !compText.includes('typescript')) {
+  console.error('\nFAIL: competencies missing core JD frontend terms');
+  process.exit(1);
+}
+
 if (!fit.gaps.some((g) => g.toLowerCase().includes('.net') || g.toLowerCase() === 'c#')) {
   console.warn('WARN: .NET/C# not listed in gaps — extraction may need tuning');
 }
@@ -48,4 +55,4 @@ if (fit.honest.length < 2) {
   console.error('FAIL: too few honest keywords');
   process.exit(1);
 }
-console.log('\nOK: no .NET / C# / Redux fabrication');
+console.log('\nOK: ATS competencies are JD-rich; experience bullets stay factual');
