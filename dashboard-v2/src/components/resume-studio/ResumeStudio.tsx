@@ -14,7 +14,6 @@ import { CompetenciesSection } from './sections/CompetenciesSection';
 import { ExperienceSection } from './sections/ExperienceSection';
 import { EducationSection } from './sections/EducationSection';
 import { useResumeStudioStore } from './useResumeStudioStore';
-import { fillAtsTemplate } from '@/lib/resume/fill-template';
 import { getTemplateMeta } from '@/lib/resume/ats-professional-template';
 import { parseResumeForExport, validateResumeDraft } from '@/lib/resume/schema';
 import { getCompetencies, type ResumeContext } from '@/lib/resume/types';
@@ -227,33 +226,28 @@ export default function ResumeStudio({
         body: JSON.stringify({ resume_context: draft }),
       });
       const contentType = res.headers.get('content-type') || '';
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        if (res.status === 501 || json?.html) {
-          const html = json.html || fillAtsTemplate(draft);
-          const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
-          downloadBlob(`${name}_master_resume.html`, new Blob([html], { type: 'text/html' }));
-          setBanner(json?.error || 'PDF unavailable — downloaded HTML (same template).');
-          setTimeout(() => setBanner(null), 6000);
-          return;
-        }
-        throw new Error(json?.error || 'PDF export failed');
-      }
-      if (contentType.includes('application/pdf')) {
+
+      if (res.ok && contentType.includes('application/pdf')) {
         const blob = await res.blob();
+        if (!blob.size) throw new Error('Empty PDF returned');
         const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
         downloadBlob(`${name}_master_resume.pdf`, blob);
-      } else {
-        const json = await res.json();
-        const html = json.html || fillAtsTemplate(draft);
-        const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
-        downloadBlob(`${name}_master_resume.html`, new Blob([html], { type: 'text/html' }));
-        setBanner(json.message || 'Downloaded HTML preview.');
-        setTimeout(() => setBanner(null), 6000);
+        setBanner('PDF downloaded.');
+        setTimeout(() => setBanner(null), 3000);
+        return;
       }
+
+      const json = await res.json().catch(() => ({}));
+      // Never auto-download HTML when the user clicked PDF
+      throw new Error(
+        json?.error
+        || (res.status === 501 || res.status === 503
+          ? 'PDF engine unavailable — try again after deploy, or run tailor --deep for Actions PDF.'
+          : 'PDF export failed')
+      );
     } catch (e: unknown) {
       setBanner(e instanceof Error ? e.message : 'Export failed');
-      setTimeout(() => setBanner(null), 5000);
+      setTimeout(() => setBanner(null), 7000);
     } finally {
       setExportingPdf(false);
     }

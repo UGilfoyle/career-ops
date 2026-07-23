@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
   outputFileTracingIncludes: {
     "/*": [
       "./scripts/**/*",
@@ -18,6 +19,10 @@ const nextConfig: NextConfig = {
       "./config/**/*",
       "./data/**/*",
       "./fonts/**/*",
+    ],
+    "/api/resume/export-pdf": [
+      "./node_modules/@sparticuz/chromium/**/*",
+      "./runtime-assets/generate-pdf.mjs",
     ],
   },
 };

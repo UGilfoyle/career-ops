@@ -3,12 +3,13 @@ import { auth } from '@/auth';
 import { fillAtsTemplate } from '@/lib/resume/fill-template';
 import { validateResumeDraft } from '@/lib/resume/schema';
 import type { ResumeContext } from '@/lib/resume/types';
-import { writeFile, unlink, mkdir, readFile } from 'fs/promises';
+import { writeFile, unlink, mkdir, readFile, access } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { promisify } from 'util';
 import { execFile as execFileCb } from 'child_process';
+import { pathToFileURL } from 'url';
 
 const execFile = promisify(execFileCb);
 
@@ -16,11 +17,17 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-/**
- * Attempt PDF via generate-pdf.mjs (Playwright) when available on the host.
- * Vercel serverless typically lacks Chromium — callers should accept HTML fallback (501).
- */
-async function tryRenderPdf(html: string): Promise<Buffer | null> {
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Local Playwright script (repo root / runtime-assets) — best ATS text fidelity. */
+async function tryPlaywrightPdf(html: string): Promise<Buffer | null> {
   try {
     const id = randomUUID();
     const dir = join(/* turbopackIgnore: true */ tmpdir(), 'career-ops-studio');
@@ -33,33 +40,109 @@ async function tryRenderPdf(html: string): Promise<Buffer | null> {
     const candidates = [
       join(cwd, 'runtime-assets', 'generate-pdf.mjs'),
       join(cwd, '..', 'generate-pdf.mjs'),
+      join(cwd, 'generate-pdf.mjs'),
     ];
 
-    let ran = false;
     for (const script of candidates) {
+      if (!(await fileExists(script))) continue;
       try {
         await execFile('node', [script, htmlPath, pdfPath, '--format=a4'], {
           timeout: 45000,
           env: process.env,
         });
-        ran = true;
-        break;
+        const buf = await readFile(pdfPath);
+        await Promise.all([unlink(htmlPath).catch(() => {}), unlink(pdfPath).catch(() => {})]);
+        return buf;
       } catch {
-        // try next candidate
+        // try next
       }
     }
 
-    if (!ran) {
-      await unlink(htmlPath).catch(() => {});
-      return null;
-    }
-
-    const buf = await readFile(pdfPath);
-    await Promise.all([unlink(htmlPath).catch(() => {}), unlink(pdfPath).catch(() => {})]);
-    return buf;
+    await unlink(htmlPath).catch(() => {});
+    return null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Vercel / serverless: puppeteer-core + @sparticuz/chromium.
+ * Local fallback when Playwright script is missing.
+ */
+async function tryPuppeteerPdf(html: string): Promise<Buffer | null> {
+  try {
+    const puppeteerMod = await import('puppeteer-core');
+    const puppeteer = (puppeteerMod as any).default ?? puppeteerMod;
+    const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+    let browser;
+    if (isServerless) {
+      const chromiumMod = await import('@sparticuz/chromium');
+      const chromium = (chromiumMod as any).default ?? chromiumMod;
+      browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: { width: 1280, height: 720, deviceScaleFactor: 1 },
+        executablePath: await chromium.executablePath(),
+        headless: true,
+      });
+    } else {
+      // Local: prefer system Chrome / Chromium / Edge
+      const localCandidates = [
+        process.env.CHROME_PATH,
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+      ].filter(Boolean) as string[];
+
+      let executablePath: string | undefined;
+      for (const p of localCandidates) {
+        if (await fileExists(p)) {
+          executablePath = p;
+          break;
+        }
+      }
+      if (!executablePath) return null;
+
+      browser = await puppeteer.launch({
+        executablePath,
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
+      });
+    }
+
+    try {
+      const page = await browser.newPage();
+      // Prefer file URL so relative assets (fonts) resolve when present
+      const id = randomUUID();
+      const dir = join(/* turbopackIgnore: true */ tmpdir(), 'career-ops-studio');
+      await mkdir(dir, { recursive: true });
+      const htmlPath = join(dir, `${id}.html`);
+      await writeFile(htmlPath, html, 'utf8');
+      await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle0', timeout: 30000 });
+      const pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '0.4in', right: '0.45in', bottom: '0.4in', left: '0.45in' },
+        preferCSSPageSize: true,
+      });
+      await unlink(htmlPath).catch(() => {});
+      return Buffer.from(pdf);
+    } finally {
+      await browser.close().catch(() => {});
+    }
+  } catch (err) {
+    console.error('[export-pdf] puppeteer render failed:', err);
+    return null;
+  }
+}
+
+async function renderPdf(html: string): Promise<Buffer | null> {
+  const viaPlaywright = await tryPlaywrightPdf(html);
+  if (viaPlaywright?.length) return viaPlaywright;
+  return tryPuppeteerPdf(html);
 }
 
 export async function POST(req: Request) {
@@ -80,9 +163,9 @@ export async function POST(req: Request) {
     }
 
     const html = fillAtsTemplate(resumeContext);
-    const pdf = await tryRenderPdf(html);
+    const pdf = await renderPdf(html);
 
-    if (pdf) {
+    if (pdf?.length) {
       const safeName = String(resumeContext.candidate?.full_name || 'resume')
         .replace(/[^\w\- ]+/g, '')
         .replace(/\s+/g, '_');
@@ -99,11 +182,9 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          'PDF engine unavailable on this host (Playwright/Chromium not installed). HTML uses the same ATS template — download below or run tailor --deep via GitHub Actions for PDF.',
-        html,
-        message: 'PDF unavailable — HTML returned for download.',
+          'PDF engine failed. Install Chromium locally (`npx playwright install chromium`) or redeploy with @sparticuz/chromium. HTML is not returned for the PDF button.',
       },
-      { status: 501 }
+      { status: 503 }
     );
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Export failed';
