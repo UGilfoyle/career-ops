@@ -341,10 +341,93 @@ function synthesizeMetric(bullet) {
   return 'improving execution efficiency and system throughput by 20%';
 }
 
+/** Employers that get Senior / LinkedIn ownership tone (not mid-level IC). */
+const SENIOR_TONE_EMPLOYER_RE = /\b(?:quest(?:\s*global)?|glidewell|intverse|srijan)\b/i;
+
+/**
+ * True when company/role text belongs to a senior-tone employer.
+ * Senior ONLY: Quest Global / Quest, Glidewell, INTVERSE, Srijan.
+ * Mid-level: KOCO, Rubico, Artisanssoft, and other older/junior-era roles.
+ */
+export function isSeniorToneEmployer(companyOrRoleText) {
+  return SENIOR_TONE_EMPLOYER_RE.test(String(companyOrRoleText || ''));
+}
+
+/**
+ * Mid-level professional polish — competent IC voice.
+ * Scrubs Helped/Assisted/Worked on fluff → Developed/Built/Delivered.
+ * Does NOT escalate to Architected/Owned/Drove/Mentored senior bar.
+ * Does NOT invent metrics or employers.
+ */
+export function elevateBulletToMidLevel(text) {
+  let t = String(text || '').trim();
+  if (!t) return '';
+
+  t = t.replace(/^\*\*[^*]+\*\*:\s*/g, '').replace(/^([A-Z][A-Za-z0-9 &/+-]{2,40}):\s+/, '');
+
+  // "Assisted Acme with X" / "Helped Acme with X" → mid verbs (not Drove)
+  t = t.replace(
+    /^(?:Assisted|Helped)\s+([A-Z][\w.&-]{1,40})\s+with\s+(.+)$/i,
+    (_, company, rest) => {
+      const body = String(rest).replace(/[.!]+$/, '').trim();
+      return body ? `Implemented ${body} at ${company}.` : t;
+    },
+  );
+
+  const openingMap = [
+    [/^Helped (?:to |with |the )?/i, 'Delivered '],
+    [/^Assisted (?:with |in |the )?/i, 'Implemented '],
+    [/^Supported (?:the |a )?/i, 'Supported '],
+    [/^Worked on\s+/i, 'Built '],
+    [/^Worked with\s+/i, 'Collaborated with '],
+    [/^Participated in\s+/i, 'Contributed to '],
+    [/^Responsible for\s+/i, 'Delivered '],
+    [/^Duties included\s+/i, 'Delivered '],
+    [/^Tasked with\s+/i, 'Implemented '],
+    [/^Provided mentorship to\s+/i, 'Guided '],
+    [/^Provided\s+/i, 'Delivered '],
+    [/^Made\s+/i, 'Built '],
+    [/^Did\s+/i, 'Delivered '],
+  ];
+  for (const [re, rep] of openingMap) {
+    if (re.test(t)) {
+      t = t.replace(re, rep);
+      break;
+    }
+  }
+
+  t = t
+    .replace(/\bmultiple client projects\b/gi, 'client platforms')
+    .replace(/\band building the frontend\b/gi, 'and built the frontend')
+    .replace(/\band building\b/gi, 'and built')
+    .replace(/\butiliz(?:ed|ing)\b/gi, 'using')
+    .replace(/\bhelped (?:to )?ensure\b/gi, 'ensured')
+    .replace(/\bwas responsible for\b/gi, 'delivered')
+    .replace(/\bmy work involved\b/gi, 'delivered');
+
+  t = t.replace(/\s{2,}/g, ' ').trim();
+  t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
+  if (t && !/[.!?]$/.test(t)) t += '.';
+  return t;
+}
+
+/**
+ * Company-aware elevation: senior bar for Quest/Glidewell/INTVERSE/Srijan only;
+ * mid-level polish for KOCO/Rubico/Artisanssoft and everything else.
+ */
+export function elevateBulletForEmployer(bullet, companyOrRoleText) {
+  const text = String(bullet || '');
+  if (isSeniorToneEmployer(companyOrRoleText) || isSeniorToneEmployer(text)) {
+    return elevateBulletToSenior(text);
+  }
+  return elevateBulletToMidLevel(text);
+}
+
 /**
  * Elevate a bullet to Senior Software Engineer / LinkedIn professional bar.
  * Keeps facts + metrics; upgrades junior task-list tone → ownership/impact tone.
  * Does NOT invent metrics or employers.
+ * Prefer elevateBulletForEmployer at call sites so mid employers are not oversold.
  */
 export function elevateBulletToSenior(text) {
   let t = String(text || '').trim();
@@ -352,6 +435,15 @@ export function elevateBulletToSenior(text) {
 
   // Strip markdown bold labels left in ("Architecture: …")
   t = t.replace(/^\*\*[^*]+\*\*:\s*/g, '').replace(/^([A-Z][A-Za-z0-9 &/+-]{2,40}):\s+/, '');
+
+  // "Assisted Acme with X" / "Helped Acme with X" → "Drove X at Acme" (avoid "Drove Acme with…")
+  t = t.replace(
+    /^(?:Assisted|Helped)\s+([A-Z][\w.&-]{1,40})\s+with\s+(.+)$/i,
+    (_, company, rest) => {
+      const body = String(rest).replace(/[.!]+$/, '').trim();
+      return body ? `Drove ${body} at ${company}.` : t;
+    },
+  );
 
   // Junior / soft openings → senior ownership verbs (LinkedIn style)
   const openingMap = [
@@ -467,8 +559,9 @@ export function scrubResumeArtifacts(text) {
  * Force professional bullet casing and punctuation.
  * Every bullet must start with A–Z (or a digit for metrics that belong mid-clause).
  */
-export function normalizeBulletText(bullet) {
-  let t = elevateBulletToSenior(scrubResumeArtifacts(String(bullet || '')))
+export function normalizeBulletText(bullet, companyOrRoleText = '') {
+  const company = String(companyOrRoleText || '');
+  let t = elevateBulletForEmployer(scrubResumeArtifacts(String(bullet || '')), company)
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/^[•\-*▸]\s*/, '')
     .replace(/,\s*\./g, '.')
@@ -488,7 +581,7 @@ export function normalizeBulletText(bullet) {
   // Capitalize first alphabetic character
   t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
   if (!/[.!?]$/.test(t)) t += '.';
-  return elevateBulletToSenior(t);
+  return elevateBulletForEmployer(t, company || t);
 }
 
 /** Past-tense / strong action verbs that legitimately open a resume bullet. */
@@ -606,8 +699,9 @@ export function preferSourceIfThin(tailoredBullets, sourceBullets, opts = {}) {
   const hasOrphanFragments = tailoredRaw.some(
     (b) => isBulletContinuationFragment(b) || isIncompleteBullet(b),
   );
-  const tailored = normalizeExperienceBulletList(tailoredRaw);
-  const source = normalizeExperienceBulletList(sourceRaw);
+  const company = opts.company || opts.companyOrRoleText || '';
+  const tailored = normalizeExperienceBulletList(tailoredRaw, company);
+  const source = normalizeExperienceBulletList(sourceRaw, company);
 
   const avgLen = tailored.length
     ? tailored.reduce((sum, b) => sum + b.length, 0) / tailored.length
@@ -739,14 +833,20 @@ export function explodeWallOfTextBullets(bullets, opts = {}) {
     seen.add(key);
     deduped.push(b);
   }
-  return deduped.slice(0, maxOut);
+  // Cap wall explosions, but never drop already-discrete input bullets
+  // (default maxOut=6 was truncating 7+ short employer samples in normalize).
+  const inputCount = (Array.isArray(bullets) ? bullets : [])
+    .map((b) => String(b || '').trim())
+    .filter(Boolean).length;
+  return deduped.slice(0, Math.max(maxOut, inputCount));
 }
 
 /**
  * Merge continuation crumbs into the previous bullet, then normalize casing.
  * Also explodes wall-of-text essays into multiple bullets first.
  */
-export function normalizeExperienceBulletList(bullets) {
+export function normalizeExperienceBulletList(bullets, companyOrRoleText = '') {
+  const company = String(companyOrRoleText || '');
   const exploded = explodeWallOfTextBullets(bullets);
   const raw = exploded.map((b) => String(b || '').trim()).filter(Boolean);
   const merged = [];
@@ -769,18 +869,29 @@ export function normalizeExperienceBulletList(bullets) {
     }
     merged.push(bullet);
   }
-  return merged.map(normalizeBulletText).filter((b) => b.length >= 20);
+  return merged
+    .map((b) => normalizeBulletText(b, company || b))
+    .filter((b) => b.length >= 20);
 }
 
-export function normalizeResumeBullets(resume) {
+/**
+ * @param {object} resume
+ * @param {object[]} [sourceExperience] — optional jobs with .company for tone gating
+ */
+export function normalizeResumeBullets(resume, sourceExperience = []) {
   if (!resume || typeof resume !== 'object') return resume;
   const exp = resume.experience;
+  const companyFor = (idx) => {
+    const job = Array.isArray(sourceExperience) ? sourceExperience[idx] : null;
+    return job ? `${job.company || ''} ${job.role || ''}` : '';
+  };
   if (Array.isArray(exp)) {
-    resume.experience = normalizeExperienceBulletList(exp);
+    resume.experience = normalizeExperienceBulletList(exp, companyFor(0));
   } else if (exp && typeof exp === 'object') {
     for (const key of Object.keys(exp)) {
       if (Array.isArray(exp[key])) {
-        exp[key] = normalizeExperienceBulletList(exp[key]);
+        const idx = Number(key);
+        exp[key] = normalizeExperienceBulletList(exp[key], companyFor(Number.isFinite(idx) ? idx : 0));
       }
     }
   }
@@ -949,7 +1060,7 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
     }
   }
 
-  normalizeResumeBullets(resume);
+  normalizeResumeBullets(resume, sourceExperience);
 
   // Prefer profile source bullets when a role came back too thin or with orphan fragments
   if (Array.isArray(sourceExperience) && sourceExperience.length > 0 && resume.experience) {
@@ -957,9 +1068,11 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
       const src = sourceExperience[roleIdx]?.bullets || [];
       const tenureMonths = parseTenureMonths(sourceExperience[roleIdx]?.period);
       const budget = bulletsBudgetForRole(roleIdx, { tenureMonths, maxPages: opts.maxPages ?? 2 });
+      const job = sourceExperience[roleIdx] || {};
       return preferSourceIfThin(bullets, src, {
         minCount: Math.min(3, budget),
         maxBullets: budget,
+        company: `${job.company || ''} ${job.role || ''}`,
       });
     };
     if (Array.isArray(resume.experience)) {

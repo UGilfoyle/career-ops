@@ -14,6 +14,8 @@ import {
   parseTenureMonths,
   bulletsBudgetForRole as roleBulletBudget,
   elevateBulletToSenior,
+  elevateBulletForEmployer,
+  isSeniorToneEmployer,
 } from './resume-quality.mjs';
 import {
   extractJdKeywords,
@@ -296,12 +298,15 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       : (job.bullets || []).slice(0, budget + 2)
     );
     // Merge orphan fragments; if tailored output is thin/broken, prefer profile source facts.
-    // ALWAYS re-elevate: every employer (Quest → Artisanssoft) gets senior LinkedIn tone.
+    // Company-aware tone: senior LinkedIn bar only for Quest / Glidewell / INTVERSE / Srijan;
+    // mid-level professional polish for KOCO / Rubico / Artisanssoft (and other older roles).
+    const employerToneKey = `${job.company || ''} ${job.role || ''}`;
     const normalizedBullets = preferSourceIfThin(candidates, job.bullets || [], {
       minCount: Math.min(3, budget),
       maxBullets: budget,
+      company: employerToneKey,
     })
-      .map((b) => normalizeBulletText(elevateBulletToSenior(String(b || ''))))
+      .map((b) => normalizeBulletText(elevateBulletForEmployer(String(b || ''), employerToneKey), employerToneKey))
       .filter((b) => b.length >= 20);
 
     let role = (job.role || '').trim();
@@ -1337,16 +1342,18 @@ TASK:
       - This section is for ATS matching — list the JD stack even when some tools are stretch/adjacent to digest experience.
 
    c) **Experience bullets** (resume.experience): Rewrite bullets for ALL ${rolesToTailor} roles (including older ones).
-      Return as an OBJECT keyed by role index ("0"…"${Math.max(0, rolesToTailor - 1)}"), each with 4 senior-caliber tailored bullets (never fewer than 3; roles with ~2 years tenure need 3–4).
+      Return as an OBJECT keyed by role index ("0"…"${Math.max(0, rolesToTailor - 1)}"), each with 4 tailored bullets (never fewer than 3; roles with ~2 years tenure need 3–4). Use senior tone only for Quest/INTVERSE/Glidewell/Srijan; mid-level tone for KOCO/Rubico/Artisanssoft.
 ${roleDigest}
-      BULLET RULES — SENIOR SOFTWARE ENGINEER + LINKEDIN / ATS BAR (7+ years):
-      - SENIOR TONE ON EVERY EMPLOYER — no exceptions: Quest, INTVERSE, Glidewell, Srijan, KOCO, Rubico, Artisanssoft. Older job titles may stay historical; bullet language must still read Senior Software Engineer (ownership/impact), never junior task lists.
-      - Write like a Senior Software Engineer TA would shortlist — ownership, architecture, reliability, mentoring/SDLC, measurable impact
+      BULLET RULES — COMPANY-AWARE TONE (do not oversell older roles):
+      - SENIOR LinkedIn/ATS bar ONLY for: Quest Global / Quest, INTVERSE, Glidewell, Srijan — ownership, architecture, reliability, mentoring/SDLC, measurable impact
+      - MID-LEVEL professional tone for: KOCO, Rubico, Artisanssoft (and any other older/junior-era roles) — competent IC voice (Developed/Built/Implemented/Delivered). Never junior fluff (Helped/Assisted/Worked on). Never Staff/Senior architect voice (Architected/Owned/Drove/Mentored) on mid employers
       - LinkedIn formula: [Strong verb] + [scope/system] + [tech from digest/JD] + [outcome/metric from digest]
-      - GOOD examples: "Architected event-driven microservices on Node.js/Python, cutting infra cost 30%." / "Owned AWS right-sizing and autoscaling, protecting 99.95% uptime." / "Led peer review and mentoring that raised SDLC quality across the squad."
-      - BAD (junior / reject): "Developed multiple client projects using Laravel." / "Worked on APIs." / "Helped the team." / "Assisted with deployments." / first-person essays
-      - Ban openings: Helped, Assisted, Worked on, Responsible for, Duties included, Analyzed (prefer Diagnosed/Tuned), Configured (prefer Hardened/Instrumented)
-      - Prefer: Architected, Owned, Drove, Engineered, Shipped, Hardened, Scaled, Mentored, Instituted, Diagnosed
+      - SENIOR GOOD: "Architected event-driven microservices on Node.js/Python, cutting infra cost 30%." / "Owned AWS right-sizing and autoscaling, protecting 99.95% uptime." / "Led peer review and mentoring that raised SDLC quality across the squad."
+      - MID GOOD: "Developed Node.js multi-tenant APIs serving client platforms." / "Built MongoDB schemas and REST endpoints for deliverables." / "Implemented payment gateway integrations processing 1,000+ daily transactions."
+      - BAD (all employers): "Worked on APIs." / "Helped the team." / "Assisted with deployments." / first-person essays
+      - Ban openings everywhere: Helped, Assisted, Worked on, Responsible for, Duties included
+      - Senior-prefer (Quest/INTVERSE/Glidewell/Srijan only): Architected, Owned, Drove, Engineered, Shipped, Hardened, Scaled, Mentored, Instituted, Diagnosed
+      - Mid-prefer (KOCO/Rubico/Artisanssoft): Developed, Built, Implemented, Delivered, Integrated, Deployed, Provisioned, Established — not Architected/Owned/Drove
       - Prefer PROVEN JD technologies from the digest; map adjacent stacks carefully without inventing fake project history
       - NEVER invent metrics or employers; never append spam like "applying X in production"
       - Each bullet MUST include at least one metric from the digest when the source bullet has one; never fabricate numbers
