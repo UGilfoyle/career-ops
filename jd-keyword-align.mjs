@@ -246,10 +246,13 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   if (lines.length === 0) lines.push(text);
 
   const inject = toAdd.slice(0, 5).join(', ');
-  if (lines[0].length < 160) {
+  // Prefer natural weave into line 1 or 2 — avoid robotic "Tech stack:" spam lines
+  if (lines[0].length < 170) {
     lines[0] = `${lines[0].replace(/\.$/, '')} — ${inject}.`;
-  } else if (!lines.some((l) => /^tech stack:/i.test(l))) {
-    lines.push(`Tech stack: ${inject}.`);
+  } else if (lines.length >= 2 && lines[1].length < 180) {
+    lines[1] = `${lines[1].replace(/\.$/, '')} (${inject}).`;
+  } else if (lines.length < 4) {
+    lines.push(`Day-to-day stack includes ${inject}.`);
   }
   return lines.slice(0, 4).join('\n');
 }
@@ -288,7 +291,7 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
       competenciesAdded += 1;
     }
   }
-  copy.core_competencies = uniqueCasePreserved([...newComps, ...comps]).slice(0, 14);
+  copy.core_competencies = uniqueCasePreserved([...newComps, ...comps]).slice(0, 16);
 
   // Summary: weave top missing keywords (tech only)
   const beforeSummary = copy.summary;

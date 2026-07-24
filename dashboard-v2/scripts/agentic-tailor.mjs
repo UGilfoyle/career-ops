@@ -464,8 +464,9 @@ function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
   }
 
   // Deduplicate and limit
-  const uniqueCore = [...new Set(coreComp)].slice(0, 10);
-  const uniqueTech = [...new Set(techSkills)].slice(0, 12);
+  // Deduplicate and limit — denser skills rows for Zety/ATS hybrid
+  const uniqueCore = [...new Set(coreComp)].slice(0, 12);
+  const uniqueTech = [...new Set(techSkills)].slice(0, 16);
 
   // Generate HTML
   let html = '';
@@ -1219,7 +1220,7 @@ async function tailorPackage(jd, profile, companyName, passedCompanyType) {
     const { resume: polishedOffline, stats: polishStats } = polishTailoredResume(
       aligned,
       profile?.experience || [],
-      { jdAlignScore: offlineAlign.score }
+      { jdAlignScore: offlineAlign.score, allowSyntheticMetrics: false }
     );
     console.log(`📈 Offline ATS content score: ${polishStats.atsContentScore}/100 (target 90+)`);
     const offlinePackage = {
@@ -1514,7 +1515,8 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       ensureAllRolesTailored(
         aligned,
         profile?.experience,
-        honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6)
+        honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6),
+        Math.min(7, (profile?.experience || []).length)
       );
       let alignment = measureJdAlignment(aligned, atsKeywords);
       data.resume = aligned;
@@ -1532,7 +1534,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     const { resume: polished, stats } = polishTailoredResume(
       data.resume,
       profile?.experience || [],
-      { jdAlignScore: data.jd_alignment_score }
+      { jdAlignScore: data.jd_alignment_score, allowSyntheticMetrics: false }
     );
     data.resume = polished;
     const audit = auditResumeQuality(data.resume);

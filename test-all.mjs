@@ -68,6 +68,8 @@ const scripts = [
   { name: 'update-system.mjs check', expectExit: 0 },
   { name: 'profile-hydrate-tests.mjs', expectExit: 0 },
   { name: 'resume-alignment-validator-tests.mjs', expectExit: 0 },
+  { name: 'resume-quality-tests.mjs', expectExit: 0 },
+  { name: 'test-jd-honest-match.mjs', expectExit: 0 },
   { name: 'simulate-jd-align.mjs', expectExit: 0 },
 ];
 

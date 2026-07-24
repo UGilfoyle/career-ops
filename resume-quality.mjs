@@ -303,7 +303,14 @@ function cleanSpellingAndGrammar(text) {
   return String(text)
     .replace(/\s*[-=]>\s*/g, ' to ')
     .replace(/\bmultiprocessing\.Pool\b/gi, 'multiprocessing pools')
-    .replace(/\btext-embedding-3-large\b/gi, 'large text embedding models');
+    .replace(/\btext-embedding-3-large\b/gi, 'large text embedding models')
+    .replace(/:\s*Spearhead(?:ed)?\s+/gi, ': Led ')
+    .replace(/\bSpearhead(?:ed)?\b/g, 'Led')
+    .replace(/\bspearhead(?:ed)?\b/gi, 'led')
+    .replace(/\bLeverage(?:d)?\b/g, 'Used')
+    .replace(/\bleverage(?:d)?\b/gi, 'used')
+    .replace(/\bUtiliz(?:ed|ing)\b/g, 'Using')
+    .replace(/\butiliz(?:ed|ing)\b/gi, 'using');
 }
 
 function synthesizeMetric(bullet) {
@@ -413,14 +420,18 @@ export function normalizeResumeBullets(resume) {
   return resume;
 }
 
-function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets) {
-  const metricSources = roleSourceBullets.filter((s) => hasQuantifiedImpact(s));
+function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets, allowSyntheticMetrics = false) {
+  const metricSources = [
+    ...roleSourceBullets.filter((s) => hasQuantifiedImpact(s)),
+    // Fall back to any profile metric with enough overlap (same employer facts only)
+    ...allSourceBullets.filter((s) => hasQuantifiedImpact(s) && !roleSourceBullets.includes(s)),
+  ];
 
   return bullets.map((b) => {
     let cleanB = cleanSpellingAndGrammar(b);
     if (hasQuantifiedImpact(cleanB)) return { bullet: cleanB, enriched: false };
-    
-    // Attempt to enrich with overlap-based match from the same role
+
+    // Graft metric from overlapping source bullet only (honesty)
     if (metricSources.length > 0) {
       let best = null;
       let bestOverlap = 0;
@@ -441,11 +452,14 @@ function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets) 
         }
       }
     }
-    
-    // Auto-synthesize metric if still unquantified to ensure 100% metrics coverage
-    const synthesized = synthesizeMetric(cleanB);
-    const trimmed = String(cleanB).trim().replace(/\.$/, '');
-    return { bullet: cleanSpellingAndGrammar(`${trimmed}, ${synthesized}.`), enriched: true };
+
+    // Synthetic metrics are OFF by default — Zety quality ≠ fabricated %
+    if (allowSyntheticMetrics) {
+      const synthesized = synthesizeMetric(cleanB);
+      const trimmed = String(cleanB).trim().replace(/\.$/, '');
+      return { bullet: cleanSpellingAndGrammar(`${trimmed}, ${synthesized}.`), enriched: true };
+    }
+    return { bullet: cleanB, enriched: false };
   });
 }
 
@@ -461,7 +475,7 @@ function polishTextList(texts) {
   return { texts: pass2, intraFixes, globalFixes };
 }
 
-function applyExperiencePolish(resume, sourceExperience, usedVerbs) {
+function applyExperiencePolish(resume, sourceExperience, usedVerbs, allowSyntheticMetrics = false) {
   let verbsRotated = 0;
   let metricsEnriched = 0;
   let wordRepetitionsFixed = 0;
@@ -470,7 +484,12 @@ function applyExperiencePolish(resume, sourceExperience, usedVerbs) {
   const roleBulletGroups = collectExperienceArrays(resume.experience);
   const polishedGroups = roleBulletGroups.map((bullets, roleIdx) => {
     const roleSourceBullets = sourceExperience[roleIdx]?.bullets || [];
-    const enriched = enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets);
+    const enriched = enrichBulletsWithMetrics(
+      bullets,
+      roleSourceBullets,
+      allSourceBullets,
+      allowSyntheticMetrics,
+    );
     const metricEnriched = enriched.map(({ bullet, enriched: wasEnriched }) => {
       if (wasEnriched) metricsEnriched += 1;
       return bullet;
@@ -495,6 +514,14 @@ function applyExperiencePolish(resume, sourceExperience, usedVerbs) {
   return { verbsRotated, metricsEnriched, wordRepetitionsFixed };
 }
 
+/**
+ * Deterministic Zety-bar polish: unique verbs, graft-only metrics, casing, no keyword spam.
+ * @param {object} resume
+ * @param {object[]} [sourceExperience]
+ * @param {object} [opts]
+ * @param {number} [opts.jdAlignScore]
+ * @param {boolean} [opts.allowSyntheticMetrics=false] — invent metrics only if explicitly enabled
+ */
 export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
   if (!resume || typeof resume !== 'object') {
     return {
@@ -503,6 +530,7 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
     };
   }
 
+  const allowSyntheticMetrics = opts.allowSyntheticMetrics === true;
   const usedVerbs = new Set();
   let verbsRotated = 0;
   let metricsEnriched = 0;
@@ -518,7 +546,9 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
 
   const scoreOpts = () => ({
     jdAlignScore: opts.jdAlignScore,
-    competencyCount: Array.isArray(resume.core_competencies) ? resume.core_competencies.length : 0,
+    competencyCount: Array.isArray(resume.core_competencies)
+      ? resume.core_competencies.length
+      : (opts.competencyCount || 0),
     summaryLines: String(resume.summary || '').split('\n').filter(Boolean).length,
   });
 
@@ -528,7 +558,7 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
   const MAX_ITER = 6;
   while (polishIterations < MAX_ITER && atsContentScore < ATS_TARGET_SCORE) {
     polishIterations += 1;
-    const pass = applyExperiencePolish(resume, sourceExperience, usedVerbs);
+    const pass = applyExperiencePolish(resume, sourceExperience, usedVerbs, allowSyntheticMetrics);
     verbsRotated += pass.verbsRotated;
     metricsEnriched += pass.metricsEnriched;
     wordRepetitionsFixed += pass.wordRepetitionsFixed;
@@ -558,7 +588,14 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
 
   return {
     resume,
-    stats: { verbsRotated, metricsEnriched, wordRepetitionsFixed, atsContentScore, polishIterations },
+    stats: {
+      verbsRotated,
+      metricsEnriched,
+      wordRepetitionsFixed,
+      atsContentScore,
+      polishIterations,
+      allowSyntheticMetrics,
+    },
   };
 }
 
@@ -583,12 +620,17 @@ export function auditResumeQuality(resume) {
 
   const verbCounts = {};
   let withoutMetrics = 0;
+  let incompleteSentences = 0;
   let intraSentenceRepeats = 0;
 
   for (const bullet of allBullets) {
     const verb = extractLeadingVerb(bullet);
     if (verb) verbCounts[verb] = (verbCounts[verb] || 0) + 1;
     if (!hasQuantifiedImpact(bullet)) withoutMetrics += 1;
+    const trimmed = String(bullet || '').trim();
+    if (!/^[A-Z0-9]/.test(trimmed) || !/[.!?]$/.test(trimmed) || trimmed.length < 28) {
+      incompleteSentences += 1;
+    }
 
     const seen = new Set();
     for (const m of String(bullet).matchAll(/\b([A-Za-z]{4,})\b/g)) {
@@ -612,6 +654,7 @@ export function auditResumeQuality(resume) {
   return {
     totalBullets: allBullets.length,
     withoutMetrics,
+    incompleteSentences,
     repeatedVerbs,
     repeatedWords,
     intraSentenceRepeats,
@@ -619,13 +662,17 @@ export function auditResumeQuality(resume) {
 }
 
 /**
- * Heuristic 0–100 ATS content score.
- * Factors: quantified bullets, clean verbs, JD keyword coverage, competency density.
- * Target for generated resumes: 90+.
+ * Heuristic 0–100 ATS content score (Zety hybrid).
+ * Factors: complete sentences, grafted metrics, unique verbs, JD coverage, competency density.
+ * Does NOT require fabricated metrics to reach 90+ when JD align + skills are strong.
  */
 export function estimateAtsContentScore(audit, opts = {}) {
   if (!audit?.totalBullets) return 0;
   const metricPct = (audit.totalBullets - audit.withoutMetrics) / audit.totalBullets;
+  const completePct = Math.max(
+    0,
+    (audit.totalBullets - (audit.incompleteSentences || 0)) / audit.totalBullets,
+  );
 
   const heavyWordPenalty = Math.min(18, (audit.repeatedWords?.length || 0) * 6);
   const verbPenalty = Math.min(24, (audit.repeatedVerbs?.length || 0) * 8);
@@ -633,17 +680,22 @@ export function estimateAtsContentScore(audit, opts = {}) {
 
   const jdAlign = Number(opts.jdAlignScore);
   const jdBonus = Number.isFinite(jdAlign)
-    ? Math.round(Math.min(100, Math.max(0, jdAlign)) * 0.15)
+    ? Math.round(Math.min(100, Math.max(0, jdAlign)) * 0.18)
     : 0;
 
   const skills = Number(opts.competencyCount) || 0;
-  const skillsBonus = skills >= 12 ? 8 : skills >= 10 ? 6 : skills >= 8 ? 4 : skills >= 5 ? 2 : 0;
+  const skillsBonus = skills >= 14 ? 10 : skills >= 12 ? 8 : skills >= 10 ? 6 : skills >= 8 ? 4 : skills >= 5 ? 2 : 0;
 
   const summaryLines = Number(opts.summaryLines) || 0;
-  const summaryBonus = summaryLines >= 3 ? 4 : summaryLines >= 2 ? 2 : 0;
+  const summaryBonus = summaryLines >= 4 ? 5 : summaryLines >= 3 ? 4 : summaryLines >= 2 ? 2 : 0;
 
-  // 100% metrics + clean text → 60+35=95; + JD/skills can hit 100
-  const base = 60 + Math.round(metricPct * 35) + jdBonus + skillsBonus + summaryBonus;
+  // Complete sentences (12) + honest metrics (22) + structure (55) + JD/skills/summary → 90+ without inventing %
+  const base = 55
+    + Math.round(completePct * 12)
+    + Math.round(metricPct * 22)
+    + jdBonus
+    + skillsBonus
+    + summaryBonus;
   return Math.max(0, Math.min(100, base - heavyWordPenalty - verbPenalty - intraPenalty));
 }
 
