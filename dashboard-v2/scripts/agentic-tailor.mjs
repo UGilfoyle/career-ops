@@ -14,6 +14,8 @@ import {
   alignResumeToJd,
   formatJdKeywordBlock,
   ensureAllRolesTailored,
+  isJunkKeyword,
+  isWeavableKeyword,
 } from '../../jd-keyword-align.mjs';
 import { buildApplicationDocumentPaths } from '../../document-filename.mjs';
 import { classifyCompany } from '../../gcc-classify.mjs';
@@ -411,15 +413,12 @@ function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
 
   const isTechStack = (text) => {
     const t = text.trim();
+    if (!t || isJunkKeyword(t) || !isWeavableKeyword(t)) return false;
     // Short items (≤30 chars) that look like tool/tech names (few spaces, no verb phrases)
     if (t.length <= 30 && (t.split(/\s+/).length <= 3)) {
-      // Check against known patterns
       if (techPatterns.some(p => p.test(t))) return true;
-      // If it's a very short string (single word or two), treat as tech by default
-      // unless it contains management/leadership style words
-      if (t.split(/\s+/).length <= 2 && !/\b(management|leadership|communication|mentoring|strategy|ownership|reviews)\b/i.test(t)) {
-        return true;
-      }
+      // Short tokens: only if they match a tech pattern (never "Find")
+      return false;
     }
     // Longer items — check for tech patterns
     return techPatterns.some(p => p.test(t));
@@ -432,10 +431,10 @@ function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
   // Process tailored competencies FIRST (JD-aligned, highest priority)
   for (const item of competencies) {
     const s = String(item || '').trim();
-    if (!s) continue;
+    if (!s || isJunkKeyword(s)) continue;
     if (isTechStack(s)) {
       techSkills.push(s);
-    } else {
+    } else if (isWeavableKeyword(s) || s.split(/\s+/).length >= 2) {
       coreComp.push(s);
     }
   }

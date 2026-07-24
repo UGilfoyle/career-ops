@@ -42,7 +42,21 @@ const STOPWORDS = new Set([
   'software', 'application', 'applications', 'services', 'service', 'process', 'apply',
   'development', 'developer', 'engineer', 'engineering', 'technologies', 'technology',
   'systems', 'platform', 'solutions', 'business', 'projects', 'project', 'tools', 'tool',
+  // Job-board / Indeed chrome — was leaking into summary as "systems in Find"
+  'find', 'search', 'sign', 'save', 'share', 'report', 'view', 'click', 'learn', 'more',
+  'home', 'careers', 'posting', 'indeed', 'linkedin', 'naukri', 'glassdoor', 'instahyre',
+  'remote', 'hybrid', 'onsite', 'salary', 'benefits', 'privacy', 'cookie', 'cookies',
+  'continue', 'skip', 'next', 'back', 'login', 'logout', 'register', 'upload', 'download',
+  'filter', 'sort', 'results', 'jobs', 'hiring', 'candidates', 'candidate', 'employees',
+  'employee', 'companies', 'reviews', 'review', 'follow', 'messages', 'notifications',
+  'settings', 'help', 'terms', 'conditions', 'policy', 'policies', 'english', 'hindi',
+  'india', 'pune', 'bengaluru', 'mumbai', 'delhi', 'bangalore', 'hyderabad', 'chennai',
+  'posted', 'ago', 'today', 'yesterday', 'easily', 'urgent', 'sponsored', 'similar',
 ]);
+
+/** UI / dictionary junk that must never be woven into bullets or skills. */
+const JUNK_KEYWORD_RE =
+  /^(find|apply|search|sign|join|save|share|report|view|click|learn|more|home|careers?|postings?|indeed|linkedin|naukri|glassdoor|remote|hybrid|onsite|jobs?|hiring|candidates?|reviews?|follow|login|logout|skip|next|back|filter|sort|results?|salary|benefits?|privacy|cookies?|continue|upload|download|settings?|help|terms?|policies?|english|hindi|india|pune|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|posted|ago|today|yesterday|easily|urgent|sponsored|similar|software|applications?|services?|development|technologies?|process)$/i;
 
 /** Known tech only — preferred for ATS competency / skills lines. */
 export function extractJdTechKeywords(jdText, limit = 20) {
@@ -54,8 +68,25 @@ export function isJunkKeyword(kw) {
   const k = normalizeKeyword(kw).toLowerCase();
   if (!k || k.length < 2) return true;
   if (STOPWORDS.has(k)) return true;
-  if (/^(software|applications?|services?|development|technologies|process|apply)$/i.test(k)) return true;
+  if (JUNK_KEYWORD_RE.test(k)) return true;
+  // Multi-word phrases that still start with UI chrome ("Find candidates")
+  if (/^(find|apply|search|sign|join|save|share|view|click)\b/.test(k)) return true;
   return false;
+}
+
+/** Only real tech / multi-word skills may be woven into bullets or summary leads. */
+export function isWeavableKeyword(kw) {
+  if (isJunkKeyword(kw)) return false;
+  const k = normalizeKeyword(kw);
+  if (!k) return false;
+  if (findKnownTechInText(k).length > 0) return true;
+  if (/[.#+/]/.test(k) || /\d/.test(k)) return true;
+  if (k.split(/\s+/).length >= 2 && k.length >= 6) return true;
+  // Lone dictionary words (Find, Strong, Fast…) are not skills
+  if (k.split(/\s+/).length === 1 && k.length <= 8 && !/[A-Z].*[A-Z]/.test(String(kw))) {
+    return false;
+  }
+  return k.length >= 3;
 }
 
 function normalizeKeyword(kw) {
@@ -128,12 +159,16 @@ export function extractJdKeywords(jdText, limit = 20) {
       found.push(t);
     }
 
-    // Capitalized multi-word skills (e.g. "Platform Engineering")
+    // Capitalized skills — prefer multi-word; single tokens only if known tech
     for (const m of line.matchAll(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b/g)) {
       const phrase = m[1].trim();
-      if (phrase.length >= 4 && phrase.length <= 40 && !STOPWORDS.has(phrase.toLowerCase())) {
-        found.push(phrase);
+      if (phrase.length < 3 || phrase.length > 40) continue;
+      if (isJunkKeyword(phrase)) continue;
+      const words = phrase.split(/\s+/);
+      if (words.length === 1) {
+        if (findKnownTechInText(phrase).length === 0) continue;
       }
+      found.push(phrase);
     }
   }
 
@@ -218,15 +253,15 @@ function weaveKeywordIntoBullet(bullet, keyword) {
   const b = String(bullet || '').trim();
   if (!b) return b;
   const kw = String(keyword || '').trim();
-  if (!kw || isJunkKeyword(kw)) return b;
+  if (!kw || !isWeavableKeyword(kw)) return b;
   const lower = b.toLowerCase();
   if (lower.includes(kw.toLowerCase())) return b;
 
   // Never spam "applying X in production" — integrate tech naturally once.
   if (/\b(using|with|via|on)\b/i.test(b) && b.length < 220) {
-    return `${b.replace(/\.$/, '')} and ${kw}.`;
+    return `${b.replace(/\.$/, '')} with ${kw}.`;
   }
-  if (/^[A-Z]/.test(b) && !/^(I |Built|Led|Designed|Engineered|Architected|Developed|Implemented|Delivered|Shipped)/i.test(b)) {
+  if (/^[A-Z]/.test(b) && !/^(I |Built|Led|Designed|Engineered|Architected|Developed|Implemented|Delivered|Shipped|Owned|Cut|Reduced)/i.test(b)) {
     return `${b.replace(/\.$/, '')} using ${kw}.`;
   }
   // Prefer a clean tool-clause over keyword stuffing
@@ -238,7 +273,7 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   if (!text) return text;
   const lower = text.toLowerCase();
   const toAdd = keywords
-    .filter((kw) => !isJunkKeyword(kw) && !lower.includes(String(kw).toLowerCase()))
+    .filter((kw) => isWeavableKeyword(kw) && !lower.includes(String(kw).toLowerCase()))
     .slice(0, minCount);
   if (toAdd.length === 0) return text;
 
@@ -271,8 +306,8 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
     return { resume, stats: { competenciesAdded: 0, bulletsAligned: 0, summaryPatched: false } };
   }
 
-  const cleanKws = jdKeywords.filter((kw) => !isJunkKeyword(kw));
-  const bulletKws = (opts.bulletKeywords || cleanKws).filter((kw) => !isJunkKeyword(kw));
+  const cleanKws = jdKeywords.filter((kw) => isWeavableKeyword(kw));
+  const bulletKws = (opts.bulletKeywords || cleanKws).filter((kw) => isWeavableKeyword(kw));
   const weaveEvery = opts.weaveEveryBullet === true;
 
   const copy = JSON.parse(JSON.stringify(resume));
