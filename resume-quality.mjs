@@ -477,6 +477,14 @@ export function rewriteFirstPersonBullet(text) {
   // "Owned developing X" leftovers
   t = t.replace(/^Owned\s+(developing|building|creating|maintaining)\s+/i, (_, g) => `${gerundToPast[g.toLowerCase()] || 'Owned'} `);
   t = t.replace(/^Delivered\s+(building|writing|deploying|developing)\s+/i, (_, g) => `${gerundToPast[g.toLowerCase()] || 'Delivered'} `);
+  // Parallel-structure cleanup after gerund → past rewrites
+  t = t.replace(/\bDeveloped and maintaining\b/gi, 'Developed and maintained');
+  t = t.replace(/\bBuilt and maintaining\b/gi, 'Built and maintained');
+  t = t.replace(/,\s*writing\s+/gi, ', wrote ');
+  t = t.replace(/,\s*deploying\s+/gi, ', deployed ');
+  t = t.replace(/,\s*building\s+/gi, ', built ');
+  t = t.replace(/\sand deploying\b/gi, ' and deployed');
+  t = t.replace(/\sand maintaining\b/gi, ' and maintained');
   t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
   return t.trim();
 }
