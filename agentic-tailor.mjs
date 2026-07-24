@@ -13,6 +13,7 @@ import {
   preferSourceIfThin,
   parseTenureMonths,
   bulletsBudgetForRole as roleBulletBudget,
+  elevateBulletToSenior,
 } from './resume-quality.mjs';
 import {
   extractJdKeywords,
@@ -294,11 +295,14 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       ? roleBullets.slice(0, budget + 2)
       : (job.bullets || []).slice(0, budget + 2)
     );
-    // Merge orphan fragments; if tailored output is thin/broken, prefer profile source facts
+    // Merge orphan fragments; if tailored output is thin/broken, prefer profile source facts.
+    // ALWAYS re-elevate: every employer (Quest → Artisanssoft) gets senior LinkedIn tone.
     const normalizedBullets = preferSourceIfThin(candidates, job.bullets || [], {
       minCount: Math.min(3, budget),
       maxBullets: budget,
-    });
+    })
+      .map((b) => normalizeBulletText(elevateBulletToSenior(String(b || ''))))
+      .filter((b) => b.length >= 20);
 
     let role = (job.role || '').trim();
     let company = (job.company || '').trim();
@@ -1336,6 +1340,7 @@ TASK:
       Return as an OBJECT keyed by role index ("0"…"${Math.max(0, rolesToTailor - 1)}"), each with 4 senior-caliber tailored bullets (never fewer than 3; roles with ~2 years tenure need 3–4).
 ${roleDigest}
       BULLET RULES — SENIOR SOFTWARE ENGINEER + LINKEDIN / ATS BAR (7+ years):
+      - SENIOR TONE ON EVERY EMPLOYER — no exceptions: Quest, INTVERSE, Glidewell, Srijan, KOCO, Rubico, Artisanssoft. Older job titles may stay historical; bullet language must still read Senior Software Engineer (ownership/impact), never junior task lists.
       - Write like a Senior Software Engineer TA would shortlist — ownership, architecture, reliability, mentoring/SDLC, measurable impact
       - LinkedIn formula: [Strong verb] + [scope/system] + [tech from digest/JD] + [outcome/metric from digest]
       - GOOD examples: "Architected event-driven microservices on Node.js/Python, cutting infra cost 30%." / "Owned AWS right-sizing and autoscaling, protecting 99.95% uptime." / "Led peer review and mentoring that raised SDLC quality across the squad."

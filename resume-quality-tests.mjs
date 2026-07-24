@@ -357,5 +357,24 @@ console.log('resume-quality tests\n');
   assert(juniorish.every((b) => !/\band building\b/i.test(b)), 'and building fixed under senior polish');
 }
 
+{
+  // Senior tone on EVERY employer (Quest → Artisanssoft) — no junior leftovers
+  const samples = [
+    'Developed backend systems for Quest Global using Python.',
+    'Helped INTVERSE ship React dashboards.',
+    'Analyzed Glidewell SQL bottlenecks cutting CPU 35%.',
+    'Built Srijan Node.js payment features.',
+    'Worked on KOCO multi-tenant Node.js architecture.',
+    'Developed Rubico MongoDB APIs and AWS hosting.',
+    'Assisted Artisanssoft with payment gateway integrations.',
+  ];
+  const elevated = normalizeExperienceBulletList(samples);
+  assert(elevated.length === 7, 'all seven employer samples survive normalize');
+  assert(
+    elevated.every((b) => !/^(Developed|Helped|Assisted|Worked on|Analyzed|Built)\b/i.test(b)),
+    'no junior openings remain across all employers',
+  );
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
