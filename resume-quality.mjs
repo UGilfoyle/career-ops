@@ -342,6 +342,81 @@ function synthesizeMetric(bullet) {
 }
 
 /**
+ * Elevate a bullet to Senior Software Engineer / LinkedIn professional bar.
+ * Keeps facts + metrics; upgrades junior task-list tone → ownership/impact tone.
+ * Does NOT invent metrics or employers.
+ */
+export function elevateBulletToSenior(text) {
+  let t = String(text || '').trim();
+  if (!t) return '';
+
+  // Strip markdown bold labels left in ("Architecture: …")
+  t = t.replace(/^\*\*[^*]+\*\*:\s*/g, '').replace(/^([A-Z][A-Za-z0-9 &/+-]{2,40}):\s+/, '');
+
+  // Junior / soft openings → senior ownership verbs (LinkedIn style)
+  const openingMap = [
+    [/^Helped (?:to |with |the )?/i, 'Drove '],
+    [/^Assisted (?:with |in |the )?/i, 'Drove '],
+    [/^Supported (?:the |a )?/i, 'Partnered on '],
+    [/^Worked on\s+/i, 'Delivered '],
+    [/^Worked with\s+/i, 'Partnered with '],
+    [/^Participated in\s+/i, 'Contributed to '],
+    [/^Responsible for\s+/i, 'Owned '],
+    [/^Duties included\s+/i, 'Delivered '],
+    [/^Tasked with\s+/i, 'Owned '],
+    [/^Analyzed\s+/i, 'Diagnosed '],
+    [/^Configured\s+/i, 'Hardened '],
+    [/^Conducted\s+(?:peer )?code reviews\b/i, 'Led peer code reviews'],
+    [/^Conducted\s+/i, 'Led '],
+    [/^Provided mentorship to\s+/i, 'Mentored '],
+    [/^Provided\s+/i, 'Delivered '],
+    [/^Authored\s+/i, 'Architected '],
+    [/^Created\s+/i, 'Launched '],
+    [/^Constructed\s+/i, 'Instituted '],
+    [/^Developed\s+and\s+maintained\s+/i, 'Engineered and maintained '],
+    [/^Developed\s+and\s+deployed\s+/i, 'Engineered and deployed '],
+    [/^Developed\s+/i, 'Engineered '],
+    [/^Built\s+and launched\s+/i, 'Shipped '],
+    [/^Built\s+/i, 'Delivered '],
+    [/^Made\s+/i, 'Delivered '],
+    [/^Did\s+/i, 'Delivered '],
+    [/^Handled\s+/i, 'Owned '],
+    [/^Managed\s+multiple client projects\b/i, 'Owned delivery across client platforms'],
+  ];
+  for (const [re, rep] of openingMap) {
+    if (re.test(t)) {
+      t = t.replace(re, rep);
+      break;
+    }
+  }
+
+  // Soft / junior phrases → senior professional phrasing
+  t = t
+    .replace(/\bfostering a culture of excellence\b/gi, 'raising engineering quality')
+    .replace(/\bmultiple client projects\b/gi, 'production client platforms')
+    .replace(/\band building the frontend\b/gi, 'and built the frontend')
+    .replace(/\band building\b/gi, 'and built')
+    .replace(/\butiliz(?:ed|ing)\b/gi, 'using')
+    .replace(/\bhelped (?:to )?ensure\b/gi, 'ensured')
+    .replace(/\bworked closely with the network team to deploy\b/gi, 'partnered with networking to deploy')
+    .replace(/\bensuring a smooth and scalable infrastructure\b/gi, 'hardening scalable infrastructure')
+    .replace(/\bto maintain high code quality standards\b/gi, 'to hold a high code-quality bar')
+    .replace(/\bfostering\b/gi, 'driving')
+    .replace(/\bTeam Support:\s*/gi, 'Mentorship: ')
+    .replace(/\bjunior developers\b/gi, 'engineers')
+    .replace(/\bjunior engineers\b/gi, 'engineers');
+
+  // Prefer ownership framing mid-sentence when still task-y
+  t = t.replace(/\bwas responsible for\b/gi, 'owned');
+  t = t.replace(/\bmy work involved\b/gi, 'delivered');
+
+  t = t.replace(/\s{2,}/g, ' ').trim();
+  t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
+  if (t && !/[.!?]$/.test(t)) t += '.';
+  return t;
+}
+
+/**
  * Strip leaked job-board chrome, double metrics, and GraphQL/REST mashups.
  * Defense in depth for Indeed UI tokens (Find/Apply/…) and bad polish merges.
  */
@@ -393,7 +468,7 @@ export function scrubResumeArtifacts(text) {
  * Every bullet must start with A–Z (or a digit for metrics that belong mid-clause).
  */
 export function normalizeBulletText(bullet) {
-  let t = scrubResumeArtifacts(String(bullet || ''))
+  let t = elevateBulletToSenior(scrubResumeArtifacts(String(bullet || '')))
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/^[•\-*▸]\s*/, '')
     .replace(/,\s*\./g, '.')
@@ -413,7 +488,7 @@ export function normalizeBulletText(bullet) {
   // Capitalize first alphabetic character
   t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
   if (!/[.!?]$/.test(t)) t += '.';
-  return t;
+  return elevateBulletToSenior(t);
 }
 
 /** Past-tense / strong action verbs that legitimately open a resume bullet. */

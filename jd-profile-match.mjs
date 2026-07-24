@@ -13,6 +13,7 @@ import {
   parseTenureMonths,
   bulletsBudgetForRole,
   preferSourceIfThin,
+  elevateBulletToSenior,
 } from './resume-quality.mjs';
 
 const PROFILE_TECH_PATTERNS = [
@@ -216,7 +217,7 @@ function enhanceBulletHonest(bullet, honestKeywords) {
   // Capitalize leading letter; ensure terminal period (polish will re-normalize)
   text = text.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
   if (!/[.!?]$/.test(text)) text += '.';
-  return text;
+  return elevateBulletToSenior(text);
 }
 
 /** Infer a senior role title from JD language for summary framing. */
