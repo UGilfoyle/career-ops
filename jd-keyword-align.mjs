@@ -10,13 +10,43 @@ const KNOWN_TECH = [
   'ECS', 'Lambda', 'S3', 'EC2', 'CloudFormation', 'IAM', 'VPC', 'SQS', 'SNS',
   'Kafka', 'RabbitMQ', 'GraphQL', 'REST API', 'RESTful API', 'gRPC',
   'Jenkins', 'GitHub Actions', 'GitLab CI', 'Prometheus', 'Grafana', 'Datadog',
-  'Jest', 'Cypress', 'Playwright', 'Webpack', 'Vite', 'Material UI', 'HTML5', 'CSS3',
+  'Jest', 'Cypress', 'Playwright', 'Puppeteer', 'Cheerio', 'Selenium',
+  'WebSockets', 'WebSocket', 'ORM', 'TypeORM', 'Prisma', 'Sequelize',
+  'Message Brokers', 'Web Scraping',
+  'Webpack', 'Vite', 'Material UI', 'HTML5', 'CSS3',
   'Git', 'Agile', 'Scrum', 'Microservices', 'System Design', 'Unit Testing', 'Integration Testing',
   'Machine Learning', 'ML', 'LLM', 'RAG', 'LangChain', 'PyTorch', 'TensorFlow',
   'Cursor', 'Copilot', 'GitHub Copilot', 'Github Copilot',
   '.NET Core', '.NET', 'C#',
   'Snowflake', 'Spark', 'Airflow', 'dbt', 'Databricks',
 ];
+
+/**
+ * Canonicalize spaced / informal JD tech spellings so extractors hit KNOWN_TECH.
+ * e.g. "NEST JS", "Java script", "web sockets", "puppeteer" stay discoverable.
+ */
+export function normalizeJdTechAliases(text) {
+  let t = String(text || '');
+  const rules = [
+    [/\bjava\s*script\b/gi, 'JavaScript'],
+    [/\btype\s*script\b/gi, 'TypeScript'],
+    [/\bnest\s*js\b/gi, 'NestJS'],
+    [/\bnext\s*js\b/gi, 'Next.js'],
+    [/\bnode\s*js\b/gi, 'Node.js'],
+    [/\breact\s*js\b/gi, 'React'],
+    [/\bvue\s*js\b/gi, 'Vue.js'],
+    [/\bweb\s*sockets?\b/gi, 'WebSockets'],
+    [/\brest\s*ful\s*apis?\b/gi, 'RESTful API'],
+    [/\brest\s*apis?\b/gi, 'REST API'],
+    [/\bci\s*\/\s*cd\b/gi, 'CI/CD'],
+    [/\borm[- ]object\s*relational\s*mapping\b/gi, 'ORM'],
+    [/\bobject\s*[- ]?relational\s*mapping\b/gi, 'ORM'],
+    [/\bmessage\s*brokers?\b/gi, 'Message Brokers'],
+    [/\bweb\s*scraping\b/gi, 'Web Scraping'],
+  ];
+  for (const [re, rep] of rules) t = t.replace(re, rep);
+  return t;
+}
 
 const JD_SECTION_HINTS = [
   /requirements?:/i,
@@ -51,17 +81,24 @@ const STOPWORDS = new Set([
   'employee', 'companies', 'reviews', 'review', 'follow', 'messages', 'notifications',
   'settings', 'help', 'terms', 'conditions', 'policy', 'policies', 'english', 'hindi',
   'india', 'pune', 'bengaluru', 'mumbai', 'delhi', 'bangalore', 'hyderabad', 'chennai',
+  'telangana', 'karnataka', 'maharashtra', 'interaslabs',
   'posted', 'ago', 'today', 'yesterday', 'easily', 'urgent', 'sponsored', 'similar',
+  // JD fluff adjectives / verbs that were landing in skills (Interaslabs Indeed)
+  'demonstrable', 'proven', 'hands', 'building', 'cloud', 'large', 'scale', 'masters',
+  'preferably', 'includes', 'writing', 'queries', 'knowledge', 'must', 'opening',
+  'pay', 'year', 'flexible', 'schedule', 'district', 'preference', 'based',
 ]);
 
 /** UI / dictionary junk that must never be woven into bullets or skills. */
 const JUNK_KEYWORD_RE =
-  /^(find|apply|search|sign|join|save|share|report|view|click|learn|more|home|careers?|postings?|indeed|linkedin|naukri|glassdoor|remote|hybrid|onsite|jobs?|hiring|candidates?|reviews?|follow|login|logout|skip|next|back|filter|sort|results?|salary|benefits?|privacy|cookies?|continue|upload|download|settings?|help|terms?|policies?|english|hindi|india|pune|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|posted|ago|today|yesterday|easily|urgent|sponsored|similar|software|applications?|services?|development|technologies?|process)$/i;
+  /^(find|apply|search|sign|join|save|share|report|view|click|learn|more|home|careers?|postings?|indeed|linkedin|naukri|glassdoor|remote|hybrid|onsite|jobs?|hiring|candidates?|reviews?|follow|login|logout|skip|next|back|filter|sort|results?|salary|benefits?|privacy|cookies?|continue|upload|download|settings?|help|terms?|policies?|english|hindi|india|pune|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|telangana|posted|ago|today|yesterday|easily|urgent|sponsored|similar|software|applications?|services?|development|technologies?|process|demonstrable|proven|hands|building|cloud|masters)$/i;
 
 /** Known tech only — preferred for ATS competency / skills lines. */
 export function extractJdTechKeywords(jdText, limit = 20) {
   if (!jdText || String(jdText).length < 30) return [];
-  return uniqueCasePreserved(findKnownTechInText(String(jdText))).slice(0, limit);
+  const text = normalizeJdTechAliases(String(jdText));
+  const found = uniqueCasePreserved(findKnownTechInText(text));
+  return suppressFalsePositiveLanguages(found, text).slice(0, limit);
 }
 
 export function isJunkKeyword(kw) {
@@ -79,14 +116,24 @@ export function isWeavableKeyword(kw) {
   if (isJunkKeyword(kw)) return false;
   const k = normalizeKeyword(kw);
   if (!k) return false;
-  if (findKnownTechInText(k).length > 0) return true;
+  if (findKnownTechInText(normalizeJdTechAliases(k)).length > 0) return true;
   if (/[.#+/]/.test(k) || /\d/.test(k)) return true;
+  // Multi-word skill phrases only (e.g. "Design Patterns") — never company/place names
   if (k.split(/\s+/).length >= 2 && k.length >= 6) return true;
-  // Lone dictionary words (Find, Strong, Fast…) are not skills
-  if (k.split(/\s+/).length === 1 && k.length <= 8 && !/[A-Z].*[A-Z]/.test(String(kw))) {
-    return false;
-  }
-  return k.length >= 3;
+  // Lone dictionary / proper nouns (Find, Interaslabs, demonstrable…) are not skills
+  return false;
+}
+
+/** Drop bare "Java" when the JD clearly means JavaScript (common Indeed spacing). */
+function suppressFalsePositiveLanguages(found, text) {
+  const lower = String(text || '').toLowerCase();
+  const hasJavaScript = lower.includes('javascript');
+  const bareJava = /\bjava\b/.test(lower.replace(/javascript/g, ''));
+  return found.filter((kw) => {
+    const k = String(kw).toLowerCase();
+    if (k === 'java' && hasJavaScript && !bareJava) return false;
+    return true;
+  });
 }
 
 function normalizeKeyword(kw) {
@@ -144,8 +191,8 @@ function uniqueCasePreserved(items) {
 export function extractJdKeywords(jdText, limit = 20) {
   if (!jdText || String(jdText).length < 30) return [];
 
-  const text = String(jdText);
-  const found = [...findKnownTechInText(text)];
+  const text = normalizeJdTechAliases(String(jdText));
+  const found = [...suppressFalsePositiveLanguages(findKnownTechInText(text), text)];
 
   // 2. Bullet lines and requirement-like phrases
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
@@ -281,9 +328,9 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   if (lines.length === 0) lines.push(text);
 
   const inject = toAdd.slice(0, 5).join(', ');
-  // Prefer natural weave into line 1 or 2 — avoid robotic "Tech stack:" spam lines
+  // Prefer natural weave into line 1 or 2 (comma clause; no em-dash spam)
   if (lines[0].length < 170) {
-    lines[0] = `${lines[0].replace(/\.$/, '')} — ${inject}.`;
+    lines[0] = `${lines[0].replace(/\.$/, '')}, including ${inject}.`;
   } else if (lines.length >= 2 && lines[1].length < 180) {
     lines[1] = `${lines[1].replace(/\.$/, '')} (${inject}).`;
   } else if (lines.length < 4) {
