@@ -22,6 +22,7 @@ jds/*
 # User config and customization (never auto-updated)
 config/profile.yml
 cv.md
+!examples/ci-resume-fixture/cv.md
 portals.yml
 modes/_profile.md
 .update-dismissed

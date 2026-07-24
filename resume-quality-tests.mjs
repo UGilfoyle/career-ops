@@ -441,7 +441,21 @@ console.log('resume-quality tests\n');
   assert(midOnly.every((b) => !/^(Helped|Assisted|Worked on)\b/i.test(b)), 'mid employers scrub junior fluff');
   assert(midOnly.every((b) => !/^(Architected|Owned|Drove|Mentored)\b/i.test(b)), 'mid employers not forced to senior verbs');
   assert(midOnly.some((b) => /^Developed\b/i.test(b)), 'Rubico Developed preserved');
+
+  // explode default maxOut=6 must not drop a 7th discrete short bullet
+  const sevenDiscrete = [
+    'Built APIs for Quest Global on Python.',
+    'Shipped React dashboards at INTVERSE.',
+    'Tuned Glidewell SQL bottlenecks cutting CPU 35%.',
+    'Delivered Srijan Node.js payment features.',
+    'Built KOCO multi-tenant Node.js architecture.',
+    'Developed Rubico MongoDB APIs and AWS hosting.',
+    'Implemented Artisanssoft payment gateway integrations.',
+  ];
+  assert(explodeWallOfTextBullets(sevenDiscrete).length === 7, 'explode preserves 7 discrete employer samples');
+
 }
+
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

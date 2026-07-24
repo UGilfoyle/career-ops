@@ -250,6 +250,10 @@ export function hydrateResumeProfile(profile) {
       'runtime-assets/config/profile.yml',
       '../config/profile.yml',
     ];
+    // Committed anonymized fixture — CI only (personal profile.yml is gitignored there)
+    if (process.env.CI || process.env.CAREER_OPS_USE_CI_FIXTURE === '1') {
+      yamlPaths.push('examples/ci-resume-fixture/profile.yml');
+    }
     for (const rel of yamlPaths) {
       const fromYaml = loadYamlAt(rel);
       if (fromYaml) {
@@ -265,12 +269,17 @@ export function hydrateResumeProfile(profile) {
     const maybeIncompleteExp = hadExp && Array.isArray(next.experience) && next.experience.length > 0;
 
     if (stillNoName || stillNoExp || stillNoEdu || maybeIncompleteExp) {
-      const cvRaw = readFileAt('cv.md') || readFileAt('../cv.md');
+      let cvRaw = readFileAt('cv.md') || readFileAt('../cv.md');
+      if (!cvRaw && (process.env.CI || process.env.CAREER_OPS_USE_CI_FIXTURE === '1')) {
+        cvRaw = readFileAt('examples/ci-resume-fixture/cv.md');
+      }
       if (cvRaw) {
         const parsed = parseCvMarkdown(cvRaw);
         if (stillNoName || stillNoExp || stillNoEdu || maybeIncompleteExp) {
           next = mergeProfile(next, parsed);
-          if (!sources.includes('cv.md')) sources.push('cv.md');
+          if (!sources.includes('cv.md') && !sources.includes('examples/ci-resume-fixture/cv.md')) {
+            sources.push(process.env.CI || process.env.CAREER_OPS_USE_CI_FIXTURE === '1' ? 'examples/ci-resume-fixture/cv.md' : 'cv.md');
+          }
         }
       }
     }

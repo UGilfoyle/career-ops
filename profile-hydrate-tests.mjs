@@ -74,8 +74,8 @@ const missingName = hydrateResumeProfile({
   candidate: { full_name: '' },
 }).profile;
 assert(
-  /Akash/i.test(String(missingName.candidate?.full_name || '')),
-  'hydration fills empty full_name from profile.yml or cv.md',
+  /Akash|Alex Rivera/i.test(String(missingName.candidate?.full_name || '')),
+  'hydration fills empty full_name from profile.yml, cv.md, or CI fixture',
 );
 
 const partialExp = hydrateResumeProfile({
@@ -83,7 +83,7 @@ const partialExp = hydrateResumeProfile({
     { company: 'Quest Global Engineering Services', role: 'Senior Software Engineer', bullets: ['Built APIs.'] },
   ],
   education: [{ school: 'Uttaranchal University', degree: 'MCA', period: '2016 – 2018' }],
-  candidate: { full_name: 'Akash Kaintura' },
+  candidate: { full_name: 'Alex Rivera' },
 }).profile;
 assert(
   (partialExp.experience || []).some((j) => /Rubico/i.test(String(j.company || ''))),
