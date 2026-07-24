@@ -6,7 +6,14 @@ import { createRequire } from 'module';
 import { pathToFileURL } from 'url';
 import sql from './db/client.mjs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { polishTailoredResume, auditResumeQuality, normalizeBulletText, explodeWallOfTextBullets } from './resume-quality.mjs';
+import {
+  polishTailoredResume,
+  auditResumeQuality,
+  normalizeBulletText,
+  preferSourceIfThin,
+  parseTenureMonths,
+  bulletsBudgetForRole as roleBulletBudget,
+} from './resume-quality.mjs';
 import {
   extractJdKeywords,
   extractJdTechKeywords,
@@ -228,12 +235,6 @@ function formatBulletHtml(text) {
 function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
   if (!Array.isArray(exp) || exp.length === 0) return '';
 
-  const bulletsBudgetForRole = (roleIndex) => {
-    if (maxPages >= 3) return roleIndex < 3 ? 6 : roleIndex < 5 ? 4 : 3;
-    if (maxPages >= 2) return roleIndex < 3 ? 5 : roleIndex < 5 ? 3 : 2;
-    return roleIndex < 2 ? 4 : 3;
-  };
-
   // tailoredBullets can be:
   //   (a) a flat array of strings → legacy single-role mode (applied to most-relevant role)
   //   (b) an object { "0": [...], "1": [...] } → multi-role mode keyed by role index
@@ -261,26 +262,6 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     console.log(`[DEBUG] Multi-role tailoring: ${Object.keys(tailoredBullets).length} roles received tailored bullets`);
   }
 
-  // Calculate duration of a period in months
-  const calculateTenureMonths = (period) => {
-    if (!period) return 12;
-    const clean = period.toLowerCase();
-    if (clean.includes('present') || clean.includes('current')) return 12;
-    const monthNames = {
-      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
-    };
-    const matches = [...clean.matchAll(/\b(january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.?\s+(\d{4})\b/g)];
-    if (matches.length === 2) {
-      const startMonth = monthNames[matches[0][1].slice(0, 3)];
-      const startYear = parseInt(matches[0][2], 10);
-      const endMonth = monthNames[matches[1][1].slice(0, 3)];
-      const endYear = parseInt(matches[1][2], 10);
-      return (endYear - startYear) * 12 + (endMonth - startMonth);
-    }
-    return 12;
-  };
-
   // Date patterns to aggressively strip from company/role
   const datePatterns = [
     /\b\d{4}\s*(?:[-–—]|to)\s*(?:\d{4}|present|current|now)\b/gi,
@@ -307,13 +288,17 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       roleBullets = flatBullets;
       console.log(`[DEBUG] Applying ${roleBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
     }
-    const bullets = (roleBullets
-      ? roleBullets.slice(0, bulletsBudgetForRole(idx) + 2)
-      : (job.bullets || []).slice(0, bulletsBudgetForRole(idx) + 2)
+    const tenureMonths = parseTenureMonths(job.period);
+    const budget = roleBulletBudget(idx, { tenureMonths, maxPages });
+    const candidates = (roleBullets
+      ? roleBullets.slice(0, budget + 2)
+      : (job.bullets || []).slice(0, budget + 2)
     );
-    const normalizedBullets = explodeWallOfTextBullets(bullets, {
-      maxBullets: bulletsBudgetForRole(idx),
-    }).map((b) => normalizeBulletText(b)).filter((b) => b.length >= 20);
+    // Merge orphan fragments; if tailored output is thin/broken, prefer profile source facts
+    const normalizedBullets = preferSourceIfThin(candidates, job.bullets || [], {
+      minCount: Math.min(3, budget),
+      maxBullets: budget,
+    });
 
     let role = (job.role || '').trim();
     let company = (job.company || '').trim();
@@ -1334,20 +1319,24 @@ TASK:
 1. RESUME TAILORING — every output field MUST be aligned to the JD below:
 
    a) **Professional summary** (resume.summary): EXACTLY 3–4 lines as ONE JSON string with \\n between lines.
-      - Line 1: title/scope + years of experience. MUST mention 2-3 specific technologies from the JD.
-      - Lines 2–4: concrete domains, stacks, systems, and outcomes from the digest, EXPLICITLY MAPPED to JD requirements.
+      - SENIOR TONE (kadak): candidate is a Senior Software Engineer with 7+ years — write like it.
+      - Line 1: Senior title (match JD: SSE / Senior Full-Stack / Senior Backend) + years + named JD stack. Ownership language ("owning", "leading"), not soft filler.
+      - Line 2: Architecture / systems depth mapped to JD (microservices, cloud, APIs, AI if relevant) with hard outcomes from digest.
+      - Line 3: Reliability + SDLC ownership (reviews, tests, CI, mentoring) — NEVER weak lines like "collaborate with product partners".
+      - Line 4 (optional): concrete stack closer or measurable impact bias.
       - Example: if JD says "React, Node.js, PostgreSQL" → summary MUST mention React, Node.js, PostgreSQL.
-      - Total under ~90 words. No bullet characters.
+      - Total under ~90 words. No bullet characters. No clichés (passionate, results-oriented, leveraged, spearheaded).
 
    b) **Core competencies** (resume.core_competencies): 10-14 items — NEVER sparse.
       - Include EVERY major JD tech term (React, TypeScript, Node.js, NestJS, Azure, GitLab CI, Docker, testing, REST, LLM if mentioned).
       - Mix exact JD tool names with transferable labels (e.g. "RESTful API Design", "CI/CD Pipelines", "Unit & Integration Testing").
       - This section is for ATS matching — list the JD stack even when some tools are stretch/adjacent to digest experience.
 
-   c) **Experience bullets** (resume.experience): Rewrite bullets for the top ${rolesToTailor} roles.
-      Return as an OBJECT keyed by role index ("0", "1", "2", "3"), each with EXACTLY 4 highly descriptive, impactful tailored bullets (never fewer than 4).
+   c) **Experience bullets** (resume.experience): Rewrite bullets for ALL ${rolesToTailor} roles (including older ones).
+      Return as an OBJECT keyed by role index ("0"…"${Math.max(0, rolesToTailor - 1)}"), each with 4 senior-caliber tailored bullets (never fewer than 3; roles with ~2 years tenure need 3–4).
 ${roleDigest}
-      BULLET RULES:
+      BULLET RULES — SENIOR SOFTWARE ENGINEER BAR:
+      - Every bullet must read as senior work: ownership, architecture, reliability, mentoring/SDLC, or measurable impact — not junior task lists or first-person essays
       - Prefer PROVEN JD technologies from the digest; map adjacent stacks with careful phrasing (Node.js ↔ NestJS-style backends) without inventing fake project history
       - NEVER invent metrics or employers; never append spam like "applying X in production"
       - Each bullet MUST include at least one metric from the digest when the source bullet has one; never fabricate numbers
@@ -1355,8 +1344,11 @@ ${roleDigest}
       - NEVER repeat the same action verb anywhere in the resume (not just at the start) — max 1 use per verb document-wide
       - NEVER repeat any non-JD word twice in the same sentence; swap the second occurrence for a synonym
       - Avoid overused verbs: implemented, developed, designed, built — use at most once each in the full resume
+      - NEVER emit orphan fragments ("Logic into…", "Integrity through…", "Authentication flows…") — keep each idea as ONE complete sentence
+      - Parallel grammar: "Developed X and built Y" — never "and building"
+      - Older multi-year roles (e.g. ~2 years) still get 3–4 complete professional bullets from digest facts
       - Connect each bullet directly to a JD requirement
-      - SELF-CHECK before output: scan for repeated verbs and repeated words within sentences; rewrite until clean
+      - SELF-CHECK before output: scan for repeated verbs, orphan fragments, and weak summary tone; rewrite until clean
 
 2. COVER LETTER (body only — template adds "Dear Hiring Manager," and "Sincerely,"):
    - Return ONLY the letter body: NO salutation, NO sign-off
