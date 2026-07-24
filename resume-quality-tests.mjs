@@ -15,7 +15,14 @@ import {
   normalizeBulletText,
   normalizeExperienceBulletList,
   isBulletContinuationFragment,
+  scrubResumeArtifacts,
 } from './resume-quality.mjs';
+import {
+  extractJdKeywords,
+  alignResumeToJd,
+  isJunkKeyword,
+} from './jd-keyword-align.mjs';
+import { buildHonestSummary, buildJdMatchedCompetencies } from './jd-profile-match.mjs';
 
 let passed = 0;
 let failed = 0;
@@ -152,6 +159,58 @@ console.log('resume-quality tests\n');
   const { resume: polished } = polishTailoredResume(resume, [], { allowSyntheticMetrics: true, jdAlignScore: 50 });
   const b = polished.experience['0'][0].toLowerCase();
   assert(hasQuantifiedImpact(b) || b.includes('%') || /\d/.test(b), 'opt-in synthesis can add a metric');
+}
+
+{
+  assert(isJunkKeyword('Find'), 'Find is junk keyword');
+  assert(isJunkKeyword('Apply'), 'Apply is junk keyword');
+  const jd = `Find jobs\nSign in\nRequirements:\n- Find candidates with React and TypeScript\n- Node.js and PostgreSQL\n- AWS experience`;
+  const kws = extractJdKeywords(jd, 20);
+  assert(!kws.some((k) => /^find$/i.test(k)), 'JD keywords never include Find');
+  const comps = buildJdMatchedCompetencies(kws, { narrative: { superpowers: ['React'] }, experience: [] }, jd);
+  assert(!comps.some((c) => /^find$/i.test(c)), 'competencies never include Find');
+  assert(comps.some((c) => /react/i.test(c)), 'competencies still include React');
+  const summary = buildHonestSummary('', 7, kws, jd);
+  assert(!/\bFind\b/.test(summary), 'summary never says Find');
+  assert(/React|TypeScript|Node/i.test(summary), 'summary names real JD tech');
+
+  const dirty = {
+    summary: 'Senior Software Engineer with 7+ years shipping production systems in Find.',
+    core_competencies: ['Find', 'React', 'TypeScript'],
+    experience: {
+      '0': [
+        'Mean time to recovery by 60% during production incidents using Find.',
+        'Partnered with React.js frontend teams to build GraphQL RESTful APIs layers.',
+        'Reduced database response times by 40% By 45% and improved page load times.',
+      ],
+    },
+  };
+  const { resume: cleaned } = polishTailoredResume(dirty, [], { jdAlignScore: 80 });
+  const blob = JSON.stringify(cleaned);
+  assert(!/\bFind\b/.test(blob), 'polish strips Find artifacts');
+  assert(!/GraphQL RESTful/i.test(blob), 'polish fixes GraphQL RESTful mashup');
+  assert(!/40%\s*By\s*45%/i.test(blob), 'polish removes double metric By 45%');
+  assert(!cleaned.core_competencies.includes('Find'), 'Find removed from competencies');
+}
+
+{
+  const scrubbed = scrubResumeArtifacts(
+    'Cut latency from 800Ms to 120ms (Find) And PostgreSQL, by 40% By 45%.'
+  );
+  assert(!/\bFind\b/.test(scrubbed), 'scrub removes (Find)');
+  assert(/800ms/.test(scrubbed), 'scrub normalizes Ms → ms');
+  assert(!/By 45%/i.test(scrubbed), 'scrub removes duplicate By 45%');
+  assert(/ and /i.test(scrubbed), 'scrub lowercases mid-sentence And');
+}
+
+{
+  const merged = normalizeExperienceBulletList([
+    'Cut API latency',
+    '800Ms to 120ms and improving RESTful APIs throughput by 3x (Find) and PostgreSQL.',
+  ]);
+  assert(merged.length === 1, 'long metric fragment merges into prior bullet');
+  assert(!/\bFind\b/.test(merged[0]), 'merged bullet has no Find');
+  assert(/800ms/i.test(merged[0]), 'merged bullet keeps latency metric');
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

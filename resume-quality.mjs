@@ -340,11 +340,58 @@ function synthesizeMetric(bullet) {
 }
 
 /**
+ * Strip leaked job-board chrome, double metrics, and GraphQL/REST mashups.
+ * Defense in depth for Indeed UI tokens (Find/Apply/…) and bad polish merges.
+ */
+export function scrubResumeArtifacts(text) {
+  let t = String(text || '');
+  if (!t) return '';
+
+  // Parenthetical / trailing junk weaves from keyword align
+  t = t.replace(/\s*\((?:Find|Apply|Search|Sign|Join|Save|Share|View|Click|Report)\)\.?/gi, '');
+  t = t.replace(/\s+(?:using|with|and)\s+(?:Find|Apply|Search|Sign|Join|Save|Share|View|Click)\b\.?/gi, '');
+  t = t.replace(/\bin\s+Find\b/gi, 'in production systems');
+  t = t.replace(/\b(?:Find|Apply|Search)\s*,\s*/gi, '');
+  t = t.replace(/,\s*(?:Find|Apply|Search)\b/gi, '');
+
+  // Double / conflicting metrics: "by 40% By 45%"
+  t = t.replace(/\bby\s+(\d+(?:\.\d+)?%?)\s+by\s+(\d+(?:\.\d+)?%?)/gi, 'by $1');
+  t = t.replace(/(\d+(?:\.\d+)?%)\s+By\s+(\d+(?:\.\d+)?%)/g, '$1');
+
+  // Mid-sentence Title Case crumbs after polish
+  t = t.replace(/(\)|%|ms)\s+And\s+/g, '$1 and ');
+  t = t.replace(/(\d+%)\s+By\s+/g, '$1 by ');
+
+  // Unit casing
+  t = t.replace(/\b(\d+)\s*Ms\b/g, '$1ms');
+  t = t.replace(/\b(\d+)\s*MS\b/g, '$1ms');
+
+  // Contradictory API phrasing
+  t = t.replace(/\bGraphQL\s+RESTful\s+APIs?\b/gi, 'GraphQL APIs');
+  t = t.replace(/\bRESTful\s+GraphQL\s+APIs?\b/gi, 'GraphQL APIs');
+
+  // Incomplete LLM tails
+  t = t.replace(/\bsynthesizing using\.?$/i, 'synthesizing production insights.');
+  t = t.replace(/\bDelivered\s+(\d+(?:\.\d+)?%)\s+through\b/gi, 'Delivered $1 cost reduction through');
+
+  // Naked metric subjects missing a verb
+  if (/^mean time to recovery\b/i.test(t)) {
+    t = t.replace(/^mean time/i, 'Cut mean time');
+  } else if (/^connection exhaustion\b/i.test(t)) {
+    t = t.replace(/^connection exhaustion/i, 'Reduced connection exhaustion');
+  } else if (/^catching\b/i.test(t)) {
+    t = t.replace(/^catching\b/i, 'Caught');
+  }
+
+  return t.replace(/\s{2,}/g, ' ').replace(/\.\s*\./g, '.').trim();
+}
+
+/**
  * Force professional bullet casing and punctuation.
  * Every bullet must start with A–Z (or a digit for metrics that belong mid-clause).
  */
 export function normalizeBulletText(bullet) {
-  let t = String(bullet || '')
+  let t = scrubResumeArtifacts(String(bullet || ''))
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/^[•\-*▸]\s*/, '')
     .replace(/,\s*\./g, '.')
@@ -375,8 +422,9 @@ export function isBulletContinuationFragment(bullet) {
   if (/^(by|and|with|to|from|into|of|for|on|in|at|as|while|which|that|or|via)\b/i.test(t)) {
     return true;
   }
-  // Metric-only continuations: "800ms to 120ms..." / "$1.2M savings..."
-  if (/^[\d$]/.test(t) && t.length < 90) return true;
+  // Metric continuations: "800ms to 120ms..." even when the rest of the sentence is long
+  if (/^[\d$][\d,]*(?:\.\d+)?\s*(?:ms|s|x|%|k|m|b)?\b/i.test(t)) return true;
+  if (/^[\d$]/.test(t) && t.length < 140) return true;
   // Short lowercase crumbs only (full lowercase sentences get capitalized, not merged)
   if (/^[a-z]/.test(t) && t.length < 40) return true;
   return false;
@@ -583,6 +631,21 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
   }
 
   normalizeResumeBullets(resume);
+
+  // Final artifact scrub on summary + competencies (bullets already normalized)
+  if (resume.summary) {
+    resume.summary = String(resume.summary)
+      .split('\n')
+      .map((line) => scrubResumeArtifacts(line))
+      .filter(Boolean)
+      .join('\n');
+  }
+  if (Array.isArray(resume.core_competencies)) {
+    resume.core_competencies = resume.core_competencies
+      .map((c) => String(c || '').trim())
+      .filter((c) => c && !/^(find|apply|search|sign|join|save|share|view|click)$/i.test(c));
+  }
+
   audit = auditResumeQuality(resume);
   atsContentScore = estimateAtsContentScore(audit, scoreOpts());
 

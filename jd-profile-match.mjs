@@ -2,7 +2,12 @@
  * jd-profile-match.mjs — Match JD requirements to provable profile experience (no fabrication).
  */
 
-import { extractJdKeywords, extractJdTechKeywords, isJunkKeyword } from './jd-keyword-align.mjs';
+import {
+  extractJdKeywords,
+  extractJdTechKeywords,
+  isJunkKeyword,
+  isWeavableKeyword,
+} from './jd-keyword-align.mjs';
 
 const PROFILE_TECH_PATTERNS = [
   /\bReact(?:\.js)?\b/gi,
@@ -175,10 +180,19 @@ function enhanceBulletHonest(bullet, honestKeywords) {
 
   const lower = text.toLowerCase();
 
-  // Prefer RESTful API phrasing when APIs are mentioned (avoid "REST RESTful")
-  if (/\bapis?\b/i.test(text) && !/restful/i.test(lower)) {
+  // Prefer RESTful API phrasing when APIs are mentioned — never mash with GraphQL/gRPC
+  if (
+    /\bapis?\b/i.test(text) &&
+    !/restful/i.test(lower) &&
+    !/\bgraphql\b/i.test(lower) &&
+    !/\bgrpc\b/i.test(lower)
+  ) {
     text = text.replace(/\bAPIs?\b/i, 'RESTful APIs');
   }
+  // Undo accidental GraphQL + RESTful mashups from older polish passes
+  text = text
+    .replace(/\bGraphQL\s+RESTful\s+APIs?\b/gi, 'GraphQL APIs')
+    .replace(/\bRESTful\s+GraphQL\s+APIs?\b/gi, 'GraphQL APIs');
   if (/microservice/i.test(lower) && !/event-driven/i.test(lower) && /event|stream|queue/i.test(lower)) {
     text = text.replace(/\.$/, '') + ' in an event-driven architecture.';
   }
@@ -250,6 +264,8 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     if (!raw || isJunkKeyword(raw)) return;
     // Block generic filler labels that waste ATS real estate
     if (/^(software|applications?|services?|development|technologies?|engineering|solutions?)$/i.test(raw)) return;
+    // Single-token competencies must be weavable tech (blocks "Find")
+    if (raw.split(/\s+/).length === 1 && !isWeavableKeyword(raw)) return;
     const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
     seen.add(k);
@@ -317,11 +333,14 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
  */
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
   const y = Number(yearsExp) || 0;
-  const jdTech = extractJdTechKeywords(jdText, 10);
-  const leadPool = [...(honestKeywords || []), ...jdTech]
-    .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)) && !isJunkKeyword(k));
+  // Lead stack = real JD tech only (never Indeed chrome like "Find")
+  const jdTech = extractJdTechKeywords(jdText, 10).filter((k) => isWeavableKeyword(k));
+  const leadPool = [...jdTech, ...(honestKeywords || [])]
+    .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)) && isWeavableKeyword(k));
   const leadTerms = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 5);
-  const lead = leadTerms.join(', ') || 'TypeScript, React, and Node.js';
+  const lead = leadTerms.length
+    ? leadTerms.join(', ')
+    : 'TypeScript, React, and Node.js';
   const jdLower = String(jdText || '').toLowerCase();
   const title = inferRoleTitleFromJd(jdText, y);
   const lines = [];
