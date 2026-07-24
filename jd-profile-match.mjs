@@ -118,12 +118,27 @@ function filterFragmentKeywords(jdKeywords, jdText) {
   });
 }
 
+function escapeRe(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function keywordInProfile(kw, profileCorpus, profileTech) {
   const k = normalizeKey(kw);
+  if (!k) return false;
   const corpus = profileCorpus.toLowerCase();
-  if (corpus.includes(k)) return true;
+  // Short tokens (ORM, ML, Go…) must use word boundaries — "orm" ⊆ "performance"
+  if (k.length <= 3) {
+    const re = new RegExp(`\\b${escapeRe(k)}\\b`, 'i');
+    if (re.test(corpus)) return true;
+  } else if (corpus.includes(k)) {
+    return true;
+  }
   if (profileTech.some((t) => {
     const tk = normalizeKey(t);
+    if (k.length <= 3) {
+      return new RegExp(`\\b${escapeRe(k)}\\b`, 'i').test(tk)
+        || new RegExp(`\\b${escapeRe(tk)}\\b`, 'i').test(k);
+    }
     return tk.includes(k) || k.includes(tk);
   })) return true;
 
@@ -227,6 +242,9 @@ export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   if (/\bstaff\s+(software\s+)?engineer\b|\bprincipal\s+(software\s+)?engineer\b/.test(t)) {
     return y >= 8 ? 'Staff Software Engineer' : 'Senior Software Engineer';
   }
+  if (/\b(web scrap|scraping)\b/.test(t) && /\bjavascript|js\b|node/.test(t)) {
+    return 'Senior JavaScript Developer';
+  }
   if (/\bfull[-\s]?stack\b/.test(t)) return 'Senior Full-Stack Engineer';
   if (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && !/\bback[-\s]?end\b|\bfull[-\s]?stack\b|\.net\b|\bnode\.?js\b/.test(t)) {
     return 'Senior Frontend Engineer';
@@ -234,6 +252,7 @@ export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   if (/\bback[-\s]?end\b|\bplatform engineer\b|\bapi engineer\b/.test(t)) return 'Senior Backend Engineer';
   if (/\bdevops\b|\bsite reliability\b|\bsre\b/.test(t)) return 'Senior DevOps Engineer';
   if (/\b(ai|llm|machine learning)\b/.test(t) && /\bengineer\b/.test(t)) return 'Senior Software Engineer';
+  if (/\bjavascript developer\b|\bjs developer\b/.test(t)) return 'Senior JavaScript Developer';
   return y > 0 ? 'Senior Software Engineer' : 'Software Engineer';
 }
 
@@ -312,6 +331,15 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
   const transfers = [
     ['restful', 'RESTful API Design'],
     ['nestjs', 'NestJS Backend Development'],
+    ['puppeteer', 'Puppeteer'],
+    ['playwright', 'Playwright'],
+    ['cheerio', 'Cheerio'],
+    ['selenium', 'Selenium'],
+    ['websocket', 'WebSockets'],
+    ['web scraping', 'Web Scraping'],
+    ['scraping', 'Web Scraping'],
+    ['orm', 'ORM'],
+    ['message broker', 'Message Brokers'],
     ['react', 'React / TypeScript Frontend'],
     ['typescript', 'TypeScript'],
     ['javascript', 'JavaScript'],
@@ -384,7 +412,9 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   );
 
   // Line 2 — architecture / depth matched to JD (hard outcomes, not soft skills)
-  if (/\b(llm|ai agent|generative ai|openai|langchain|rag|vector)\b/i.test(jdLower)) {
+  if (/\b(web scrap|scraping|puppeteer|playwright|cheerio|selenium)\b/i.test(jdLower)) {
+    lines.push('Ship JavaScript services for data extraction and browser automation with solid REST APIs, Postgres, and cloud delivery.');
+  } else if (/\b(llm|ai agent|generative ai|openai|langchain|rag|vector)\b/i.test(jdLower)) {
     lines.push('Lead LLM-backed features and AI-assisted delivery (Cursor, Copilot) with production-grade API reliability and validation loops.');
   } else if (/\bevent-driven|microservice|kafka|message queue\b/i.test(jdLower)) {
     lines.push('Drive monolith-to-microservices work and event-driven service boundaries with reliable messaging and clear ownership.');
@@ -393,7 +423,7 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   } else if (/\breact|typescript|front-?end|frontend\b/i.test(jdLower) && /\b(node|\.net|api|backend|full-?stack)\b/i.test(jdLower)) {
     lines.push('Ship end-to-end product features across React/TypeScript UIs and high-throughput backend APIs with strict testing discipline.');
   } else if (/\baws|cloud|ec2|lambda|ecs\b/i.test(jdLower)) {
-    lines.push('Own AWS cost/performance work — right-sizing, autoscaling, and database tuning that protect reliability and spend.');
+    lines.push('Own AWS cost/performance work: right-sizing, autoscaling, and database tuning that protect reliability and spend.');
   } else {
     lines.push('Lead scalable service design, high-throughput RESTful APIs, and cloud performance work with measurable delivery outcomes.');
   }
@@ -402,7 +432,7 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   if (/\bobservability|high-traffic|latency|sre|incident\b/i.test(jdLower)) {
     lines.push('Hold the line on reliability: observability, incident response, latency tuning, and production hardening.');
   } else if (/\bmentor|tech lead|staff|principal|cross-functional\b/i.test(jdLower)) {
-    lines.push('Set engineering bar through design ownership, peer review, and mentoring — from architecture decisions through launch.');
+    lines.push('Set engineering bar through design ownership, peer review, and mentoring: from architecture decisions through launch.');
   } else {
     lines.push('Own architecture decisions, SDLC quality (reviews, tests, CI), and mentoring so teams ship reliable software faster.');
   }
@@ -411,7 +441,7 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   if (lines.length < 4) {
     if (leadTerms.length >= 3) {
       const stack = leadTerms.slice(0, 4).join(', ');
-      lines.push(`Day-to-day production stack: ${stack} — biased to ownership, measurable impact, and clean handoffs.`);
+      lines.push(`Day-to-day production stack: ${stack}. Bias to ownership, measurable impact, and clean handoffs.`);
     } else {
       lines.push('Bias to ownership, measurable impact, and production systems that stay fast, secure, and maintainable.');
     }
