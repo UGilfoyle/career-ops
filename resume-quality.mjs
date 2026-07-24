@@ -341,17 +341,16 @@ function synthesizeMetric(bullet) {
   return 'improving execution efficiency and system throughput by 20%';
 }
 
-/** Named employers in the career digest (documentation / soft checks). */
-const SENIOR_TONE_EMPLOYER_RE = /\b(?:quest(?:\s*global)?|glidewell|intverse|srijan|koco|rubico|artisanssoft)\b/i;
+/** Employers that get Senior / LinkedIn ownership tone (not mid-level IC). */
+const SENIOR_TONE_EMPLOYER_RE = /\b(?:quest(?:\s*global)?|glidewell|intverse|srijan)\b/i;
 
 /**
- * Senior LinkedIn/ATS tone applies to every employer (Quest → Artisanssoft).
- * Historical job titles may stay as-is; bullet language is always senior-caliber.
+ * True when company/role text belongs to a senior-tone employer.
+ * Senior ONLY: Quest Global / Quest, Glidewell, INTVERSE, Srijan.
+ * Mid-level: KOCO, Rubico, Artisanssoft, and other older/junior-era roles.
  */
 export function isSeniorToneEmployer(companyOrRoleText) {
-  void companyOrRoleText;
-  void SENIOR_TONE_EMPLOYER_RE; // retained for discoverability / future soft checks
-  return true;
+  return SENIOR_TONE_EMPLOYER_RE.test(String(companyOrRoleText || ''));
 }
 
 /**
@@ -413,13 +412,15 @@ export function elevateBulletToMidLevel(text) {
 }
 
 /**
- * Elevate bullets for any employer to the senior LinkedIn/ATS bar.
- * elevateBulletToMidLevel remains available for explicit mid-only callers/tests,
- * but the default render/normalize path is always senior (Quest → Artisanssoft).
+ * Company-aware elevation: senior bar for Quest/Glidewell/INTVERSE/Srijan only;
+ * mid-level polish for KOCO/Rubico/Artisanssoft and everything else.
  */
 export function elevateBulletForEmployer(bullet, companyOrRoleText) {
-  void companyOrRoleText;
-  return elevateBulletToSenior(String(bullet || ''));
+  const text = String(bullet || '');
+  if (isSeniorToneEmployer(companyOrRoleText) || isSeniorToneEmployer(text)) {
+    return elevateBulletToSenior(text);
+  }
+  return elevateBulletToMidLevel(text);
 }
 
 /**
