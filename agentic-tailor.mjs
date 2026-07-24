@@ -33,6 +33,7 @@ import {
   printAlignmentConfirmation,
   writeAlignmentReport,
 } from './resume-alignment-validator.mjs';
+import { isIndeedUrl, fetchIndeedJob } from './indeed-job.mjs';
 
 let hf = null;
 let hfUnavailable = false;
@@ -754,6 +755,22 @@ async function scrapeJD(url) {
 
   const targetUrl = normalizeUrl(url);
   console.log(`🌐 Scraping job description from: ${targetUrl}`);
+
+  // Indeed desktop is Cloudflare-gated — use mobile embedded _initialData
+  if (isIndeedUrl(targetUrl)) {
+    console.log('🎯 Indeed URL detected. Fetching via mobile embedded endpoint…');
+    try {
+      const job = await fetchIndeedJob(targetUrl);
+      if (job.text && job.text.length > 200) {
+        console.log(
+          `✅ Indeed JD extracted (${job.text.length} chars) — ${job.company} / ${job.title}`
+        );
+        return job.text;
+      }
+    } catch (err) {
+      console.warn(`⚠️ Indeed mobile fetch failed: ${err.message}. Falling back to default scraper.`);
+    }
+  }
 
   // Intercept BambooHR URLs to fetch clean JSON details directly
   let bhrSubdomain = null;
