@@ -6,7 +6,7 @@ import { createRequire } from 'module';
 import { pathToFileURL } from 'url';
 import sql from './db/client.mjs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { polishTailoredResume, auditResumeQuality, normalizeBulletText } from './resume-quality.mjs';
+import { polishTailoredResume, auditResumeQuality, normalizeBulletText, explodeWallOfTextBullets } from './resume-quality.mjs';
 import {
   extractJdKeywords,
   extractJdTechKeywords,
@@ -307,9 +307,13 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       roleBullets = flatBullets;
       console.log(`[DEBUG] Applying ${roleBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
     }
-    const bullets = roleBullets
-      ? roleBullets.slice(0, bulletsBudgetForRole(idx))
-      : (job.bullets || []).slice(0, bulletsBudgetForRole(idx));
+    const bullets = (roleBullets
+      ? roleBullets.slice(0, bulletsBudgetForRole(idx) + 2)
+      : (job.bullets || []).slice(0, bulletsBudgetForRole(idx) + 2)
+    );
+    const normalizedBullets = explodeWallOfTextBullets(bullets, {
+      maxBullets: bulletsBudgetForRole(idx),
+    }).map((b) => normalizeBulletText(b)).filter((b) => b.length >= 20);
 
     let role = (job.role || '').trim();
     let company = (job.company || '').trim();
@@ -368,7 +372,7 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
         <div class="job-dates">${dates}</div>
       </div>
       <ul>
-        ${bullets.map(b => `<li>${formatBulletHtml(b)}</li>`).join('')}
+        ${normalizedBullets.map(b => `<li>${formatBulletHtml(b)}</li>`).join('')}
       </ul>
     </div>
   `}).join('');

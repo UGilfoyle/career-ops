@@ -8,6 +8,7 @@ import {
   isJunkKeyword,
   isWeavableKeyword,
 } from './jd-keyword-align.mjs';
+import { explodeWallOfTextBullets } from './resume-quality.mjs';
 
 const PROFILE_TECH_PATTERNS = [
   /\bReact(?:\.js)?\b/gi,
@@ -165,6 +166,16 @@ function enhanceBulletHonest(bullet, honestKeywords) {
 
   // Weak openings → strong action verbs (Zety / SuperGrok bar)
   text = text
+    .replace(/^As an?\s+[^,]{2,60},\s*/i, '')
+    .replace(/^I was responsible for\s+/i, 'Owned ')
+    .replace(/^I am responsible for\s+/i, 'Own ')
+    .replace(/^I also worked closely with\s+/i, 'Partnered with ')
+    .replace(/^I worked closely with\s+/i, 'Partnered with ')
+    .replace(/^My work involved\s+/i, 'Delivered ')
+    .replace(/^I also\s+/i, '')
+    .replace(/^I\s+(developed|built|created|designed|implemented|owned|led|managed|delivered|engineered|integrated|deployed)\s+/i,
+      (_, verb) => `${verb.charAt(0).toUpperCase()}${verb.slice(1)} `)
+    .replace(/^I\s+/i, '')
     .replace(/^Responsible for\s+/i, 'Owned ')
     .replace(/^Helped (?:to |with )?/i, 'Supported ')
     .replace(/^Worked on\s+/i, 'Delivered ')
@@ -231,7 +242,8 @@ export function reframeExperienceFromProfile(profileExperience, jdText, honestKe
 
   for (let i = 0; i < count; i++) {
     const bulletCap = i < 3 ? 5 : i < 5 ? 3 : 2;
-    const bullets = (exp[i]?.bullets || []).map(stripMarkdown).filter((b) => b.length > 20);
+    const rawBullets = (exp[i]?.bullets || []).map(stripMarkdown).filter((b) => b.length > 20);
+    const bullets = explodeWallOfTextBullets(rawBullets, { maxBullets: bulletCap + 2 });
     const ranked = [...bullets].sort(
       (a, b) => scoreBulletForJd(b, jdText, honestKeywords) - scoreBulletForJd(a, jdText, honestKeywords)
     );

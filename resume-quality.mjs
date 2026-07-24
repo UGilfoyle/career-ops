@@ -431,10 +431,117 @@ export function isBulletContinuationFragment(bullet) {
 }
 
 /**
+ * Rewrite essay-style first person into resume action bullets.
+ */
+export function rewriteFirstPersonBullet(text) {
+  let t = String(text || '').trim();
+  if (!t) return '';
+
+  const gerundToPast = {
+    developing: 'Developed',
+    building: 'Built',
+    creating: 'Created',
+    maintaining: 'Maintained',
+    implementing: 'Implemented',
+    designing: 'Designed',
+    writing: 'Wrote',
+    deploying: 'Deployed',
+    managing: 'Managed',
+    leading: 'Led',
+    integrating: 'Integrated',
+    configuring: 'Configured',
+    provisioning: 'Provisioned',
+  };
+
+  const replaceGerundLead = (prefixRe, fallback) => {
+    t = t.replace(prefixRe, (_, g) => {
+      const key = String(g || '').toLowerCase();
+      return gerundToPast[key] ? `${gerundToPast[key]} ` : fallback;
+    });
+  };
+
+  t = t.replace(/^As an?\s+[^,]{2,60},\s*/i, '');
+  replaceGerundLead(/^I was responsible for\s+(developing|building|creating|maintaining|implementing|designing|writing|deploying|managing|leading|integrating)\s+/i, 'Owned ');
+  t = t.replace(/^I was responsible for\s+/i, 'Owned ');
+  t = t.replace(/^I am responsible for\s+/i, 'Own ');
+  t = t.replace(/^I also worked closely with\s+/i, 'Partnered with ');
+  t = t.replace(/^I worked closely with\s+/i, 'Partnered with ');
+  replaceGerundLead(/^My work involved\s+(building|writing|deploying|developing|creating|maintaining|implementing|designing|integrating)\s+/i, 'Delivered ');
+  t = t.replace(/^My work involved\s+/i, 'Delivered ');
+  t = t.replace(/^I also\s+/i, '');
+  t = t.replace(
+    /^I\s+(developed|built|created|designed|implemented|owned|led|managed|delivered|engineered|integrated|deployed|provisioned|configured|wrote|maintained)\s+/i,
+    (_, verb) => `${verb.charAt(0).toUpperCase()}${verb.slice(1)} `
+  );
+  t = t.replace(/^I\s+/i, '');
+  // "Owned developing X" leftovers
+  t = t.replace(/^Owned\s+(developing|building|creating|maintaining)\s+/i, (_, g) => `${gerundToPast[g.toLowerCase()] || 'Owned'} `);
+  t = t.replace(/^Delivered\s+(building|writing|deploying|developing)\s+/i, (_, g) => `${gerundToPast[g.toLowerCase()] || 'Delivered'} `);
+  t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
+  return t.trim();
+}
+
+/**
+ * Split wall-of-text / essay bullets into multiple short bullets (like other roles).
+ * LLM sometimes returns one giant first-person paragraph for older roles (e.g. Rubico).
+ */
+export function explodeWallOfTextBullets(bullets, opts = {}) {
+  const maxChars = opts.maxChars ?? 200;
+  const maxOut = opts.maxBullets ?? 6;
+  const minPart = opts.minPartChars ?? 28;
+  const out = [];
+
+  for (const raw of Array.isArray(bullets) ? bullets : []) {
+    let t = String(raw || '').trim();
+    if (!t) continue;
+
+    const sentenceBreaks = (t.match(/[.!?]\s+/g) || []).length;
+    const firstPersonEssay = /^(As an?\s|I\s|My\s)/i.test(t) && sentenceBreaks >= 1;
+    const isWall = t.length > maxChars || firstPersonEssay || (sentenceBreaks >= 2 && t.length > 160);
+
+    if (!isWall) {
+      out.push(rewriteFirstPersonBullet(t));
+      continue;
+    }
+
+    // Prefer splitting on sentence ends before a capital letter
+    let parts = t.split(/(?<=[.!?])\s+(?=[A-Z“"])/).map((s) => s.trim()).filter((s) => s.length >= minPart);
+
+    // Fallback: split on "; " or " — " for long run-ons without clean periods
+    if (parts.length <= 1 && t.length > maxChars) {
+      parts = t.split(/\s*;\s+|\s+[—–]\s+/).map((s) => s.trim()).filter((s) => s.length >= minPart);
+    }
+
+    if (parts.length <= 1) {
+      out.push(rewriteFirstPersonBullet(t));
+      continue;
+    }
+
+    for (const part of parts) {
+      const cleaned = rewriteFirstPersonBullet(part);
+      if (cleaned.length >= minPart) out.push(cleaned);
+    }
+  }
+
+  // Dedupe near-identical lines
+  const seen = new Set();
+  const deduped = [];
+  for (const b of out) {
+    const key = b.toLowerCase().slice(0, 80);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(b);
+  }
+  return deduped.slice(0, maxOut);
+}
+
+/**
  * Merge continuation crumbs into the previous bullet, then normalize casing.
+ * Also explodes wall-of-text essays into multiple bullets first.
  */
 export function normalizeExperienceBulletList(bullets) {
-  const raw = (Array.isArray(bullets) ? bullets : []).map((b) => String(b || '').trim()).filter(Boolean);
+  const exploded = explodeWallOfTextBullets(bullets);
+  const raw = exploded.map((b) => String(b || '').trim()).filter(Boolean);
   const merged = [];
   for (const bullet of raw) {
     if (merged.length > 0 && isBulletContinuationFragment(bullet)) {

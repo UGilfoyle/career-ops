@@ -15,6 +15,7 @@ import {
   normalizeBulletText,
   normalizeExperienceBulletList,
   isBulletContinuationFragment,
+  explodeWallOfTextBullets,
   scrubResumeArtifacts,
 } from './resume-quality.mjs';
 import {
@@ -211,6 +212,19 @@ console.log('resume-quality tests\n');
   assert(merged.length === 1, 'long metric fragment merges into prior bullet');
   assert(!/\bFind\b/.test(merged[0]), 'merged bullet has no Find');
   assert(/800ms/i.test(merged[0]), 'merged bullet keeps latency metric');
+}
+
+{
+  const wall = `As a Backend and Frontend Developer, I was responsible for developing and maintaining multiple client projects using Laravel, Node.js, and React.js. I also worked closely with designers to implement responsive UI using Tailwind CSS. My work involved building GraphQL APIs, writing Jest tests, and deploying services on AWS with MongoDB.`;
+  const exploded = explodeWallOfTextBullets([wall]);
+  assert(exploded.length >= 3, `Rubico-style wall splits into 3+ bullets (got ${exploded.length})`);
+  assert(exploded.every((b) => !/^As a /i.test(b)), 'no essay "As a …" openings remain');
+  assert(exploded.every((b) => !/^I\s/i.test(b)), 'no leading first-person I');
+  assert(exploded.every((b) => !/^Owned developing/i.test(b)), 'no Owned developing gerund leftovers');
+  assert(exploded.some((b) => /^Developed\b/i.test(b) || /^Built\b/i.test(b)), 'uses strong past-tense verbs');
+  const normalized = normalizeExperienceBulletList([wall]);
+  assert(normalized.length >= 3, 'normalizeExperienceBulletList also explodes walls');
+  assert(normalized.every((b) => /^[A-Z]/.test(b) && /[.!?]$/.test(b)), 'normalized bullets are proper sentences');
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
