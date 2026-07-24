@@ -90,7 +90,11 @@ console.log('resume-quality tests\n');
 
 {
   const resume = {
-    summary: 'Senior engineer who developed developed cloud platforms.',
+    summary: 'Senior engineer who developed developed cloud platforms.\nDelivers reliable APIs and CI/CD releases.\nCollaborates with product partners through launch.',
+    core_competencies: [
+      'React', 'TypeScript', 'Node.js', 'AWS', 'Docker', 'PostgreSQL',
+      'CI/CD', 'REST API', 'Kubernetes', 'GraphQL', 'Redis', 'Jest',
+    ],
     experience: {
       '0': [
         'Implemented AWS Lambda functions for event processing',
@@ -106,25 +110,49 @@ console.log('resume-quality tests\n');
       bullets: [
         'Reconfigured EC2 auto-scaling policies to reduce infrastructure costs by 30%.',
         'Automated deployment workflows, diminishing continuous deployment failure rates by 85%.',
+        'Remodeled SQL query patterns for Oracle, cutting CPU by 22% through right-sized instance optimization.',
       ],
     },
   ];
   const auditBefore = auditResumeQuality(resume);
-  const { resume: polished, stats } = polishTailoredResume(resume, sourceExperience);
+  const { resume: polished, stats } = polishTailoredResume(resume, sourceExperience, {
+    jdAlignScore: 88,
+    allowSyntheticMetrics: false,
+  });
   const bullets = polished.experience['0'];
   assert(bullets.every((b) => /^[A-Z]/.test(String(b).trim())), 'polish output bullets are capitalized');
+  assert(bullets.every((b) => /[.!?]$/.test(String(b).trim())), 'polish output bullets end with punctuation');
   assert(!bullets.some((b) => /^by /i.test(String(b).trim())), 'polish merges by-fragments');
   const joined = [...bullets, polished.summary].join(' ').toLowerCase();
   assert((joined.match(/\bimplemented\b/g) || []).length <= 1, 'polish caps global implemented');
   assert(stats.wordRepetitionsFixed > 0 || stats.verbsRotated > 0, 'polish reports repetition fixes');
   const auditAfter = auditResumeQuality(polished);
   assert(
-    estimateAtsContentScore(auditAfter) >= estimateAtsContentScore(auditBefore),
+    estimateAtsContentScore(auditAfter, {
+      jdAlignScore: 88,
+      competencyCount: 12,
+      summaryLines: 3,
+    }) >= estimateAtsContentScore(auditBefore, { jdAlignScore: 88, competencyCount: 12, summaryLines: 3 }),
     'ATS content score improves after polish',
   );
-  assert(stats.atsContentScore >= 90, 'polish reaches 90+ ATS content score');
+  assert(stats.atsContentScore >= 90, 'polish reaches 90+ ATS content score without synthetic metrics');
+  assert(stats.allowSyntheticMetrics === false, 'synthetic metrics disabled by default');
+  // Must not invent stock metrics like "10,000+ concurrent"
+  assert(!joined.includes('10,000+'), 'does not invent 10k concurrent metric');
+  assert(!joined.includes('99.99%'), 'does not invent 99.99% uptime metric');
 }
 
+{
+  // Explicit opt-in still allows synthesis for legacy callers
+  const resume = {
+    summary: 'Engineer.\nBuilds APIs.\nShips features.',
+    core_competencies: ['Node.js'],
+    experience: { '0': ['Built REST APIs for internal tools'] },
+  };
+  const { resume: polished } = polishTailoredResume(resume, [], { allowSyntheticMetrics: true, jdAlignScore: 50 });
+  const b = polished.experience['0'][0].toLowerCase();
+  assert(hasQuantifiedImpact(b) || b.includes('%') || /\d/.test(b), 'opt-in synthesis can add a metric');
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

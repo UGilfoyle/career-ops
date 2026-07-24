@@ -70,82 +70,84 @@ ${BODY}
 
 const CLASSIC_CSS = `
         body {
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
             font-size: 10.5pt;
-            line-height: 1.35;
-            color: #111;
+            line-height: 1.38;
+            color: #1a1a1a;
             padding: 0.55in;
             -webkit-font-smoothing: antialiased;
         }
         .container { max-width: 100%; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 16px; }
+        header { text-align: center; margin-bottom: 14px; }
         h1 {
-            font-size: 18pt; font-weight: 800; letter-spacing: 0.6px;
-            text-transform: uppercase; margin-bottom: 8px; line-height: 1.15;
+            font-size: 20pt; font-weight: 700; letter-spacing: 1.2px;
+            text-transform: uppercase; margin-bottom: 6px; line-height: 1.15;
+            color: #0f172a;
         }
-        .contact { font-size: 9pt; color: #222; line-height: 1.45; margin-bottom: 3px; }
-        .top-rule { margin-top: 12px; border-top: 2px solid #111; }
-        section { margin-top: 14px; }
+        .contact { font-size: 9pt; color: #334155; line-height: 1.45; margin-bottom: 2px; }
+        .top-rule { margin-top: 10px; border-top: 2.5px solid #1e3a5f; }
+        section { margin-top: 13px; }
         h2 {
-            font-size: 10pt; font-weight: 800; letter-spacing: 1px;
-            text-transform: uppercase; margin-bottom: 5px;
+            font-size: 10pt; font-weight: 700; letter-spacing: 1.1px;
+            text-transform: uppercase; margin-bottom: 4px; color: #1e3a5f;
         }
-        .rule { border-top: 1px solid #111; margin-bottom: 8px; }
-        .skills-lines { font-size: 9.5pt; line-height: 1.4; }
-        .skill-line { margin-bottom: 4px; }
-        .skill-label { font-weight: 800; }
-        .job { margin-bottom: 12px; }
+        .rule { border-top: 1px solid #94a3b8; margin-bottom: 7px; }
+        .skills-lines { font-size: 9.5pt; line-height: 1.42; color: #1e293b; }
+        .skill-line { margin-bottom: 3px; }
+        .skill-label { font-weight: 700; color: #0f172a; }
+        .job { margin-bottom: 11px; }
         .job-header {
             display: flex; justify-content: space-between; align-items: baseline;
-            gap: 12px; font-size: 9.5pt; margin-bottom: 4px;
+            gap: 12px; font-size: 9.5pt; margin-bottom: 3px;
         }
-        .job-title { font-weight: 800; }
-        .job-company { font-weight: 600; }
-        .job-dates { font-weight: 700; }
-        .job ul { list-style-type: disc; margin: 4px 0 0 1.15em; padding: 0; }
-        .job li { margin-bottom: 3px; padding-left: 2px; line-height: 1.38; }
-        .summary-block { font-size: 9.5pt; line-height: 1.45; color: #222; white-space: pre-line; }
-        .edu { font-size: 9.5pt; line-height: 1.4; }
+        .job-title { font-weight: 700; color: #0f172a; }
+        .job-company { font-weight: 600; color: #334155; }
+        .job-dates { font-weight: 600; color: #475569; font-size: 9pt; }
+        .job ul { list-style-type: disc; margin: 3px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 2.5px; padding-left: 2px; line-height: 1.4; color: #1e293b; }
+        .summary-block { font-size: 9.5pt; line-height: 1.48; color: #1e293b; white-space: pre-line; }
+        .edu { font-size: 9.5pt; line-height: 1.4; color: #1e293b; }
         .edu > div { margin-bottom: 4px; }
 `;
 
 const MODERN_COMPACT_CSS = `
         body {
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
             font-size: 9.5pt;
-            line-height: 1.28;
+            line-height: 1.32;
             color: #1a1a1a;
             padding: 0.45in;
             -webkit-font-smoothing: antialiased;
         }
         .container { max-width: 100%; margin: 0 auto; }
-        header { text-align: left; margin-bottom: 12px; }
+        header { text-align: left; margin-bottom: 11px; }
         h1 {
-            font-size: 16pt; font-weight: 800; letter-spacing: 0.2px;
+            font-size: 16.5pt; font-weight: 700; letter-spacing: 0.3px;
             text-transform: none; margin-bottom: 4px; line-height: 1.2;
+            color: #0f172a;
         }
-        .contact { font-size: 8.5pt; color: #444; line-height: 1.4; margin-bottom: 2px; }
-        .top-rule { margin-top: 8px; border-top: 1px solid #9ca3af; }
+        .contact { font-size: 8.5pt; color: #475569; line-height: 1.4; margin-bottom: 2px; }
+        .top-rule { margin-top: 8px; border-top: 2px solid #1e3a5f; }
         section { margin-top: 10px; }
         h2 {
-            font-size: 9pt; font-weight: 800; letter-spacing: 0.6px;
-            text-transform: uppercase; margin-bottom: 3px; color: #4b5563;
+            font-size: 9pt; font-weight: 700; letter-spacing: 0.7px;
+            text-transform: uppercase; margin-bottom: 3px; color: #1e3a5f;
         }
-        .rule { border-top: 1px solid #d1d5db; margin-bottom: 6px; }
-        .skills-lines { font-size: 8.5pt; line-height: 1.35; }
+        .rule { border-top: 1px solid #cbd5e1; margin-bottom: 5px; }
+        .skills-lines { font-size: 8.5pt; line-height: 1.38; }
         .skill-line { margin-bottom: 2px; }
-        .skill-label { font-weight: 800; color: #374151; }
+        .skill-label { font-weight: 700; color: #0f172a; }
         .job { margin-bottom: 8px; }
         .job-header {
             display: flex; justify-content: space-between; align-items: baseline;
             gap: 10px; font-size: 9pt; margin-bottom: 2px;
         }
-        .job-title { font-weight: 800; }
-        .job-company { font-weight: 600; color: #374151; }
-        .job-dates { font-weight: 600; color: #6b7280; font-size: 8.5pt; }
+        .job-title { font-weight: 700; color: #0f172a; }
+        .job-company { font-weight: 600; color: #334155; }
+        .job-dates { font-weight: 600; color: #64748b; font-size: 8.5pt; }
         .job ul { list-style-type: disc; margin: 2px 0 0 1em; padding: 0; }
-        .job li { margin-bottom: 2px; line-height: 1.32; }
-        .summary-block { font-size: 9pt; line-height: 1.38; color: #222; white-space: pre-line; }
+        .job li { margin-bottom: 2px; line-height: 1.34; }
+        .summary-block { font-size: 9pt; line-height: 1.4; color: #1e293b; white-space: pre-line; }
         .edu { font-size: 9pt; line-height: 1.35; }
         .edu > div { margin-bottom: 2px; }
 `;

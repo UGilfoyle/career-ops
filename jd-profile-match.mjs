@@ -158,6 +158,21 @@ function enhanceBulletHonest(bullet, honestKeywords) {
   let text = stripMarkdown(bullet);
   if (!text) return text;
 
+  // Weak openings → strong action verbs (Zety / SuperGrok bar)
+  text = text
+    .replace(/^Responsible for\s+/i, 'Owned ')
+    .replace(/^Helped (?:to |with )?/i, 'Supported ')
+    .replace(/^Worked on\s+/i, 'Delivered ')
+    .replace(/^Assisted (?:with |in )?/i, 'Supported ')
+    .replace(/^Participated in\s+/i, 'Contributed to ')
+    .replace(/^Duties included\s+/i, 'Delivered ')
+    .replace(/^Tasked with\s+/i, 'Owned ')
+    .replace(/^Spearhead(?:ed)?\s+/i, 'Led ')
+    .replace(/:\s*Spearhead(?:ed)?\s+/gi, ': Led ')
+    .replace(/\bspearhead(?:ed)?\b/gi, 'led')
+    .replace(/\bleverage(?:d)?\b/gi, 'used')
+    .replace(/\butiliz(?:ed|ing)\b/gi, 'using');
+
   const lower = text.toLowerCase();
 
   // Prefer RESTful API phrasing when APIs are mentioned (avoid "REST RESTful")
@@ -167,7 +182,28 @@ function enhanceBulletHonest(bullet, honestKeywords) {
   if (/microservice/i.test(lower) && !/event-driven/i.test(lower) && /event|stream|queue/i.test(lower)) {
     text = text.replace(/\.$/, '') + ' in an event-driven architecture.';
   }
-  return text.endsWith('.') ? text : `${text}.`;
+
+  // Capitalize leading letter; ensure terminal period (polish will re-normalize)
+  text = text.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
+  if (!/[.!?]$/.test(text)) text += '.';
+  return text;
+}
+
+/** Infer a senior role title from JD language for summary framing. */
+export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
+  const t = String(jdText || '').toLowerCase();
+  const y = Number(yearsExp) || 0;
+  if (/\bstaff\s+(software\s+)?engineer\b|\bprincipal\s+(software\s+)?engineer\b/.test(t)) {
+    return y >= 8 ? 'Staff Software Engineer' : 'Senior Software Engineer';
+  }
+  if (/\bfull[-\s]?stack\b/.test(t)) return 'Senior Full-Stack Engineer';
+  if (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && !/\bback[-\s]?end\b|\bfull[-\s]?stack\b|\.net\b|\bnode\.?js\b/.test(t)) {
+    return 'Senior Frontend Engineer';
+  }
+  if (/\bback[-\s]?end\b|\bplatform engineer\b|\bapi engineer\b/.test(t)) return 'Senior Backend Engineer';
+  if (/\bdevops\b|\bsite reliability\b|\bsre\b/.test(t)) return 'Senior DevOps Engineer';
+  if (/\b(ai|llm|machine learning)\b/.test(t) && /\bengineer\b/.test(t)) return 'Senior Software Engineer';
+  return y > 0 ? 'Senior Software Engineer' : 'Software Engineer';
 }
 
 /**
@@ -196,28 +232,31 @@ export function reframeExperienceFromProfile(profileExperience, jdText, honestKe
   return out;
 }
 
-export function buildHonestCompetencies(honestKeywords, profile, jdText, limit = 14) {
+export function buildHonestCompetencies(honestKeywords, profile, jdText, limit = 16) {
   return buildJdMatchedCompetencies(honestKeywords, profile, jdText, limit);
 }
 
 /**
  * JD-first competencies for ATS: full JD tech stack + transferable labels.
  * Prefer proven terms first, then remaining JD tech (so Core Competencies / Technical Skills are never sparse).
+ * Default limit 16 for Zety-density skills rows without junk filler.
  */
-export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 14) {
+export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 16) {
   const comps = [];
   const seen = new Set();
 
   const add = (item) => {
     const raw = String(item || '').trim();
     if (!raw || isJunkKeyword(raw)) return;
+    // Block generic filler labels that waste ATS real estate
+    if (/^(software|applications?|services?|development|technologies?|engineering|solutions?)$/i.test(raw)) return;
     const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
     seen.add(k);
     comps.push(raw);
   };
 
-  const jdTech = extractJdTechKeywords(jdText, 18);
+  const jdTech = extractJdTechKeywords(jdText, 22);
   const { honest } = partitionJdKeywords(
     [...(jdKeywords || []), ...jdTech].filter((kw) => !isJunkKeyword(kw)),
     profile
@@ -234,19 +273,32 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     ['nestjs', 'NestJS Backend Development'],
     ['react', 'React / TypeScript Frontend'],
     ['typescript', 'TypeScript'],
+    ['javascript', 'JavaScript'],
+    ['redux', 'Redux State Management'],
     ['azure', 'Azure Cloud Services'],
+    ['aws', 'AWS Cloud Services'],
     ['gitlab', 'GitLab CI / CD'],
+    ['github actions', 'GitHub Actions'],
     ['microservice', 'Microservices Architecture'],
     ['ci/cd', 'CI/CD Pipelines'],
     ['unit test', 'Unit & Integration Testing'],
     ['integration test', 'Unit & Integration Testing'],
+    ['end-to-end', 'End-to-End Testing'],
     ['observability', 'Observability & Incident Response'],
     ['llm', 'LLM Integration'],
     ['ai agent', 'AI Agent Development'],
+    ['cursor', 'AI-Assisted Development'],
+    ['copilot', 'AI-Assisted Development'],
     ['full-stack', 'Full-Stack Engineering'],
     ['event-driven', 'Event-Driven Architecture'],
     ['docker', 'Docker'],
+    ['kubernetes', 'Kubernetes'],
     ['node', 'Node.js Services'],
+    ['.net', '.NET Core'],
+    ['c#', 'C#'],
+    ['postgresql', 'PostgreSQL'],
+    ['mongodb', 'MongoDB'],
+    ['graphql', 'GraphQL'],
   ];
   for (const [needle, label] of transfers) {
     if (jdLower.includes(needle)) add(label);
@@ -259,34 +311,71 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
   return comps.slice(0, limit);
 }
 
+/**
+ * Zety-style professional summary: 3–4 tight lines, JD tech named, senior tone, no clichés.
+ * Offline path is the quality floor (LLM draft is honesty-gated separately).
+ */
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
   const y = Number(yearsExp) || 0;
-  const jdTech = extractJdTechKeywords(jdText, 8);
+  const jdTech = extractJdTechKeywords(jdText, 10);
   const leadPool = [...(honestKeywords || []), ...jdTech]
     .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)) && !isJunkKeyword(k));
-  const lead = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 5).join(', ');
+  const leadTerms = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 5);
+  const lead = leadTerms.join(', ') || 'TypeScript, React, and Node.js';
   const jdLower = String(jdText || '').toLowerCase();
+  const title = inferRoleTitleFromJd(jdText, y);
   const lines = [];
 
+  // Line 1 — identity + years + named JD stack
   lines.push(
     y > 0
-      ? `Senior full-stack engineer with ${y}+ years building scalable web applications and backend services using ${lead || 'TypeScript, React, and Node.js'}.`
-      : `Full-stack engineer building scalable web applications and backend services using ${lead || 'modern JavaScript stacks'}.`
+      ? `${title} with ${y}+ years shipping production systems in ${lead}.`
+      : `${title} building production systems in ${lead}.`
   );
 
-  if (jdLower.includes('llm') || jdLower.includes('ai')) {
-    lines.push('Hands-on with LLM integrations, AI-assisted development (Cursor, Claude), and production API reliability.');
+  // Line 2 — JD-theme depth (no clichés)
+  if (/\b(llm|ai agent|generative ai|openai|langchain)\b/i.test(jdLower)) {
+    lines.push('Hands-on with LLM integrations, AI-assisted workflows (Cursor, Copilot), and production API reliability.');
+  } else if (/\bevent-driven|microservice|kafka|message queue\b/i.test(jdLower)) {
+    lines.push('Design and operate event-driven microservices with clear service boundaries and reliable messaging.');
+  } else if (/\bci\/cd|devops|kubernetes|docker\b/i.test(jdLower)) {
+    lines.push('Own CI/CD-backed releases with containerized deployments, automated tests, and fast recovery paths.');
+  } else if (/\breact|typescript|front-?end|frontend\b/i.test(jdLower) && /\b(node|\.net|api|backend|full-?stack)\b/i.test(jdLower)) {
+    lines.push('Deliver end-to-end features across React/TypeScript UIs and reliable backend APIs with strong testing discipline.');
   } else {
-    lines.push('Deliver RESTful APIs, microservices, and CI/CD-backed releases with strong testing and code review discipline.');
+    lines.push('Deliver RESTful APIs, scalable services, and well-tested releases with careful code review.');
   }
 
-  if (jdLower.includes('observability') || jdLower.includes('high-traffic')) {
-    lines.push('Experienced operating high-traffic systems with observability, incident response, and performance tuning.');
+  // Line 3 — operating model / collaboration
+  if (/\bobservability|high-traffic|latency|sre|incident\b/i.test(jdLower)) {
+    lines.push('Operate high-traffic systems with observability, incident response, and performance tuning.');
+  } else if (/\bmentor|tech lead|staff|principal|cross-functional\b/i.test(jdLower)) {
+    lines.push('Partner with product and engineering leads from design through launch; mentor peers on delivery quality.');
   } else {
     lines.push('Collaborate with product and engineering partners from design through launch on user-focused features.');
   }
 
-  return lines.slice(0, 4).join('\n');
+  // Line 4 — optional stack emphasis when JD is dense with named tech
+  if (leadTerms.length >= 4 && lines.length < 4) {
+    const extra = leadTerms.slice(0, 4).join(', ');
+    if (!lines.some((l) => l.toLowerCase().includes(extra.toLowerCase().slice(0, 12)))) {
+      lines.push(`Comfortable day-to-day with ${extra} in production environments.`);
+    }
+  }
+
+  // Strip banned clichés if they ever appear (defense in depth)
+  const cleaned = lines
+    .map((l) => l
+      .replace(/\bpassionate about\b/gi, 'focused on')
+      .replace(/\bresults-oriented\b/gi, 'delivery-focused')
+      .replace(/\bproven track record\b/gi, 'consistent delivery')
+      .replace(/\bleveraged\b/gi, 'used')
+      .replace(/\bspearheaded\b/gi, 'led')
+      .replace(/\bcutting-edge\b/gi, 'modern')
+      .replace(/\brobust\b/gi, 'reliable'))
+    .slice(0, 4);
+
+  return cleaned.join('\n');
 }
 
 export function analyzeJdProfileFit(jdText, profile) {
