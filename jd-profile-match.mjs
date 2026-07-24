@@ -8,7 +8,12 @@ import {
   isJunkKeyword,
   isWeavableKeyword,
 } from './jd-keyword-align.mjs';
-import { explodeWallOfTextBullets } from './resume-quality.mjs';
+import {
+  explodeWallOfTextBullets,
+  parseTenureMonths,
+  bulletsBudgetForRole,
+  preferSourceIfThin,
+} from './resume-quality.mjs';
 
 const PROFILE_TECH_PATTERNS = [
   /\bReact(?:\.js)?\b/gi,
@@ -241,19 +246,26 @@ export function reframeExperienceFromProfile(profileExperience, jdText, honestKe
   const out = {};
 
   for (let i = 0; i < count; i++) {
-    const bulletCap = i < 3 ? 5 : i < 5 ? 3 : 2;
+    const tenureMonths = parseTenureMonths(exp[i]?.period);
+    const bulletCap = bulletsBudgetForRole(i, { tenureMonths, maxPages: 2 });
     const rawBullets = (exp[i]?.bullets || []).map(stripMarkdown).filter((b) => b.length > 20);
     const bullets = explodeWallOfTextBullets(rawBullets, { maxBullets: bulletCap + 2 });
     const ranked = [...bullets].sort(
       (a, b) => scoreBulletForJd(b, jdText, honestKeywords) - scoreBulletForJd(a, jdText, honestKeywords)
     );
     const top = ranked.slice(0, bulletCap);
-    out[String(i)] = top.map((b) => enhanceBulletHonest(b, honestKeywords));
-    while (out[String(i)].length < bulletCap && ranked.length > 0) {
-      const next = ranked[out[String(i)].length % ranked.length];
-      if (!out[String(i)].includes(next)) out[String(i)].push(enhanceBulletHonest(next, honestKeywords));
+    let framed = top.map((b) => enhanceBulletHonest(b, honestKeywords));
+    while (framed.length < bulletCap && ranked.length > 0) {
+      const next = ranked[framed.length % ranked.length];
+      const enhanced = enhanceBulletHonest(next, honestKeywords);
+      if (!framed.includes(enhanced)) framed.push(enhanced);
       else break;
     }
+    // Senior floor: never leave a multi-year role with 2 thin/orphan crumbs
+    out[String(i)] = preferSourceIfThin(framed, rawBullets, {
+      minCount: Math.min(3, bulletCap),
+      maxBullets: bulletCap,
+    }).map((b) => enhanceBulletHonest(b, honestKeywords));
   }
   return out;
 }
@@ -340,61 +352,71 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
 }
 
 /**
- * Zety-style professional summary: 3–4 tight lines, JD tech named, senior tone, no clichés.
+ * Senior / Zety-bar professional summary: 3–4 tight lines.
+ * Strong identity, named JD stack, ownership + impact — never soft filler.
  * Offline path is the quality floor (LLM draft is honesty-gated separately).
  */
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
   const y = Number(yearsExp) || 0;
   // Lead stack = real JD tech only (never Indeed chrome like "Find")
+  // Prefer languages/frameworks/cloud over editor tools (Copilot/Cursor) in the identity line
+  const isEditorTool = (k) => /\b(copilot|cursor|chatgpt|claude code)\b/i.test(String(k));
   const jdTech = extractJdTechKeywords(jdText, 10).filter((k) => isWeavableKeyword(k));
   const leadPool = [...jdTech, ...(honestKeywords || [])]
     .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)) && isWeavableKeyword(k));
-  const leadTerms = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 5);
+  const rankedLead = [
+    ...leadPool.filter((k) => !isEditorTool(k)),
+    ...leadPool.filter((k) => isEditorTool(k)),
+  ];
+  const leadTerms = [...new Set(rankedLead.map((k) => String(k).trim()))].slice(0, 5);
   const lead = leadTerms.length
     ? leadTerms.join(', ')
-    : 'TypeScript, React, and Node.js';
+    : 'Python, Node.js, AWS, and React';
   const jdLower = String(jdText || '').toLowerCase();
   const title = inferRoleTitleFromJd(jdText, y);
+  const yearsLabel = y > 0 ? `${y}+ years` : 'years';
   const lines = [];
 
-  // Line 1 — identity + years + named JD stack
+  // Line 1 — senior identity + ownership scope + named stack
   lines.push(
-    y > 0
-      ? `${title} with ${y}+ years shipping production systems in ${lead}.`
-      : `${title} building production systems in ${lead}.`
+    `${title} with ${yearsLabel} owning production backends, cloud platforms, and API systems in ${lead}.`,
   );
 
-  // Line 2 — JD-theme depth (no clichés)
-  if (/\b(llm|ai agent|generative ai|openai|langchain)\b/i.test(jdLower)) {
-    lines.push('Hands-on with LLM integrations, AI-assisted workflows (Cursor, Copilot), and production API reliability.');
+  // Line 2 — architecture / depth matched to JD (hard outcomes, not soft skills)
+  if (/\b(llm|ai agent|generative ai|openai|langchain|rag|vector)\b/i.test(jdLower)) {
+    lines.push('Lead LLM-backed features and AI-assisted delivery (Cursor, Copilot) with production-grade API reliability and validation loops.');
   } else if (/\bevent-driven|microservice|kafka|message queue\b/i.test(jdLower)) {
-    lines.push('Design and operate event-driven microservices with clear service boundaries and reliable messaging.');
+    lines.push('Drive monolith-to-microservices work and event-driven service boundaries with reliable messaging and clear ownership.');
   } else if (/\bci\/cd|devops|kubernetes|docker\b/i.test(jdLower)) {
-    lines.push('Own CI/CD-backed releases with containerized deployments, automated tests, and fast recovery paths.');
+    lines.push('Own CI/CD-backed releases, containerized deployments, and automated quality gates that cut operational toil.');
   } else if (/\breact|typescript|front-?end|frontend\b/i.test(jdLower) && /\b(node|\.net|api|backend|full-?stack)\b/i.test(jdLower)) {
-    lines.push('Deliver end-to-end features across React/TypeScript UIs and reliable backend APIs with strong testing discipline.');
+    lines.push('Ship end-to-end product features across React/TypeScript UIs and high-throughput backend APIs with strict testing discipline.');
+  } else if (/\baws|cloud|ec2|lambda|ecs\b/i.test(jdLower)) {
+    lines.push('Own AWS cost/performance work — right-sizing, autoscaling, and database tuning that protect reliability and spend.');
   } else {
-    lines.push('Deliver RESTful APIs, scalable services, and well-tested releases with careful code review.');
+    lines.push('Lead scalable service design, high-throughput RESTful APIs, and cloud performance work with measurable delivery outcomes.');
   }
 
-  // Line 3 — operating model / collaboration
+  // Line 3 — senior operating model: architecture + reliability + SDLC (never soft "collaborate")
   if (/\bobservability|high-traffic|latency|sre|incident\b/i.test(jdLower)) {
-    lines.push('Operate high-traffic systems with observability, incident response, and performance tuning.');
+    lines.push('Hold the line on reliability: observability, incident response, latency tuning, and production hardening.');
   } else if (/\bmentor|tech lead|staff|principal|cross-functional\b/i.test(jdLower)) {
-    lines.push('Partner with product and engineering leads from design through launch; mentor peers on delivery quality.');
+    lines.push('Set engineering bar through design ownership, peer review, and mentoring — from architecture decisions through launch.');
   } else {
-    lines.push('Collaborate with product and engineering partners from design through launch on user-focused features.');
+    lines.push('Own architecture decisions, SDLC quality (reviews, tests, CI), and mentoring so teams ship reliable software faster.');
   }
 
-  // Line 4 — optional stack emphasis when JD is dense with named tech
-  if (leadTerms.length >= 4 && lines.length < 4) {
-    const extra = leadTerms.slice(0, 4).join(', ');
-    if (!lines.some((l) => l.toLowerCase().includes(extra.toLowerCase().slice(0, 12)))) {
-      lines.push(`Comfortable day-to-day with ${extra} in production environments.`);
+  // Line 4 — concrete stack / impact closer when JD is tech-dense
+  if (lines.length < 4) {
+    if (leadTerms.length >= 3) {
+      const stack = leadTerms.slice(0, 4).join(', ');
+      lines.push(`Day-to-day production stack: ${stack} — biased to ownership, measurable impact, and clean handoffs.`);
+    } else {
+      lines.push('Bias to ownership, measurable impact, and production systems that stay fast, secure, and maintainable.');
     }
   }
 
-  // Strip banned clichés if they ever appear (defense in depth)
+  // Strip banned clichés / soft filler (defense in depth)
   const cleaned = lines
     .map((l) => l
       .replace(/\bpassionate about\b/gi, 'focused on')
@@ -403,7 +425,11 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
       .replace(/\bleveraged\b/gi, 'used')
       .replace(/\bspearheaded\b/gi, 'led')
       .replace(/\bcutting-edge\b/gi, 'modern')
-      .replace(/\brobust\b/gi, 'reliable'))
+      .replace(/\brobust\b/gi, 'reliable')
+      .replace(/\bCollaborate with product and engineering partners[^.]*\./gi,
+        'Own architecture decisions, SDLC quality, and mentoring through launch.')
+      .replace(/\bComfortable day-to-day with\b/gi, 'Day-to-day production stack:'))
+    .filter((l) => l && !/collaborate with product partners/i.test(l))
     .slice(0, 4);
 
   return cleaned.join('\n');

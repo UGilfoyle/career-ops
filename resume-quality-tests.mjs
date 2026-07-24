@@ -17,13 +17,17 @@ import {
   isBulletContinuationFragment,
   explodeWallOfTextBullets,
   scrubResumeArtifacts,
+  preferSourceIfThin,
+  parseTenureMonths,
+  bulletsBudgetForRole,
+  rewriteFirstPersonBullet,
 } from './resume-quality.mjs';
 import {
   extractJdKeywords,
   alignResumeToJd,
   isJunkKeyword,
 } from './jd-keyword-align.mjs';
-import { buildHonestSummary, buildJdMatchedCompetencies } from './jd-profile-match.mjs';
+import { buildHonestSummary, buildJdMatchedCompetencies, reframeExperienceFromProfile } from './jd-profile-match.mjs';
 
 let passed = 0;
 let failed = 0;
@@ -225,6 +229,98 @@ console.log('resume-quality tests\n');
   const normalized = normalizeExperienceBulletList([wall]);
   assert(normalized.length >= 3, 'normalizeExperienceBulletList also explodes walls');
   assert(normalized.every((b) => /^[A-Z]/.test(b) && /[.!?]$/.test(b)), 'normalized bullets are proper sentences');
+}
+
+{
+  // (a) KOCO-style orphan fragments must merge / not render as standalone crumbs
+  assert(isBulletContinuationFragment('Logic into scalable, highly available Node.js services.'), 'detects Logic into fragment');
+  assert(isBulletContinuationFragment('Integrity through rigorous algorithmic validation with zero data loss.'), 'detects Integrity through fragment');
+  assert(isBulletContinuationFragment('Authentication flows that processed 1,000+ daily transactions.'), 'detects Authentication flows fragment');
+  const koco = normalizeExperienceBulletList([
+    'Authored the complete backend architecture for a multi-tenant platform, synthesizing.',
+    'Logic into scalable, highly available Node.js services.',
+    'Formulated complex Python ETL scripts to migrate legacy records, preserving.',
+    'Integrity through rigorous algorithmic validation with zero data loss.',
+  ]);
+  assert(!koco.some((b) => /^Logic into/i.test(b)), 'no orphan Logic into bullet');
+  assert(!koco.some((b) => /^Integrity through/i.test(b)), 'no orphan Integrity through bullet');
+  assert(koco.every((b) => /^[A-Z]/.test(b) && b.length >= 40), 'KOCO merged bullets are complete sentences');
+
+  const artisans = normalizeExperienceBulletList([
+    'Developed and deployed backend endpoints using Node.js/Express, integrating third-party payment gateways and',
+    'Authentication flows that processed 1,000+ daily transactions with zero security incidents.',
+  ]);
+  assert(artisans.length === 1, 'Artisanssoft authentication fragment merges into prior bullet');
+  assert(/payment gateways/i.test(artisans[0]) && /Authentication flows|authentication flows/i.test(artisans[0]), 'merged payment + auth flows');
+}
+
+{
+  // (b) Rubico wall → ≥3 good bullets without orphans; prefer source when tailored is thin
+  const rubicoSource = [
+    'Developed backend web systems end-to-end, from MongoDB schema design through RESTful API construction for major client deliverables.',
+    'Owned core application infrastructure for client projects, taking responsibility from data modeling through API delivery and release readiness.',
+    'Provisioned Amazon Web Services infrastructure (EC2, S3) for application hosting and object storage across client environments.',
+    'Established secure deployment practices by configuring server firewalls and OS patch management routines on hosted environments.',
+  ];
+  const thinTailored = [
+    'Developed backend systems using Laravel and Node.js, and building the frontend.',
+    'Deployed on AWS.',
+  ];
+  const fixedGrammar = rewriteFirstPersonBullet(thinTailored[0]);
+  assert(!/\band building\b/i.test(fixedGrammar), 'rewrites and building → and built');
+  assert(/\band built\b/i.test(fixedGrammar), 'contains and built');
+
+  const recovered = preferSourceIfThin(thinTailored, rubicoSource, { minCount: 3, maxBullets: 4 });
+  assert(recovered.length >= 3, `Rubico thin tailored recovers ≥3 bullets (got ${recovered.length})`);
+  assert(!recovered.some((b) => isBulletContinuationFragment(b)), 'recovered Rubico bullets have no orphan fragments');
+  assert(recovered.every((b) => b.length >= 60), 'recovered Rubico bullets are substantive');
+}
+
+{
+  // (c) Tenure budget ≥3 for 2-year role even at late role index
+  const tenure = parseTenureMonths('Sep 2019 – Sep 2021');
+  assert(tenure >= 24, `Rubico tenure parses to ~24 months (got ${tenure})`);
+  const budget = bulletsBudgetForRole(5, { tenureMonths: tenure, maxPages: 2 });
+  assert(budget >= 3, `2-year role at index 5 gets ≥3 bullet budget (got ${budget})`);
+  assert(budget >= 4, `24+ month role prefers 4 bullet budget (got ${budget})`);
+  assert(bulletsBudgetForRole(5, { tenureMonths: 12, maxPages: 2 }) === 2, 'short late role still capped at 2 without tenure floor');
+}
+
+{
+  // Senior summary: kadak, not soft filler
+  const summary = buildHonestSummary('', 7, ['React', 'TypeScript', 'Node.js', 'AWS'],
+    'Senior Software Engineer React TypeScript Node.js AWS microservices');
+  assert(/Senior Software Engineer/i.test(summary), 'summary opens with senior title');
+  assert(/7\+\s*years/i.test(summary), 'summary states 7+ years');
+  assert(/React|TypeScript|Node/i.test(summary), 'summary names JD stack');
+  assert(!/collaborate with product partners/i.test(summary), 'summary rejects soft collaborate filler');
+  assert(/own|lead|architect|reliab|SDLC|mentor/i.test(summary), 'summary uses ownership/senior language');
+  const summaryLines = summary.split('\n').filter(Boolean);
+  assert(summaryLines.length >= 3 && summaryLines.length <= 4, `summary is 3–4 lines (got ${summaryLines.length})`);
+}
+
+{
+  // Reframe respects tenure floor for multi-year older role
+  const exp = [
+    { role: 'SSE', company: 'A', period: 'Jul 2025 – Present', bullets: ['Owned microservices on AWS cutting costs by 30%.'] },
+    { role: 'SSE', company: 'B', period: 'Feb 2025 – Jun 2025', bullets: ['Built React dashboards with TypeScript.'] },
+    { role: 'SE', company: 'C', period: 'Aug 2023 – Oct 2024', bullets: ['Tuned SQL cutting CPU by 35%.'] },
+    { role: 'SE', company: 'D', period: 'Aug 2022 – Jul 2023', bullets: ['Integrated Kafka reconciliation for payments.'] },
+    { role: 'FS', company: 'E', period: 'Oct 2021 – Jul 2022', bullets: ['Authored Node.js multi-tenant backend architecture.'] },
+    {
+      role: 'SD',
+      company: 'Rubico IT Pvt Ltd',
+      period: 'Sep 2019 – Sep 2021',
+      bullets: [
+        'Developed backend web systems end-to-end, from MongoDB schema design through RESTful API construction for major client deliverables.',
+        'Owned core application infrastructure for client projects, taking responsibility from data modeling through API delivery and release readiness.',
+        'Provisioned Amazon Web Services infrastructure (EC2, S3) for application hosting and object storage across client environments.',
+        'Established secure deployment practices by configuring server firewalls and OS patch management routines on hosted environments.',
+      ],
+    },
+  ];
+  const reframed = reframeExperienceFromProfile(exp, 'Node.js AWS MongoDB APIs', ['Node.js', 'AWS', 'MongoDB'], 6);
+  assert((reframed['5'] || []).length >= 3, `reframe gives Rubico ≥3 bullets (got ${(reframed['5'] || []).length})`);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

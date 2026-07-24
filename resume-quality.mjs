@@ -310,7 +310,9 @@ function cleanSpellingAndGrammar(text) {
     .replace(/\bLeverage(?:d)?\b/g, 'Used')
     .replace(/\bleverage(?:d)?\b/gi, 'used')
     .replace(/\bUtiliz(?:ed|ing)\b/g, 'Using')
-    .replace(/\butiliz(?:ed|ing)\b/gi, 'using');
+    .replace(/\butiliz(?:ed|ing)\b/gi, 'using')
+    .replace(/\sand building\b/gi, ' and built')
+    .replace(/,\s*building\s+/gi, ', built ');
 }
 
 function synthesizeMetric(bullet) {
@@ -414,6 +416,22 @@ export function normalizeBulletText(bullet) {
   return t;
 }
 
+/** Past-tense / strong action verbs that legitimately open a resume bullet. */
+const BULLET_ACTION_START =
+  /^(Developed|Built|Created|Designed|Implemented|Owned|Led|Managed|Delivered|Engineered|Integrated|Deployed|Provisioned|Configured|Wrote|Maintained|Authored|Formulated|Optimized|Architected|Automated|Established|Enhanced|Expanded|Improved|Streamlined|Accelerated|Reduced|Tuned|Partnered|Collaborated|Mentored|Conducted|Analyzed|Migrated|Refactored|Launched|Constructed|Enforced|Spearheaded|Drove|Ran|Cut|Grew|Shipped|Supported|Coordinated|Orchestrated|Remodeled|Reconfigured)\b/;
+
+/** True when a bullet looks truncated (dangling gerund / connector). */
+export function isIncompleteBullet(bullet) {
+  const t = String(bullet || '').trim().replace(/[.!]+$/, '');
+  if (!t) return true;
+  if (/\b(synthesizing|preserving|integrating|including|using|building|deploying|writing|maintaining|and|with|to|of|by|from|via|into)\s*$/i.test(t)) {
+    return true;
+  }
+  if (/,\s*$/.test(String(bullet || '').trim())) return true;
+  if (/\.\.\.$/.test(String(bullet || '').trim())) return true;
+  return false;
+}
+
 /** True when a "bullet" is clearly a broken continuation of the previous line. */
 export function isBulletContinuationFragment(bullet) {
   const t = String(bullet || '').trim();
@@ -427,7 +445,111 @@ export function isBulletContinuationFragment(bullet) {
   if (/^[\d$]/.test(t) && t.length < 140) return true;
   // Short lowercase crumbs only (full lowercase sentences get capitalized, not merged)
   if (/^[a-z]/.test(t) && t.length < 40) return true;
+
+  // Noun-phrase orphans from mid-sentence LLM / explode splits (KOCO / Artisanssoft)
+  // e.g. "Logic into scalable…", "Integrity through…", "Authentication flows that…"
+  if (/^(Logic|Integrity|Authentication|Authorization|Availability|Scalability)\b/i.test(t)) {
+    return true;
+  }
+  if (/^(Business logic|Data integrity|Complex business|Authentication flows?|Authorization flows?)\b/i.test(t)) {
+    return true;
+  }
+  // Capitalized noun + connector, no action verb — almost always a continuation crumb
+  if (
+    !BULLET_ACTION_START.test(t)
+    && /^[A-Z][a-z]+(?:\s+[a-z]+)?\s+(into|through|via|that|with|for|from|across|under)\b/.test(t)
+    && t.length < 160
+  ) {
+    return true;
+  }
   return false;
+}
+
+/**
+ * Parse employment period → tenure in months (best-effort).
+ * "Present"/"Current" end dates use today's month.
+ */
+export function parseTenureMonths(period) {
+  if (!period) return 12;
+  const clean = String(period).toLowerCase();
+  const monthNames = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  };
+  const matches = [...clean.matchAll(
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.?\s+(\d{4})\b/g,
+  )];
+  if (matches.length >= 1) {
+    const startMonth = monthNames[matches[0][1].slice(0, 3)];
+    const startYear = parseInt(matches[0][2], 10);
+    let endMonth;
+    let endYear;
+    if (matches.length >= 2) {
+      endMonth = monthNames[matches[1][1].slice(0, 3)];
+      endYear = parseInt(matches[1][2], 10);
+    } else if (/\b(present|current|now)\b/i.test(clean)) {
+      const now = new Date();
+      endMonth = now.getMonth();
+      endYear = now.getFullYear();
+    } else {
+      return 12;
+    }
+    const months = (endYear - startYear) * 12 + (endMonth - startMonth);
+    return Number.isFinite(months) && months > 0 ? months : 12;
+  }
+  return 12;
+}
+
+/**
+ * Bullet budget by role recency + tenure.
+ * Roles with 18+ months get at least 3; 24+ months prefer 4 (not capped at 2 by index alone).
+ */
+export function bulletsBudgetForRole(roleIndex, opts = {}) {
+  const maxPages = opts.maxPages ?? 2;
+  const tenureMonths = opts.tenureMonths ?? 12;
+  let base;
+  if (maxPages >= 3) base = roleIndex < 3 ? 6 : roleIndex < 5 ? 4 : 3;
+  else if (maxPages >= 2) base = roleIndex < 3 ? 5 : roleIndex < 5 ? 3 : 2;
+  else base = roleIndex < 2 ? 4 : 3;
+
+  let floor = 0;
+  if (tenureMonths >= 24) floor = 4;
+  else if (tenureMonths >= 18) floor = 3;
+  return Math.max(base, floor);
+}
+
+/**
+ * When tailored bullets are too thin or contain orphan fragments, prefer normalized profile source.
+ */
+export function preferSourceIfThin(tailoredBullets, sourceBullets, opts = {}) {
+  const maxBullets = opts.maxBullets ?? 6;
+  const minCount = opts.minCount ?? 3;
+  const minAvgLen = opts.minAvgLen ?? 70;
+  const tailoredRaw = Array.isArray(tailoredBullets) ? tailoredBullets : [];
+  const sourceRaw = Array.isArray(sourceBullets) ? sourceBullets : [];
+
+  const hasOrphanFragments = tailoredRaw.some(
+    (b) => isBulletContinuationFragment(b) || isIncompleteBullet(b),
+  );
+  const tailored = normalizeExperienceBulletList(tailoredRaw);
+  const source = normalizeExperienceBulletList(sourceRaw);
+
+  const avgLen = tailored.length
+    ? tailored.reduce((sum, b) => sum + b.length, 0) / tailored.length
+    : 0;
+  const tooThin = tailored.length < minCount || avgLen < minAvgLen;
+
+  if (
+    source.length > 0
+    && (hasOrphanFragments || tooThin)
+    && (source.length >= tailored.length || hasOrphanFragments)
+  ) {
+    // Prefer source when it is richer or when orphans make tailored untrustworthy
+    if (hasOrphanFragments || source.length > tailored.length || (tooThin && source.length >= minCount)) {
+      return source.slice(0, maxBullets);
+    }
+  }
+  return tailored.slice(0, maxBullets);
 }
 
 /**
@@ -483,8 +605,10 @@ export function rewriteFirstPersonBullet(text) {
   t = t.replace(/,\s*writing\s+/gi, ', wrote ');
   t = t.replace(/,\s*deploying\s+/gi, ', deployed ');
   t = t.replace(/,\s*building\s+/gi, ', built ');
+  t = t.replace(/\sand building\b/gi, ' and built');
   t = t.replace(/\sand deploying\b/gi, ' and deployed');
   t = t.replace(/\sand maintaining\b/gi, ' and maintained');
+  t = t.replace(/\sand writing\b/gi, ' and wrote');
   t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
   return t.trim();
 }
@@ -552,7 +676,8 @@ export function normalizeExperienceBulletList(bullets) {
   const raw = exploded.map((b) => String(b || '').trim()).filter(Boolean);
   const merged = [];
   for (const bullet of raw) {
-    if (merged.length > 0 && isBulletContinuationFragment(bullet)) {
+    const prevIncomplete = merged.length > 0 && isIncompleteBullet(merged[merged.length - 1]);
+    if (merged.length > 0 && (isBulletContinuationFragment(bullet) || prevIncomplete)) {
       const prev = merged[merged.length - 1].replace(/[.!?,;:\s]+$/g, '');
       let cont = bullet.trim();
       // Avoid "by by 22%" when previous already ends with the same preposition
@@ -560,6 +685,10 @@ export function normalizeExperienceBulletList(bullets) {
         if (new RegExp(`\\b${prep}$`, 'i').test(prev)) return '';
         return m;
       }).trim();
+      // "synthesizing." + "Logic into…" → keep gerund object flowing in lowercase
+      if (prevIncomplete && /^[A-Z]/.test(cont) && isBulletContinuationFragment(cont)) {
+        cont = cont.replace(/^([A-Z])/, (c) => c.toLowerCase());
+      }
       if (cont) merged[merged.length - 1] = `${prev} ${cont}`;
       continue;
     }
@@ -746,6 +875,28 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
   }
 
   normalizeResumeBullets(resume);
+
+  // Prefer profile source bullets when a role came back too thin or with orphan fragments
+  if (Array.isArray(sourceExperience) && sourceExperience.length > 0 && resume.experience) {
+    const applyFloor = (bullets, roleIdx) => {
+      const src = sourceExperience[roleIdx]?.bullets || [];
+      const tenureMonths = parseTenureMonths(sourceExperience[roleIdx]?.period);
+      const budget = bulletsBudgetForRole(roleIdx, { tenureMonths, maxPages: opts.maxPages ?? 2 });
+      return preferSourceIfThin(bullets, src, {
+        minCount: Math.min(3, budget),
+        maxBullets: budget,
+      });
+    };
+    if (Array.isArray(resume.experience)) {
+      resume.experience = applyFloor(resume.experience, 0);
+    } else if (typeof resume.experience === 'object') {
+      for (const key of Object.keys(resume.experience)) {
+        const idx = Number(key);
+        if (!Number.isFinite(idx)) continue;
+        resume.experience[key] = applyFloor(resume.experience[key], idx);
+      }
+    }
+  }
 
   // Final artifact scrub on summary + competencies (bullets already normalized)
   if (resume.summary) {
