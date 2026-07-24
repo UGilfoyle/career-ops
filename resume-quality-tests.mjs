@@ -359,89 +359,79 @@ console.log('resume-quality tests\n');
     'Assisted Company with X → Drove X at Company (senior fn)',
   );
 
-  // Company-aware gating
+  // Senior tone on EVERY employer (Quest → Artisanssoft)
   assert(isSeniorToneEmployer('Quest Global'), 'Quest Global is senior-tone employer');
   assert(isSeniorToneEmployer('INTVERSE'), 'INTVERSE is senior-tone employer');
   assert(isSeniorToneEmployer('Glidewell Dental'), 'Glidewell is senior-tone employer');
   assert(isSeniorToneEmployer('Srijan Technologies'), 'Srijan is senior-tone employer');
-  assert(!isSeniorToneEmployer('KOCO'), 'KOCO is mid-tone employer');
-  assert(!isSeniorToneEmployer('Rubico IT Pvt Ltd'), 'Rubico is mid-tone employer');
-  assert(!isSeniorToneEmployer('Artisanssoft'), 'Artisanssoft is mid-tone employer');
+  assert(isSeniorToneEmployer('KOCO'), 'KOCO is senior-tone employer');
+  assert(isSeniorToneEmployer('Rubico IT Pvt Ltd'), 'Rubico is senior-tone employer');
+  assert(isSeniorToneEmployer('Artisanssoft'), 'Artisanssoft is senior-tone employer');
 
-  const seniorJobs = [
+  const allEmployerJobs = [
     ['Developed backend systems using Python.', 'Quest Global'],
     ['Helped ship React dashboards.', 'INTVERSE'],
     ['Analyzed SQL bottlenecks cutting CPU 35%.', 'Glidewell'],
     ['Built Node.js payment features.', 'Srijan'],
+    ['Worked on multi-tenant Node.js architecture.', 'KOCO'],
+    ['Developed MongoDB APIs and AWS hosting.', 'Rubico'],
+    ['Assisted with payment gateway integrations.', 'Artisanssoft'],
   ];
-  for (const [bullet, company] of seniorJobs) {
+  for (const [bullet, company] of allEmployerJobs) {
     const out = elevateBulletForEmployer(bullet, company);
     assert(!/^(Developed|Helped|Assisted|Worked on|Analyzed|Built)\b/i.test(out), `senior elevates openings at ${company}`);
   }
   assert(/^Engineered\b/i.test(elevateBulletForEmployer('Developed APIs on Node.js.', 'Quest')), 'Quest Developed → Engineered');
   assert(/^Drove\b/i.test(elevateBulletForEmployer('Helped ship dashboards.', 'INTVERSE')), 'INTVERSE Helped → Drove');
+  assert(/^Engineered\b/i.test(elevateBulletForEmployer('Developed MongoDB APIs.', 'Rubico')), 'Rubico Developed → Engineered');
+  assert(/^Delivered\b/i.test(elevateBulletForEmployer('Worked on payment gateways.', 'Artisanssoft')), 'Artisanssoft Worked on → Delivered');
+  assert(
+    /^Drove payment gateway integrations at Artisanssoft\.?$/i.test(
+      elevateBulletForEmployer('Assisted Artisanssoft with payment gateway integrations.', 'Artisanssoft'),
+    ),
+    'Assisted Company with X → Drove X at Company',
+  );
 
-  const midJobs = [
-    ['Helped deploy applications on AWS.', 'KOCO'],
-    ['Assisted with payment gateway integrations.', 'Artisanssoft'],
-    ['Worked on multi-tenant Node.js architecture.', 'KOCO'],
-    ['Developed MongoDB APIs and AWS hosting.', 'Rubico'],
-    ['Built REST endpoints for client deliverables.', 'Rubico'],
-  ];
-  for (const [bullet, company] of midJobs) {
-    const out = elevateBulletForEmployer(bullet, company);
-    assert(!/^(Helped|Assisted|Worked on)\b/i.test(out), `mid scrubs junior fluff at ${company}`);
-    assert(!/^(Architected|Owned|Drove|Mentored)\b/i.test(out), `mid avoids senior escalation at ${company}`);
-  }
-  assert(/^Developed\b/i.test(elevateBulletForEmployer('Developed MongoDB APIs.', 'Rubico')), 'Rubico keeps Developed');
-  assert(/^Built\b/i.test(elevateBulletForEmployer('Worked on payment gateways.', 'Artisanssoft')), 'Artisanssoft Worked on → Built');
+  // Mid-level helper still available for explicit callers (not used on default path)
   assert(/^Delivered\b/i.test(elevateBulletToMidLevel('Helped deploy applications on AWS.')), 'mid Helped → Delivered');
   assert(/^Developed\b/i.test(elevateBulletToMidLevel('Developed backend systems using Laravel.')), 'mid keeps Developed');
   assert(
     /^Implemented payment gateway integrations at Artisanssoft\.?$/i.test(
-      elevateBulletForEmployer('Assisted Artisanssoft with payment gateway integrations.', 'Artisanssoft'),
+      elevateBulletToMidLevel('Assisted Artisanssoft with payment gateway integrations.'),
     ),
-    'mid Assisted Company with X → Implemented X at Company (not Drove)',
+    'mid Assisted Company with X → Implemented X at Company',
   );
 
-  const juniorishSenior = normalizeExperienceBulletList([
+  const juniorish = normalizeExperienceBulletList([
     'Developed backend systems using Laravel and Node.js, and building the frontend with React.js.',
     'Helped deploy applications on AWS.',
     'Worked on payment gateway integrations with measurable throughput.',
-  ], 'Quest Global');
-  assert(juniorishSenior.every((b) => !/^(Developed|Helped|Worked on|Assisted)\b/i.test(b)), 'normalize elevates junior openings for senior employer');
-  assert(juniorishSenior.every((b) => !/\band building\b/i.test(b)), 'and building fixed under senior polish');
+  ]);
+  assert(juniorish.every((b) => !/^(Developed|Helped|Worked on|Assisted)\b/i.test(b)), 'normalize elevates junior openings');
+  assert(juniorish.every((b) => !/\band building\b/i.test(b)), 'and building fixed under senior polish');
 
-  const juniorishMid = normalizeExperienceBulletList([
-    'Developed backend systems using Laravel and Node.js, and building the frontend with React.js.',
-    'Helped deploy applications on AWS.',
-    'Worked on payment gateway integrations with measurable throughput.',
-  ], 'KOCO');
-  assert(juniorishMid.every((b) => !/^(Helped|Worked on|Assisted)\b/i.test(b)), 'mid normalize scrubs junior fluff');
-  assert(juniorishMid.some((b) => /^Developed\b/i.test(b)), 'mid normalize keeps Developed');
-  assert(juniorishMid.every((b) => !/^(Architected|Owned|Drove)\b/i.test(b)), 'mid normalize avoids senior verbs');
-  assert(juniorishMid.every((b) => !/\band building\b/i.test(b)), 'and building fixed under mid polish');
-
-  // Per-employer samples — senior vs mid (no blanket senior on all 7)
-  const seniorOnly = [
-    ['Developed backend systems using Python.', 'Quest Global'],
-    ['Helped ship React dashboards.', 'INTVERSE'],
-    ['Analyzed SQL bottlenecks cutting CPU 35%.', 'Glidewell'],
-    ['Built Node.js payment features.', 'Srijan'],
-  ].map(([b, c]) => elevateBulletForEmployer(b, c));
-  assert(seniorOnly.length === 4, 'four senior employer samples');
-  assert(seniorOnly.every((b) => !/^(Developed|Helped|Assisted|Worked on|Analyzed|Built)\b/i.test(b)), 'senior employers elevated');
-
-  const midOnly = [
-    ['Worked on multi-tenant Node.js architecture.', 'KOCO'],
-    ['Developed MongoDB APIs and AWS hosting.', 'Rubico'],
-    ['Assisted with payment gateway integrations.', 'Artisanssoft'],
-  ].map(([b, c]) => elevateBulletForEmployer(b, c));
-  assert(midOnly.length === 3, 'three mid employer samples');
-  assert(midOnly.every((b) => !/^(Helped|Assisted|Worked on)\b/i.test(b)), 'mid employers scrub junior fluff');
-  assert(midOnly.every((b) => !/^(Architected|Owned|Drove|Mentored)\b/i.test(b)), 'mid employers not forced to senior verbs');
-  assert(midOnly.some((b) => /^Developed\b/i.test(b)), 'Rubico Developed preserved');
+  // All seven employer samples survive normalize (explode default maxOut must not truncate)
+  const samples = [
+    'Developed backend systems for Quest Global using Python.',
+    'Helped INTVERSE ship React dashboards.',
+    'Analyzed Glidewell SQL bottlenecks cutting CPU 35%.',
+    'Built Srijan Node.js payment features.',
+    'Worked on KOCO multi-tenant Node.js architecture.',
+    'Developed Rubico MongoDB APIs and AWS hosting.',
+    'Assisted Artisanssoft with payment gateway integrations.',
+  ];
+  const elevated = normalizeExperienceBulletList(samples);
+  assert(elevated.length === 7, 'all seven employer samples survive normalize');
+  assert(
+    elevated.every((b) => !/^(Developed|Helped|Assisted|Worked on|Analyzed|Built)\b/i.test(b)),
+    'no junior openings remain across all employers',
+  );
+  assert(
+    elevated.some((b) => /payment gateway integrations at Artisanssoft/i.test(b)),
+    'Artisanssoft sample keeps payment gateway ownership phrasing',
+  );
 }
+
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
