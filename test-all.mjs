@@ -71,6 +71,7 @@ const scripts = [
   { name: 'resume-quality-tests.mjs', expectExit: 0 },
   { name: 'test-jd-honest-match.mjs', expectExit: 0 },
   { name: 'simulate-jd-align.mjs', expectExit: 0 },
+  { name: 'indeed-job-tests.mjs', expectExit: 0 },
 ];
 
 for (const { name, allowFail } of scripts) {

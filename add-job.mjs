@@ -3,6 +3,11 @@
 
 import sql from './db/client.mjs';
 import { chromium } from 'playwright';
+import {
+  isIndeedUrl,
+  canonicalIndeedUrl,
+  fetchIndeedJob,
+} from './indeed-job.mjs';
 
 const url = process.argv[2];
 const userId = process.env.SCAN_USER_ID || 1;
@@ -46,6 +51,10 @@ function canonicalJobUrl(url) {
   try {
     const u = new URL(String(url).trim());
     u.hash = '';
+    // Indeed: stable id is jk=… (viewjob / rc/clk / pagead)
+    if (isIndeedUrl(u.toString())) {
+      return canonicalIndeedUrl(u.toString());
+    }
     // LinkedIn: stable id lives in path; strip tracking query params
     if (u.hostname.includes('linkedin.com')) {
       const currentJobId = u.searchParams.get('currentJobId');
@@ -150,6 +159,24 @@ function extractTitleFromJd(jdText) {
 // Scrape JD using Playwright
 async function scrapeJD(url) {
   console.log(`🌐 Scraping job description from: ${url}`);
+
+  // Indeed: desktop viewjob is Cloudflare-gated — use mobile embedded JSON
+  if (isIndeedUrl(url)) {
+    console.log('🎯 Indeed URL detected. Fetching via mobile embedded endpoint…');
+    try {
+      const job = await fetchIndeedJob(url);
+      console.log(
+        `✅ Indeed JD extracted (${job.text.length} chars) — ${job.company} / ${job.title}`
+      );
+      return {
+        company: job.company,
+        title: job.title,
+        text: job.text,
+      };
+    } catch (err) {
+      console.warn(`⚠️ Indeed mobile fetch failed: ${err.message}. Falling back to Playwright.`);
+    }
+  }
 
   // Intercept BambooHR URLs to fetch clean JSON details directly
   let bhrSubdomain = null;
@@ -273,11 +300,43 @@ async function scrapeJD(url) {
       // ignore DOM parse failures
     }
 
+    // Indeed-specific DOM (Playwright fallback)
+    if (isIndeedUrl(url)) {
+      try {
+        const indeedText = await page.evaluate(() => {
+          const el =
+            document.getElementById('jobDescriptionText') ||
+            document.querySelector('.jobsearch-JobComponent-description') ||
+            document.querySelector('[data-testid="jobsearch-JobComponent-description"]');
+          return el ? el.innerText : '';
+        });
+        if (indeedText && indeedText.length > 200) {
+          const meta = await page.evaluate(() => {
+            const title =
+              document.querySelector('h1.jobsearch-JobInfoHeader-title')?.innerText?.trim() ||
+              document.querySelector('h1')?.innerText?.trim() ||
+              null;
+            const company =
+              document.querySelector('[data-company-name="true"]')?.innerText?.trim() ||
+              document.querySelector('[data-testid="inlineHeader-companyName"]')?.innerText?.trim() ||
+              null;
+            return { company, title };
+          });
+          await browser.close();
+          return { ...meta, text: indeedText.trim() };
+        }
+      } catch {
+        // continue to generic selectors
+      }
+    }
+
     // Try to find JD in common containers first
     const selectors = [
       '[data-testid="job-description"]',
       '.job-description',
       '#job-description',
+      '#jobDescriptionText',
+      '.jobsearch-JobComponent-description',
       '[class*="description"]',
       'main',
       'article'
@@ -315,6 +374,8 @@ async function scrapeJD(url) {
       'checking your browser',
       'please complete the security check',
       'unusual traffic',
+      'additional verification required',
+      'security check - indeed',
     ];
     const lower = text.toLowerCase();
     const isBlocked = blockSignals.some(s => lower.includes(s)) || text.length < 150;
