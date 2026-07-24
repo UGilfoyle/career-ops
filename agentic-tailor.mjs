@@ -1335,9 +1335,14 @@ TASK:
    c) **Experience bullets** (resume.experience): Rewrite bullets for ALL ${rolesToTailor} roles (including older ones).
       Return as an OBJECT keyed by role index ("0"…"${Math.max(0, rolesToTailor - 1)}"), each with 4 senior-caliber tailored bullets (never fewer than 3; roles with ~2 years tenure need 3–4).
 ${roleDigest}
-      BULLET RULES — SENIOR SOFTWARE ENGINEER BAR:
-      - Every bullet must read as senior work: ownership, architecture, reliability, mentoring/SDLC, or measurable impact — not junior task lists or first-person essays
-      - Prefer PROVEN JD technologies from the digest; map adjacent stacks with careful phrasing (Node.js ↔ NestJS-style backends) without inventing fake project history
+      BULLET RULES — SENIOR SOFTWARE ENGINEER + LINKEDIN / ATS BAR (7+ years):
+      - Write like a Senior Software Engineer TA would shortlist — ownership, architecture, reliability, mentoring/SDLC, measurable impact
+      - LinkedIn formula: [Strong verb] + [scope/system] + [tech from digest/JD] + [outcome/metric from digest]
+      - GOOD examples: "Architected event-driven microservices on Node.js/Python, cutting infra cost 30%." / "Owned AWS right-sizing and autoscaling, protecting 99.95% uptime." / "Led peer review and mentoring that raised SDLC quality across the squad."
+      - BAD (junior / reject): "Developed multiple client projects using Laravel." / "Worked on APIs." / "Helped the team." / "Assisted with deployments." / first-person essays
+      - Ban openings: Helped, Assisted, Worked on, Responsible for, Duties included, Analyzed (prefer Diagnosed/Tuned), Configured (prefer Hardened/Instrumented)
+      - Prefer: Architected, Owned, Drove, Engineered, Shipped, Hardened, Scaled, Mentored, Instituted, Diagnosed
+      - Prefer PROVEN JD technologies from the digest; map adjacent stacks carefully without inventing fake project history
       - NEVER invent metrics or employers; never append spam like "applying X in production"
       - Each bullet MUST include at least one metric from the digest when the source bullet has one; never fabricate numbers
       - Start each bullet with a UNIQUE action verb — no two bullets may share the same opening verb
@@ -1345,10 +1350,10 @@ ${roleDigest}
       - NEVER repeat any non-JD word twice in the same sentence; swap the second occurrence for a synonym
       - Avoid overused verbs: implemented, developed, designed, built — use at most once each in the full resume
       - NEVER emit orphan fragments ("Logic into…", "Integrity through…", "Authentication flows…") — keep each idea as ONE complete sentence
-      - Parallel grammar: "Developed X and built Y" — never "and building"
+      - Parallel grammar: "Engineered X and built Y" — never "and building"
       - Older multi-year roles (e.g. ~2 years) still get 3–4 complete professional bullets from digest facts
-      - Connect each bullet directly to a JD requirement
-      - SELF-CHECK before output: scan for repeated verbs, orphan fragments, and weak summary tone; rewrite until clean
+      - Connect each bullet directly to a JD requirement so TA/HR sees an ATS match
+      - SELF-CHECK before output: scan for junior tone, repeated verbs, orphan fragments, weak summary; rewrite until clean
 
 2. COVER LETTER (body only — template adds "Dear Hiring Manager," and "Sincerely,"):
    - Return ONLY the letter body: NO salutation, NO sign-off
@@ -1384,7 +1389,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   `;
 
   const messages = [
-    { role: "system", content: "You are a professional recruiting assistant. Return ONLY valid JSON." },
+    { role: "system", content: "You are a senior technical recruiter writer. Output ONLY valid JSON. Every resume bullet must pass a Senior Software Engineer / LinkedIn professionalism bar for a 7+ year engineer — never junior task lists." },
     { role: "user", content: prompt }
   ];
 

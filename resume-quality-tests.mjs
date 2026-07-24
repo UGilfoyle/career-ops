@@ -21,6 +21,7 @@ import {
   parseTenureMonths,
   bulletsBudgetForRole,
   rewriteFirstPersonBullet,
+  elevateBulletToSenior,
 } from './resume-quality.mjs';
 import {
   extractJdKeywords,
@@ -225,10 +226,12 @@ console.log('resume-quality tests\n');
   assert(exploded.every((b) => !/^As a /i.test(b)), 'no essay "As a …" openings remain');
   assert(exploded.every((b) => !/^I\s/i.test(b)), 'no leading first-person I');
   assert(exploded.every((b) => !/^Owned developing/i.test(b)), 'no Owned developing gerund leftovers');
-  assert(exploded.some((b) => /^Developed\b/i.test(b) || /^Built\b/i.test(b)), 'uses strong past-tense verbs');
+  assert(exploded.some((b) => /^(Developed|Built|Engineered|Partnered|Delivered)\b/i.test(b)), 'uses strong past-tense verbs');
   const normalized = normalizeExperienceBulletList([wall]);
   assert(normalized.length >= 3, 'normalizeExperienceBulletList also explodes walls');
   assert(normalized.every((b) => /^[A-Z]/.test(b) && /[.!?]$/.test(b)), 'normalized bullets are proper sentences');
+  assert(normalized.every((b) => !/^(Developed|Helped|Worked on|Assisted)\b/i.test(b)), 'normalized bullets pass senior elevation');
+  assert(normalized.every((b) => !/multiple client projects/i.test(b)), 'no junior client-projects phrasing');
 }
 
 {
@@ -321,6 +324,37 @@ console.log('resume-quality tests\n');
   ];
   const reframed = reframeExperienceFromProfile(exp, 'Node.js AWS MongoDB APIs', ['Node.js', 'AWS', 'MongoDB'], 6);
   assert((reframed['5'] || []).length >= 3, `reframe gives Rubico ≥3 bullets (got ${(reframed['5'] || []).length})`);
+}
+
+{
+  // LinkedIn / senior elevation bar
+  assert(
+    /^Engineered\b/i.test(elevateBulletToSenior('Developed backend systems using Laravel and Node.js.')),
+    'Developed → Engineered',
+  );
+  assert(
+    /^Diagnosed\b/i.test(elevateBulletToSenior('Analyzed performance bottlenecks in backend services.')),
+    'Analyzed → Diagnosed',
+  );
+  assert(
+    /^Drove\b/i.test(elevateBulletToSenior('Helped the team ship APIs.')),
+    'Helped → Drove',
+  );
+  assert(
+    !/multiple client projects/i.test(elevateBulletToSenior('Owned multiple client projects on AWS.')),
+    'client projects → production platforms',
+  );
+  assert(
+    /^Led peer code reviews/i.test(elevateBulletToSenior('Conducted peer code reviews and mentored juniors.')),
+    'Conducted code reviews → Led peer code reviews',
+  );
+  const juniorish = normalizeExperienceBulletList([
+    'Developed backend systems using Laravel and Node.js, and building the frontend with React.js.',
+    'Helped deploy applications on AWS.',
+    'Worked on payment gateway integrations with measurable throughput.',
+  ]);
+  assert(juniorish.every((b) => !/^(Developed|Helped|Worked on|Assisted)\b/i.test(b)), 'normalize elevates junior openings');
+  assert(juniorish.every((b) => !/\band building\b/i.test(b)), 'and building fixed under senior polish');
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
