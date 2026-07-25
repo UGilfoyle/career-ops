@@ -19,6 +19,70 @@ const KNOWN_TECH = [
   'Cursor', 'Copilot', 'GitHub Copilot', 'Github Copilot',
   '.NET Core', '.NET', 'C#',
   'Snowflake', 'Spark', 'Airflow', 'dbt', 'Databricks',
+  // ETL / data-validation stack (Deloitte-style JDs)
+  'pandas', 'pyodbc', 'ETL', 'Oracle', 'Unix', 'Linux', 'JIRA', 'Rally', 'Qtest',
+  'SCD', 'Mainframe',
+];
+
+/**
+ * Seed domain / methodology phrases (not company-specific).
+ * extractJdDomainPhrases ALSO pulls fresh multi-word requirements from any JD.
+ */
+const DOMAIN_PHRASES = [
+  // Data / ETL
+  'source-to-target validation',
+  'source to target',
+  'data reconciliation',
+  'transformation logic',
+  'data completeness',
+  'ETL testing',
+  'ETL validation',
+  'data warehouse',
+  'staging',
+  'fact and dimension',
+  'fact/dimension',
+  'slowly changing dimensions',
+  'SCD',
+  'window functions',
+  'analytical functions',
+  'shell scripting',
+  'log analysis',
+  'job monitoring',
+  'test management',
+  // Scraping / automation
+  'web scraping',
+  'anti-bot',
+  'proxy rotation',
+  'browser automation',
+  // Backend / platform (future JDs)
+  'event-driven architecture',
+  'event-driven',
+  'microservices architecture',
+  'distributed systems',
+  'high-throughput',
+  'low-latency',
+  'rate limiting',
+  'observability',
+  'incident response',
+  'system design',
+  'API design',
+  'RESTful APIs',
+  'message queues',
+  'message brokers',
+  // Frontend / fullstack
+  'state management',
+  'component libraries',
+  'responsive design',
+  // DevOps / SRE
+  'infrastructure as code',
+  'continuous delivery',
+  'container orchestration',
+  'auto-scaling',
+  // AI / LLM
+  'retrieval augmented generation',
+  'prompt engineering',
+  'vector embeddings',
+  'agentic workflows',
 ];
 
 /**
@@ -99,6 +163,128 @@ export function extractJdTechKeywords(jdText, limit = 20) {
   const text = normalizeJdTechAliases(String(jdText));
   const found = uniqueCasePreserved(findKnownTechInText(text));
   return suppressFalsePositiveLanguages(found, text).slice(0, limit);
+}
+
+/**
+ * Pull fresh multi-word requirement phrases from any JD (not limited to seed list).
+ * Mines must-have / responsibility / bullet lines so tomorrow's vocabulary still lands in the plan.
+ */
+export function extractDynamicRequirementPhrases(jdText, limit = 14) {
+  if (!jdText || String(jdText).length < 30) return [];
+  const text = normalizeJdTechAliases(String(jdText));
+  const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const found = [];
+
+  for (const line of lines) {
+    const isReqLine = JD_SECTION_HINTS.some((re) => re.test(line))
+      || /^[-•*]\s/.test(line)
+      || /^\d+\.\s/.test(line)
+      || /\b(must have|required|responsibilit|qualification|key skills|experience with)\b/i.test(line);
+    if (!isReqLine) continue;
+
+    const cleanedLine = line.replace(/^[-•*\d.]+\s*/, '');
+
+    // "… in/with/using/including X"
+    for (const m of cleanedLine.matchAll(
+      /\b(?:in|with|using|including|via|across)\s+([A-Za-z][A-Za-z0-9+.#/][A-Za-z0-9+.#/\s-]{2,48}?)(?=[,.;:()]|$)/gi,
+    )) {
+      let phrase = normalizeKeyword(m[1]);
+      phrase = phrase.split(/\band\b/i)[0].trim();
+      if (phrase.split(/\s+/).length < 2 && !/-/.test(phrase)) continue;
+      if (phrase.length < 6 || phrase.length > 48) continue;
+      if (isJunkKeyword(phrase)) continue;
+      if (isWeavableKeyword(phrase) || phrase.split(/\s+/).length >= 2) found.push(phrase);
+    }
+
+    // Hyphenated compounds: event-driven, auto-scaling, source-to-target
+    for (const m of cleanedLine.matchAll(/\b([A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+){1,3})\b/g)) {
+      const phrase = normalizeKeyword(m[1]);
+      if (phrase.length < 7 || isJunkKeyword(phrase)) continue;
+      found.push(phrase);
+    }
+
+    // Lowercase multi-word skill-ish phrases
+    for (const m of cleanedLine.matchAll(
+      /\b((?:[a-z][a-z0-9+#.]{2,})(?:\s+[a-z][a-z0-9+#.]{2,}){1,3})\b/g,
+    )) {
+      const phrase = normalizeKeyword(m[1]);
+      if (phrase.length < 10 || phrase.length > 48) continue;
+      if (isJunkKeyword(phrase)) continue;
+      const contentWords = phrase.split(/\s+/).filter((w) => !STOPWORDS.has(w) && w.length >= 4);
+      if (contentWords.length < 2) continue;
+      found.push(phrase);
+    }
+  }
+
+  return uniqueCasePreserved(found).slice(0, limit);
+}
+
+/**
+ * Extract multi-word domain / methodology phrases from a JD.
+ * Seed list + dynamic requirement mining so any future JD vocabulary is captured.
+ */
+export function extractJdDomainPhrases(jdText, limit = 16) {
+  if (!jdText || String(jdText).length < 30) return [];
+  const text = normalizeJdTechAliases(String(jdText));
+  const lower = text.toLowerCase();
+  const found = [];
+  const sorted = [...DOMAIN_PHRASES].sort((a, b) => b.length - a.length);
+  for (const phrase of sorted) {
+    if (lower.includes(phrase.toLowerCase())) {
+      found.push(phrase);
+    }
+  }
+  found.push(...extractDynamicRequirementPhrases(text, 14));
+
+  return uniqueCasePreserved(found.map((p) => {
+    if (/^scd$/i.test(p)) return 'SCD';
+    if (/^etl testing$/i.test(p)) return 'ETL Testing';
+    if (/^etl validation$/i.test(p)) return 'ETL Validation';
+    if (/source.?to.?target/i.test(p)) return 'source-to-target validation';
+    if (/data reconcil/i.test(p)) return 'data reconciliation';
+    if (/transformation logic/i.test(p)) return 'transformation logic';
+    if (/data completeness/i.test(p)) return 'data completeness';
+    if (/data warehouse/i.test(p)) return 'data warehouse';
+    if (/window functions/i.test(p)) return 'window functions';
+    if (/web scraping/i.test(p)) return 'Web Scraping';
+    if (/event-?driven/i.test(p)) return 'event-driven architecture';
+    if (/observability/i.test(p)) return 'observability';
+    if (/message brokers?/i.test(p)) return 'message brokers';
+    return p;
+  })).slice(0, limit);
+}
+
+/**
+ * Split JD lines into must-have vs preferred keyword buckets.
+ */
+export function extractMustHavePreferred(jdText) {
+  const text = normalizeJdTechAliases(String(jdText || ''));
+  const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const mustHave = [];
+  const preferred = [];
+  let mode = 'must'; // default until a preferred section appears
+
+  for (const line of lines) {
+    if (/nice\s*to\s*have|good\s*to\s*have|preferred|bonus|plus:/i.test(line)) {
+      mode = 'preferred';
+    } else if (/must\s*have|required|minimum|qualifications?|key skills|responsibilities/i.test(line)) {
+      mode = 'must';
+    }
+    const techs = findKnownTechInText(line);
+    const domains = [
+      ...DOMAIN_PHRASES.filter((p) => line.toLowerCase().includes(p.toLowerCase())),
+      ...extractDynamicRequirementPhrases(line, 6),
+    ];
+    const bucket = mode === 'preferred' ? preferred : mustHave;
+    for (const t of [...techs, ...domains]) {
+      if (!isJunkKeyword(t)) bucket.push(t);
+    }
+  }
+
+  return {
+    mustHave: uniqueCasePreserved(mustHave.map(normalizeKeyword).filter(Boolean)).slice(0, 20),
+    preferred: uniqueCasePreserved(preferred.map(normalizeKeyword).filter(Boolean)).slice(0, 16),
+  };
 }
 
 export function isJunkKeyword(kw) {
@@ -193,6 +379,8 @@ export function extractJdKeywords(jdText, limit = 20) {
 
   const text = normalizeJdTechAliases(String(jdText));
   const found = [...suppressFalsePositiveLanguages(findKnownTechInText(text), text)];
+  // Domain / methodology phrases (ETL, scraping, etc.)
+  found.push(...extractJdDomainPhrases(text, 12));
 
   // 2. Bullet lines and requirement-like phrases
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
@@ -347,6 +535,7 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
  * @param {object} [opts]
  * @param {string[]} [opts.bulletKeywords] — subset safe to weave into experience (default: all)
  * @param {boolean} [opts.weaveEveryBullet=false] — legacy spam mode; keep false
+ * @param {number[]} [opts.weaveRoleIndices] — only weave into these role indices (default: all)
  */
 export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts = {}) {
   if (!resume || !jdKeywords?.length) {
@@ -356,6 +545,7 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
   const cleanKws = jdKeywords.filter((kw) => isWeavableKeyword(kw));
   const bulletKws = (opts.bulletKeywords || cleanKws).filter((kw) => isWeavableKeyword(kw));
   const weaveEvery = opts.weaveEveryBullet === true;
+  const weaveRoles = Array.isArray(opts.weaveRoleIndices) ? new Set(opts.weaveRoleIndices.map(Number)) : null;
 
   const copy = JSON.parse(JSON.stringify(resume));
   let competenciesAdded = 0;
@@ -375,9 +565,10 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
   }
   copy.core_competencies = uniqueCasePreserved([...newComps, ...comps]).slice(0, 16);
 
-  // Summary: weave top missing keywords (tech only)
+  // Summary: weave top missing keywords (prefer opts.summaryKeywords to avoid gap-tool stuffing)
+  const summaryKws = (opts.summaryKeywords || cleanKws).filter((kw) => isWeavableKeyword(kw));
   const beforeSummary = copy.summary;
-  copy.summary = weaveKeywordsIntoSummary(copy.summary, cleanKws, 4);
+  copy.summary = weaveKeywordsIntoSummary(copy.summary, summaryKws, 4);
   summaryPatched = beforeSummary !== copy.summary;
 
   const sourceBullets = (sourceExperience || []).flatMap((e) => e?.bullets || []);
@@ -385,6 +576,7 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
 
   const alignGroup = (bullets, groupIdx) => {
     if (!Array.isArray(bullets) || bulletKws.length === 0) return bullets;
+    if (weaveRoles && !weaveRoles.has(Number(groupIdx))) return bullets;
     let weavesThisRole = 0;
     return bullets.map((bullet, bi) => {
       if (!bulletMissingJd(bullet, bulletKws)) return bullet;
@@ -409,7 +601,7 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
   } else if (copy.experience && typeof copy.experience === 'object') {
     const keys = Object.keys(copy.experience).sort((a, b) => Number(a) - Number(b));
     keys.forEach((key, i) => {
-      copy.experience[key] = alignGroup(copy.experience[key], i);
+      copy.experience[key] = alignGroup(copy.experience[key], Number.isFinite(Number(key)) ? Number(key) : i);
     });
   }
 
@@ -423,8 +615,11 @@ export function formatJdKeywordBlock(jdKeywords) {
 
 /**
  * Fill missing per-role tailored bullets from profile + JD keywords (avoids untailored fallback).
+ * @param {number} [rolesCount=4]
+ * @param {object} [opts]
+ * @param {number[]} [opts.tailorIndices] — only fill these indices (default: 0..rolesCount-1)
  */
-export function ensureAllRolesTailored(resume, profileExperience, jdKeywords, rolesCount = 4) {
+export function ensureAllRolesTailored(resume, profileExperience, jdKeywords, rolesCount = 4, opts = {}) {
   if (!resume || !jdKeywords?.length) return resume;
   const exp = resume.experience;
   const profile = Array.isArray(profileExperience) ? profileExperience : [];
@@ -435,11 +630,18 @@ export function ensureAllRolesTailored(resume, profileExperience, jdKeywords, ro
 
   const out = exp && typeof exp === 'object' ? { ...exp } : {};
   let kwIdx = 0;
+  const indices = Array.isArray(opts.tailorIndices) && opts.tailorIndices.length
+    ? opts.tailorIndices.filter((i) => i >= 0 && i < profile.length)
+    : [...Array(count).keys()];
 
-  for (let i = 0; i < count; i++) {
+  for (const i of indices) {
     const key = String(i);
     const existing = Array.isArray(out[key]) ? out[key] : [];
-    if (existing.length >= 3) continue;
+    // Only skip when role already has 3+ bullets that touch at least one JD keyword
+    const hasJdSignal = existing.some((b) => jdKeywords.some((kw) =>
+      String(b || '').toLowerCase().includes(String(kw).toLowerCase())
+    ));
+    if (existing.length >= 3 && hasJdSignal) continue;
 
     const srcBullets = (profile[i]?.bullets || []).slice(0, 4);
     if (srcBullets.length === 0) continue;

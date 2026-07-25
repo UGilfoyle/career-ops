@@ -953,14 +953,16 @@ function polishTextList(texts) {
   return { texts: pass2, intraFixes, globalFixes };
 }
 
-function applyExperiencePolish(resume, sourceExperience, usedVerbs, allowSyntheticMetrics = false) {
+function applyExperiencePolish(resume, sourceExperience, usedVerbs, allowSyntheticMetrics = false, preserveRoleIndices = []) {
   let verbsRotated = 0;
   let metricsEnriched = 0;
   let wordRepetitionsFixed = 0;
+  const preserveSet = new Set((preserveRoleIndices || []).map(Number));
 
   const allSourceBullets = collectAllSourceBullets(sourceExperience);
   const roleBulletGroups = collectExperienceArrays(resume.experience);
   const polishedGroups = roleBulletGroups.map((bullets, roleIdx) => {
+    if (preserveSet.has(roleIdx)) return bullets; // freeze KOCO/Rubico/Artisanssoft
     const roleSourceBullets = sourceExperience[roleIdx]?.bullets || [];
     const enriched = enrichBulletsWithMetrics(
       bullets,
@@ -1009,6 +1011,7 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
   }
 
   const allowSyntheticMetrics = opts.allowSyntheticMetrics === true;
+  const preserveRoleIndices = Array.isArray(opts.preserveRoleIndices) ? opts.preserveRoleIndices : [];
   const usedVerbs = new Set();
   let verbsRotated = 0;
   let metricsEnriched = 0;
@@ -1036,7 +1039,13 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
   const MAX_ITER = 6;
   while (polishIterations < MAX_ITER && atsContentScore < ATS_TARGET_SCORE) {
     polishIterations += 1;
-    const pass = applyExperiencePolish(resume, sourceExperience, usedVerbs, allowSyntheticMetrics);
+    const pass = applyExperiencePolish(
+      resume,
+      sourceExperience,
+      usedVerbs,
+      allowSyntheticMetrics,
+      preserveRoleIndices,
+    );
     verbsRotated += pass.verbsRotated;
     metricsEnriched += pass.metricsEnriched;
     wordRepetitionsFixed += pass.wordRepetitionsFixed;

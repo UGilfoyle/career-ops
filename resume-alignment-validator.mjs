@@ -27,6 +27,12 @@ import {
   estimateAtsContentScore,
   polishTailoredResume,
 } from './resume-quality.mjs';
+import {
+  buildTailoringPlan,
+  executeTailoringPlan,
+  measureMutableRoleCoverage,
+  assertPreservedEquality,
+} from './resume-tailoring-plan.mjs';
 
 export const ATS_MIN_SCORE = 90;
 
@@ -99,29 +105,9 @@ export function buildSourceResumeFromProfile(profile, jdText = '') {
 }
 
 export function buildAlignedResumeFromProfile(profile, jdText) {
-  const fit = analyzeJdProfileFit(jdText, profile);
-  const honest = fit.honest;
-  const jdTech = extractJdTechKeywords(jdText, 18);
-  const atsKeywords = [...new Set([...jdTech, ...honest])].slice(0, 20);
-  const years = Number(profile?.candidate?.years_experience) || 0;
-  const draft = {
-    summary: buildHonestSummary('', years, atsKeywords, jdText),
-    core_competencies: buildJdMatchedCompetencies(atsKeywords, profile, jdText),
-    experience: reframeExperienceFromProfile(
-      profile?.experience || [],
-      jdText,
-      honest.length ? honest : atsKeywords,
-      Math.min(7, (profile?.experience || []).length)
-    ),
-  };
-  const { resume: aligned } = alignResumeToJd(draft, atsKeywords, profile?.experience || [], {
-    bulletKeywords: honest.length ? honest : atsKeywords.slice(0, 6),
-  });
-  const jdAlign = measureJdAlignment(aligned, atsKeywords);
-  const { resume: polished, stats } = polishTailoredResume(aligned, profile?.experience || [], {
-    jdAlignScore: jdAlign.score,
-  });
-  return { resume: polished, fit, polishStats: stats };
+  const plan = buildTailoringPlan(jdText, profile);
+  const executed = executeTailoringPlan(plan, profile, { jdText });
+  return { resume: executed.resume, fit: plan.fit, polishStats: executed.polishStats, plan };
 }
 
 function findEvidence(corpus, keyword) {
@@ -345,6 +331,8 @@ export function validateResumeAlignment({
   finalResume = null,
   meta = {},
   atsMin = ATS_MIN_SCORE,
+  plan = null,
+  preservedSnapshot = null,
 } = {}) {
   if (!jdText || String(jdText).trim().length < 40) {
     return {
@@ -357,7 +345,8 @@ export function validateResumeAlignment({
     };
   }
 
-  const fit = analyzeJdProfileFit(jdText, profile);
+  const activePlan = plan || buildTailoringPlan(jdText, profile);
+  const fit = activePlan.fit || analyzeJdProfileFit(jdText, profile);
   const source = deepClone(sourceResume || buildSourceResumeFromProfile(profile, jdText));
   const aligned = deepClone(finalResume || buildAlignedResumeFromProfile(profile, jdText).resume);
   const llm = deepClone(llmDraft || aligned);
@@ -472,12 +461,55 @@ export function validateResumeAlignment({
     }
   }
 
-  const verdict = selected && reasons.length === 0 ? 'PASS' : 'FAIL';
-  if (verdict === 'FAIL' && selected && reasons.length === 0) {
-    // unreachable safety
-  }
-
+  let verdict = selected && reasons.length === 0 ? 'PASS' : 'FAIL';
   const selectedResume = selected ? candidates[selected.id].resume : aligned;
+
+  // Plan-aware: frozen employers + keyword-sprinkle trap
+  let mutableCoverage = null;
+  let frozenCheck = null;
+  if (activePlan?.tailorIndices?.length) {
+    mutableCoverage = measureMutableRoleCoverage(
+      selectedResume,
+      activePlan,
+      [
+        ...(activePlan.keywords?.weave || []),
+        ...(activePlan.keywords?.honest || []),
+        ...(activePlan.keywords?.domain || []),
+      ],
+    );
+    const compsOnly = measureJdAlignment(
+      { core_competencies: selectedResume?.core_competencies || [] },
+      activePlan.keywords?.atsMirror || [],
+    );
+    const minRatio = activePlan.validation?.mutableCoverageMin ?? 0.35;
+    // Sprinkle trap: rich competencies but most mutable roles have zero JD signal
+    if (compsOnly.matchRatio >= 0.7 && (mutableCoverage.roleHitRatio ?? 0) < 0.5) {
+      reasons.push(
+        `Keyword sprinkle trap: competencies ${compsOnly.score}% but only ${mutableCoverage.rolesWithHit}/${activePlan.tailorIndices.length} mutable roles carry JD terms`,
+      );
+      verdict = 'FAIL';
+    } else if (compsOnly.matchRatio >= 0.7 && mutableCoverage.matchRatio < minRatio && mutableCoverage.rolesWithHit === 0) {
+      reasons.push(
+        `Keyword sprinkle trap: competencies ${compsOnly.score}% but mutable experience only ${mutableCoverage.score}%`,
+      );
+      verdict = 'FAIL';
+    } else if (mutableCoverage.matchRatio < minRatio && activePlan.tailorIndices.length) {
+      reasons.push(
+        `Mutable-role JD coverage ${mutableCoverage.score}% below floor ${Math.round(minRatio * 100)}%`,
+      );
+      verdict = 'FAIL';
+    }
+  }
+  if (preservedSnapshot) {
+    frozenCheck = assertPreservedEquality(selectedResume, preservedSnapshot);
+    if (!frozenCheck.pass) {
+      reasons.push(
+        `Frozen employers changed: ${frozenCheck.mismatches.map((m) => m.roleIndex).join(', ')}`,
+      );
+      verdict = 'FAIL';
+    }
+  }
+  if (reasons.length > 0) verdict = 'FAIL';
 
   return {
     verdict,
@@ -505,6 +537,13 @@ export function validateResumeAlignment({
       honest: fit.honest,
       gaps: fit.gaps,
       jdKeywords: fit.jdKeywords,
+    },
+    plan: {
+      family: activePlan?.family,
+      tailorIndices: activePlan?.tailorIndices,
+      preserveIndices: activePlan?.preserveIndices,
+      mutableCoverage,
+      frozenCheck,
     },
     meta: {
       company: meta.company || '',

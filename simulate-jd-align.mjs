@@ -107,8 +107,8 @@ function assertFixtureExpectations(name, result) {
   if (result.verdict !== 'PASS') {
     fails.push(`expected PASS, got ${result.verdict}: ${(result.reasons || []).join('; ')}`);
   }
-  if ((result.selected?.ats ?? 0) < 50) {
-    fails.push(`ATS ${result.selected?.ats} < 50`);
+  if ((result.selected?.ats ?? 0) < 90) {
+    fails.push(`ATS ${result.selected?.ats} < 90`);
   }
   // Trap fixture: experience must not invent .NET / C# / Redux project history
   // (competencies may list JD target stack for ATS)

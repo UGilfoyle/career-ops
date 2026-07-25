@@ -13,7 +13,7 @@ import {
   parseTenureMonths,
   bulletsBudgetForRole,
   preferSourceIfThin,
-  elevateBulletToSenior,
+  elevateBulletForEmployer,
 } from './resume-quality.mjs';
 
 const PROFILE_TECH_PATTERNS = [
@@ -164,6 +164,9 @@ const JD_THEME_TERMS = [
   'end-to-end', 'observability', 'experimentation', 'data pipeline', 'analytics', 'full-stack',
   'code review', 'design review', 'incident', 'resilience', 'scalable', 'high-traffic',
   'llm', 'ai agent', 'machine learning', 'typescript', 'react', 'javascript', 'redux',
+  // ETL / data quality themes — rank source bullets that already prove related work
+  'etl', 'reconcil', 'validat', 'warehouse', 'oracle', 'sql', 'pandas', 'schema',
+  'data integrity', 'migration', 'staging', 'scd', 'window function',
 ];
 
 function scoreBulletForJd(bullet, jdText, honestKeywords) {
@@ -181,7 +184,7 @@ function scoreBulletForJd(bullet, jdText, honestKeywords) {
   return score;
 }
 
-function enhanceBulletHonest(bullet, honestKeywords) {
+function enhanceBulletHonest(bullet, honestKeywords, company = '') {
   let text = stripMarkdown(bullet);
   if (!text) return text;
 
@@ -232,7 +235,7 @@ function enhanceBulletHonest(bullet, honestKeywords) {
   // Capitalize leading letter; ensure terminal period (polish will re-normalize)
   text = text.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
   if (!/[.!?]$/.test(text)) text += '.';
-  return elevateBulletToSenior(text);
+  return elevateBulletForEmployer(text, company || text);
 }
 
 /** Infer a senior role title from JD language for summary framing. */
@@ -241,6 +244,9 @@ export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   const y = Number(yearsExp) || 0;
   if (/\bstaff\s+(software\s+)?engineer\b|\bprincipal\s+(software\s+)?engineer\b/.test(t)) {
     return y >= 8 ? 'Staff Software Engineer' : 'Senior Software Engineer';
+  }
+  if (/\b(etl testing|senior consultant|data warehouse)\b/.test(t)) {
+    return 'Senior Consultant - ETL Testing';
   }
   if (/\b(web scrap|scraping)\b/.test(t) && /\bjavascript|js\b|node/.test(t)) {
     return 'Senior JavaScript Developer';
@@ -259,25 +265,34 @@ export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
 /**
  * Rebuild per-role tailored bullets from profile source, ranked by JD relevance.
  * Uses only facts from profile bullets — never invents stacks.
+ *
+ * @param {object} [opts]
+ * @param {number[]} [opts.tailorIndices] — only reframe these role indices; others omitted from output
  */
-export function reframeExperienceFromProfile(profileExperience, jdText, honestKeywords, rolesCount = 7) {
+export function reframeExperienceFromProfile(profileExperience, jdText, honestKeywords, rolesCount = 7, opts = {}) {
   const exp = Array.isArray(profileExperience) ? profileExperience : [];
   const count = Math.min(rolesCount, exp.length);
   const out = {};
+  const tailorSet = Array.isArray(opts.tailorIndices) && opts.tailorIndices.length
+    ? new Set(opts.tailorIndices.map(Number))
+    : null;
 
   for (let i = 0; i < count; i++) {
+    if (tailorSet && !tailorSet.has(i)) continue;
+
     const tenureMonths = parseTenureMonths(exp[i]?.period);
     const bulletCap = bulletsBudgetForRole(i, { tenureMonths, maxPages: 2 });
+    const company = exp[i]?.company || '';
     const rawBullets = (exp[i]?.bullets || []).map(stripMarkdown).filter((b) => b.length > 20);
     const bullets = explodeWallOfTextBullets(rawBullets, { maxBullets: bulletCap + 2 });
     const ranked = [...bullets].sort(
       (a, b) => scoreBulletForJd(b, jdText, honestKeywords) - scoreBulletForJd(a, jdText, honestKeywords)
     );
     const top = ranked.slice(0, bulletCap);
-    let framed = top.map((b) => enhanceBulletHonest(b, honestKeywords));
+    let framed = top.map((b) => enhanceBulletHonest(b, honestKeywords, company));
     while (framed.length < bulletCap && ranked.length > 0) {
       const next = ranked[framed.length % ranked.length];
-      const enhanced = enhanceBulletHonest(next, honestKeywords);
+      const enhanced = enhanceBulletHonest(next, honestKeywords, company);
       if (!framed.includes(enhanced)) framed.push(enhanced);
       else break;
     }
@@ -285,7 +300,7 @@ export function reframeExperienceFromProfile(profileExperience, jdText, honestKe
     out[String(i)] = preferSourceIfThin(framed, rawBullets, {
       minCount: Math.min(3, bulletCap),
       maxBullets: bulletCap,
-    }).map((b) => enhanceBulletHonest(b, honestKeywords));
+    }).map((b) => enhanceBulletHonest(b, honestKeywords, company));
   }
   return out;
 }
@@ -338,6 +353,18 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     ['websocket', 'WebSockets'],
     ['web scraping', 'Web Scraping'],
     ['scraping', 'Web Scraping'],
+    ['etl testing', 'ETL Testing'],
+    ['etl', 'ETL Testing'],
+    ['source-to-target', 'Source-to-Target Validation'],
+    ['reconcil', 'Data Reconciliation'],
+    ['pandas', 'pandas'],
+    ['pyodbc', 'pyodbc'],
+    ['data warehouse', 'Data Warehouse'],
+    ['scd', 'SCD Handling'],
+    ['window function', 'SQL Window Functions'],
+    ['jira', 'JIRA'],
+    ['unix', 'Unix/Linux Shell'],
+    ['linux', 'Unix/Linux Shell'],
     ['orm', 'ORM'],
     ['message broker', 'Message Brokers'],
     ['react', 'React / TypeScript Frontend'],
@@ -367,6 +394,7 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     ['c#', 'C#'],
     ['postgresql', 'PostgreSQL'],
     ['mongodb', 'MongoDB'],
+    ['oracle', 'Oracle'],
     ['graphql', 'GraphQL'],
   ];
   for (const [needle, label] of transfers) {
@@ -390,9 +418,19 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   // Lead stack = real JD tech only (never Indeed chrome like "Find")
   // Prefer languages/frameworks/cloud over editor tools (Copilot/Cursor) in the identity line
   const isEditorTool = (k) => /\b(copilot|cursor|chatgpt|claude code)\b/i.test(String(k));
+  const isGapOnlyTool = (k) => /\b(mainframe|rally|qtest)\b/i.test(String(k));
+  const honestList = (honestKeywords || []).filter((k) => isWeavableKeyword(k));
+  const honestKeys = new Set(honestList.map((k) => normalizeKey(k)));
   const jdTech = extractJdTechKeywords(jdText, 10).filter((k) => isWeavableKeyword(k));
-  const leadPool = [...jdTech, ...(honestKeywords || [])]
-    .filter((k) => !FRAGMENT_BLOCKLIST.has(normalizeKey(k)) && isWeavableKeyword(k));
+  // Prefer caller-provided honest/weave terms; only add JD tech already proven (or multi-word domain).
+  const leadPool = [...honestList, ...jdTech]
+    .filter((k) => {
+      if (FRAGMENT_BLOCKLIST.has(normalizeKey(k)) || !isWeavableKeyword(k)) return false;
+      if (isGapOnlyTool(k) && !honestKeys.has(normalizeKey(k))) return false;
+      if (String(k).split(/\s+/).length >= 2) return true;
+      if (!honestKeys.size) return true;
+      return honestKeys.has(normalizeKey(k));
+    });
   const rankedLead = [
     ...leadPool.filter((k) => !isEditorTool(k)),
     ...leadPool.filter((k) => isEditorTool(k)),
@@ -412,7 +450,9 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   );
 
   // Line 2 — architecture / depth matched to JD (hard outcomes, not soft skills)
-  if (/\b(web scrap|scraping|puppeteer|playwright|cheerio|selenium)\b/i.test(jdLower)) {
+  if (/\betl\b|\bdata warehouse\b|\bdata reconcil|\bsource-to-target\b|\bscd\b/i.test(jdLower)) {
+    lines.push('Own Python-based ETL validation, source-to-target checks, and SQL-backed data reconciliation across warehouse layers.');
+  } else if (/\b(web scrap|scraping|puppeteer|playwright|cheerio|selenium)\b/i.test(jdLower)) {
     lines.push('Ship JavaScript services for data extraction and browser automation with solid REST APIs, Postgres, and cloud delivery.');
   } else if (/\b(llm|ai agent|generative ai|openai|langchain|rag|vector)\b/i.test(jdLower)) {
     lines.push('Lead LLM-backed features and AI-assisted delivery (Cursor, Copilot) with production-grade API reliability and validation loops.');
