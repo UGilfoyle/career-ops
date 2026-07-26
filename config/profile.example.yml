@@ -78,3 +78,9 @@ location:
   visa_status: "No sponsorship needed"
   # For remote roles outside your country:
   # onsite_availability: "1 week/month in any city"
+
+# (Optional) Resume tailoring employer policy
+# tailoring:
+#   full_tailor: ["Company A", "Company B"]
+#   preserve_verbatim: ["Older Co"]
+#   senior_tone: ["Company A", "Company B"]

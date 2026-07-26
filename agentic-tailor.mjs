@@ -46,6 +46,14 @@ import {
   writeAlignmentReport,
 } from './resume-alignment-validator.mjs';
 import { isIndeedUrl, fetchIndeedJob } from './indeed-job.mjs';
+import {
+  buildTailoringPlan,
+  executeTailoringPlan,
+  repairTailoredResume,
+  measureMutableRoleCoverage,
+  assertPreservedEquality,
+  restorePreservedEmployers,
+} from './resume-tailoring-plan.mjs';
 
 let hf = null;
 let hfUnavailable = false;
@@ -1207,60 +1215,44 @@ function coverLetterBodyToHtml(text) {
 }
 
 async function tailorPackage(jd, profile, companyName, passedCompanyType) {
-  const jdKeywords = extractJdKeywords(jd, 20);
-  const jdTechKeywords = extractJdTechKeywords(jd, 18);
-  const jdFit = analyzeJdProfileFit(jd, profile);
-  const honestKeywords = jdFit.honest;
-  const gapKeywords = jdFit.gaps;
-  // ATS alignment set: JD tech stack (full) — competencies/skills mirror the posting
-  const atsKeywords = [...new Set([...jdTechKeywords, ...honestKeywords, ...jdKeywords])]
-    .filter(Boolean)
-    .slice(0, 20);
+  const plan = buildTailoringPlan(jd, profile);
+  const jdKeywords = plan.keywords.atsMirror;
+  const jdTechKeywords = plan.parsed.jdTech;
+  const jdFit = plan.fit;
+  const honestKeywords = plan.keywords.honest;
+  const gapKeywords = plan.keywords.gaps;
+  const atsKeywords = plan.keywords.atsMirror;
   if (gapKeywords.length > 0) {
     console.log(`⚠️ JD gaps (skills OK for ATS; not invented in experience): ${gapKeywords.slice(0, 8).join(', ')}`);
   }
   if (atsKeywords.length > 0) {
     console.log(`✓ JD ATS match terms: ${atsKeywords.slice(0, 12).join(', ')}`);
   }
+  console.log(
+    `✓ Employer policy: tailor [${plan.tailorIndices.join(',')}] freeze [${plan.preserveIndices.join(',')}] family=${plan.family}`,
+  );
+
   const hfClient = await getHfClient();
   if (hfClient) {
     console.log(`🤖 Generating tailored package with ${HF_MODEL}...`);
   } else if (hfTokenInUse) {
     console.log(`🤖 Using direct Hugging Face API with ${HF_MODEL}...`);
   } else {
-    const y = effectiveYearsOfExperience(profile);
-    const fallbackResume = {
-      summary: buildHonestSummary(profile?.narrative?.exit_story || '', y, atsKeywords, jd),
-      core_competencies: buildJdMatchedCompetencies(atsKeywords, profile, jd),
-      experience: reframeExperienceFromProfile(
-        profile?.experience || [],
-        jd,
-        honestKeywords.length ? honestKeywords : atsKeywords,
-        Math.min(7, (profile?.experience || []).length)
-      ),
-    };
-    const { resume: aligned } = alignResumeToJd(fallbackResume, atsKeywords, profile?.experience || [], {
-      bulletKeywords: honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6),
+    const executed = executeTailoringPlan(plan, profile, {
+      jdText: jd,
+      companyName,
     });
-    ensureAllRolesTailored(aligned, profile?.experience, honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6));
-    const offlineAlign = measureJdAlignment(aligned, atsKeywords);
-    const { resume: polishedOffline, stats: polishStats } = polishTailoredResume(
-      aligned,
-      profile?.experience || [],
-      { jdAlignScore: offlineAlign.score, allowSyntheticMetrics: false }
-    );
-    console.log(`📈 Offline ATS content score: ${polishStats.atsContentScore}/100 (target 90+)`);
+    console.log(`📈 Offline ATS content score: ${executed.ats_content_score}/100 (target 90+)`);
     const offlinePackage = {
-      resume: polishedOffline,
-      cover_letter: (() => {
-        const jdHook = atsKeywords.slice(0, 3).join(', ') || 'the technical requirements described in the posting';
-        return `I am writing to express my interest in opportunities with ${companyName} that align with the technical requirements described in the posting. The role emphasizes delivery in production environments; my background includes building and operating backend systems with a focus on reliability and measurable performance.\n\nMy recent work aligns with several themes in the job description, including ${jdHook}. I am prepared to contribute on day one and to collaborate closely with engineering and operations partners.\n\nI would welcome the opportunity to discuss fit and next steps.`;
-      })(),
+      resume: executed.resume,
+      cover_letter: executed.cover_letter,
       jd_gap_keywords: gapKeywords,
-      jd_alignment_score: offlineAlign.score,
-      ats_content_score: polishStats.atsContentScore,
+      jd_alignment_score: executed.jd_alignment_score,
+      ats_content_score: executed.ats_content_score,
+      tailoring_plan: plan,
+      preserved_snapshot: executed.preservedSnapshot,
     };
-    return applyAlignmentGate(offlinePackage, jd, profile, companyName, polishedOffline);
+    return applyAlignmentGate(offlinePackage, jd, profile, companyName, executed.resume, plan);
   }
 
   const yearsExp = effectiveYearsOfExperience(profile);
@@ -1280,12 +1272,15 @@ Superpowers / keywords: ${(profile?.narrative?.superpowers || []).join(', ')}
 
 Recent roles — fact base for what you worked on (paraphrase; do not fabricate employers or metrics):
 ${experienceDigest}`;
-  // Determine how many roles to tailor (top 4 most relevant to cover 2022-2026)
-  const rolesToTailor = Math.min(7, (profile?.experience || []).length);
+  // Tailor ONLY mutable employers from the plan (Quest/INTVERSE/Glidewell/Srijan)
+  const rolesToTailor = plan.tailorIndices.length
+    ? Math.max(...plan.tailorIndices) + 1
+    : Math.min(4, (profile?.experience || []).length);
   const roleDigest = (profile?.experience || []).slice(0, rolesToTailor).map((e, i) => {
     const role = e?.role || e?.title || 'Role';
     const company = e?.company || 'Company';
-    return `  Role ${i}: "${role}" at "${company}"`;
+    const mode = plan.employers[i]?.mode || 'full_tailor';
+    return `  Role ${i}: "${role}" at "${company}" [${mode}]`;
   }).join('\n');
 
   const companyType = passedCompanyType || classifyCompany(companyName);
@@ -1341,8 +1336,9 @@ TASK:
       - Mix exact JD tool names with transferable labels (e.g. "RESTful API Design", "CI/CD Pipelines", "Unit & Integration Testing").
       - This section is for ATS matching — list the JD stack even when some tools are stretch/adjacent to digest experience.
 
-   c) **Experience bullets** (resume.experience): Rewrite bullets for ALL ${rolesToTailor} roles (including older ones).
-      Return as an OBJECT keyed by role index ("0"…"${Math.max(0, rolesToTailor - 1)}"), each with 4 tailored bullets (never fewer than 3; roles with ~2 years tenure need 3–4). Use senior tone only for Quest/INTVERSE/Glidewell/Srijan; mid-level tone for KOCO/Rubico/Artisanssoft.
+   c) **Experience bullets** (resume.experience): Rewrite bullets ONLY for full_tailor roles (indices ${plan.tailorIndices.join(', ') || '0-3'}).
+      Do NOT rewrite preserve_verbatim roles (${plan.preserveIndices.join(', ') || '4+'}). Return those keys as empty arrays.
+      Return as an OBJECT keyed by role index, each with 4 tailored bullets (never fewer than 3; roles with ~2 years tenure need 3–4). Use senior tone only for Quest/INTVERSE/Glidewell/Srijan; mid-level tone for KOCO/Rubico/Artisanssoft.
 ${roleDigest}
       BULLET RULES — COMPANY-AWARE TONE (do not oversell older roles):
       - SENIOR LinkedIn/ATS bar ONLY for: Quest Global / Quest, INTVERSE, Glidewell, Srijan — ownership, architecture, reliability, mentoring/SDLC, measurable impact
@@ -1536,62 +1532,47 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   if (data?.resume) {
     const llmDraft = JSON.parse(JSON.stringify(data.resume));
 
-    // JD-first ATS reframe: competencies mirror posting; bullets stay fact-based
-    const yExp = effectiveYearsOfExperience(profile);
-    data.resume.summary = buildHonestSummary(data.resume.summary, yExp, atsKeywords, jd);
-    data.resume.core_competencies = buildJdMatchedCompetencies(atsKeywords, profile, jd);
-    data.resume.experience = reframeExperienceFromProfile(
-      profile?.experience || [],
-      jd,
-      honestKeywords.length ? honestKeywords : atsKeywords,
-      Math.min(7, (profile?.experience || []).length)
-    );
+    // Plan-driven execution: deterministic summary/competencies/experience with selective employers.
+    // LLM draft is kept only as a comparison candidate + optional summary/cover hint.
+    const executed = executeTailoringPlan(plan, profile, {
+      jdText: jd,
+      companyName,
+      llmSummary: data.resume.summary,
+      llmCoverLetter: data.cover_letter,
+    });
 
-    if (atsKeywords.length > 0) {
-      let { resume: aligned } = alignResumeToJd(
-        data.resume,
-        atsKeywords,
-        profile?.experience || [],
-        { bulletKeywords: honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6) }
-      );
-      ensureAllRolesTailored(
-        aligned,
-        profile?.experience,
-        honestKeywords.length ? honestKeywords : atsKeywords.slice(0, 6),
-        Math.min(7, (profile?.experience || []).length)
-      );
-      let alignment = measureJdAlignment(aligned, atsKeywords);
-      data.resume = aligned;
-      data.jd_alignment_score = alignment.score;
-      data.jd_gap_keywords = gapKeywords;
-      console.log(
-        `🎯 JD ATS alignment: ${alignment.score}% (${alignment.matched.length}/${atsKeywords.length} terms; experience gaps not invented: ${gapKeywords.length})`
-      );
-      if (gapKeywords.length > 0) {
-        console.warn(`⚠ Experience stays factual — gaps only in skills/ATS: ${gapKeywords.slice(0, 8).join(', ')}`);
+    // Merge any strong LLM bullets for mutable roles that still look thin
+    if (llmDraft.experience && typeof llmDraft.experience === 'object' && !Array.isArray(llmDraft.experience)) {
+      for (const idx of plan.tailorIndices) {
+        const key = String(idx);
+        const llmBullets = Array.isArray(llmDraft.experience[key]) ? llmDraft.experience[key] : [];
+        const cur = Array.isArray(executed.resume.experience[key]) ? executed.resume.experience[key] : [];
+        if (llmBullets.length >= 3 && cur.length < 3) {
+          executed.resume.experience[key] = llmBullets.slice(0, 5);
+        }
       }
+      executed.resume = restorePreservedEmployers(executed.resume, executed.preservedSnapshot);
     }
 
-    // Polish AFTER JD align so ATS score reflects the final resume (target 90+)
-    // allowSyntheticMetrics: false — graft from profile only (Zety honesty bar)
-    const { resume: polished, stats } = polishTailoredResume(
-      data.resume,
-      profile?.experience || [],
-      { jdAlignScore: data.jd_alignment_score, allowSyntheticMetrics: false }
+    data.resume = executed.resume;
+    data.cover_letter = executed.cover_letter || data.cover_letter;
+    data.jd_alignment_score = executed.jd_alignment_score;
+    data.jd_gap_keywords = gapKeywords;
+    data.ats_content_score = executed.ats_content_score;
+    data.tailoring_plan = plan;
+    data.preserved_snapshot = executed.preservedSnapshot;
+
+    console.log(
+      `🎯 JD ATS alignment: ${executed.jd_alignment_score}% (plan family=${plan.family}; frozen roles=${plan.preserveIndices.length})`
     );
-    data.resume = polished;
-    const audit = auditResumeQuality(data.resume);
-    const fixes = [
-      stats.verbsRotated > 0 ? `${stats.verbsRotated} verb(s) rotated` : null,
-      stats.metricsEnriched > 0 ? `${stats.metricsEnriched} metric(s) grafted` : null,
-      stats.wordRepetitionsFixed > 0 ? `${stats.wordRepetitionsFixed} repetition(s) fixed` : null,
-    ].filter(Boolean);
-    if (fixes.length > 0) {
-      console.log(`📊 Resume quality polish: ${fixes.join(', ')}`);
+    if (gapKeywords.length > 0) {
+      console.warn(`⚠ Experience stays factual — gaps only in skills/ATS: ${gapKeywords.slice(0, 8).join(', ')}`);
     }
-    console.log(`📈 Estimated ATS content score: ${stats.atsContentScore}/100 (target 90+)`);
-    if (stats.atsContentScore < 90) {
-      console.warn(`⚠ ATS score ${stats.atsContentScore} below 90 — alignment gate will re-polish or fail`);
+
+    const audit = auditResumeQuality(data.resume);
+    console.log(`📈 Estimated ATS content score: ${executed.ats_content_score}/100 (target 90+)`);
+    if ((executed.ats_content_score ?? 0) < 90) {
+      console.warn(`⚠ ATS score ${executed.ats_content_score} below 90 — alignment gate will re-polish or fail`);
     }
     if (audit.repeatedVerbs.length > 0) {
       console.warn(`⚠ Remaining repeated verbs: ${audit.repeatedVerbs.join(', ')}`);
@@ -1603,16 +1584,57 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       const pct = Math.round(((audit.totalBullets - audit.withoutMetrics) / audit.totalBullets) * 100);
       console.log(`📈 Quantified impact coverage: ${pct}% of bullets (${audit.totalBullets - audit.withoutMetrics}/${audit.totalBullets})`);
     }
-    data.ats_content_score = stats.atsContentScore ?? null;
 
-    return applyAlignmentGate(data, jd, profile, companyName, llmDraft);
+    return applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan);
   }
 
   return data;
 }
 
 /** Compare source / LLM / aligned resumes; keep the strongest honest candidate or throw. */
-function applyAlignmentGate(data, jd, profile, companyName, llmDraft) {
+function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = null) {
+  const activePlan = plan || data.tailoring_plan || buildTailoringPlan(jd, profile);
+  let working = data.resume;
+
+  // Repair pass when mutable-role coverage is weak
+  let mutable = measureMutableRoleCoverage(
+    working,
+    activePlan,
+    [
+      ...(activePlan.keywords.weave || []),
+      ...(activePlan.keywords.honest || []),
+      ...(activePlan.keywords.domain || []),
+    ],
+  );
+  const minRatio = activePlan.validation?.mutableCoverageMin ?? 0.45;
+  if (mutable.matchRatio < minRatio) {
+    console.warn(
+      `⚠ Mutable-role JD coverage ${mutable.score}% < ${Math.round(minRatio * 100)}% — running repair pass`,
+    );
+    working = repairTailoredResume(working, activePlan, profile, jd);
+    const repaired = executeTailoringPlan(activePlan, profile, {
+      jdText: jd,
+      companyName,
+      llmSummary: working.summary,
+      llmCoverLetter: data.cover_letter,
+    });
+    working = repaired.resume;
+    data.preserved_snapshot = repaired.preservedSnapshot;
+    mutable = measureMutableRoleCoverage(
+      working,
+      activePlan,
+      [...(activePlan.keywords.honest || []), ...(activePlan.keywords.domain || [])],
+    );
+  }
+
+  // Freeze restore before gate
+  if (data.preserved_snapshot) {
+    working = restorePreservedEmployers(working, data.preserved_snapshot);
+  }
+  data.resume = working;
+  data.tailoring_plan = activePlan;
+  data.mutable_role_coverage = mutable;
+
   const alignment = validateResumeAlignment({
     jdText: jd,
     profile,
@@ -1620,16 +1642,61 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft) {
     llmDraft: llmDraft || data.resume,
     finalResume: data.resume,
     meta: { company: companyName || '' },
+    plan: activePlan,
+    preservedSnapshot: data.preserved_snapshot,
   });
   printAlignmentConfirmation(alignment);
   data.alignment_confirmation = alignment;
   data.resume = alignment.selectedResume || data.resume;
+  if (data.preserved_snapshot) {
+    data.resume = restorePreservedEmployers(data.resume, data.preserved_snapshot);
+  }
   if (alignment.selected?.ats != null) {
     data.ats_content_score = alignment.selected.ats;
   }
   if (alignment.selected?.honestCoverage != null) {
     data.jd_alignment_score = alignment.selected.honestCoverage;
   }
+
+  // Hard fail on frozen-role drift or keyword-sprinkle trap (rich skills, empty mutable experience)
+  const frozen = assertPreservedEquality(data.resume, data.preserved_snapshot || {});
+  if (!frozen.pass) {
+    alignment.verdict = 'FAIL';
+    alignment.reasons = [
+      ...(alignment.reasons || []),
+      `Frozen employers changed: ${frozen.mismatches.map((m) => m.roleIndex).join(', ')}`,
+    ];
+  }
+  const compsAlign = measureJdAlignment(
+    { core_competencies: data.resume?.core_competencies || [] },
+    activePlan.keywords.atsMirror || [],
+  );
+  mutable = measureMutableRoleCoverage(
+    data.resume,
+    activePlan,
+    [
+      ...(activePlan.keywords.weave || []),
+      ...(activePlan.keywords.honest || []),
+      ...(activePlan.keywords.domain || []),
+    ],
+  );
+  data.mutable_role_coverage = mutable;
+  if (compsAlign.matchRatio >= 0.7 && (mutable.roleHitRatio ?? 0) < 0.5 && activePlan.tailorIndices.length) {
+    alignment.verdict = 'FAIL';
+    alignment.reasons = [
+      ...(alignment.reasons || []),
+      `Keyword sprinkle trap: competencies ${compsAlign.score}% but only ${mutable.rolesWithHit}/${activePlan.tailorIndices.length} mutable roles carry JD terms`,
+    ];
+  }
+  const minMutable = activePlan.validation?.mutableCoverageMin ?? 0.35;
+  if (mutable.matchRatio < minMutable && activePlan.tailorIndices.length) {
+    alignment.verdict = 'FAIL';
+    alignment.reasons = [
+      ...(alignment.reasons || []),
+      `Mutable-role JD coverage ${mutable.score}% below floor ${Math.round(minMutable * 100)}%`,
+    ];
+  }
+
   if (alignment.verdict !== 'PASS') {
     const err = new Error(
       `Resume–JD alignment gate FAILED:\n${(alignment.reasons || []).map((r) => `  - ${r}`).join('\n')}`

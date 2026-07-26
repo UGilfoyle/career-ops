@@ -4,22 +4,27 @@
 
 1. Read `cv.md` as the source of truth
 2. Ask the user for the JD if it is not in context (text or URL)
-3. Extract 15-20 keywords from the JD
-4. Detect JD language → CV language (EN default)
-5. Detect company location → paper format:
+3. Prefer the deterministic package builder when available — works for **any** pasted JD / URL, not a single company:
+   - `node scripts/run-plan-tailor.mjs --jd <file> --company <name> --role <title>`
+   - Or dashboard/CLI `agentic-tailor.mjs` (same engine; dashboard wrapper spawns root)
+   - This path builds a `TailoringPlan` from the JD (tech + dynamic domain phrases), tailors only configured recent employers, freezes older roles, repairs weak mutable coverage, validates alignment, then emits resume + cover PDFs + `.alignment.md`
+4. If the deterministic path is unavailable, fall back to the manual steps below
+5. Extract 15-20 keywords from the JD
+6. Detect JD language → CV language (EN default)
+7. Detect company location → paper format:
    - US/Canada → `letter`
    - Rest of the world → `a4`
-6. Detect role archetype → adapt framing
-7. Rewrite Professional Summary by injecting JD keywords + exit narrative bridge ("Built and sold a business. Now applying systems thinking to [JD domain].")
-8. Select top 3-4 most relevant projects for the job
-9. Reorder experience bullets by JD relevance
-10. Build competency grid from JD requirements (6-8 keyword phrases)
-11. Inject keywords naturally into existing achievements (NEVER invent)
-12. Generate full HTML from template + personalized content
-13. Read `name` from `config/profile.yml` → normalize to kebab-case lowercase (e.g. "John Doe" → "john-doe") → `{candidate}`
-14. Write HTML to `/tmp/cv-{candidate}-{company}.html`
-15. Execute: `node generate-pdf.mjs /tmp/cv-{candidate}-{company}.html output/cv-{candidate}-{company}-{YYYY-MM-DD}.pdf --format={letter|a4}`
-16. Report: PDF path, number of pages, keyword coverage %
+8. Detect role archetype → adapt framing
+9. Rewrite Professional Summary by injecting JD keywords + exit narrative bridge ("Built and sold a business. Now applying systems thinking to [JD domain].")
+10. Select top 3-4 most relevant projects for the job
+11. Reorder experience bullets by JD relevance (mutable employers only when a tailoring policy exists)
+12. Build competency grid from JD requirements (6-8 keyword phrases)
+13. Inject keywords naturally into existing achievements (NEVER invent)
+14. Generate full HTML from template + personalized content
+15. Read `name` from `config/profile.yml` → normalize to kebab-case lowercase (e.g. "John Doe" → "john-doe") → `{candidate}`
+16. Write HTML to `/tmp/cv-{candidate}-{company}.html`
+17. Execute: `node generate-pdf.mjs /tmp/cv-{candidate}-{company}.html output/cv-{candidate}-{company}-{YYYY-MM-DD}.pdf --format={letter|a4}`
+18. Report: PDF path, number of pages, keyword coverage %
 
 ## ATS Rules (clean parsing)
 
