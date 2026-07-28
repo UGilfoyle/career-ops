@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
+import {
+  ensureJobPostingDateColumns,
+  fetchJobPostingDate,
+} from '@/lib/job-posting-date';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
+
+/** Re-check posting date at most once per day when previously unknown. */
+const RECHECK_AFTER_MS = 24 * 60 * 60 * 1000;
 
 export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -17,6 +25,12 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       return NextResponse.json({ error: 'Invalid job id' }, { status: 400 });
     }
 
+    try {
+      await ensureJobPostingDateColumns(sql);
+    } catch {
+      // Column ensure is best-effort; SELECT may still work on older schemas via fallback.
+    }
+
     let job: any = null;
     try {
       const rows = await sql`
@@ -29,7 +43,11 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
           source,
           score,
           jd_text,
-          created_at
+          created_at,
+          posted_at,
+          posted_confidence,
+          posted_reason,
+          posted_checked_at
         FROM jobs
         WHERE id = ${jobId} AND user_id = ${userId}
         LIMIT 1
@@ -50,10 +68,54 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         LIMIT 1
       `;
       const row: any = rows[0] || null;
-      job = row ? { ...row, canonical_url: row.url, jd_text: null } : null;
+      job = row
+        ? {
+            ...row,
+            canonical_url: row.url,
+            jd_text: null,
+            posted_at: null,
+            posted_confidence: null,
+            posted_reason: null,
+            posted_checked_at: null,
+          }
+        : null;
     }
     if (!job) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    const jobUrl = String(job.canonical_url || job.url || '');
+    const checkedAt = job.posted_checked_at ? new Date(job.posted_checked_at).getTime() : 0;
+    // Lazy enrich only when we have no date yet; retry unknowns at most once per day
+    const needsEnrich =
+      Boolean(jobUrl) &&
+      !job.posted_at &&
+      (!checkedAt || Date.now() - checkedAt > RECHECK_AFTER_MS);
+
+    if (needsEnrich) {
+      const enrich = await fetchJobPostingDate(jobUrl);
+      const now = new Date();
+      try {
+        await sql`
+          UPDATE jobs
+          SET
+            posted_at = ${enrich.posted_at},
+            posted_confidence = ${enrich.confidence},
+            posted_reason = ${enrich.reason},
+            posted_checked_at = ${now.toISOString()}
+          WHERE id = ${jobId} AND user_id = ${userId}
+        `;
+        job.posted_at = enrich.posted_at;
+        job.posted_confidence = enrich.confidence;
+        job.posted_reason = enrich.reason;
+        job.posted_checked_at = now.toISOString();
+      } catch {
+        // Persist failed (missing columns); still return enrich result for this response
+        job.posted_at = enrich.posted_at ?? job.posted_at;
+        job.posted_confidence = enrich.confidence ?? job.posted_confidence;
+        job.posted_reason = enrich.reason ?? job.posted_reason;
+        job.posted_checked_at = now.toISOString();
+      }
     }
 
     return NextResponse.json({
@@ -65,8 +127,11 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       score: job.score,
       jd_text: job.jd_text || null,
       created_at: job.created_at,
-      // Many deployments have no `updated_at` on `jobs`; clients can treat this as "last known change".
       updated_at: job.created_at,
+      posted_at: job.posted_at || null,
+      posted_confidence: job.posted_confidence || null,
+      posted_reason: job.posted_reason || null,
+      posted_checked_at: job.posted_checked_at || null,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

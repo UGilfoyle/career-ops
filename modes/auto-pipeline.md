@@ -28,6 +28,10 @@ Before running any evaluation, confirm the posting is still live. The Step 0 Pla
 
 Do not continue to Step 1 until this gate is resolved.
 
+## Step 0.6 — Posting date (WhenThisJobWasPosted)
+
+If a **URL** is available, call WhenThisJobWasPosted (`get_job_posting_date` MCP tool, or REST `GET https://mcp.whenthisjobwasposted.com/api/v1/check?url=...`) and carry `posted_date` / `most_probable_date` + `confidence` into Block G freshness in Step 1. Do not invent a date when the API returns null.
+
 ## Step 1 — A-H Evaluation
 
 Execute the same as the `oferta` mode (read `modes/oferta.md` for blocks A-G + Block H GCC Signal Score when company is GCC).

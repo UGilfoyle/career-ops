@@ -106,10 +106,15 @@ Analyze the job posting for signals that indicate whether this is a real, active
 
 ### Signals to analyze (in order):
 
-**1. Posting Freshness** (from the Playwright snapshot captured during the liveness gate, or in `auto-pipeline` Step 0; unavailable if only JD text was pasted):
-- Date posted or "X days ago" -- extract from page
+**1. Posting Freshness** (prefer WhenThisJobWasPosted when a URL is available; fall back to Playwright snapshot / page text):
+- **Preferred:** Call the WhenThisJobWasPosted MCP tool `get_job_posting_date` with the job URL (or REST `GET https://mcp.whenthisjobwasposted.com/api/v1/check?url=...`). Use `posted_date` / `most_probable_date` plus `confidence` and `reason`.
+  - High confidence + recent date → Positive freshness signal
+  - High confidence + very old date (e.g. 90+ days with no update) → Concerning (possible ghost / evergreen posting)
+  - `posted_date: null` with a clear reason → Neutral; do not invent a date
+- **Fallback:** Date posted or "X days ago" extracted from the Playwright snapshot (liveness gate / auto-pipeline Step 0); unavailable if only JD text was pasted
 - Apply button state (active / closed / missing / redirects to generic page)
 - If URL redirected to generic careers page, note it
+- In report Block G / Machine Summary, record the source: `wtjwp` | `page` | `unavailable`
 
 **2. Description Quality** (from JD text):
 - Does it name specific technologies, frameworks, tools?

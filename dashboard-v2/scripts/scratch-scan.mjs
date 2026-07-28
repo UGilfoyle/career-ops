@@ -734,7 +734,11 @@ async function run() {
           ADD COLUMN IF NOT EXISTS jd_text TEXT,
           ADD COLUMN IF NOT EXISTS company_type TEXT,
           ADD COLUMN IF NOT EXISTS gcc_signal_score INTEGER,
-          ADD COLUMN IF NOT EXISTS gcc_high_value BOOLEAN DEFAULT FALSE;
+          ADD COLUMN IF NOT EXISTS gcc_high_value BOOLEAN DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS posted_confidence TEXT,
+          ADD COLUMN IF NOT EXISTS posted_reason TEXT,
+          ADD COLUMN IF NOT EXISTS posted_checked_at TIMESTAMPTZ;
       `;
     } catch {
       // ignore

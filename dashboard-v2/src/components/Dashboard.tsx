@@ -2018,7 +2018,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-5 font-medium text-[#6B6B6B]">{job.title || 'Unknown Role'}</td>
+                        <td className="px-6 py-5">
+                          <div className="font-medium text-[#6B6B6B]">{job.title || 'Unknown Role'}</div>
+                          <div className="mt-1 text-[10px] font-mono text-[#9CA3AF]">
+                            {job.posted_at
+                              ? `Posted ${formatRelativeTime(job.posted_at)}`
+                              : `Added ${formatRelativeTime(job.created_at)}`}
+                            {job.posted_confidence ? ` · ${job.posted_confidence}` : ''}
+                          </div>
+                        </td>
                         <td className="px-6 py-5">
                           <AiScoreBadge score={job.score} />
                         </td>
@@ -3523,6 +3531,19 @@ System Initialized — v2.0`}
                       Open posting
                     </a>
                   )}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-mono text-[#9CA3AF]">
+                    {jobDetails?.posted_at ? (
+                      <span>
+                        Posted {formatRelativeTime(jobDetails.posted_at)}
+                        {jobDetails.posted_confidence ? ` (${jobDetails.posted_confidence})` : ''}
+                      </span>
+                    ) : jobDetails && !jobDetailsLoading ? (
+                      <span>Posted date unknown{jobDetails.posted_reason ? ` · ${jobDetails.posted_reason}` : ''}</span>
+                    ) : null}
+                    {jobDetails?.created_at && (
+                      <span>Added {formatRelativeTime(jobDetails.created_at)}</span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setJobDetailsOpen(false)}

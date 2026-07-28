@@ -19,7 +19,14 @@ async function migrate() {
         UNIQUE(identifier, token)
       );
     `;
-    console.log('Migration successful: users and verification_tokens tables updated.');
+    await sql`
+      ALTER TABLE jobs
+        ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS posted_confidence TEXT,
+        ADD COLUMN IF NOT EXISTS posted_reason TEXT,
+        ADD COLUMN IF NOT EXISTS posted_checked_at TIMESTAMPTZ
+    `;
+    console.log('Migration successful: users, verification_tokens, and jobs.posted_* updated.');
   } catch (error) {
     console.error('Migration failed:', error);
   } finally {

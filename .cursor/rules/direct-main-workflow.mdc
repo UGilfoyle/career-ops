@@ -1,0 +1,12 @@
+---
+description: Commit and push changes directly on main; no feature branches unless asked
+alwaysApply: true
+---
+
+# Direct main workflow
+
+- Work on `main` by default. Do not create feature branches for normal changes.
+- Commit and push to `origin/main` when the user asks to ship / push / save.
+- Only use a branch + PR if the user explicitly asks for one.
+- Before editing: `git checkout main && git pull` so work starts from latest main.
+- Never force-push to `main`.
