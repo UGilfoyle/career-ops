@@ -279,6 +279,8 @@ export function selectWeaveKeywords(plan, profile) {
     if (!raw || isJunkKeyword(raw)) return;
     if (!(isWeavableKeyword(raw) || raw.split(/\s+/).length >= 2 || /-/.test(raw))) return;
     if (/\b(mainframe|rally|qtest)\b/i.test(raw) && !corpus.includes(normalizeKey(raw).slice(0, 6))) return;
+    // Never weave UI frameworks the CV does not prove (Interra Telerik/DevExpress trap)
+    if (/\b(telerik|devexpress|jquery)\b/i.test(raw) && !/\btelerik|devexpress|jquery\b/.test(corpus)) return;
     const key = normalizeKey(raw);
     if (!key || seen.has(key)) return;
     seen.add(key);
@@ -469,7 +471,7 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     summary: buildHonestSummary(
       opts.llmSummary || profile?.narrative?.exit_story || '',
       years,
-      [...honest, ...weave],
+      honest,
       jdText,
     ),
     core_competencies: buildJdMatchedCompetencies(
@@ -481,10 +483,10 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     experience,
   };
 
-  // Align only mutable roles for bullet weave
+  // Align only mutable roles for bullet weave — summary stays honest-only (no gap UI spam)
   const { resume: aligned } = alignResumeToJd(resume, atsKeywords, profile?.experience || [], {
     bulletKeywords,
-    summaryKeywords: [...honest, ...weave].filter((k) => !/\b(mainframe|rally|qtest)\b/i.test(k)),
+    summaryKeywords: honest.filter((k) => !/\b(telerik|devexpress|jquery|mainframe)\b/i.test(k)),
     weaveRoleIndices: plan.tailorIndices,
   });
   resume = aligned;

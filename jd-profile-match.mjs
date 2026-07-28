@@ -130,16 +130,22 @@ function keywordInProfile(kw, profileCorpus, profileTech) {
   if (k.length <= 3) {
     const re = new RegExp(`\\b${escapeRe(k)}\\b`, 'i');
     if (re.test(corpus)) return true;
-  } else if (corpus.includes(k)) {
+  } else if (new RegExp(`(?:^|[^a-z0-9.+#])${escapeRe(k)}(?:[^a-z0-9.+#]|$)`).test(corpus)) {
     return true;
   }
   if (profileTech.some((t) => {
     const tk = normalizeKey(t);
-    if (k.length <= 3) {
+    if (!tk) return false;
+    if (tk === k) return true;
+    // Never treat "express" as proof of "devexpress" (or the reverse)
+    if (k.length <= 3 || tk.length <= 3) {
       return new RegExp(`\\b${escapeRe(k)}\\b`, 'i').test(tk)
         || new RegExp(`\\b${escapeRe(tk)}\\b`, 'i').test(k);
     }
-    return tk.includes(k) || k.includes(tk);
+    // Whole-token containment only (word-ish boundaries), not raw substring
+    const bound = (hay, needle) =>
+      new RegExp(`(?:^|[^a-z0-9.+#])${escapeRe(needle)}(?:[^a-z0-9.+#]|$)`).test(hay);
+    return bound(tk, k) || bound(k, tk);
   })) return true;
 
   const synonyms = PROFILE_SYNONYMS[k] || [];
@@ -428,10 +434,10 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   // Lead stack = real JD tech only (never Indeed chrome like "Find")
   // Prefer languages/frameworks/cloud over editor tools (Copilot/Cursor) in the identity line
   const isEditorTool = (k) => /\b(copilot|cursor|chatgpt|claude code)\b/i.test(String(k));
-  const isGapOnlyTool = (k) => /\b(mainframe|rally|qtest)\b/i.test(String(k));
-  const honestList = (honestKeywords || []).filter((k) => isWeavableKeyword(k));
+  const isGapOnlyTool = (k) => /\b(mainframe|rally|qtest|telerik|devexpress|jquery)\b/i.test(String(k));
+  const honestList = (honestKeywords || []).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k));
   const honestKeys = new Set(honestList.map((k) => normalizeKey(k)));
-  const jdTech = extractJdTechKeywords(jdText, 10).filter((k) => isWeavableKeyword(k));
+  const jdTech = extractJdTechKeywords(jdText, 10).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k));
   // Prefer caller-provided honest/weave terms; only add JD tech already proven (or multi-word domain).
   const leadPool = [...honestList, ...jdTech]
     .filter((k) => {
@@ -440,8 +446,11 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
       if (isGapOnlyTool(k) && !honestKeys.has(normalizeKey(k))) return false;
       if (isEditorTool(k)) return false;
       // Prefer real stack over soft process labels in the identity line
-      if (/^(unit testing|agile|scrum|full[-\s]?stack experience)$/i.test(String(k))) return false;
-      if (String(k).split(/\s+/).length >= 2) return true;
+      if (/^(unit testing|agile|scrum|full[-\s]?stack experience|ci\/cd)$/i.test(String(k))) return false;
+      if (String(k).split(/\s+/).length >= 2) {
+        // Multi-word lead only if honest or known tech already proven adjacent
+        return honestKeys.has(normalizeKey(k)) || honestList.some((h) => normalizeKey(k).includes(normalizeKey(h)));
+      }
       if (!honestKeys.size) return true;
       return honestKeys.has(normalizeKey(k)) || jdTech.some((t) => normalizeKey(t) === normalizeKey(k));
     });

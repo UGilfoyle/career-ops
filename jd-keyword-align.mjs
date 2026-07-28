@@ -164,7 +164,7 @@ const JUNK_KEYWORD_RE =
 
 /** Soft JD prose that looks like a "skill" but is education/section chrome. */
 const JD_CHROME_PHRASE_RE =
-  /\b(what you|what you.?ll|you.?ll (do|bring)|who we are|the role|computer science|technology-related|related field|bachelor.?s?( degree)?|equivalent experience|full[-\s]?stack experience|hands-?on experience|years of (full[-\s]?stack )?experience|degree in)\b/i;
+  /\b(what you|what you.?ll|you.?ll (do|bring)|who we are|the role|computer science|technology-related|related field|bachelor.?s?( degree)?|equivalent experience|full[-\s]?stack experience|hands-?on experience|years of (full[-\s]?stack )?experience|degree in|components and implement|user-friendly|providing technical guidance|cross-functional teams to gather|and ensure best practices|frameworks like|manage time|responsive and user|cloud migration and modernization)\b/i;
 
 /** Known tech only — preferred for ATS competency / skills lines. */
 export function extractJdTechKeywords(jdText, limit = 20) {

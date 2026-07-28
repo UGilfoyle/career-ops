@@ -154,12 +154,14 @@ assert(isJunkKeyword('full stack experience'), 'full stack experience prose is j
 assert(isJunkKeyword("What You'll Bring"), 'What You\'ll Bring is junk');
 const interraKw = extractJdKeywords(INTERRA_JD, 25).map((t) => t.toLowerCase());
 assert(!interraKw.some((k) => /what you|computer science|related field|full stack experience/.test(k)), 'extract drops Interra chrome');
+const interraFit = analyzeJdProfileFit(INTERRA_JD, profile);
+assert(!interraFit.honest.some((h) => /devexpress|telerik/i.test(h)), 'DevExpress/Telerik not false-honest via Express');
 const interraComps = buildJdMatchedCompetencies(extractJdKeywords(INTERRA_JD, 25), profile, INTERRA_JD, 16);
 const interraText = interraComps.join(' ').toLowerCase();
 assert(/\.net|c#|azure|rest/i.test(interraText), 'Interra competencies keep real Microsoft stack');
 assert(!/what you|computer science|related field|cursor|claude|gpt/i.test(interraText), 'Interra competencies exclude chrome and editor tools');
-const interraSummary = buildHonestSummary('', 7, ['RESTful API', 'Unit testing'], INTERRA_JD);
-assert(!/what you|computer science|full stack experience/i.test(interraSummary), 'Interra summary excludes chrome');
+const interraSummary = buildHonestSummary('', 7, interraFit.honest, INTERRA_JD);
+assert(!/what you|computer science|full stack experience|devexpress|telerik/i.test(interraSummary), 'Interra summary excludes chrome and unproven UI kits');
 assert(!/\bcursor\b|\bclaude code\b|\bgpts?\b/i.test(interraSummary), 'Interra summary excludes editor tools');
 
 console.log(`\n${passed} passed, ${failed} failed`);
