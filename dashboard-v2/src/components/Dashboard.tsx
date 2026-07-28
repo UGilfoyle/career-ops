@@ -49,6 +49,11 @@ import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHea
 import ResumeStudio from './resume-studio/ResumeStudio';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
 import { GccCampaignPanel, defaultGccCampaign, type GccCampaign } from './GccCampaignPanel';
+import {
+  STALE_POSTING_DAYS,
+  daysSincePosted,
+  isStalePosting,
+} from '@/lib/job-posting-date';
 
 /** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
 const SHOW_RESUME_MANAGER_NAV = false;
@@ -127,6 +132,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; company: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Stale posting confirm before tailor
+  const [staleTailorOpen, setStaleTailorOpen] = useState(false);
+  const [staleTailorChecking, setStaleTailorChecking] = useState(false);
+  const [staleTailorTarget, setStaleTailorTarget] = useState<{
+    jobId: number;
+    command: string;
+    company: string;
+    title: string;
+    posted_at: string;
+    ageDays: number;
+  } | null>(null);
 
   const [clearPipelineOpen, setClearPipelineOpen] = useState(false);
   const [clearPipelineScope, setClearPipelineScope] = useState<'all' | 'visible'>('all');
@@ -466,7 +483,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         if (data.type === 'stderr' && /GITHUB_PAT not configured/i.test(content)) {
           setToast({
             show: true,
-            message: 'Add a GitHub PAT in Settings (workflow scope) to run deep tailor/scan.',
+            message: 'Add a GitHub PAT in Settings (workflow scope) to run deep scan/tailor.',
           });
         }
         setLogs(prev => [...prev, data]);
@@ -480,13 +497,82 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     };
   };
 
+  /**
+   * Gate tailor behind posting-age check. ≥30 days → confirm; unknown/fresh → run.
+   */
+  const requestTailor = async (jobId: number | string, command?: string) => {
+    const id = Number.parseInt(String(jobId), 10);
+    if (!Number.isFinite(id)) {
+      setToast({ show: true, message: 'Invalid job id for tailor.' });
+      return;
+    }
+    const cmd = (command && command.trim()) || `tailor ${id} --deep`;
+    if (staleTailorChecking || isExecuting) return;
+
+    setStaleTailorChecking(true);
+    try {
+      const res = await fetch(`/api/job/${id}`);
+      if (!res.ok) {
+        // Unknown job / API fail — do not block tailor
+        runCommand(cmd);
+        return;
+      }
+      const job = await res.json();
+      const postedAt = job?.posted_at ?? null;
+      if (isStalePosting(postedAt)) {
+        const ageDays = daysSincePosted(postedAt) ?? STALE_POSTING_DAYS;
+        setStaleTailorTarget({
+          jobId: id,
+          command: cmd,
+          company: String(job?.company || 'Unknown company'),
+          title: String(job?.title || 'Role'),
+          posted_at: String(postedAt),
+          ageDays,
+        });
+        setStaleTailorOpen(true);
+        return;
+      }
+      runCommand(cmd);
+    } catch {
+      runCommand(cmd);
+    } finally {
+      setStaleTailorChecking(false);
+    }
+  };
+
+  const confirmStaleTailor = () => {
+    const cmd = staleTailorTarget?.command;
+    setStaleTailorOpen(false);
+    setStaleTailorTarget(null);
+    if (cmd) {
+      setActiveTab('terminal');
+      runCommand(cmd);
+    }
+  };
+
+  const cancelStaleTailor = () => {
+    setStaleTailorOpen(false);
+    setStaleTailorTarget(null);
+  };
+
   const handleCommandSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cmdInput.trim() || isExecuting) return;
+    if (!cmdInput.trim() || isExecuting || staleTailorChecking) return;
     
     const q = cmdInput.trim();
     setHistory(prev => [q, ...prev].slice(0, 50));
     setHistoryIndex(-1);
+
+    const tailorMatch = q.match(/^tailor\s+(\d+)\b(.*)$/i);
+    if (tailorMatch) {
+      const id = tailorMatch[1];
+      const rest = (tailorMatch[2] || '').trim();
+      const cmd = rest ? `tailor ${id} ${rest}` : `tailor ${id} --deep`;
+      setCmdInput('');
+      void requestTailor(id, cmd);
+      return;
+    }
+
     runCommand(q);
     setCmdInput('');
   };
@@ -1637,7 +1723,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                              {tailorId && (
                                <button
                                  type="button"
-                                 onClick={() => { setActiveTab('terminal'); runCommand(`tailor ${tailorId} --deep`); }}
+                                 onClick={() => { setActiveTab('terminal'); void requestTailor(tailorId); }}
                                  className="rounded-xl bg-[#1C1C1E] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#27272a] transition-colors"
                                >
                                  Tailor
@@ -2039,7 +2125,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               Evaluate
                             </button>
                             <button
-                              onClick={() => { setActiveTab('terminal'); runCommand(`tailor ${job.pipeline_id} --deep`); }}
+                              onClick={() => { setActiveTab('terminal'); void requestTailor(job.pipeline_id); }}
                               className="rounded-xl border border-[#E5E5E0] bg-white px-4 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
                             >
                               Tailor
@@ -2134,7 +2220,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 }}
                 onTailorJob={(jobId) => {
                   setActiveTab('terminal');
-                  runCommand(`tailor ${jobId} --deep`);
+                  void requestTailor(jobId);
                 }}
                 onProfileSaved={(ctx) => {
                   setProfileFormData((prev: any) => ({
@@ -3592,7 +3678,7 @@ System Initialized — v2.0`}
                     Open in Studio
                   </button>
                   <button
-                    onClick={() => { setJobDetailsOpen(false); setActiveTab('terminal'); runCommand(`tailor ${jobDetails.id} --deep`); }}
+                    onClick={() => { setJobDetailsOpen(false); setActiveTab('terminal'); void requestTailor(jobDetails.id); }}
                     className="px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs hover:bg-[#27272a] transition-all"
                   >
                     Tailor
@@ -3685,6 +3771,73 @@ System Initialized — v2.0`}
                       <span>Delete</span>
                     </>
                   )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Stale posting confirm before tailor */}
+      <AnimatePresence>
+        {staleTailorOpen && staleTailorTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[95] flex items-center justify-center p-4 sm:p-6"
+            onClick={cancelStaleTailor}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-white rounded-3xl border border-amber-200 shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 bg-gradient-to-r from-amber-50 to-white border-b border-amber-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center">
+                    <Clock size={24} className="text-amber-700" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-[#1C1C1E] text-lg">Job posting is 1 month or older</h3>
+                    <p className="text-xs text-[#6B6B6B]">
+                      Posted {staleTailorTarget.ageDays} day{staleTailorTarget.ageDays === 1 ? '' : 's'} ago
+                      {staleTailorTarget.ageDays >= STALE_POSTING_DAYS ? ` (≥ ${STALE_POSTING_DAYS} days)` : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <p className="text-sm text-[#6B6B6B] mb-4">
+                  This job was posted 1 month ago or earlier. Do you still want to create the resume and cover letter?
+                </p>
+                <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
+                  <div className="font-bold text-[#1C1C1E] mb-1">{staleTailorTarget.company}</div>
+                  <div className="text-xs text-[#6B6B6B]">{staleTailorTarget.title}</div>
+                  <div className="text-[10px] text-[#9CA3AF] mt-2 uppercase tracking-wider font-bold">
+                    Posted {formatRelativeTime(staleTailorTarget.posted_at)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-[#E5E5E0] flex gap-3">
+                <button
+                  type="button"
+                  onClick={cancelStaleTailor}
+                  className="flex-1 px-4 py-3 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] font-bold text-sm hover:bg-[#F5F5F0] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmStaleTailor}
+                  className="flex-1 px-4 py-3 rounded-xl bg-[#1C1C1E] text-white font-bold text-sm hover:bg-[#27272a] transition-colors flex items-center justify-center gap-2"
+                >
+                  <FileText size={16} />
+                  <span>Proceed with resume &amp; cover letter</span>
                 </button>
               </div>
             </motion.div>
