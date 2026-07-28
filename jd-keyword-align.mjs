@@ -19,9 +19,11 @@ const KNOWN_TECH = [
   'Cursor', 'Copilot', 'GitHub Copilot', 'Github Copilot',
   '.NET Core', '.NET', 'C#',
   'Snowflake', 'Spark', 'Airflow', 'dbt', 'Databricks',
-  // ETL / data-validation stack (Deloitte-style JDs)
+  // ETL / data-validation stack
   'pandas', 'pyodbc', 'ETL', 'Oracle', 'Unix', 'Linux', 'JIRA', 'Rally', 'Qtest',
   'SCD', 'Mainframe',
+  // Microsoft / Azure full-stack (Interra-style JDs)
+  'SQL Server', 'Microsoft SQL Server', 'Telerik', 'DevExpress', 'jQuery', 'MVC',
 ];
 
 /**
@@ -151,11 +153,18 @@ const STOPWORDS = new Set([
   'demonstrable', 'proven', 'hands', 'building', 'cloud', 'large', 'scale', 'masters',
   'preferably', 'includes', 'writing', 'queries', 'knowledge', 'must', 'opening',
   'pay', 'year', 'flexible', 'schedule', 'district', 'preference', 'based',
+  // Section chrome / education prose (Interra / Ashby JDs)
+  'what', 'you', 'youll', "you'll", 'bring', 'bachelor', 'bachelors', 'degree',
+  'equivalent', 'field', 'related', 'hands-on', 'handson',
 ]);
 
 /** UI / dictionary junk that must never be woven into bullets or skills. */
 const JUNK_KEYWORD_RE =
-  /^(find|apply|search|sign|join|save|share|report|view|click|learn|more|home|careers?|postings?|indeed|linkedin|naukri|glassdoor|remote|hybrid|onsite|jobs?|hiring|candidates?|reviews?|follow|login|logout|skip|next|back|filter|sort|results?|salary|benefits?|privacy|cookies?|continue|upload|download|settings?|help|terms?|policies?|english|hindi|india|pune|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|telangana|posted|ago|today|yesterday|easily|urgent|sponsored|similar|software|applications?|services?|development|technologies?|process|demonstrable|proven|hands|building|cloud|masters)$/i;
+  /^(find|apply|search|sign|join|save|share|report|view|click|learn|more|home|careers?|postings?|indeed|linkedin|naukri|glassdoor|remote|hybrid|onsite|jobs?|hiring|candidates?|reviews?|follow|login|logout|skip|next|back|filter|sort|results?|salary|benefits?|privacy|cookies?|continue|upload|download|settings?|help|terms?|policies?|english|hindi|india|pune|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|telangana|posted|ago|today|yesterday|easily|urgent|sponsored|similar|software|applications?|services?|development|technologies?|process|demonstrable|proven|hands|building|cloud|masters|what|you|bring|bachelor|degree|equivalent|field|related)$/i;
+
+/** Soft JD prose that looks like a "skill" but is education/section chrome. */
+const JD_CHROME_PHRASE_RE =
+  /\b(what you|what you.?ll|you.?ll (do|bring)|who we are|the role|computer science|technology-related|related field|bachelor.?s?( degree)?|equivalent experience|full[-\s]?stack experience|hands-?on experience|years of (full[-\s]?stack )?experience|degree in)\b/i;
 
 /** Known tech only — preferred for ATS competency / skills lines. */
 export function extractJdTechKeywords(jdText, limit = 20) {
@@ -292,8 +301,9 @@ export function isJunkKeyword(kw) {
   if (!k || k.length < 2) return true;
   if (STOPWORDS.has(k)) return true;
   if (JUNK_KEYWORD_RE.test(k)) return true;
+  if (JD_CHROME_PHRASE_RE.test(k)) return true;
   // Multi-word phrases that still start with UI chrome ("Find candidates")
-  if (/^(find|apply|search|sign|join|save|share|view|click)\b/.test(k)) return true;
+  if (/^(find|apply|search|sign|join|save|share|view|click|what|who|the)\b/.test(k)) return true;
   return false;
 }
 

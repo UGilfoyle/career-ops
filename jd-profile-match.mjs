@@ -310,21 +310,23 @@ export function buildHonestCompetencies(honestKeywords, profile, jdText, limit =
 }
 
 /**
- * JD-first competencies for ATS: full JD tech stack + transferable labels.
- * Prefer proven terms first, then remaining JD tech (so Core Competencies / Technical Skills are never sparse).
- * Default limit 16 for Zety-density skills rows without junk filler.
+ * JD-first competencies for ATS: proven stack first, then real JD tech (not JD chrome).
+ * Never emit education prose, section headers, or editor tools unless the JD is AI-tooling focused.
  */
 export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 16) {
   const comps = [];
   const seen = new Set();
+  const jdLower = String(jdText || '').toLowerCase();
+  const jdWantsAiTools = /\b(llm|ai agent|copilot|cursor|generative ai|langchain|openai|chatgpt)\b/.test(jdLower);
+  const isEditorTool = (raw) => /\b(cursor|copilot|chatgpt|claude code|gpts?)\b/i.test(String(raw));
 
   const add = (item) => {
     const raw = String(item || '').trim();
     if (!raw || isJunkKeyword(raw)) return;
     // Block generic filler labels that waste ATS real estate
     if (/^(software|applications?|services?|development|technologies?|engineering|solutions?)$/i.test(raw)) return;
-    // Single-token competencies must be weavable tech (blocks "Find")
-    if (raw.split(/\s+/).length === 1 && !isWeavableKeyword(raw)) return;
+    if (isEditorTool(raw) && !jdWantsAiTools) return;
+    if (!isWeavableKeyword(raw)) return;
     const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
     seen.add(k);
@@ -332,17 +334,18 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
   };
 
   const jdTech = extractJdTechKeywords(jdText, 22);
-  const { honest } = partitionJdKeywords(
+  const { honest, gaps } = partitionJdKeywords(
     [...(jdKeywords || []), ...jdTech].filter((kw) => !isJunkKeyword(kw)),
     profile
   );
 
-  // Proven first, then remaining JD tech (ATS match to the posting)
+  // Proven first, then remaining real JD tech (ATS), never chrome phrases from raw keyword dump
   for (const kw of honest) add(kw);
   for (const kw of jdTech) add(kw);
-  for (const kw of jdKeywords || []) add(kw);
+  for (const kw of gaps) {
+    if (isWeavableKeyword(kw)) add(kw);
+  }
 
-  const jdLower = String(jdText || '').toLowerCase();
   const transfers = [
     ['restful', 'RESTful API Design'],
     ['nestjs', 'NestJS Backend Development'],
@@ -383,25 +386,32 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     ['observability', 'Observability & Incident Response'],
     ['llm', 'LLM Integration'],
     ['ai agent', 'AI Agent Development'],
-    ['cursor', 'AI-Assisted Development'],
-    ['copilot', 'AI-Assisted Development'],
     ['full-stack', 'Full-Stack Engineering'],
     ['event-driven', 'Event-Driven Architecture'],
     ['docker', 'Docker'],
     ['kubernetes', 'Kubernetes'],
     ['node', 'Node.js Services'],
-    ['.net', '.NET Core'],
+    ['.net', '.NET'],
     ['c#', 'C#'],
+    ['sql server', 'Microsoft SQL Server'],
+    ['telerik', 'Telerik'],
+    ['devexpress', 'DevExpress'],
+    ['jquery', 'jQuery'],
     ['postgresql', 'PostgreSQL'],
     ['mongodb', 'MongoDB'],
     ['oracle', 'Oracle'],
     ['graphql', 'GraphQL'],
   ];
+  // AI editor transfers only when JD asks for them
+  if (jdWantsAiTools) {
+    transfers.push(['cursor', 'AI-Assisted Development'], ['copilot', 'AI-Assisted Development']);
+  }
   for (const [needle, label] of transfers) {
     if (jdLower.includes(needle)) add(label);
   }
 
   for (const s of profile?.narrative?.superpowers || []) {
+    if (isEditorTool(s) && !jdWantsAiTools) continue;
     if (jdLower.split(/\W+/).some((w) => w.length > 4 && s.toLowerCase().includes(w))) add(s);
   }
 
@@ -426,10 +436,14 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   const leadPool = [...honestList, ...jdTech]
     .filter((k) => {
       if (FRAGMENT_BLOCKLIST.has(normalizeKey(k)) || !isWeavableKeyword(k)) return false;
+      if (isJunkKeyword(k)) return false;
       if (isGapOnlyTool(k) && !honestKeys.has(normalizeKey(k))) return false;
+      if (isEditorTool(k)) return false;
+      // Prefer real stack over soft process labels in the identity line
+      if (/^(unit testing|agile|scrum|full[-\s]?stack experience)$/i.test(String(k))) return false;
       if (String(k).split(/\s+/).length >= 2) return true;
       if (!honestKeys.size) return true;
-      return honestKeys.has(normalizeKey(k));
+      return honestKeys.has(normalizeKey(k)) || jdTech.some((t) => normalizeKey(t) === normalizeKey(k));
     });
   const rankedLead = [
     ...leadPool.filter((k) => !isEditorTool(k)),

@@ -139,5 +139,28 @@ assert(
   'experience does not invent NestJS/Puppeteer production claims'
 );
 
+console.log('\nJD chrome / Interra Ashby junk filter\n');
+const INTERRA_JD = `
+Software Developer @ Interra Health
+What You'll Do:
+Design cloud-native applications using .NET Framework and Azure services.
+What You'll Bring:
+Bachelor's degree in computer science or a technology-related field; or equivalent experience with at least 7-10 years of full stack experience in Microsoft .NET MVC C#, and Microsoft SQL Server, jQuery, and experience with RESTful APIs.
+Hands-on experience with Microsoft Azure. Telerik/DevExpress. Unit testing. Agile/scrum.
+`;
+assert(isJunkKeyword('What You'), 'What You is junk');
+assert(isJunkKeyword('computer science or a technology-related field'), 'degree phrase is junk');
+assert(isJunkKeyword('full stack experience'), 'full stack experience prose is junk');
+assert(isJunkKeyword("What You'll Bring"), 'What You\'ll Bring is junk');
+const interraKw = extractJdKeywords(INTERRA_JD, 25).map((t) => t.toLowerCase());
+assert(!interraKw.some((k) => /what you|computer science|related field|full stack experience/.test(k)), 'extract drops Interra chrome');
+const interraComps = buildJdMatchedCompetencies(extractJdKeywords(INTERRA_JD, 25), profile, INTERRA_JD, 16);
+const interraText = interraComps.join(' ').toLowerCase();
+assert(/\.net|c#|azure|rest/i.test(interraText), 'Interra competencies keep real Microsoft stack');
+assert(!/what you|computer science|related field|cursor|claude|gpt/i.test(interraText), 'Interra competencies exclude chrome and editor tools');
+const interraSummary = buildHonestSummary('', 7, ['RESTful API', 'Unit testing'], INTERRA_JD);
+assert(!/what you|computer science|full stack experience/i.test(interraSummary), 'Interra summary excludes chrome');
+assert(!/\bcursor\b|\bclaude code\b|\bgpts?\b/i.test(interraSummary), 'Interra summary excludes editor tools');
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
