@@ -1709,12 +1709,17 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     ];
   }
 
+  // Generate the JD-tailored resume even when coverage is below the floor.
+  // Shortfalls are warnings — never block the deliverable the user asked for.
   if (alignment.verdict !== 'PASS') {
-    const err = new Error(
-      `Resume–JD alignment gate FAILED:\n${(alignment.reasons || []).map((r) => `  - ${r}`).join('\n')}`
+    console.warn(
+      `⚠ Alignment warnings — resume still generated:\n${(alignment.reasons || []).map((r) => `  - ${r}`).join('\n')}`
     );
-    err.alignmentResult = alignment;
-    throw err;
+    // Fall back to the strongest available resume so the user always gets output.
+    if (!data.resume || typeof data.resume !== 'object') {
+      data.resume = alignment.selectedResume || llmDraft || buildSourceResumeFromProfile(profile, jd);
+    }
+    data.alignment_confirmation = alignment;
   }
   return data;
 }

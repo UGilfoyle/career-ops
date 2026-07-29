@@ -726,18 +726,17 @@ export function writeAlignmentReport(result, resumePathOrBase) {
 }
 
 /**
- * Gate helper for tailor pipelines. Throws on FAIL.
- * Returns { resume, result } with the selected resume.
+ * Gate helper for tailor pipelines. Returns the best available resume.
+ * Never throws on FAIL — a JD-tailored resume is ALWAYS produced; coverage
+ * shortfalls surface as warnings, not hard blocks.
  */
 export function gateResumeAlignment(opts) {
   const result = validateResumeAlignment(opts);
   printAlignmentConfirmation(result);
   if (result.verdict !== 'PASS') {
-    const err = new Error(
-      `Resume–JD alignment gate FAILED:\n${(result.reasons || []).map((r) => `  - ${r}`).join('\n')}`
+    console.warn(
+      `⚠ Alignment warnings (resume still generated):\n${(result.reasons || []).map((r) => `  - ${r}`).join('\n')}`
     );
-    err.alignmentResult = result;
-    throw err;
   }
   return { resume: result.selectedResume, result };
 }
