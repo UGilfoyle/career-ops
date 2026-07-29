@@ -323,8 +323,12 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
   const comps = [];
   const seen = new Set();
   const jdLower = String(jdText || '').toLowerCase();
-  const jdWantsAiTools = /\b(llm|ai agent|copilot|cursor|generative ai|langchain|openai|chatgpt)\b/.test(jdLower);
-  const isEditorTool = (raw) => /\b(cursor|copilot|chatgpt|claude code|gpts?)\b/i.test(String(raw));
+  // Only treat the JD as AI-tooling-focused when it names the tools as skills,
+  // not when boilerplate mentions "we use AI tools" / "LLM" in legal copy.
+  const jdWantsAiTools =
+    /\b(copilot|cursor|generative ai|langchain|openai|chatgpt|ai agent)\b/.test(jdLower) &&
+    !/\bwe may use artificial intelligence\b/.test(jdLower);
+  const isEditorTool = (raw) => /\b(cursor|copilot|chatgpt|claude code|gpts?|llm\s*\(?rag\)?)\b/i.test(String(raw));
 
   const add = (item) => {
     const raw = String(item || '').trim();
@@ -390,7 +394,6 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     ['integration test', 'Unit & Integration Testing'],
     ['end-to-end', 'End-to-End Testing'],
     ['observability', 'Observability & Incident Response'],
-    ['llm', 'LLM Integration'],
     ['ai agent', 'AI Agent Development'],
     ['full-stack', 'Full-Stack Engineering'],
     ['event-driven', 'Event-Driven Architecture'],
@@ -417,7 +420,7 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
   }
 
   for (const s of profile?.narrative?.superpowers || []) {
-    if (isEditorTool(s) && !jdWantsAiTools) continue;
+    if (isEditorTool(s)) continue; // never inject Cursor/Copilot/Claude from profile into competencies
     if (jdLower.split(/\W+/).some((w) => w.length > 4 && s.toLowerCase().includes(w))) add(s);
   }
 
@@ -477,8 +480,11 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
     lines.push('Own Python-based ETL validation, source-to-target checks, and SQL-backed data reconciliation across warehouse layers.');
   } else if (/\b(web scrap|scraping|puppeteer|playwright|cheerio|selenium)\b/i.test(jdLower)) {
     lines.push('Ship JavaScript services for data extraction and browser automation with solid REST APIs, Postgres, and cloud delivery.');
-  } else if (/\b(llm|ai agent|generative ai|openai|langchain|rag|vector)\b/i.test(jdLower)) {
-    lines.push('Lead LLM-backed features and AI-assisted delivery (Cursor, Copilot) with production-grade API reliability and validation loops.');
+  } else if (
+    /\b(copilot|cursor|generative ai|langchain|openai|chatgpt|ai agent)\b/i.test(jdLower) &&
+    !/\bwe may use artificial intelligence\b/i.test(jdLower)
+  ) {
+    lines.push('Lead LLM-backed features and AI-assisted delivery with production-grade API reliability and validation loops.');
   } else if (/\bevent-driven|microservice|kafka|message queue\b/i.test(jdLower)) {
     lines.push('Drive monolith-to-microservices work and event-driven service boundaries with reliable messaging and clear ownership.');
   } else if (/\bci\/cd|devops|kubernetes|docker\b/i.test(jdLower)) {
