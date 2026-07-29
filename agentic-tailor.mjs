@@ -16,6 +16,7 @@ import {
   elevateBulletToSenior,
   elevateBulletForEmployer,
   isSeniorToneEmployer,
+  removeSplicedFragments,
 } from './resume-quality.mjs';
 import {
   extractJdKeywords,
@@ -1978,6 +1979,16 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
 
     const skillsLines = renderCategorizedSkills(profile.narrative?.superpowers || [], tailoring?.core_competencies || []);
     const hasSkills = Boolean(skillsLines && String(skillsLines).trim().length > 0);
+
+    // Final catch-all: strip LLM splice artifacts from bullets right before render
+    if (tailoring?.experience && typeof tailoring.experience === 'object') {
+      for (const key of Object.keys(tailoring.experience)) {
+        const bullets = tailoring.experience[key];
+        if (Array.isArray(bullets)) {
+          tailoring.experience[key] = bullets.map((b) => removeSplicedFragments(b));
+        }
+      }
+    }
 
     const resumeReps = {
       ...commonReps,

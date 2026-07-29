@@ -278,6 +278,8 @@ export function selectWeaveKeywords(plan, profile) {
     const raw = String(kw || '').trim();
     if (!raw || isJunkKeyword(raw)) return;
     if (!(isWeavableKeyword(raw) || raw.split(/\s+/).length >= 2 || /-/.test(raw))) return;
+    // Bare participles ("AI-assisted") read as broken English when appended as "supporting X"
+    if (/\w+-\w*(?:ed|ing)$/i.test(raw)) return;
     if (/\b(mainframe|rally|qtest)\b/i.test(raw) && !corpus.includes(normalizeKey(raw).slice(0, 6))) return;
     // Never weave UI frameworks the CV does not prove (Interra Telerik/DevExpress trap)
     if (/\b(telerik|devexpress|jquery)\b/i.test(raw) && !/\btelerik|devexpress|jquery\b/.test(corpus)) return;
@@ -314,7 +316,11 @@ export function selectWeaveKeywords(plan, profile) {
 export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerRole = 2) {
   if (!resume?.experience || !plan?.tailorIndices?.length || !weaveKeywords?.length) return resume;
   const copy = JSON.parse(JSON.stringify(resume));
-  const kws = weaveKeywords.filter((k) => isWeavableKeyword(k) || String(k).split(/\s+/).length >= 2 || /-/.test(k));
+  const kws = weaveKeywords.filter(
+    (k) =>
+      (isWeavableKeyword(k) || String(k).split(/\s+/).length >= 2 || /-/.test(k)) &&
+      !/\w+-\w*(?:ed|ing)$/i.test(String(k).trim())
+  );
   const kwKeys = new Set(kws.map((k) => normalizeKey(k)));
 
   const stripInjectNoise = (raw) => {

@@ -348,6 +348,8 @@ const MID_CLAUSE_RE = /\b(?:and|or|but|so|yet)\s+(?:the|a|an|that|this|these|tho
 export function isJunkKeyword(kw) {
   const k = normalizeKeyword(kw).toLowerCase();
   if (!k || k.length < 2) return true;
+  // Bare version fragments split from model names ("3-large" from text-embedding-3-large)
+  if (/^\d+-[a-z0-9-]+$/.test(k)) return true;
   if (STOPWORDS.has(k)) return true;
   if (MID_CLAUSE_RE.test(k)) return true;
   if (JUNK_KEYWORD_RE.test(k)) return true;

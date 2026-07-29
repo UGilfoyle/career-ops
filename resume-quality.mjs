@@ -96,6 +96,11 @@ export function hasQuantifiedImpact(text) {
   return METRIC_PATTERNS.some((re) => re.test(s));
 }
 
+/** A metric clause must carry a real measurement unit — bare digits are usually
+ * version fragments ("3-large" from text-embedding-3-large), not metrics. */
+const METRIC_UNIT_RE =
+  /%|\bpercent\b|\$\s?\d|\b\d[\d,]*\+?\s*(?:x|times|fold|hours?|minutes?|seconds?|ms|days?|weeks?|months?|years?|users?|requests?|events?|transactions?|records?|queries?|per\s+(?:month|week|day|year)|daily|monthly|weekly|yearly)\b/i;
+
 export function extractMetricClause(text) {
   const s = String(text || '');
   const patterns = [
@@ -106,7 +111,10 @@ export function extractMetricClause(text) {
   ];
   for (const re of patterns) {
     const m = s.match(re);
-    if (m) return m[0].trim().replace(/[,.]$/, '');
+    if (!m) continue;
+    const clause = m[0].trim().replace(/[,.]$/, '');
+    if (/\d+-[a-z]/i.test(clause)) continue; // version fragment, not a metric
+    if (re === patterns[3] || METRIC_UNIT_RE.test(clause)) return clause;
   }
   return null;
 }
@@ -303,6 +311,7 @@ function cleanSpellingAndGrammar(text) {
   return String(text)
     .replace(/\s*[-=]>\s*/g, ' to ')
     .replace(/\bmultiprocessing\.Pool\b/gi, 'multiprocessing pools')
+    .replace(/\btext-embedding-3-large\s+embeddings\b/gi, 'large text embedding models')
     .replace(/\btext-embedding-3-large\b/gi, 'large text embedding models')
     .replace(/:\s*Spearhead(?:ed)?\s+/gi, ': Led ')
     .replace(/\bSpearhead(?:ed)?\b/g, 'Led')
@@ -313,6 +322,25 @@ function cleanSpellingAndGrammar(text) {
     .replace(/\butiliz(?:ed|ing)\b/gi, 'using')
     .replace(/\sand building\b/gi, ' and built')
     .replace(/,\s*building\s+/gi, ', built ');
+}
+
+/**
+ * Undo LLM splice artifacts: bare version-token clauses (", 3-large ..."),
+ * participle-only weave tails ("supporting AI-assisted."), and trailing
+ * clauses that repeat text already present earlier in the bullet.
+ */
+export function removeSplicedFragments(text) {
+  let out = String(text);
+  out = out.replace(/,\s*[^,.]*\b\d+-[a-z]{2,}\b[^,.]*(?=\.|$)/gi, '');
+  out = out.replace(/,?\s*\bsupporting\s+[A-Za-z0-9][A-Za-z0-9\s-]*?(?:assisted|driven|oriented|based|related|aligned)\.(?=\s|$)/gi, '.');
+  const m = out.match(/^(.*),\s*([^,.]{12,})\.?\s*$/s);
+  if (m) {
+    const norm = (s) => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+    const tail = norm(m[2]);
+    if (tail && norm(m[1]).includes(tail)) out = `${m[1].replace(/\s+$/, '')}.`;
+  }
+  out = out.replace(/,\s*\./g, '.').replace(/\.\s*\./g, '.');
+  return out;
 }
 
 function synthesizeMetric(bullet) {
@@ -899,14 +927,12 @@ export function normalizeResumeBullets(resume, sourceExperience = []) {
 }
 
 function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets, allowSyntheticMetrics = false) {
-  const metricSources = [
-    ...roleSourceBullets.filter((s) => hasQuantifiedImpact(s)),
-    // Fall back to any profile metric with enough overlap (same employer facts only)
-    ...allSourceBullets.filter((s) => hasQuantifiedImpact(s) && !roleSourceBullets.includes(s)),
-  ];
+  // Same-role facts only — grafting another employer's metric onto this role
+  // invents history (e.g. Srijan's "20 hours/month" landing under Quest).
+  const metricSources = roleSourceBullets.filter((s) => hasQuantifiedImpact(s));
 
   return bullets.map((b) => {
-    let cleanB = cleanSpellingAndGrammar(b);
+    let cleanB = removeSplicedFragments(cleanSpellingAndGrammar(b));
     if (hasQuantifiedImpact(cleanB)) return { bullet: cleanB, enriched: false };
 
     // Graft metric from overlapping source bullet only (honesty)

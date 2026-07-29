@@ -155,12 +155,19 @@ console.log(`Frozen equality: ${frozen.pass ? 'PASS' : 'FAIL'}`);
 console.log(`Mutable coverage: ${mutable.score}% matched=${mutable.matched.slice(0, 8).join(', ')}`);
 console.log(`Alignment: ${alignment.verdict}`);
 
-if (!frozen.pass || alignment.verdict !== 'PASS' || mutable.matchRatio < minRatio) {
-  console.error('Generation blocked: frozen/alignment/mutable coverage gate failed.');
-  if (mutable.matchRatio < minRatio) {
-    console.error(`  mutable ${mutable.score}% < ${Math.round(minRatio * 100)}% missing=${mutable.missing.slice(0, 10).join(', ')}`);
-  }
+if (!frozen.pass) {
+  console.error('Generation blocked: frozen employers were modified — refusing output.');
   process.exit(1);
+}
+if (alignment.verdict !== 'PASS' || mutable.matchRatio < minRatio) {
+  // Warn and continue — user directive: always produce the resume, flag quality issues.
+  console.warn('⚠ Quality warnings (resume still generated):');
+  if (alignment.verdict !== 'PASS') {
+    for (const r of alignment.reasons || []) console.warn(`  - ${r}`);
+  }
+  if (mutable.matchRatio < minRatio) {
+    console.warn(`  - mutable ${mutable.score}% < ${Math.round(minRatio * 100)}% missing=${mutable.missing.slice(0, 10).join(', ')}`);
+  }
 }
 
 if (!fs.existsSync('output')) fs.mkdirSync('output');
@@ -268,6 +275,6 @@ if (copyDownloads && process.env.HOME) {
 }
 
 if (alignment.verdict !== 'PASS' && !process.argv.includes('--allow-fail')) {
-  console.error('Alignment gate FAILED');
-  process.exit(1);
+  // Output already written — report the warnings without failing the run.
+  console.warn(`⚠ Alignment verdict: ${alignment.verdict} (resume generated anyway)`);
 }
