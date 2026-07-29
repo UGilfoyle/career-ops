@@ -169,7 +169,7 @@ export function jobFromIndeedInitialData(data, { jk, canonicalUrl } = {}) {
   };
 }
 
-function looksLikeIndeedBlock(html) {
+export function looksLikeIndeedBlock(html) {
   const lower = String(html || '').toLowerCase();
   return (
     lower.includes('additional verification required') ||
@@ -178,6 +178,42 @@ function looksLikeIndeedBlock(html) {
     lower.includes('cf-challenge') ||
     (lower.includes('just a moment') && lower.includes('cloudflare'))
   );
+}
+
+/** Raised when Indeed blocks extraction — callers must not tailor from junk. */
+export class IndeedFetchError extends Error {
+  constructor(message, { canonicalUrl = null } = {}) {
+    super(message);
+    this.name = 'IndeedFetchError';
+    this.indeedBlocked = true;
+    this.canonicalUrl = canonicalUrl;
+  }
+}
+
+/** Actionable next steps when Indeed refuses automated extraction. */
+export function indeedManualJdHint(url) {
+  const canonical = canonicalIndeedUrl(url);
+  return (
+    'Indeed blocked automated JD extraction (anti-bot / 403). ' +
+    'Tailoring from the fallback page would produce a resume matched to navigation text, not the job.\n' +
+    '  1. Open the posting and copy the full job description\n' +
+    '  2. Dashboard: paste it into the job\'s JD field, then run tailor again\n' +
+    `  3. CLI: node add-job.mjs "${canonical}" --file ./jd.txt`
+  );
+}
+
+const JD_SIGNAL_RE =
+  /\b(responsibilit|requirement|qualification|about the role|about this job|what you.{0,10}(will|ll) do|we(?:'| a)re looking|years of experience|experience (?:with|in))\b/i;
+
+/**
+ * Guard against tailoring on scraped chrome: a usable JD needs real length
+ * and at least one requirements/responsibilities signal.
+ */
+export function looksLikeUsableJd(text, { minLength = 400 } = {}) {
+  const t = String(text || '').trim();
+  if (t.length < minLength) return false;
+  if (looksLikeIndeedBlock(t)) return false;
+  return JD_SIGNAL_RE.test(t);
 }
 
 /**
@@ -232,8 +268,8 @@ export async function fetchIndeedJob(url, { fetchImpl = globalThis.fetch } = {})
     }
   }
 
-  throw new Error(
-    `Indeed fetch failed for jk=${jk}: ${lastErr?.message || 'unknown error'}. ` +
-      `Paste the JD manually: node add-job.mjs "${canonicalUrl}" --file ./jd.txt`
+  throw new IndeedFetchError(
+    `Indeed fetch failed for jk=${jk}: ${lastErr?.message || 'unknown error'}.\n${indeedManualJdHint(canonicalUrl)}`,
+    { canonicalUrl },
   );
 }

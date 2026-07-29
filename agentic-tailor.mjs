@@ -45,7 +45,13 @@ import {
   printAlignmentConfirmation,
   writeAlignmentReport,
 } from './resume-alignment-validator.mjs';
-import { isIndeedUrl, fetchIndeedJob } from './indeed-job.mjs';
+import {
+  isIndeedUrl,
+  fetchIndeedJob,
+  looksLikeUsableJd,
+  indeedManualJdHint,
+  IndeedFetchError,
+} from './indeed-job.mjs';
 import {
   buildTailoringPlan,
   executeTailoringPlan,
@@ -1124,6 +1130,11 @@ async function resolveJdText(entry) {
 
   try {
     const scraped = await scrapeJD(entry.url);
+    // Indeed serves navigation chrome instead of a 403 page — tailoring on that
+    // yields 0% JD coverage, so stop with instructions rather than guessing.
+    if (isIndeedUrl(entry.url) && !looksLikeUsableJd(scraped)) {
+      throw new IndeedFetchError(indeedManualJdHint(entry.url));
+    }
     if (scraped && scraped.length > jdText.length) {
       return scraped;
     }
@@ -1133,6 +1144,7 @@ async function resolveJdText(entry) {
     }
     return scraped || '';
   } catch (err) {
+    if (err?.indeedBlocked) throw err;
     if (jdText.length > 0) {
       console.warn(`⚠️ JD scrape failed (${err.message}); using stored partial JD (${jdText.length} chars).`);
       return jdText;

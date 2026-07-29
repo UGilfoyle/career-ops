@@ -7,6 +7,9 @@ import {
   isIndeedUrl,
   canonicalIndeedUrl,
   fetchIndeedJob,
+  looksLikeUsableJd,
+  indeedManualJdHint,
+  IndeedFetchError,
 } from './indeed-job.mjs';
 
 const url = process.argv[2];
@@ -470,6 +473,9 @@ async function main() {
   } else {
     try {
       scrape = await scrapeJD(canonical);
+      if (isIndeedUrl(canonical) && !looksLikeUsableJd(scrape.text)) {
+        throw new IndeedFetchError(indeedManualJdHint(canonical));
+      }
       console.log(`✓ Scraped ${scrape.text.length} characters`);
       jdText = scrape.text;
       finishAddingJob(scrape, rawUrl, canonical, jdText, profile);

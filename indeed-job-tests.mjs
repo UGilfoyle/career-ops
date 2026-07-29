@@ -13,6 +13,9 @@ import {
   htmlToPlainText,
   fetchIndeedJob,
   extractBalancedJson,
+  looksLikeUsableJd,
+  indeedManualJdHint,
+  IndeedFetchError,
 } from './indeed-job.mjs';
 
 let passed = 0;
@@ -138,6 +141,59 @@ await testAsync('fetchIndeedJob rejects missing jk', async () => {
   await assert.rejects(
     () => fetchIndeedJob('https://in.indeed.com/jobs?q=engineer'),
     /job key/
+  );
+});
+
+test('looksLikeUsableJd accepts a real description', () => {
+  const jd = [
+    'Software Developer at Spreetail',
+    'About the role: you will build and ship backend services.',
+    'Requirements: 5+ years of experience with Node.js, PostgreSQL, and AWS.',
+    'Responsibilities include owning services end to end and mentoring engineers.',
+    'x'.repeat(400),
+  ].join('\n');
+  assert.strictEqual(looksLikeUsableJd(jd), true);
+});
+
+test('looksLikeUsableJd rejects Indeed listing chrome', () => {
+  // Company jobs listing page: long enough, but no requirements/responsibilities.
+  const chrome = [
+    'Spreetail jobs',
+    'Sign in Employers / Post Job Start of main content',
+    'Upload your resume Salary guide Career guide Help Centre',
+    'Filter by location Full-time Part-time Contract',
+    'View all jobs Company reviews Find salaries',
+  ].join('\n').repeat(6);
+  assert.ok(chrome.length > 400);
+  assert.strictEqual(looksLikeUsableJd(chrome), false);
+});
+
+test('looksLikeUsableJd rejects short text and Cloudflare block pages', () => {
+  assert.strictEqual(looksLikeUsableJd('Requirements: Node.js'), false);
+  const blocked = `Additional Verification Required ${'cloudflare '.repeat(80)} requirements`;
+  assert.strictEqual(looksLikeUsableJd(blocked), false);
+});
+
+test('indeedManualJdHint gives canonical URL and manual steps', () => {
+  const hint = indeedManualJdHint(
+    'https://in.indeed.com/cmp/Spreetail/jobs?jk=3a7abba7ebdc2a31&start=0'
+  );
+  assert.ok(hint.includes('https://in.indeed.com/viewjob?jk=3a7abba7ebdc2a31'));
+  assert.ok(/--file \.\/jd\.txt/.test(hint));
+  assert.ok(/paste/i.test(hint));
+});
+
+await testAsync('blocked Indeed fetch throws a flagged IndeedFetchError', async () => {
+  const fetchImpl = async () => ({ ok: false, status: 403, text: async () => 'blocked' });
+  await assert.rejects(
+    () => fetchIndeedJob('https://in.indeed.com/viewjob?jk=3a7abba7ebdc2a31', { fetchImpl }),
+    (err) => {
+      assert.ok(err instanceof IndeedFetchError);
+      assert.strictEqual(err.indeedBlocked, true);
+      assert.ok(/HTTP 403/.test(err.message));
+      assert.ok(/add-job\.mjs/.test(err.message));
+      return true;
+    }
   );
 });
 
