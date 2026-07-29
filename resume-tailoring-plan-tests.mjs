@@ -197,5 +197,28 @@ const planSrc = fs.readFileSync('resume-tailoring-plan.mjs', 'utf8');
 assert(!/deloitte/i.test(planSrc), 'resume-tailoring-plan.mjs has no Deloitte hardcode');
 assert(!/if \(plan\?\.family === 'data_etl'/.test(planSrc), 'no data_etl-only weave hardcode');
 
+console.log('\n9. Frozen-restore evaluation — LLM draft missing frozen roles\n');
+// Repro of the Spreetail/Lever CI failure: fallback LLM returned only the 4
+// tailor roles; preserved employers (4,5,6) were absent from the raw draft.
+// The frozen check + mutable coverage must be judged against the resume as it
+// would be saved (frozen roles restored), not the raw LLM output.
+const llmDroppedFrozen = JSON.parse(JSON.stringify(pkgD.resume));
+for (const i of planD.preserveIndices) {
+  delete llmDroppedFrozen.experience[String(i)];
+}
+const restoredEval = validateResumeAlignment({
+  jdText: DELOITTE_JD,
+  profile,
+  finalResume: pkgD.resume,
+  llmDraft: llmDroppedFrozen,
+  plan: planD,
+  preservedSnapshot: pkgD.preservedSnapshot,
+  atsMin: 50,
+});
+assert(
+  !(restoredEval.reasons || []).some((r) => /Frozen employers changed/.test(r)),
+  `no false frozen-employer FAIL when LLM draft drops frozen roles (got ${(restoredEval.reasons || []).join('; ')})`,
+);
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

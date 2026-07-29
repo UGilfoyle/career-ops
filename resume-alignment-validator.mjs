@@ -32,6 +32,7 @@ import {
   executeTailoringPlan,
   measureMutableRoleCoverage,
   assertPreservedEquality,
+  restorePreservedEmployers,
 } from './resume-tailoring-plan.mjs';
 
 export const ATS_MIN_SCORE = 90;
@@ -356,6 +357,15 @@ export function validateResumeAlignment({
     llm: { id: 'llm', label: 'LLM draft', resume: llm },
     aligned: { id: 'aligned', label: 'Aligned & polished', resume: aligned },
   };
+  // Frozen employers (preserve_verbatim roles) are restored verbatim at the end of
+  // the tailoring pipeline. If the LLM dropped them (e.g. returned only 4 roles),
+  // judging the raw draft against the frozen snapshot / coverage floors penalizes a
+  // resume that never ships — evaluate llm/aligned the way they would be saved.
+  if (preservedSnapshot && activePlan?.preserveIndices?.length) {
+    for (const id of ['llm', 'aligned']) {
+      candidates[id].resume = restorePreservedEmployers(candidates[id].resume, preservedSnapshot);
+    }
+  }
   const provenCorpus = [
     collectProfileCorpus(profile),
     resumeCorpus(source),

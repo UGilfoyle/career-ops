@@ -164,5 +164,29 @@ const interraSummary = buildHonestSummary('', 7, interraFit.honest, INTERRA_JD);
 assert(!/what you|computer science|full stack experience|devexpress|telerik/i.test(interraSummary), 'Interra summary excludes chrome and unproven UI kits');
 assert(!/\bcursor\b|\bclaude code\b|\bgpts?\b/i.test(interraSummary), 'Interra summary excludes editor tools');
 
+console.log('\nLever WFH hardware boilerplate junk filter\n');
+const SPREETAIL_HARDWARE = `
+Software Engineer-III @ Spreetail
+This is a remote position and requires candidates to have an available work-from-home setup.
+Desktop/Laptop system requirements:
+- 4th generation or higher, at least Intel i3 or equivalent processor;
+- at least 4GB RAM;
+- Windows 10 and above or MAC OSX operating system
+- You are required to provide your own dual monitors
+A strong and stable internet connection (DSL, cable or fiber wired internet service)
+PC Headset
+A high-definition (HD) external or integrated webcam with at least 720p resolution.
+`;
+assert(isJunkKeyword('provide your own dual'), 'provide your own dual is junk');
+assert(isJunkKeyword('dual monitors'), 'dual monitors is junk');
+assert(isJunkKeyword('operating system'), 'operating system is junk');
+assert(isJunkKeyword('internet connection'), 'internet connection is junk');
+assert(isJunkKeyword('webcam'), 'webcam is junk');
+const leverKw = extractJdKeywords(SPREETAIL_HARDWARE, 25).map((t) => t.toLowerCase());
+assert(
+  !leverKw.some((k) => /provide your own dual|dual monitors|webcam|internet connection|operating system/.test(k)),
+  `extract drops WFH hardware chrome (got ${leverKw.filter((k) => /provide your own dual|dual monitors|webcam|internet connection|operating system/.test(k)).join(',')})`
+);
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

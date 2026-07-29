@@ -166,6 +166,10 @@ const JUNK_KEYWORD_RE =
 const JD_CHROME_PHRASE_RE =
   /\b(what you|what you.?ll|you.?ll (do|bring)|who we are|the role|computer science|technology-related|related field|bachelor.?s?( degree)?|equivalent experience|full[-\s]?stack experience|hands-?on experience|years of (full[-\s]?stack )?experience|degree in|components and implement|user-friendly|providing technical guidance|cross-functional teams to gather|and ensure best practices|frameworks like|manage time|responsive and user|cloud migration and modernization)\b/i;
 
+/** Equipment / WFH hardware boilerplate — not a candidate skill. */
+const JD_EQUIPMENT_PHRASE_RE =
+  /\b(provide your own|your own dual|dual monitors?|hd webcam|webcam|headset|internet connection|stable internet|dsl, cable|fiber wired|work-from-home setup|laptop system|system requirements?|operating system|mac osx|windows 10|processor;?|ram;?)\b/i;
+
 /** Known tech only — preferred for ATS competency / skills lines. */
 export function extractJdTechKeywords(jdText, limit = 20) {
   if (!jdText || String(jdText).length < 30) return [];
@@ -302,6 +306,7 @@ export function isJunkKeyword(kw) {
   if (STOPWORDS.has(k)) return true;
   if (JUNK_KEYWORD_RE.test(k)) return true;
   if (JD_CHROME_PHRASE_RE.test(k)) return true;
+  if (JD_EQUIPMENT_PHRASE_RE.test(k)) return true;
   // Multi-word phrases that still start with UI chrome ("Find candidates")
   if (/^(find|apply|search|sign|join|save|share|view|click|what|who|the)\b/.test(k)) return true;
   return false;
