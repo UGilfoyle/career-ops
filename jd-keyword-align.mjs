@@ -300,13 +300,61 @@ export function extractMustHavePreferred(jdText) {
   };
 }
 
+/**
+ * Verbs that mark a full clause, not a skill noun-phrase.
+ * ("engineers can review quickly", "designs are clear" — never weave these.)
+ */
+const PROSE_VERB_RE = /\b(review|reviews|reviewed|reviewing|leveling|level|levelled|onboard|onboarding|are|were|was|being|become|becomes|ship|shipping|shipped|looks|look|seems|feels|reads|say|says|tell|means|wants|likes|hopes|trusts?|speaks?|writes?|reads?|grows?|growing|learns?|learning|teaches?|helps?|helping|works?|working|plays?|runs?|makes?|making|takes?|taking|gets?|getting|keeps?|keeping|comes?|coming|goes?|going|sees?|seeing|knows?|finding|finds?)\b/i;
+
+/** Trailing words that signal a mid-sentence fragment, not a skill phrase. */
+const FRAGMENT_END_WORDS = new Set([
+  'and', 'or', 'but', 'nor', 'so', 'yet', 'as', 'if', 'than', 'then', 'when', 'while',
+  'the', 'a', 'an', 'to', 'of', 'for', 'in', 'on', 'at', 'by', 'with', 'from', 'via',
+  'that', 'this', 'these', 'those', 'it', 'its', 'you', 'your', 'we', 'our', 'they', 'their',
+  'are', 'is', 'be', 'been', 'can', 'will', 'would', 'should', 'could', 'may', 'might',
+  'do', 'does', 'did', 'has', 'have', 'had',
+]);
+
+/** True when a phrase ends like a sentence fragment (cut before a verb/adjective). */
+export function isSentenceFragment(kw) {
+  const words = String(kw || '').trim().toLowerCase().split(/\s+/);
+  if (!words.length) return true;
+  const last = words[words.length - 1];
+  // Ends on a connective/preposition/auxiliary → fragment ("area through automation and")
+  if (FRAGMENT_END_WORDS.has(last)) return true;
+  return false;
+}
+
+/** True when a phrase reads like prose, not a skill — leading words + stopword density + verbs. */
+function isProseLikePhrase(kw) {
+  const words = String(kw || '').trim().toLowerCase().split(/\s+/);
+  if (words.length < 2) return false;
+  const first = words[0];
+  // Phrases starting with pronouns / conjunctions / prepositions are sentence, not skills
+  if (/^(your|you|we|our|they|their|it|its|this|that|these|those|because|when|while|if|as|through|and|or|but|with|from|into|onto|upon|toward|towards)\b/.test(first)) return true;
+  // Any clause verb anywhere → prose ("engineers can review quickly", "designs are clear")
+  if (PROSE_VERB_RE.test(String(kw))) return true;
+  // 3+ word phrases where >40% words are stopwords are prose ("area through automation and")
+  if (words.length >= 3) {
+    const stopCount = words.filter((w) => STOPWORDS.has(w)).length;
+    if (stopCount / words.length > 0.4) return true;
+  }
+  return false;
+}
+
+/** Mid-phrase cut: "X and Y" / "X or Y" where Y continues a clause → fragment. */
+const MID_CLAUSE_RE = /\b(?:and|or|but|so|yet)\s+(?:the|a|an|that|this|these|those|your|you|we|they|their|it|its|staff|senior|new|more|other|technical|design|docs?|engineers?|team|workstream|components?|clients?|areas?)\b/i;
+
 export function isJunkKeyword(kw) {
   const k = normalizeKeyword(kw).toLowerCase();
   if (!k || k.length < 2) return true;
   if (STOPWORDS.has(k)) return true;
+  if (MID_CLAUSE_RE.test(k)) return true;
   if (JUNK_KEYWORD_RE.test(k)) return true;
   if (JD_CHROME_PHRASE_RE.test(k)) return true;
   if (JD_EQUIPMENT_PHRASE_RE.test(k)) return true;
+  if (isSentenceFragment(k)) return true;
+  if (isProseLikePhrase(k)) return true;
   // Multi-word phrases that still start with UI chrome ("Find candidates")
   if (/^(find|apply|search|sign|join|save|share|view|click|what|who|the)\b/.test(k)) return true;
   return false;

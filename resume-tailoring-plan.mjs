@@ -612,7 +612,17 @@ export function repairTailoredResume(resume, plan, profile, jdText) {
 export function measureMutableRoleCoverage(resume, plan, keywords) {
   const raw = keywords || plan.keywords.weave || plan.keywords.honest || plan.keywords.atsMirror || [];
   const list = Array.isArray(raw) ? raw : String(raw).split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
-  const kws = list.filter((k) => isWeavableKeyword(k) || String(k).split(/\s+/).length >= 2);
+  // Dedupe (case-insensitive) and drop junk/fragments so coverage reflects real skills
+  const seen = new Set();
+  const kws = [];
+  for (const item of list) {
+    if (!item || isJunkKeyword(item)) continue;
+    if (!(isWeavableKeyword(item) || String(item).split(/\s+/).length >= 2)) continue;
+    const key = normalizeKey(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    kws.push(item);
+  }
   if (!kws.length || !plan.tailorIndices?.length) {
     return { score: 0, matchRatio: 0, matched: [], missing: kws, roleHits: {}, rolesWithHit: 0 };
   }

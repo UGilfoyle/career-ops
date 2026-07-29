@@ -188,5 +188,37 @@ assert(
   `extract drops WFH hardware chrome (got ${leverKw.filter((k) => /provide your own dual|dual monitors|webcam|internet connection|operating system/.test(k)).join(',')})`
 );
 
+console.log('\nSentence-fragment / prose keyword filter\n');
+const SPREETAIL_PROSE = `
+Software Engineer-III @ Spreetail
+Success in this role looks like:
+* Engineers on your workstream shipping confidently because designs and technical direction are clear
+* Reduced manual intervention in exception handling within your area through automation and AI-assisted detection
+* Design docs and technical decisions that Staff engineers can review quickly and trust
+* Faster onboarding of new 3PL clients through well-built, reusable components
+Requirements:
+* Experience with event-driven architecture and distributed systems
+* AWS and observability
+`;
+assert(isJunkKeyword('area through automation and'), 'mid-sentence fragment is junk');
+assert(isJunkKeyword('because designs and technical'), 'leading-conjunction prose is junk');
+assert(isJunkKeyword('engineers can review quickly'), 'verb clause is junk');
+assert(isJunkKeyword('direction are clear'), 'are-clause is junk');
+assert(isJunkKeyword('your workstream shipping confidently'), 'leading-pronoun prose is junk');
+assert(isJunkKeyword('docs and technical decisions'), 'docs and ... fragment is junk');
+assert(!isJunkKeyword('event-driven architecture'), 'event-driven architecture is NOT junk');
+assert(!isJunkKeyword('distributed systems'), 'distributed systems is NOT junk');
+assert(!isJunkKeyword('reusable components'), 'reusable components is NOT junk');
+assert(!isJunkKeyword('AWS'), 'AWS is NOT junk');
+const spreetailKw = extractJdKeywords(SPREETAIL_PROSE, 25).map((t) => t.toLowerCase());
+assert(
+  !spreetailKw.some((k) => /through automation and|review quickly|designs and technical|are clear|workstream shipping/.test(k)),
+  `extract drops Spreetail sentence fragments (got ${spreetailKw.filter((k) => /through automation and|review quickly|designs and technical|are clear|workstream shipping/.test(k)).join(',')})`
+);
+assert(
+  spreetailKw.some((k) => /event-driven|distributed systems|aws|observability/.test(k)),
+  'extract keeps real skills'
+);
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
