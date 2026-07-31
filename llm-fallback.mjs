@@ -113,8 +113,22 @@ export function resolveFallbackProviders() {
   }
 
   // Explicit custom FALLBACK_* (must not be GitHub Models)
-  const configuredUrl = process.env.FALLBACK_BASE_URL || '';
+  let configuredUrl = process.env.FALLBACK_BASE_URL || '';
   const configuredKey = firstEnv(['FALLBACK_API_KEY', 'MODELSCOPE_API_KEY', 'MODELSCOPE_TOKEN']);
+
+  // Stale Actions secrets often still point at retired models.github.ai.
+  // Remap by key shape so existing FALLBACK_API_KEY keeps working.
+  if (configuredKey && (!configuredUrl || isGithubModelsUrl(configuredUrl))) {
+    if (/^sk-or-/i.test(configuredKey)) {
+      configuredUrl = 'https://openrouter.ai/api/v1';
+    } else if (/^sk-/i.test(configuredKey) && !/^gh[pousr]_|github_pat_/i.test(configuredKey)) {
+      // DeepSeek / OpenAI-style keys — prefer DeepSeek unless OPENROUTER already resolved
+      if (!firstEnv('OPENROUTER_API_KEY') && !firstEnv('DEEPSEEK_API_KEY')) {
+        configuredUrl = 'https://api.deepseek.com';
+      }
+    }
+  }
+
   if (configuredKey && configuredUrl && !isGithubModelsUrl(configuredUrl)) {
     const url = configuredUrl.replace(/\/$/, '');
     let apiKey = configuredKey;
@@ -136,21 +150,29 @@ export function resolveFallbackProviders() {
         || process.env.OPENROUTER_MODEL
         || process.env.DEEPSEEK_MODEL
         || process.env.MODELSCOPE_MODEL
-        || 'deepseek-chat';
+        || (/openrouter\.ai/i.test(url) ? 'openai/gpt-4o-mini' : 'deepseek-chat');
       if (/openrouter\.ai/i.test(url) && !model.includes('/')) model = `openai/${model}`;
       if (/deepseek\.com/i.test(url) && /^openai\//i.test(model)) model = 'deepseek-chat';
-      push({
-        name: 'Custom Fallback',
-        apiKey,
-        baseUrl: url.replace(/\/v1$/, ''),
-        model,
-        headers: /openrouter\.ai/i.test(url)
-          ? {
-              'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://github.com/UGilfoyle/career-ops',
-              'X-Title': process.env.OPENROUTER_APP_NAME || 'career-ops',
-            }
-          : {},
-      });
+      // Skip if catalog already added the same provider+model
+      const normalizedCustom = (/deepseek\.com/i.test(url) ? url.replace(/\/v1$/, '') : url).replace(/\/$/, '');
+      const catalogHit = out.some(
+        (p) => p.baseUrl.replace(/\/$/, '') === normalizedCustom && p.apiKey === apiKey,
+      );
+      if (!catalogHit) {
+        // Keep /v1 for OpenRouter/Groq/Together. DeepSeek accepts both.
+        push({
+          name: 'Custom Fallback',
+          apiKey,
+          baseUrl: normalizedCustom,
+          model,
+          headers: /openrouter\.ai/i.test(url)
+            ? {
+                'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://github.com/UGilfoyle/career-ops',
+                'X-Title': process.env.OPENROUTER_APP_NAME || 'career-ops',
+              }
+            : {},
+        });
+      }
     }
   }
 

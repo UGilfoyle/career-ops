@@ -48,6 +48,17 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+          # Live LLM providers (GitHub Models is retired — do not rely on FALLBACK_* alone)
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: ${{ secrets.DEEPSEEK_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+          MODELSCOPE_API_KEY: ${{ secrets.MODELSCOPE_API_KEY }}
+          # Optional OpenAI-compatible custom endpoint (must NOT be models.github.ai)
           FALLBACK_BASE_URL: ${{ secrets.FALLBACK_BASE_URL }}
           FALLBACK_API_KEY: ${{ secrets.FALLBACK_API_KEY }}
           FALLBACK_MODEL: ${{ secrets.FALLBACK_MODEL }}
@@ -61,7 +72,8 @@ jobs:
           ACTION_ARGS: ${{ github.event.inputs.action_args }}
           DASHBOARD_WEBHOOK_URL: ${{ secrets.DASHBOARD_WEBHOOK_URL }}
           WORKER_WEBHOOK_SECRET: ${{ secrets.WORKER_WEBHOOK_SECRET }}
-        run: |
+          # Deterministic tailor still runs if every LLM is down
+          CAREER_OPS_ALLOW_DETERMINISTIC_TAILOR: '1'        run: |
           # Allowlist validation — only permit known scripts (CodeRabbit security fix)
           ALLOWED_SCRIPTS="scratch-scan.mjs agentic-tailor.mjs rank-pipeline.mjs auto-apply.mjs add-job.mjs"
           SCRIPT="${ACTION_SCRIPT:-scratch-scan.mjs}"

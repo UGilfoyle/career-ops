@@ -366,7 +366,8 @@ export function isJunkKeyword(kw) {
   if (isSentenceFragment(k)) return true;
   if (isProseLikePhrase(k)) return true;
   // Mid-sentence crumbs: "down ambiguous problems", "engineers and data"
-  if (/^(down|break|flag|bring|partner|act|run|set|raise|own|handling|driven|cutting|rewriting|ensuring|guiding|raising|backed|strong|clear|able)\b/.test(k) && k.includes(' ')) return true;
+  // Mid-sentence crumbs / incomplete JD cuts
+  if (/^(down|break|flag|bring|partner|act|run|set|raise|own|handling|driven|cutting|rewriting|ensuring|guiding|raising|backed|strong|clear|able|for|with)\b/.test(k) && k.includes(' ')) return true;
   if (/^(engineers?|developers?|staff|seniors?)\s+and\b/.test(k)) return true;
   if (/\b(domain|area)$/.test(k) && k.includes(' ')) return true;
   if (/^(tracking|handling|reducing|ensuring|guiding|raising|models|pipelines with|cost and)\b/.test(k) && k.includes(' ')) return true;

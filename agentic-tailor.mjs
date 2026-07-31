@@ -1485,7 +1485,22 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   }
 
   if (!data) {
-    throw lastError || new Error('Failed to generate tailored CV from all providers.');
+    const allowDeterministic =
+      process.env.CAREER_OPS_ALLOW_DETERMINISTIC_TAILOR === '1'
+      || process.env.CI === 'true'
+      || Boolean(process.env.GITHUB_ACTIONS);
+    if (!allowDeterministic) {
+      throw lastError || new Error('Failed to generate tailored CV from all providers.');
+    }
+    console.warn(
+      `⚠️ All LLMs failed — continuing with deterministic plan-only tailor.\n`
+      + `   Last error: ${lastError ? lastError.message : 'none'}\n`
+      + `   Tip: set OPENROUTER_API_KEY or DEEPSEEK_API_KEY or GEMINI_API_KEY in GitHub Actions secrets.`,
+    );
+    data = {
+      resume: { summary: '', core_competencies: [], experience: {} },
+      cover_letter: '',
+    };
   }
 
   const y = calculateYearsOfExperience(profile?.experience);
