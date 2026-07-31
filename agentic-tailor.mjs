@@ -1442,45 +1442,47 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     return { data: parsed, response: rawResponse };
   }
 
-  // Phase 1: OpenRouter → DeepSeek → Groq → Together → ModelScope → Gemini
-  // Prefer live OpenAI-compatible providers over HF (quota / retirement churn).
-  try {
-    const fb = await callFirstAvailableFallback({ messages, maxTokens: 3000, temperature: 0.2 });
-    const content = fb.content;
-    const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
-    data = robustJsonParse(jsonStr);
-    response = fb.data;
-    console.log(`✅ Successfully generated tailored CV using ${fb.provider}.`);
-    lastError = null;
-  } catch (msErr) {
-    console.warn(`⚠️ Primary LLM providers failed: ${msErr.message}`);
-    lastError = msErr;
-  }
-
-  // Phase 2: Hugging Face (optional backup)
-  if ((!data || lastError) && (hfClient || hfTokenInUse)) {
+  // Phase 1: Hugging Face primary (cheap / included credits)
+  if (hfClient || hfTokenInUse) {
     try {
       const result = await tryHfModel(HF_MODEL);
       data = result.data;
       response = result.response;
-      console.log(`✅ HF backup succeeded: ${HF_MODEL}`);
+      console.log(`✅ Successfully generated tailored CV using HF ${HF_MODEL}.`);
       lastError = null;
     } catch (err) {
       console.warn(`⚠️ HF primary ${HF_MODEL} failed: ${err.message}`);
       lastError = err;
       if (HF_MODEL === 'MiniMaxAI/MiniMax-M2.7') {
-        const hfFallback = 'Qwen/Qwen2.5-72B-Instruct';
+        const hfSecondary = 'Qwen/Qwen2.5-72B-Instruct';
         try {
-          const result = await tryHfModel(hfFallback);
+          const result = await tryHfModel(hfSecondary);
           data = result.data;
           response = result.response;
-          console.log(`✅ HF secondary succeeded: ${hfFallback}`);
+          console.log(`✅ HF secondary succeeded: ${hfSecondary}`);
           lastError = null;
         } catch (fbErr) {
-          console.warn(`⚠️ HF secondary ${hfFallback} failed: ${fbErr.message}`);
+          console.warn(`⚠️ HF secondary ${hfSecondary} failed: ${fbErr.message}`);
           lastError = fbErr;
         }
       }
+    }
+  }
+
+  // Phase 2: Paid fallbacks ONLY when HF is dry / errored (or GitHub Models era is gone).
+  // OpenRouter → DeepSeek → Groq → Together → ModelScope → Gemini
+  if (!data || lastError) {
+    try {
+      const fb = await callFirstAvailableFallback({ messages, maxTokens: 3000, temperature: 0.2 });
+      const content = fb.content;
+      const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
+      data = robustJsonParse(jsonStr);
+      response = fb.data;
+      console.log(`✅ Fallback LLM succeeded after HF/GitHub exhaustion: ${fb.provider}.`);
+      lastError = null;
+    } catch (msErr) {
+      console.warn(`⚠️ Fallback LLM providers failed: ${msErr.message}`);
+      lastError = msErr;
     }
   }
 
