@@ -3,6 +3,7 @@ import path from 'path';
 import sql from './db/client.mjs';
 import { openApplyBrowser } from './browser-session.mjs';
 import { findTailoredResumePdf } from './document-filename.mjs';
+import { callFirstAvailableFallback } from './llm-fallback.mjs';
 
 let hf = null;
 const TARGET_MAP = 'data/current_eval.json';
@@ -279,9 +280,15 @@ async function scanFormFields(frame) {
 async function reasonFieldMappings(fields, profile, companyName) {
   const hfClient = await getHfClient();
   const hfToken = process.env.HUGGINGFACE_TOKEN;
-  const fallbackApiKey = process.env.FALLBACK_API_KEY || process.env.MODELSCOPE_API_KEY || process.env.MODELSCOPE_TOKEN;
+  const hasDeepseek = Boolean(process.env.DEEPSEEK_API_KEY);
+  const hasModelscope = Boolean(process.env.MODELSCOPE_API_KEY || process.env.MODELSCOPE_TOKEN);
+  const hasCustomFallback = Boolean(
+    process.env.FALLBACK_API_KEY
+    && process.env.FALLBACK_BASE_URL
+    && !String(process.env.FALLBACK_BASE_URL).includes('models.github.ai'),
+  );
 
-  if (!hfClient && !hfToken && !fallbackApiKey) {
+  if (!hfClient && !hfToken && !hasDeepseek && !hasModelscope && !hasCustomFallback) {
     console.warn("⚠️ No AI inference providers configured. Skipping form reasoning.");
     return null;
   }
@@ -357,39 +364,15 @@ async function reasonFieldMappings(fields, profile, companyName) {
     hfError = new Error("No Hugging Face token configured.");
   }
 
-  if (hfError && fallbackApiKey) {
-    let fallbackBaseUrl = process.env.FALLBACK_BASE_URL || 'https://api-inference.modelscope.cn/v1';
-    if (!fallbackBaseUrl.endsWith('/chat/completions')) {
-      fallbackBaseUrl = fallbackBaseUrl.replace(/\/$/, '') + '/chat/completions';
-    }
-    const fallbackModel = process.env.FALLBACK_MODEL || process.env.MODELSCOPE_MODEL || 'Qwen/Qwen2.5-72B-Instruct';
-    
-    console.log(`🔄 [Fallback LLM] Falling back to custom provider API for form reasoning: ${fallbackBaseUrl} using model: ${fallbackModel}...`);
+  if (hfError) {
     try {
-      const headers = {
-        'Authorization': `Bearer ${fallbackApiKey}`,
-        'Content-Type': 'application/json',
-      };
-      if (fallbackBaseUrl.includes('models.github.ai')) {
-        headers['Accept'] = 'application/vnd.github+json';
-        headers['X-GitHub-Api-Version'] = '2022-11-28';
-      }
-      const msResponse = await fetch(fallbackBaseUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: fallbackModel,
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 2000,
-          temperature: 0.1,
-        }),
+      const fb = await callFirstAvailableFallback({
+        messages: [{ role: 'user', content: prompt }],
+        maxTokens: 2000,
+        temperature: 0.1,
       });
-      if (!msResponse.ok) {
-        const body = await msResponse.text();
-        throw new Error(`Fallback API error ${msResponse.status}: ${body.slice(0, 200)}`);
-      }
-      response = await msResponse.json();
-      console.log(`✅ [Fallback LLM] Successfully reasoned form fields using fallback provider.`);
+      response = fb.data;
+      console.log(`✅ [Fallback LLM] Successfully reasoned form fields using ${fb.provider}.`);
       hfError = null;
     } catch (msErr) {
       console.error(`❌ [Fallback LLM] Form reasoning fallback failed: ${msErr.message}`);

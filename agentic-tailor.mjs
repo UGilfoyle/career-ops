@@ -28,6 +28,7 @@ import {
   isJunkKeyword,
   isWeavableKeyword,
 } from './jd-keyword-align.mjs';
+import { callFirstAvailableFallback } from './llm-fallback.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
 import { classifyCompany } from './gcc-classify.mjs';
 import { hydrateResumeProfile } from './profile-hydrate.mjs';
@@ -1473,49 +1474,17 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     lastError = new Error("No Hugging Face token configured.");
   }
 
-  // Phase 3: Try Custom Provider Fallback (if HF failed/truncated or is unconfigured)
-  const fallbackApiKey = process.env.FALLBACK_API_KEY || process.env.MODELSCOPE_API_KEY || process.env.MODELSCOPE_TOKEN;
-  if ((!data || lastError) && fallbackApiKey) {
-    let fallbackBaseUrl = process.env.FALLBACK_BASE_URL || 'https://api-inference.modelscope.cn/v1';
-    if (!fallbackBaseUrl.endsWith('/chat/completions')) {
-      fallbackBaseUrl = fallbackBaseUrl.replace(/\/$/, '') + '/chat/completions';
-    }
-    const fallbackModel = process.env.FALLBACK_MODEL || process.env.MODELSCOPE_MODEL || 'Qwen/Qwen2.5-72B-Instruct';
-    
-    console.log(`🔄 [Fallback LLM] Falling back to custom provider API: ${fallbackBaseUrl} using model: ${fallbackModel}...`);
+  // Phase 3: OpenAI-compatible fallbacks (DeepSeek → ModelScope → custom).
+  // GitHub Models is retired — llm-fallback skips models.github.ai entirely.
+  if (!data || lastError) {
     try {
-      const headers = {
-        'Authorization': `Bearer ${fallbackApiKey}`,
-        'Content-Type': 'application/json',
-      };
-      if (fallbackBaseUrl.includes('models.github.ai')) {
-        headers['Accept'] = 'application/vnd.github+json';
-        headers['X-GitHub-Api-Version'] = '2022-11-28';
-      }
-      const msResponse = await fetch(fallbackBaseUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: fallbackModel,
-          messages,
-          max_tokens: 3000,
-          temperature: 0.2,
-        }),
-      });
-      if (!msResponse.ok) {
-        const body = await msResponse.text();
-        throw new Error(`Fallback API error ${msResponse.status}: ${body.slice(0, 200)}`);
-      }
-      const msData = await msResponse.json();
-      if (!msData || !msData.choices || !msData.choices[0] || !msData.choices[0].message) {
-        throw new Error("Empty or malformed response from Custom Fallback API");
-      }
-      const content = msData.choices[0].message.content;
+      const fb = await callFirstAvailableFallback({ messages, maxTokens: 3000, temperature: 0.2 });
+      const content = fb.content;
       const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
       data = robustJsonParse(jsonStr);
-      response = msData;
-      console.log(`✅ [Fallback LLM] Successfully generated tailored CV using fallback provider.`);
-      lastError = null; // cleared
+      response = fb.data;
+      console.log(`✅ [Fallback LLM] Successfully generated tailored CV using ${fb.provider}.`);
+      lastError = null;
     } catch (msErr) {
       console.error(`❌ [Fallback LLM] Fallback failed: ${msErr.message}`);
       throw new Error(`Both Hugging Face and Fallback LLM failed.\nHF Error: ${lastError ? lastError.message : 'unconfigured'}.\nFallback Error: ${msErr.message}`);

@@ -4,25 +4,6 @@ import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
-/** Normalize GitHub Models base URL → .../inference/chat/completions */
-function resolveGithubModelsUrl(baseUrl: string): string {
-  let u = (baseUrl || 'https://models.github.ai/inference').trim().replace(/\/$/, '');
-  if (u.endsWith('/chat/completions')) return u;
-  // OpenAI-compat clients often append /v1 — GitHub Models does not use it
-  u = u.replace(/\/v1$/, '');
-  if (u.includes('models.github.ai') && !u.includes('/inference')) {
-    u = 'https://models.github.ai/inference';
-  }
-  return `${u}/chat/completions`;
-}
-
-/** GitHub Models requires {publisher}/{model} (e.g. openai/gpt-4o-mini) */
-function resolveGithubModelId(model: string): string {
-  const m = (model || 'openai/gpt-4o-mini').trim();
-  if (m.includes('/')) return m;
-  return `openai/${m}`;
-}
-
 function isPlaceholderKey(key: string): boolean {
   if (!key) return true;
   const lower = key.toLowerCase();
@@ -32,6 +13,10 @@ function isPlaceholderKey(key: string): boolean {
     lower === 'your' ||
     lower.startsWith('your')
   );
+}
+
+function isGithubModelsUrl(url: string): boolean {
+  return String(url || '').includes('models.github.ai');
 }
 
 export async function POST(req: NextRequest) {
@@ -49,7 +34,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Messages are required' }, { status: 400 });
     }
 
-    // 3. Fetch user profile context (include GitHub PAT + openai_key for Models)
+    // 3. Fetch user profile context
     const profileRows = await sql`
       SELECT resume_context, targeting_keywords, hf_token, openai_key
       FROM user_profiles
@@ -60,9 +45,6 @@ export async function POST(req: NextRequest) {
     const resumeContext = profile.resume_context || {};
     const targetingKeywords = profile.targeting_keywords || { positive: [], negative: [] };
     const userHfToken = profile.hf_token || '';
-    const githubPatFromProfile =
-      (resumeContext as { github_settings?: { pat?: string } })?.github_settings?.pat || '';
-    const openaiKeyFromProfile = profile.openai_key || '';
 
     // 4. Construct System Instructions
     const systemPrompt = `You are Career-Ops Copilot, an elite AI career strategist and job coach. Your job is to help the user navigate their job search, prepare for interviews, analyze skill gaps, draft cover letters, and suggest outreach messages (e.g., for LinkedIn).
@@ -80,61 +62,17 @@ Instructions:
 3. If the user asks for LinkedIn outreach messages, draft messages that are concise, conversational, and personalized. Avoid spammy-sounding templates.
 4. If writing code snippets, explain them briefly.`;
 
-    // 5. Resolve GitHub Models credentials (env → profile PAT → openai_key)
-    const fallbackKey =
-      process.env.FALLBACK_API_KEY ||
-      process.env.GITHUB_PAT ||
-      process.env.GITHUB_TOKEN ||
-      githubPatFromProfile ||
-      openaiKeyFromProfile ||
-      '';
-    const fallbackUrl = process.env.FALLBACK_BASE_URL || 'https://models.github.ai/inference';
-    const fallbackModel = resolveGithubModelId(process.env.FALLBACK_MODEL || 'openai/gpt-4o-mini');
-
     const deepseekKey = process.env.DEEPSEEK_API_KEY || '';
     const geminiKey = process.env.GEMINI_API_KEY || '';
     const hfToken = process.env.HUGGINGFACE_TOKEN || userHfToken || '';
+    const fallbackUrl = process.env.FALLBACK_BASE_URL || '';
+    const fallbackKey = process.env.FALLBACK_API_KEY || '';
+    const fallbackModel = process.env.FALLBACK_MODEL || 'deepseek-chat';
 
-    // Attempt providers in priority order. Prefer GitHub Models (included with GitHub).
+    // GitHub Models is retired (410 brownout). Prefer Gemini → DeepSeek → HF → custom non-GitHub.
     const attempts: Array<() => Promise<{ content: string; provider: string }>> = [];
 
-    // ── Attempt 1: GitHub Models ──
-    if (!isPlaceholderKey(fallbackKey)) {
-      attempts.push(async () => {
-        const cleanUrl = resolveGithubModelsUrl(fallbackUrl);
-        const response = await fetch(cleanUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-            Authorization: `Bearer ${fallbackKey}`,
-          },
-          body: JSON.stringify({
-            model: fallbackModel,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages.map((m: { role: string; content: string }) => ({
-                role: m.role,
-                content: m.content,
-              })),
-            ],
-            temperature: 0.7,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`GitHub Models failed with status ${response.status}: ${await response.text()}`);
-        }
-        const result = await response.json();
-        return {
-          content: result.choices?.[0]?.message?.content || '',
-          provider: `GitHub Models (${fallbackModel})`,
-        };
-      });
-    }
-
-    // ── Attempt 2: Gemini ──
+    // ── Attempt 1: Gemini ──
     if (geminiKey && !isPlaceholderKey(geminiKey)) {
       attempts.push(async () => {
         const contents = messages.map((m: { role: string; content: string }) => ({
@@ -169,7 +107,7 @@ Instructions:
       });
     }
 
-    // ── Attempt 3: DeepSeek Chat ──
+    // ── Attempt 2: DeepSeek Chat ──
     if (deepseekKey && !isPlaceholderKey(deepseekKey)) {
       attempts.push(async () => {
         const response = await fetch('https://api.deepseek.com/chat/completions', {
@@ -200,7 +138,7 @@ Instructions:
       });
     }
 
-    // ── Attempt 4: Hugging Face Router (working free-tier model) ──
+    // ── Attempt 3: Hugging Face Router ──
     if (hfToken && !isPlaceholderKey(hfToken)) {
       attempts.push(async () => {
         const hfModel = process.env.HUGGINGFACE_MODEL || 'HuggingFaceH4/zephyr-7b-beta';
@@ -235,7 +173,45 @@ Instructions:
       });
     }
 
-    // Run attempts sequentially. If one fails, catch and log, then move to the next.
+    // ── Attempt 4: Custom OpenAI-compatible fallback (never GitHub Models) ──
+    if (
+      fallbackKey
+      && !isPlaceholderKey(fallbackKey)
+      && fallbackUrl
+      && !isGithubModelsUrl(fallbackUrl)
+    ) {
+      attempts.push(async () => {
+        let url = fallbackUrl.trim().replace(/\/$/, '');
+        if (!url.endsWith('/chat/completions')) url = `${url}/chat/completions`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${fallbackKey}`,
+          },
+          body: JSON.stringify({
+            model: fallbackModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...messages.map((m: { role: string; content: string }) => ({
+                role: m.role,
+                content: m.content,
+              })),
+            ],
+            temperature: 0.7,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(`Custom fallback failed with status ${response.status}: ${await response.text()}`);
+        }
+        const result = await response.json();
+        return {
+          content: result.choices?.[0]?.message?.content || '',
+          provider: `Custom (${fallbackModel})`,
+        };
+      });
+    }
+
     let finalResult = null;
     const errors: string[] = [];
 
@@ -264,7 +240,9 @@ Instructions:
     return NextResponse.json(
       {
         error:
-          'No LLM Provider configured. Set FALLBACK_API_KEY (GitHub PAT with models:read), or add a GitHub PAT in Settings → GitHub Automation. Optionally: GEMINI_API_KEY, DEEPSEEK_API_KEY, HUGGINGFACE_TOKEN.',
+          'No LLM Provider configured. Set GEMINI_API_KEY or DEEPSEEK_API_KEY (recommended). '
+          + 'GitHub Models (models.github.ai) is retired and no longer used. '
+          + 'Optionally: HUGGINGFACE_TOKEN, or FALLBACK_BASE_URL + FALLBACK_API_KEY pointing at a live OpenAI-compatible API.',
       },
       { status: 400 }
     );

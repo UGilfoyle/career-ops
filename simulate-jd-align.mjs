@@ -6,7 +6,7 @@
  *   node simulate-jd-align.mjs
  *   node simulate-jd-align.mjs --jd path/to/jd.md
  *   node simulate-jd-align.mjs --json
- *   node simulate-jd-align.mjs --llm   # optional: real tailor via GitHub Models, then gate
+ *   node simulate-jd-align.mjs --llm   # optional: real tailor via DeepSeek/fallback, then gate
  */
 
 import fs from 'fs';
@@ -20,6 +20,7 @@ import {
   printAlignmentConfirmation,
   writeAlignmentReport,
 } from './resume-alignment-validator.mjs';
+import { callFirstAvailableFallback } from './llm-fallback.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_DIR = path.join(__dirname, 'examples', 'jd-align-fixtures');
@@ -51,21 +52,6 @@ function loadFixtures() {
 async function maybeLlmDraft(jdText, profile, company = 'Fixture Co') {
   if (!WANT_LLM) return null;
 
-  const key =
-    process.env.FALLBACK_API_KEY
-    || process.env.GITHUB_PAT
-    || process.env.GITHUB_TOKEN
-    || '';
-  if (!key || key.toLowerCase().includes('your_')) {
-    throw new Error('--llm requires FALLBACK_API_KEY / GITHUB_PAT with models:read');
-  }
-
-  let base = (process.env.FALLBACK_BASE_URL || 'https://models.github.ai/inference').replace(/\/$/, '');
-  base = base.replace(/\/v1$/, '');
-  const url = base.endsWith('/chat/completions') ? base : `${base}/chat/completions`;
-  let model = process.env.FALLBACK_MODEL || 'openai/gpt-4o-mini';
-  if (!model.includes('/')) model = `openai/${model}`;
-
   const prompt = `Return ONLY JSON: {"resume":{"summary":"...","core_competencies":["..."],"experience":{"0":["bullet",...]}}}.
 Use ONLY skills proven in the profile. Never claim .NET, C#, or Redux unless present in profile.
 JD:\n${jdText.slice(0, 4000)}\n\nPROFILE:\n${JSON.stringify({
@@ -73,32 +59,19 @@ JD:\n${jdText.slice(0, 4000)}\n\nPROFILE:\n${JSON.stringify({
     experience: (profile.experience || []).slice(0, 3),
   }).slice(0, 6000)}`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      messages: [
-        { role: 'system', content: 'You are a precise resume tailor. Output valid JSON only.' },
-        { role: 'user', content: prompt },
-      ],
-    }),
+  const fb = await callFirstAvailableFallback({
+    messages: [
+      { role: 'system', content: 'You are a precise resume tailor. Output valid JSON only.' },
+      { role: 'user', content: prompt },
+    ],
+    maxTokens: 3000,
+    temperature: 0.2,
   });
-  if (!response.ok) {
-    throw new Error(`GitHub Models failed ${response.status}: ${await response.text()}`);
-  }
-  const payload = await response.json();
-  const content = payload.choices?.[0]?.message?.content || '';
+  const content = fb.content;
   const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
   const parsed = JSON.parse(jsonStr);
   if (!parsed?.resume) throw new Error('LLM response missing resume object');
-  console.log(`🤖 LLM draft via GitHub Models (${model}) for ${company}`);
+  console.log(`🤖 LLM draft via ${fb.provider} for ${company}`);
   return parsed.resume;
 }
 
