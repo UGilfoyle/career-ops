@@ -73,7 +73,8 @@ jobs:
           DASHBOARD_WEBHOOK_URL: ${{ secrets.DASHBOARD_WEBHOOK_URL }}
           WORKER_WEBHOOK_SECRET: ${{ secrets.WORKER_WEBHOOK_SECRET }}
           # Deterministic tailor still runs if every LLM is down
-          CAREER_OPS_ALLOW_DETERMINISTIC_TAILOR: '1'        run: |
+          CAREER_OPS_ALLOW_DETERMINISTIC_TAILOR: '1'
+        run: |
           # Allowlist validation — only permit known scripts (CodeRabbit security fix)
           ALLOWED_SCRIPTS="scratch-scan.mjs agentic-tailor.mjs rank-pipeline.mjs auto-apply.mjs add-job.mjs"
           SCRIPT="${ACTION_SCRIPT:-scratch-scan.mjs}"
