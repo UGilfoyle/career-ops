@@ -65,12 +65,56 @@ Instructions:
     const deepseekKey = process.env.DEEPSEEK_API_KEY || '';
     const geminiKey = process.env.GEMINI_API_KEY || '';
     const hfToken = process.env.HUGGINGFACE_TOKEN || userHfToken || '';
+    const openrouterKey = process.env.OPENROUTER_API_KEY || '';
+    const groqKey = process.env.GROQ_API_KEY || '';
+    const togetherKey = process.env.TOGETHER_API_KEY || '';
     const fallbackUrl = process.env.FALLBACK_BASE_URL || '';
     const fallbackKey = process.env.FALLBACK_API_KEY || '';
     const fallbackModel = process.env.FALLBACK_MODEL || 'deepseek-chat';
 
-    // GitHub Models is retired (410 brownout). Prefer Gemini → DeepSeek → HF → custom non-GitHub.
+    // GitHub Models retired 2026-07-30. Prefer live providers + OpenRouter as catalog drop-in.
     const attempts: Array<() => Promise<{ content: string; provider: string }>> = [];
+
+    const pushOpenAiCompat = (
+      name: string,
+      apiKey: string,
+      baseUrl: string,
+      model: string,
+      extraHeaders: Record<string, string> = {},
+    ) => {
+      if (!apiKey || isPlaceholderKey(apiKey) || isGithubModelsUrl(baseUrl)) return;
+      attempts.push(async () => {
+        let url = baseUrl.trim().replace(/\/$/, '');
+        if (!url.endsWith('/chat/completions')) url = `${url}/chat/completions`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+            ...extraHeaders,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...messages.map((m: { role: string; content: string }) => ({
+                role: m.role,
+                content: m.content,
+              })),
+            ],
+            temperature: 0.7,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(`${name} failed with status ${response.status}: ${await response.text()}`);
+        }
+        const result = await response.json();
+        return {
+          content: result.choices?.[0]?.message?.content || '',
+          provider: `${name} (${model})`,
+        };
+      });
+    };
 
     // ── Attempt 1: Gemini ──
     if (geminiKey && !isPlaceholderKey(geminiKey)) {
@@ -107,38 +151,27 @@ Instructions:
       });
     }
 
-    // ── Attempt 2: DeepSeek Chat ──
-    if (deepseekKey && !isPlaceholderKey(deepseekKey)) {
-      attempts.push(async () => {
-        const response = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${deepseekKey}`,
-          },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages.map((m: { role: string; content: string }) => ({
-                role: m.role,
-                content: m.content,
-              })),
-            ],
-            temperature: 0.7,
-          }),
-        });
+    // ── OpenAI-compatible catalog (OpenRouter closest to old GitHub Models IDs) ──
+    pushOpenAiCompat(
+      'OpenRouter',
+      openrouterKey,
+      'https://openrouter.ai/api/v1',
+      process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
+      {
+        'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://github.com/UGilfoyle/career-ops',
+        'X-Title': process.env.OPENROUTER_APP_NAME || 'career-ops',
+      },
+    );
+    pushOpenAiCompat('DeepSeek', deepseekKey, 'https://api.deepseek.com', process.env.DEEPSEEK_MODEL || 'deepseek-chat');
+    pushOpenAiCompat('Groq', groqKey, 'https://api.groq.com/openai/v1', process.env.GROQ_MODEL || 'llama-3.3-70b-versatile');
+    pushOpenAiCompat(
+      'Together',
+      togetherKey,
+      'https://api.together.xyz/v1',
+      process.env.TOGETHER_MODEL || 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
+    );
 
-        if (!response.ok) {
-          const body = await response.text();
-          throw new Error(`DeepSeek API failed with status ${response.status}: ${body}`);
-        }
-        const result = await response.json();
-        return { content: result.choices?.[0]?.message?.content || '', provider: 'DeepSeek' };
-      });
-    }
-
-    // ── Attempt 3: Hugging Face Router ──
+    // ── Hugging Face Router ──
     if (hfToken && !isPlaceholderKey(hfToken)) {
       attempts.push(async () => {
         const hfModel = process.env.HUGGINGFACE_MODEL || 'HuggingFaceH4/zephyr-7b-beta';
@@ -173,43 +206,14 @@ Instructions:
       });
     }
 
-    // ── Attempt 4: Custom OpenAI-compatible fallback (never GitHub Models) ──
+    // ── Custom OpenAI-compatible fallback (never GitHub Models) ──
     if (
       fallbackKey
       && !isPlaceholderKey(fallbackKey)
       && fallbackUrl
       && !isGithubModelsUrl(fallbackUrl)
     ) {
-      attempts.push(async () => {
-        let url = fallbackUrl.trim().replace(/\/$/, '');
-        if (!url.endsWith('/chat/completions')) url = `${url}/chat/completions`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${fallbackKey}`,
-          },
-          body: JSON.stringify({
-            model: fallbackModel,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages.map((m: { role: string; content: string }) => ({
-                role: m.role,
-                content: m.content,
-              })),
-            ],
-            temperature: 0.7,
-          }),
-        });
-        if (!response.ok) {
-          throw new Error(`Custom fallback failed with status ${response.status}: ${await response.text()}`);
-        }
-        const result = await response.json();
-        return {
-          content: result.choices?.[0]?.message?.content || '',
-          provider: `Custom (${fallbackModel})`,
-        };
-      });
+      pushOpenAiCompat('Custom', fallbackKey, fallbackUrl, fallbackModel);
     }
 
     let finalResult = null;
@@ -240,9 +244,9 @@ Instructions:
     return NextResponse.json(
       {
         error:
-          'No LLM Provider configured. Set GEMINI_API_KEY or DEEPSEEK_API_KEY (recommended). '
-          + 'GitHub Models (models.github.ai) is retired and no longer used. '
-          + 'Optionally: HUGGINGFACE_TOKEN, or FALLBACK_BASE_URL + FALLBACK_API_KEY pointing at a live OpenAI-compatible API.',
+          'No LLM Provider configured. Recommended: OPENROUTER_API_KEY (drop-in for old GitHub Models catalog) '
+          + 'or GEMINI_API_KEY / DEEPSEEK_API_KEY / GROQ_API_KEY / TOGETHER_API_KEY. '
+          + 'GitHub Models (models.github.ai) is permanently retired.',
       },
       { status: 400 }
     );
