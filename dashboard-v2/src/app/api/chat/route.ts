@@ -19,6 +19,11 @@ function isGithubModelsUrl(url: string): boolean {
   return String(url || '').includes('models.github.ai');
 }
 
+/** Stale GitHub PATs cannot auth against DeepSeek/OpenRouter/etc. */
+function isGithubPatKey(key: string): boolean {
+  return /^gh[pousr]_|github_pat_/i.test(String(key || '').trim());
+}
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Authenticate user
@@ -69,8 +74,15 @@ Instructions:
     const groqKey = process.env.GROQ_API_KEY || '';
     const togetherKey = process.env.TOGETHER_API_KEY || '';
     const fallbackUrl = process.env.FALLBACK_BASE_URL || '';
-    const fallbackKey = process.env.FALLBACK_API_KEY || '';
+    const fallbackKeyRaw = process.env.FALLBACK_API_KEY || '';
+    const fallbackKey =
+      fallbackKeyRaw && !isGithubPatKey(fallbackKeyRaw) ? fallbackKeyRaw : '';
     const fallbackModel = process.env.FALLBACK_MODEL || 'deepseek-chat';
+    if (fallbackKeyRaw && isGithubPatKey(fallbackKeyRaw)) {
+      console.warn(
+        'Ignoring FALLBACK_API_KEY: GitHub PAT cannot auth against non-GitHub LLM APIs. Use OPENROUTER_API_KEY / DEEPSEEK_API_KEY instead.',
+      );
+    }
 
     // GitHub Models retired 2026-07-30. Prefer live providers + OpenRouter as catalog drop-in.
     const attempts: Array<() => Promise<{ content: string; provider: string }>> = [];

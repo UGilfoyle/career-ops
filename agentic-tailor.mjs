@@ -1419,7 +1419,6 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   let lastError = null;
   let response = null;
 
-  // Helper function to call Hugging Face and parse the JSON response
   async function tryHfModel(modelName) {
     let rawResponse;
     if (hfClient) {
@@ -1443,57 +1442,50 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
     return { data: parsed, response: rawResponse };
   }
 
-  // Phase 1: Try Hugging Face (Primary model)
-  if (hfClient || hfTokenInUse) {
+  // Phase 1: OpenRouter → DeepSeek → Groq → Together → ModelScope → Gemini
+  // Prefer live OpenAI-compatible providers over HF (quota / retirement churn).
+  try {
+    const fb = await callFirstAvailableFallback({ messages, maxTokens: 3000, temperature: 0.2 });
+    const content = fb.content;
+    const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
+    data = robustJsonParse(jsonStr);
+    response = fb.data;
+    console.log(`✅ Successfully generated tailored CV using ${fb.provider}.`);
+    lastError = null;
+  } catch (msErr) {
+    console.warn(`⚠️ Primary LLM providers failed: ${msErr.message}`);
+    lastError = msErr;
+  }
+
+  // Phase 2: Hugging Face (optional backup)
+  if ((!data || lastError) && (hfClient || hfTokenInUse)) {
     try {
       const result = await tryHfModel(HF_MODEL);
       data = result.data;
       response = result.response;
-      console.log(`✅ Successfully generated tailored CV using primary model: ${HF_MODEL}`);
+      console.log(`✅ HF backup succeeded: ${HF_MODEL}`);
+      lastError = null;
     } catch (err) {
-      console.warn(`⚠️ Primary model ${HF_MODEL} failed (or returned invalid/truncated JSON): ${err.message}`);
+      console.warn(`⚠️ HF primary ${HF_MODEL} failed: ${err.message}`);
       lastError = err;
-      
-      // Phase 2: Try Hugging Face Fallback model
       if (HF_MODEL === 'MiniMaxAI/MiniMax-M2.7') {
         const hfFallback = 'Qwen/Qwen2.5-72B-Instruct';
-        console.log(`🔄 [Quota/Rate-Limit Fallback] Attempting fallback to: ${hfFallback}...`);
         try {
           const result = await tryHfModel(hfFallback);
           data = result.data;
           response = result.response;
-          console.log(`✅ Fallback to ${hfFallback} succeeded.`);
-          lastError = null; // cleared
+          console.log(`✅ HF secondary succeeded: ${hfFallback}`);
+          lastError = null;
         } catch (fbErr) {
-          console.warn(`⚠️ Fallback to ${hfFallback} also failed: ${fbErr.message}`);
+          console.warn(`⚠️ HF secondary ${hfFallback} failed: ${fbErr.message}`);
           lastError = fbErr;
         }
       }
     }
-  } else {
-    lastError = new Error("No Hugging Face token configured.");
   }
 
-  // Phase 3: OpenAI-compatible fallbacks (DeepSeek → ModelScope → custom).
-  // GitHub Models is retired — llm-fallback skips models.github.ai entirely.
-  if (!data || lastError) {
-    try {
-      const fb = await callFirstAvailableFallback({ messages, maxTokens: 3000, temperature: 0.2 });
-      const content = fb.content;
-      const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
-      data = robustJsonParse(jsonStr);
-      response = fb.data;
-      console.log(`✅ [Fallback LLM] Successfully generated tailored CV using ${fb.provider}.`);
-      lastError = null;
-    } catch (msErr) {
-      console.error(`❌ [Fallback LLM] Fallback failed: ${msErr.message}`);
-      throw new Error(`Both Hugging Face and Fallback LLM failed.\nHF Error: ${lastError ? lastError.message : 'unconfigured'}.\nFallback Error: ${msErr.message}`);
-    }
-  }
-
-  // If we still don't have data, throw the last error
   if (!data) {
-    throw lastError || new Error("Failed to generate tailored CV from all providers.");
+    throw lastError || new Error('Failed to generate tailored CV from all providers.');
   }
 
   const y = calculateYearsOfExperience(profile?.experience);
