@@ -51,12 +51,14 @@ interview-prep/*.md
 
 # Auto-generated scratch scripts (may contain hardcoded personal data)
 scratch/
-!scratch/fetch-indeed-job.mjs
-!scratch/ingest-lever.mjs
 scratch-*.mjs
 scratch-*.cjs
-# But keep the core scanner tracked
+# Keep the core scanner tracked (used by dashboard + GitHub Actions)
 !scratch-scan.mjs
+
+# Local scratch artifacts / personal dumps
+tmp/*
+!tmp/.gitkeep
 
 .vercel
 

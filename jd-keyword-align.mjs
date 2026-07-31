@@ -366,10 +366,23 @@ export function isJunkKeyword(kw) {
   if (isSentenceFragment(k)) return true;
   if (isProseLikePhrase(k)) return true;
   // Mid-sentence crumbs: "down ambiguous problems", "engineers and data"
-  if (/^(down|break|flag|bring|partner|act|run|set|raise|own|handling)\b/.test(k) && k.includes(' ')) return true;
+  if (/^(down|break|flag|bring|partner|act|run|set|raise|own|handling|driven|cutting|rewriting|ensuring|guiding|raising|backed|strong|clear|able)\b/.test(k) && k.includes(' ')) return true;
   if (/^(engineers?|developers?|staff|seniors?)\s+and\b/.test(k)) return true;
   if (/\b(domain|area)$/.test(k) && k.includes(' ')) return true;
-  if (/^(tracking|handling|reducing|ensuring|guiding|raising)\b/.test(k) && k.includes(' ')) return true;
+  if (/^(tracking|handling|reducing|ensuring|guiding|raising|models|pipelines with|cost and)\b/.test(k) && k.includes(' ')) return true;
+  // Incomplete tails cut mid-phrase from JD prose
+  if (/\b(and|with|for|into|onto|from|the|a|an|high|query|retry|quality|logic|overall|async)$/.test(k) && k.includes(' ')) return true;
+  // "Design Kafka" style crumbs — real skill is "Kafka" / "Design Patterns" stays
+  {
+    const m = k.match(/^design\s+(.+)$/i);
+    if (m) {
+      const rest = m[1];
+      const techs = findKnownTechInText(normalizeJdTechAliases(rest));
+      if (techs.some((t) => normalizeKeyword(t).toLowerCase() === rest)) return true;
+    }
+  }
+  // Soft non-skill pairs ("cost and performance", "reliability and performance")
+  if (/^(cost|quality|reliability|performance|speed|scale)\s+and\s+\w+$/.test(k)) return true;
   // Multi-word phrases that still start with UI chrome ("Find candidates")
   if (/^(find|apply|search|sign|join|save|share|view|click|what|who|the)\b/.test(k)) return true;
   return false;
