@@ -16,6 +16,15 @@ import {
   ensureAllRolesTailored,
   isWeavableKeyword,
   isJunkKeyword,
+  isWeaveableNounPhrase,
+  keywordTokens,
+  keywordCoveredInText,
+  endsWithMetricTail,
+  upgradePartialMention,
+  weaveSuffixForm,
+  bulletHasTechContext,
+  weaveAdjacencyScore,
+  DOMAIN_EVIDENCE_STEMS,
 } from './jd-keyword-align.mjs';
 import {
   analyzeJdProfileFit,
@@ -219,22 +228,6 @@ function keywordLikelyProven(phrase, fit) {
   return corpusHints.some((h) => p.includes(h) || h.includes(p.split(/\s+/)[0]));
 }
 
-/** Evidence stems that justify weaving a JD domain phrase. Family-agnostic — any future JD. */
-const DOMAIN_EVIDENCE_STEMS = [
-  { match: /source-to-target|data completeness|etl validat|transformation logic|etl testing/i, stems: ['validat', 'etl', 'migrat', 'schema', 'data integrity', 'compar', 'python'] },
-  { match: /data reconcil/i, stems: ['reconcil', 'etl', 'kafka', 'payment', 'data integrity', 'validat'] },
-  { match: /data warehouse|staging|slowly changing|\bscd\b|fact.?dimension/i, stems: ['oracle', 'postgresql', 'schema', 'etl', 'warehouse', 'dimension', 'sql'] },
-  { match: /window functions|analytical functions/i, stems: ['sql', 'oracle', 'query', 'postgresql', 'aggregat'] },
-  { match: /shell scripting|job monitoring|log analysis/i, stems: ['linux', 'unix', 'shell', 'script', 'aws', 'deploy', 'ci/cd'] },
-  { match: /web scrap|puppeteer|playwright|cheerio|browser automation|anti-bot|proxy/i, stems: ['scrap', 'puppeteer', 'playwright', 'cheerio', 'javascript', 'node'] },
-  { match: /event-?driven|message (queue|broker)|kafka|microservices?/i, stems: ['event-driven', 'microservice', 'kafka', 'queue', 'broker', 'node', 'api'] },
-  { match: /observability|incident response|distributed tracing/i, stems: ['grafana', 'prometheus', 'datadog', 'tracing', 'logging', 'elk', 'incident'] },
-  { match: /auto-?scaling|container orchestration|infrastructure as code|continuous delivery/i, stems: ['aws', 'docker', 'kubernetes', 'ecs', 'lambda', 'terraform', 'ci/cd', 'deploy'] },
-  { match: /restful|api design|high-throughput|low-latency|rate limit/i, stems: ['api', 'rest', 'fastapi', 'express', 'throughput', 'latency', 'node'] },
-  { match: /state management|component librar|responsive design|react|typescript/i, stems: ['react', 'typescript', 'redux', 'frontend', 'ui'] },
-  { match: /vector|embedding|rag|prompt engineering|agentic|langchain|llm/i, stems: ['llm', 'embedding', 'rag', 'openai', 'langchain', 'vector', 'chromadb'] },
-];
-
 function profileCorpusText(profile) {
   const parts = [];
   for (const role of profile?.experience || []) {
@@ -260,6 +253,9 @@ function domainPhraseTransferable(phrase, corpus, honest = []) {
 
   const tokens = normalizeKey(p).split(/[^a-z0-9+#.]+/).filter((t) => t.length >= 4);
   if (!tokens.length) return false;
+  // Multi-word phrases need their leading token proven in the profile; otherwise
+  // any single shared word (e.g. "tracking") would admit prose fragments.
+  if (tokens.length > 1 && !corpus.includes(tokens[0])) return false;
   return tokens.some((t) => corpus.includes(t));
 }
 
@@ -277,9 +273,8 @@ export function selectWeaveKeywords(plan, profile) {
   const push = (kw) => {
     const raw = String(kw || '').trim();
     if (!raw || isJunkKeyword(raw)) return;
-    if (!(isWeavableKeyword(raw) || raw.split(/\s+/).length >= 2 || /-/.test(raw))) return;
-    // Bare participles ("AI-assisted") read as broken English when appended as "supporting X"
-    if (/\w+-\w*(?:ed|ing)$/i.test(raw)) return;
+    // Only grammatical noun phrases (skills, tools, capabilities) may be woven
+    if (!isWeaveableNounPhrase(raw)) return;
     if (/\b(mainframe|rally|qtest)\b/i.test(raw) && !corpus.includes(normalizeKey(raw).slice(0, 6))) return;
     // Never weave UI frameworks the CV does not prove (Interra Telerik/DevExpress trap)
     if (/\b(telerik|devexpress|jquery)\b/i.test(raw) && !/\btelerik|devexpress|jquery\b/.test(corpus)) return;
@@ -310,17 +305,14 @@ export function selectWeaveKeywords(plan, profile) {
 }
 
 /**
- * Force exact JD weave terms into mutable roles (spread across bullets; no stacking spam).
- * Phrase list comes from the plan — works for any future JD vocabulary.
+ * Weave JD terms into mutable roles only where they integrate grammatically:
+ * in-place mention upgrades, tool parentheticals, or "in a/an X" clauses.
+ * Keywords without a natural home in a role are skipped for that role.
  */
 export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerRole = 2) {
   if (!resume?.experience || !plan?.tailorIndices?.length || !weaveKeywords?.length) return resume;
   const copy = JSON.parse(JSON.stringify(resume));
-  const kws = weaveKeywords.filter(
-    (k) =>
-      (isWeavableKeyword(k) || String(k).split(/\s+/).length >= 2 || /-/.test(k)) &&
-      !/\w+-\w*(?:ed|ing)$/i.test(String(k).trim())
-  );
+  const kws = weaveKeywords.filter((k) => isWeaveableNounPhrase(k));
   const kwKeys = new Set(kws.map((k) => normalizeKey(k)));
 
   const stripInjectNoise = (raw) => {
@@ -342,38 +334,51 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
   let cursor = 0;
   for (const idx of plan.tailorIndices) {
     const key = String(idx);
-    let bullets = Array.isArray(copy.experience[key]) ? copy.experience[key].map(stripInjectNoise) : [];
+    const bullets = Array.isArray(copy.experience[key]) ? copy.experience[key].map(stripInjectNoise) : [];
     if (!bullets.length) continue;
 
-    const roleText = () => bullets.join('\n').toLowerCase();
+    const roleText = () => bullets.join('\n');
     let added = 0;
     const usedBullet = new Set();
 
     for (let n = 0; n < kws.length && added < maxPerRole; n++) {
       const kw = kws[(cursor + n) % kws.length];
-      if (roleText().includes(String(kw).toLowerCase())) continue;
+      if (keywordCoveredInText(roleText(), kw)) continue;
 
+      // Rank candidate bullets: skip metric tails and saturated bullets, prefer
+      // upgradeable partial mentions, then bullets adjacent to the keyword.
       let target = -1;
+      let best = -1;
       for (let bi = 0; bi < bullets.length; bi++) {
         if (usedBullet.has(bi)) continue;
-        const t = String(bullets[bi]).toLowerCase();
-        if (/etl|sql|oracle|validat|reconcil|schema|migrat|data integrity|python|postgresql|pipeline|api|microservice|kafka|aws|linux|node|react|observ|deploy|ci\/cd|scrap|puppeteer/i.test(t)) {
+        const base = String(bullets[bi] || '').replace(/\.$/, '').trim();
+        if (!base || keywordCoveredInText(base, kw) || endsWithMetricTail(base)) continue;
+        let score = 0;
+        if (upgradePartialMention(base, kw)) score = 3;
+        else if (weaveAdjacencyScore(base, kw) === 2) score = 2;
+        else if (weaveAdjacencyScore(base, kw) === 1 && bulletHasTechContext(base)) score = 1;
+        else continue;
+        if (score > best) {
+          best = score;
           target = bi;
-          break;
         }
       }
-      if (target < 0) {
-        target = [...bullets.keys()].find((bi) => !usedBullet.has(bi));
-      }
-      if (target == null || target < 0 || usedBullet.has(target)) continue;
+      if (target < 0) continue;
 
       const base = String(bullets[target] || '').replace(/\.$/, '').trim();
-      if (!base || base.toLowerCase().includes(String(kw).toLowerCase())) continue;
-
-      if (/validat|reconcil|etl|sql|schema|data integrity|oracle|postgresql|api|microservice|pipeline/i.test(base)) {
-        bullets[target] = `${base} supporting ${kw}.`;
+      const upgraded = upgradePartialMention(base, kw);
+      if (upgraded) {
+        bullets[target] = `${upgraded.replace(/\.$/, '')}.`;
       } else {
-        bullets[target] = `${base} (${kw}).`;
+        const form = weaveSuffixForm(kw);
+        if (!form) continue;
+        if (form.startsWith('(')) {
+          if (!bulletHasTechContext(base)) continue;
+          bullets[target] = `${base} ${form}.`;
+        } else {
+          if (/\b(with|in|across|via|on)\s+[^,.]{2,40}$/i.test(base) || base.length > 190) continue;
+          bullets[target] = `${base}, ${form}.`;
+        }
       }
       usedBullet.add(target);
       added += 1;
@@ -623,7 +628,7 @@ export function measureMutableRoleCoverage(resume, plan, keywords) {
   const kws = [];
   for (const item of list) {
     if (!item || isJunkKeyword(item)) continue;
-    if (!(isWeavableKeyword(item) || String(item).split(/\s+/).length >= 2)) continue;
+    if (!isWeaveableNounPhrase(item)) continue;
     const key = normalizeKey(item);
     if (!key || seen.has(key)) continue;
     seen.add(key);
@@ -639,15 +644,15 @@ export function measureMutableRoleCoverage(resume, plan, keywords) {
   let rolesWithHit = 0;
   for (const idx of plan.tailorIndices) {
     const bullets = Array.isArray(exp?.[String(idx)]) ? exp[String(idx)] : [];
-    const text = bullets.join('\n').toLowerCase();
+    const text = bullets.join('\n');
     corpusParts.push(text);
-    const hits = kws.filter((kw) => text.includes(String(kw).toLowerCase()));
+    const hits = kws.filter((kw) => keywordCoveredInText(text, kw));
     roleHits[String(idx)] = hits;
     if (hits.length > 0) rolesWithHit += 1;
   }
   const corpus = corpusParts.join('\n');
-  const matched = kws.filter((kw) => corpus.includes(String(kw).toLowerCase()));
-  const missing = kws.filter((kw) => !corpus.includes(String(kw).toLowerCase()));
+  const matched = kws.filter((kw) => keywordCoveredInText(corpus, kw));
+  const missing = kws.filter((kw) => !keywordCoveredInText(corpus, kw));
   const matchRatio = matched.length / kws.length;
   return {
     score: Math.round(matchRatio * 100),

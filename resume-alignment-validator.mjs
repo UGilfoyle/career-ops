@@ -472,7 +472,16 @@ export function validateResumeAlignment({
   }
 
   let verdict = selected && reasons.length === 0 ? 'PASS' : 'FAIL';
-  const selectedResume = selected ? candidates[selected.id].resume : aligned;
+  // Coverage / frozen gates must describe the resume that actually ships.
+  // Callers that pass finalResume render their own executed resume, so measure
+  // that exact object (frozen roles restored); never the source-CV fallback.
+  const renderedFinal = finalResume
+    ? (preservedSnapshot && activePlan?.preserveIndices?.length
+        ? restorePreservedEmployers(deepClone(finalResume), preservedSnapshot)
+        : deepClone(finalResume))
+    : null;
+  const selectedResume = renderedFinal
+    || (selected ? candidates[selected.id].resume : candidates.aligned.resume);
 
   // Plan-aware: frozen employers + keyword-sprinkle trap
   let mutableCoverage = null;

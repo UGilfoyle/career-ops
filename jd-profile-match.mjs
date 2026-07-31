@@ -7,6 +7,7 @@ import {
   extractJdTechKeywords,
   isJunkKeyword,
   isWeavableKeyword,
+  isWeaveableNounPhrase,
 } from './jd-keyword-align.mjs';
 import {
   explodeWallOfTextBullets,
@@ -149,7 +150,14 @@ function keywordInProfile(kw, profileCorpus, profileTech) {
   })) return true;
 
   const synonyms = PROFILE_SYNONYMS[k] || [];
-  return synonyms.some((syn) => corpus.includes(syn));
+  if (synonyms.some((syn) => corpus.includes(syn))) return true;
+
+  // Multi-word phrases count as proven when every significant token appears in
+  // the profile corpus — "event-driven architecture" is honest when the CV shows
+  // both "event-driven" and "architecture", even if never adjacent.
+  const tokens = k.split(/[^a-z0-9+#.]+/).filter((t) => t.length >= 4);
+  if (tokens.length >= 2 && tokens.every((t) => corpus.includes(t))) return true;
+  return false;
 }
 
 /** Split JD keywords into provable (honest) vs gaps (do not put on resume). */
@@ -336,7 +344,7 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     // Block generic filler labels that waste ATS real estate
     if (/^(software|applications?|services?|development|technologies?|engineering|solutions?)$/i.test(raw)) return;
     if (isEditorTool(raw) && !jdWantsAiTools) return;
-    if (!isWeavableKeyword(raw)) return;
+    if (!isWeaveableNounPhrase(raw)) return;
     const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
     seen.add(k);
@@ -416,7 +424,8 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     transfers.push(['cursor', 'AI-Assisted Development'], ['copilot', 'AI-Assisted Development']);
   }
   for (const [needle, label] of transfers) {
-    if (jdLower.includes(needle)) add(label);
+    const re = new RegExp(`(?:^|[^a-z0-9+#./])${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=[^a-z0-9+#./]|$)`, 'i');
+    if (re.test(jdLower)) add(label);
   }
 
   for (const s of profile?.narrative?.superpowers || []) {

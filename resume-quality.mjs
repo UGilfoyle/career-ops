@@ -139,12 +139,12 @@ function tokenOverlap(a, b) {
 }
 
 export function pickVerbReplacement(verb, usedVerbs) {
-  const pool = VERB_ALTERNATIVES[verb] || GENERIC_VERB_POOL;
+  const pool = VERB_ALTERNATIVES[verb];
+  // No thesaurus entry → keep the original verb. GENERIC_VERB_POOL produces
+  // nonsense like "Released rigorous SDLC" / "Enforced RESTful APIs".
+  if (!pool) return null;
   for (const alt of pool) {
     if (!usedVerbs.has(alt)) return alt;
-  }
-  for (const alt of GENERIC_VERB_POOL) {
-    if (!usedVerbs.has(alt) && alt !== verb) return alt;
   }
   return null;
 }
@@ -1063,8 +1063,15 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
   let atsContentScore = estimateAtsContentScore(audit, scoreOpts());
 
   const MAX_ITER = 6;
-  while (polishIterations < MAX_ITER && atsContentScore < ATS_TARGET_SCORE) {
+  const polishDone = () =>
+    atsContentScore >= ATS_TARGET_SCORE
+    && (audit.repeatedVerbs || []).length === 0
+    && audit.intraSentenceRepeats === 0;
+  while (polishIterations < MAX_ITER && !polishDone()) {
     polishIterations += 1;
+    // Fresh verb ledger each pass — carrying usedVerbs across iterations
+    // forced every kept verb to rotate on pass 2 ("Enforce" → "Released").
+    usedVerbs.clear();
     const pass = applyExperiencePolish(
       resume,
       sourceExperience,
@@ -1086,13 +1093,7 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
     audit = auditResumeQuality(resume);
     atsContentScore = estimateAtsContentScore(audit, scoreOpts());
 
-    if (
-      atsContentScore >= ATS_TARGET_SCORE
-      && audit.repeatedVerbs.length === 0
-      && audit.intraSentenceRepeats === 0
-    ) {
-      break;
-    }
+    if (polishDone()) break;
   }
 
   normalizeResumeBullets(resume, sourceExperience);
@@ -1164,6 +1165,28 @@ export function countWordFrequency(texts, minLen = 4) {
   return counts;
 }
 
+/** Domain terms a senior resume cannot avoid repeating — never penalized. */
+const DOMAIN_TERM_ALLOWLIST = new Set([
+  'aws', 'api', 'apis', 'sql', 'node', 'react', 'java', 'python', 'linux',
+  'docker', 'kafka', 'redis', 'oracle', 'postgres', 'postgresql', 'mongodb',
+  'azure', 'lambda', 'fastapi', 'microservices', 'microservice', 'services',
+  'service', 'backend', 'frontend', 'database', 'databases', 'pipelines',
+  'pipeline', 'systems', 'system', 'server', 'servers', 'cloud', 'deploy',
+  'deployment', 'deployments', 'queries', 'query', 'schema', 'event-driven',
+  'events', 'streaming', 'typescript', 'javascript', 'components', 'testing',
+  'integration', 'production', 'engineers', 'platform', 'architecture',
+]);
+
+/** Parse "word×n" audit entries, keeping only entries whose count clears `minCount`. */
+function heavyRepeatEntries(entries, minCount, allowlist = null) {
+  return (entries || []).filter((entry) => {
+    const m = String(entry).match(/^(.+?)×(\d+)$/);
+    if (!m) return false;
+    if (allowlist && allowlist.has(m[1].toLowerCase())) return false;
+    return Number(m[2]) >= minCount;
+  });
+}
+
 export function auditResumeQuality(resume) {
   const groups = collectExperienceArrays(resume?.experience);
   const allBullets = groups.flat();
@@ -1193,6 +1216,16 @@ export function auditResumeQuality(resume) {
     }
   }
 
+  // Per-role metric density: a role with 2+ quantified bullets reads as
+  // impact-driven; one quantified bullet is half credit. Honest resumes
+  // distribute metrics per role, not per bullet.
+  const roleScores = groups
+    .filter((g) => g.length > 0)
+    .map((g) => Math.min(1, g.filter((b) => hasQuantifiedImpact(b)).length / 2));
+  const metricRolePct = roleScores.length
+    ? roleScores.reduce((s, v) => s + v, 0) / roleScores.length
+    : 0;
+
   const wordFreq = countWordFrequency(allText);
   // Allow one natural reuse across a long resume; flag heavy overuse (3+)
   const repeatedWords = Object.entries(wordFreq)
@@ -1210,24 +1243,35 @@ export function auditResumeQuality(resume) {
     repeatedVerbs,
     repeatedWords,
     intraSentenceRepeats,
+    metricRolePct,
   };
 }
 
 /**
  * Heuristic 0–100 ATS content score (Zety hybrid).
- * Factors: complete sentences, grafted metrics, unique verbs, JD coverage, competency density.
+ * Factors: complete sentences, per-role metric density, unique verbs, JD coverage, competency density.
  * Does NOT require fabricated metrics to reach 90+ when JD align + skills are strong.
  */
 export function estimateAtsContentScore(audit, opts = {}) {
   if (!audit?.totalBullets) return 0;
-  const metricPct = (audit.totalBullets - audit.withoutMetrics) / audit.totalBullets;
+  const metricPct = Number.isFinite(audit.metricRolePct)
+    ? audit.metricRolePct
+    : (audit.totalBullets - audit.withoutMetrics) / audit.totalBullets;
   const completePct = Math.max(
     0,
     (audit.totalBullets - (audit.incompleteSentences || 0)) / audit.totalBullets,
   );
 
-  const heavyWordPenalty = Math.min(18, (audit.repeatedWords?.length || 0) * 6);
-  const verbPenalty = Math.min(24, (audit.repeatedVerbs?.length || 0) * 8);
+  // Only heavy repetition hurts ATS readability: verbs used 3+ times,
+  // words used 3+ times that are not unavoidable domain terms.
+  const heavyWordPenalty = Math.min(
+    12,
+    heavyRepeatEntries(audit.repeatedWords, 3, DOMAIN_TERM_ALLOWLIST).length * 4,
+  );
+  const verbPenalty = Math.min(
+    12,
+    heavyRepeatEntries(audit.repeatedVerbs, 3).length * 4,
+  );
   const intraPenalty = Math.min(12, (audit.intraSentenceRepeats || 0) * 4);
 
   const jdAlign = Number(opts.jdAlignScore);
@@ -1241,7 +1285,7 @@ export function estimateAtsContentScore(audit, opts = {}) {
   const summaryLines = Number(opts.summaryLines) || 0;
   const summaryBonus = summaryLines >= 4 ? 5 : summaryLines >= 3 ? 4 : summaryLines >= 2 ? 2 : 0;
 
-  // Complete sentences (12) + honest metrics (22) + structure (55) + JD/skills/summary → 90+ without inventing %
+  // Complete sentences (12) + honest per-role metrics (22) + structure (55) + JD/skills/summary → 90+ without inventing %
   const base = 55
     + Math.round(completePct * 12)
     + Math.round(metricPct * 22)

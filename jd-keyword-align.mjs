@@ -283,7 +283,7 @@ export function extractMustHavePreferred(jdText) {
     } else if (/must\s*have|required|minimum|qualifications?|key skills|responsibilities/i.test(line)) {
       mode = 'must';
     }
-    const techs = findKnownTechInText(line);
+    const techs = suppressFalsePositiveLanguages(findKnownTechInText(line), text);
     const domains = [
       ...DOMAIN_PHRASES.filter((p) => line.toLowerCase().includes(p.toLowerCase())),
       ...extractDynamicRequirementPhrases(line, 6),
@@ -304,16 +304,21 @@ export function extractMustHavePreferred(jdText) {
  * Verbs that mark a full clause, not a skill noun-phrase.
  * ("engineers can review quickly", "designs are clear" — never weave these.)
  */
-const PROSE_VERB_RE = /\b(review|reviews|reviewed|reviewing|leveling|level|levelled|onboard|onboarding|are|were|was|being|become|becomes|ship|shipping|shipped|looks|look|seems|feels|reads|say|says|tell|means|wants|likes|hopes|trusts?|speaks?|writes?|reads?|grows?|growing|learns?|learning|teaches?|helps?|helping|works?|working|plays?|runs?|makes?|making|takes?|taking|gets?|getting|keeps?|keeping|comes?|coming|goes?|going|sees?|seeing|knows?|finding|finds?)\b/i;
+const PROSE_VERB_RE = /\b(review|reviews|reviewed|reviewing|leveling|level|levelled|onboard|onboarding|are|were|was|being|become|becomes|ship|shipping|shipped|looks|look|seems|feels|reads|say|says|tell|means|wants|likes|hopes|trusts?|speaks?|writes?|reads?|grows?|growing|learns?|learning|teaches?|helps?|helping|works?|working|plays?|runs?|makes?|making|takes?|taking|gets?|getting|keeps?|keeping|comes?|coming|goes?|going|sees?|seeing|knows?|finding|finds?|align|aligns|aligned|aligning)\b/i;
 
 /** Trailing words that signal a mid-sentence fragment, not a skill phrase. */
 const FRAGMENT_END_WORDS = new Set([
   'and', 'or', 'but', 'nor', 'so', 'yet', 'as', 'if', 'than', 'then', 'when', 'while',
   'the', 'a', 'an', 'to', 'of', 'for', 'in', 'on', 'at', 'by', 'with', 'from', 'via',
+  'into', 'onto', 'upon', 'toward', 'towards', 'through', 'over', 'under', 'about',
   'that', 'this', 'these', 'those', 'it', 'its', 'you', 'your', 'we', 'our', 'they', 'their',
-  'are', 'is', 'be', 'been', 'can', 'will', 'would', 'should', 'could', 'may', 'might',
+  'are', 'is', 'be', 'being', 'been', 'can', 'will', 'would', 'should', 'could', 'may', 'might',
   'do', 'does', 'did', 'has', 'have', 'had',
 ]);
+
+/** Job titles / people-role labels — never skills. */
+const JOB_TITLE_PHRASE_RE =
+  /\b((engineering|hiring|product|project|program)\s+manager|tech(?:nical)?\s+lead|team\s+lead|staff\s+engineer|principal\s+engineer|software\s+engineer|engineering\s+manager|director|vp|cto|ceo)\b/i;
 
 /** True when a phrase ends like a sentence fragment (cut before a verb/adjective). */
 export function isSentenceFragment(kw) {
@@ -351,12 +356,20 @@ export function isJunkKeyword(kw) {
   // Bare version fragments split from model names ("3-large" from text-embedding-3-large)
   if (/^\d+-[a-z0-9-]+$/.test(k)) return true;
   if (STOPWORDS.has(k)) return true;
+  if (WEAK_SKILL_TOKENS.has(k)) return true;
+  if (JOB_TITLE_PHRASE_RE.test(k)) return true;
+  if (NON_CAPABILITY_PHRASE_RE.test(k)) return true;
   if (MID_CLAUSE_RE.test(k)) return true;
   if (JUNK_KEYWORD_RE.test(k)) return true;
   if (JD_CHROME_PHRASE_RE.test(k)) return true;
   if (JD_EQUIPMENT_PHRASE_RE.test(k)) return true;
   if (isSentenceFragment(k)) return true;
   if (isProseLikePhrase(k)) return true;
+  // Mid-sentence crumbs: "down ambiguous problems", "engineers and data"
+  if (/^(down|break|flag|bring|partner|act|run|set|raise|own|handling)\b/.test(k) && k.includes(' ')) return true;
+  if (/^(engineers?|developers?|staff|seniors?)\s+and\b/.test(k)) return true;
+  if (/\b(domain|area)$/.test(k) && k.includes(' ')) return true;
+  if (/^(tracking|handling|reducing|ensuring|guiding|raising)\b/.test(k) && k.includes(' ')) return true;
   // Multi-word phrases that still start with UI chrome ("Find candidates")
   if (/^(find|apply|search|sign|join|save|share|view|click|what|who|the)\b/.test(k)) return true;
   return false;
@@ -375,16 +388,179 @@ export function isWeavableKeyword(kw) {
   return false;
 }
 
-/** Drop bare "Java" when the JD clearly means JavaScript (common Indeed spacing). */
+/** Evidence stems that justify weaving a JD domain phrase. Family-agnostic — any future JD. */
+export const DOMAIN_EVIDENCE_STEMS = [
+  { match: /source-to-target|data completeness|etl validat|transformation logic|etl testing/i, stems: ['validat', 'etl', 'migrat', 'schema', 'data integrity', 'compar', 'python'] },
+  { match: /data reconcil/i, stems: ['reconcil', 'etl', 'kafka', 'payment', 'data integrity', 'validat'] },
+  { match: /data warehouse|staging|slowly changing|\bscd\b|fact.?dimension/i, stems: ['oracle', 'postgresql', 'schema', 'etl', 'warehouse', 'dimension', 'sql'] },
+  { match: /window functions|analytical functions/i, stems: ['sql', 'oracle', 'query', 'postgresql', 'aggregat'] },
+  { match: /shell scripting|job monitoring|log analysis/i, stems: ['linux', 'unix', 'shell', 'script', 'aws', 'deploy', 'ci/cd'] },
+  { match: /web scrap|puppeteer|playwright|cheerio|browser automation|anti-bot|proxy/i, stems: ['scrap', 'puppeteer', 'playwright', 'cheerio', 'javascript', 'node'] },
+  { match: /event-?driven|message (queue|broker)|kafka|microservices?/i, stems: ['event-driven', 'microservice', 'kafka', 'queue', 'broker', 'node', 'api'] },
+  { match: /observability|incident response|distributed tracing/i, stems: ['grafana', 'prometheus', 'datadog', 'tracing', 'logging', 'elk', 'incident'] },
+  { match: /auto-?scaling|container orchestration|infrastructure as code|continuous delivery/i, stems: ['aws', 'docker', 'kubernetes', 'ecs', 'lambda', 'terraform', 'ci/cd', 'deploy'] },
+  { match: /restful|api design|high-throughput|low-latency|rate limit/i, stems: ['api', 'rest', 'fastapi', 'express', 'throughput', 'latency', 'node'] },
+  { match: /state management|component librar|responsive design|react|typescript/i, stems: ['react', 'typescript', 'redux', 'frontend', 'ui'] },
+  { match: /vector|embedding|rag|prompt engineering|agentic|langchain|llm/i, stems: ['llm', 'embedding', 'rag', 'openai', 'langchain', 'vector', 'chromadb'] },
+];
+
+/** Outcome/problem prose — what the JD wants reduced, never a candidate skill. */
+const NON_CAPABILITY_PHRASE_RE =
+  /\b(manual intervention|technical debt|operational toil|\btoil\b|overhead|churn|judgment calls?|direct reports?|formal authority|people-management)\b/i;
+
+/** Leading outcome participles/adverbs turn a phrase into a fragment, not a skill. */
+const OUTCOME_LEAD_RE =
+  /^(assisted|aligned|reduced|reducing|improved|improving|enhanced|enhancing|increased|increasing|decreased|faster|slower|leveling|growing)\b/i;
+
+/** Trailing adverbs/junk words mark sentence fragments, not skill phrases. */
+const FRAGMENT_TAIL_RE = /\b(well|quickly|confidently|automatically|early)$/i;
+
+/**
+ * True when a JD phrase can be woven into a bullet as a grammatical noun phrase
+ * (skill, tool, or capability). Rejects problem phrases, adjective fragments,
+ * and prose crumbs that read as broken English when appended to a bullet.
+ */
+export function isWeaveableNounPhrase(kw) {
+  if (!isWeavableKeyword(kw)) return false;
+  const k = normalizeKeyword(kw);
+  if (!k) return false;
+  if (findKnownTechInText(normalizeJdTechAliases(k)).length > 0) return true;
+  const lower = k.toLowerCase();
+  if (/\w+-\w*(?:ed|ing)$/i.test(k)) return false;
+  if (OUTCOME_LEAD_RE.test(lower)) return false;
+  if (/^well-\w+$/i.test(k)) return false;
+  if (/^multi-\w+$/i.test(k) && !/^multi-(tenant|cloud|region|threaded)$/i.test(k)) return false;
+  if (/\b(domain|area)$/i.test(lower)) return false;
+  if (NON_CAPABILITY_PHRASE_RE.test(lower)) return false;
+  if (FRAGMENT_TAIL_RE.test(lower)) return false;
+  if (PROSE_VERB_RE.test(k)) return false;
+  return true;
+}
+
+/** Significant tokens of a keyword phrase (used for token-level coverage checks). */
+export function keywordTokens(kw) {
+  return normalizeKeyword(kw)
+    .toLowerCase()
+    .split(/[^a-z0-9+#.]+/)
+    .filter((t) => t.length >= 3);
+}
+
+/** True when text already carries the keyword — exact phrase or all tokens co-occur. */
+export function keywordCoveredInText(text, kw) {
+  const t = String(text || '').toLowerCase();
+  const k = normalizeKeyword(kw).toLowerCase();
+  if (!k) return true;
+  if (t.includes(k)) return true;
+  const tokens = keywordTokens(kw);
+  return tokens.length > 0 && tokens.every((tok) => t.includes(tok));
+}
+
+/** Bullets ending in a quantified result must never get a weave suffix appended. */
+export function endsWithMetricTail(bullet) {
+  const t = String(bullet || '').trim().replace(/[.!?]+$/, '');
+  return /(?:%|\b\d[\d,]*(?:\.\d+)?\s*(?:x|ms|s|hours?|minutes?|seconds?|days?|weeks?|months?|years?|users?|requests?|events?|transactions?|records?|queries?)|\b(?:month|week|day|year|monthly|daily|weekly|yearly|uptime|zero))$/i.test(t);
+}
+
+/** Tech/stack context that makes a tool parenthetical ("(PostgreSQL)") read naturally. */
+const TECH_CONTEXT_RE =
+  /etl|sql|oracle|validat|reconcil|schema|migrat|data integrity|python|postgresql|pipeline|api|microservice|kafka|aws|linux|node|react|observ|deploy|ci\/cd|scrap|puppeteer|database|query|cloud|server|backend|frontend/i;
+
+export function bulletHasTechContext(bullet) {
+  return TECH_CONTEXT_RE.test(String(bullet || '').toLowerCase());
+}
+
+/**
+ * How strongly a bullet already neighbors a keyword:
+ * 2 = keyword's leading token present, 1 = family stems / other token, 0 = none.
+ */
+export function weaveAdjacencyScore(bullet, kw) {
+  const b = String(bullet || '').toLowerCase();
+  const tokens = keywordTokens(kw);
+  if (tokens.length && b.includes(tokens[0])) return 2;
+  for (const rule of DOMAIN_EVIDENCE_STEMS) {
+    if (rule.match.test(kw) && rule.stems.some((s) => b.includes(s))) return 1;
+  }
+  if (tokens.some((t) => b.includes(t))) return 1;
+  return 0;
+}
+
+/** Host nouns that accept a trailing architecture/systems upgrade ("event-driven microservices" → "… microservices architecture"). */
+const WEAVE_HOST_NOUNS = new Set([
+  'microservices', 'microservice', 'services', 'service', 'systems', 'system',
+  'platform', 'platforms', 'pipelines', 'pipeline', 'workflows', 'workflow',
+  'apis', 'api', 'components', 'component', 'engines', 'engine', 'modules', 'module',
+]);
+
+/**
+ * Extend an existing partial mention into the full keyword phrase:
+ * "scalable, event-driven microservices" + "event-driven architecture"
+ *   → "scalable, event-driven microservices architecture".
+ * Returns null when no safe in-place upgrade exists.
+ */
+export function upgradePartialMention(base, kw) {
+  const tokens = normalizeKeyword(kw).split(/\s+/);
+  if (tokens.length < 2) return null;
+  const mod = tokens[0];
+  const target = tokens[tokens.length - 1];
+  if (!mod || !target || mod.toLowerCase() === target.toLowerCase()) return null;
+  const re = new RegExp(`\\b${escapeRe(mod)}\\s+([A-Za-z]+)\\b`, 'i');
+  const m = String(base || '').match(re);
+  if (!m) return null;
+  const host = m[1].toLowerCase();
+  if (!WEAVE_HOST_NOUNS.has(host) || host === target.toLowerCase()) return null;
+  const already = new RegExp(`\\b${escapeRe(mod)}\\s+${escapeRe(m[1])}\\s+${escapeRe(target)}\\b`, 'i');
+  if (already.test(base)) return null;
+  return String(base).replace(re, (match) => `${match} ${target}`);
+}
+
+/**
+ * Grammatical weave suffix for a keyword, or null when none reads naturally.
+ * Tools/short tech → parenthetical; "X architecture" → "in a/an X".
+ * Everything else must be handled by upgradePartialMention or skipped.
+ */
+export function weaveSuffixForm(kw) {
+  const k = normalizeKeyword(kw);
+  if (!k) return null;
+  if (findKnownTechInText(normalizeJdTechAliases(k)).length > 0 && k.split(/\s+/).length <= 2) {
+    return `(${k})`;
+  }
+  if (/\barchitecture$/i.test(k)) {
+    return `in ${/^[aeiou]/i.test(k) ? 'an' : 'a'} ${k}`;
+  }
+  return null;
+}
+
+/** Bare abbreviations that read as junk on an ATS skills line. */
+const WEAK_SKILL_TOKENS = new Set(['ml', 'ai', 'it', 'go']);
+
+/** True only when the JD clearly means Go-the-language, not "go-to" prose. */
+function jdMeansGoLanguage(text) {
+  const t = String(text || '');
+  return /\bgolang\b/i.test(t)
+    || /\bgo\s*[(/]\s*golang/i.test(t)
+    || /\b(?:in|with|using|know)\s+go\b/i.test(t)
+    || /\bgo\s+(?:services|microservices|development|programming|backend|engineer)/i.test(t);
+}
+
+/** Drop weak single tokens: bare "Java" from "Java script", "go" from "go-to", "ML"/"AI"/"IT". */
 function suppressFalsePositiveLanguages(found, text) {
   const lower = String(text || '').toLowerCase();
   const hasJavaScript = lower.includes('javascript');
   const bareJava = /\bjava\b/.test(lower.replace(/javascript/g, ''));
-  return found.filter((kw) => {
+  const goIsLanguage = jdMeansGoLanguage(text);
+  const out = [];
+  for (const kw of found) {
     const k = String(kw).toLowerCase();
-    if (k === 'java' && hasJavaScript && !bareJava) return false;
-    return true;
-  });
+    if (k === 'java' && hasJavaScript && !bareJava) continue;
+    if (k === 'go' || k === 'golang') {
+      if (!goIsLanguage) continue;
+      if (!out.some((x) => /^go \(golang\)$/i.test(x))) out.push('Go (Golang)');
+      continue;
+    }
+    if (WEAK_SKILL_TOKENS.has(k)) continue;
+    out.push(kw);
+  }
+  return out;
 }
 
 function normalizeKeyword(kw) {
@@ -455,7 +631,7 @@ export function extractJdKeywords(jdText, limit = 20) {
       || /^\d+\.\s/.test(line);
     if (!isReqLine) continue;
 
-    for (const t of findKnownTechInText(line)) {
+    for (const t of suppressFalsePositiveLanguages(findKnownTechInText(line), text)) {
       found.push(t);
     }
 
@@ -545,27 +721,33 @@ export function measureJdAlignment(resume, jdKeywords) {
 }
 
 function bulletMissingJd(bullet, jdKeywords) {
-  const b = String(bullet || '').toLowerCase();
-  return !jdKeywords.some((kw) => b.includes(String(kw).toLowerCase()));
+  return !jdKeywords.some((kw) => keywordCoveredInText(bullet, kw));
 }
 
 function weaveKeywordIntoBullet(bullet, keyword) {
   const b = String(bullet || '').trim();
   if (!b) return b;
   const kw = String(keyword || '').trim();
-  if (!kw || !isWeavableKeyword(kw)) return b;
-  const lower = b.toLowerCase();
-  if (lower.includes(kw.toLowerCase())) return b;
+  if (!kw || !isWeaveableNounPhrase(kw)) return b;
+  if (keywordCoveredInText(b, kw)) return b;
+  const base = b.replace(/\.$/, '');
+  // Never append anything after a quantified result ("… by 85%.")
+  if (endsWithMetricTail(base)) return b;
 
-  // Never spam "applying X in production" — integrate tech naturally once.
-  if (/\b(using|with|via|on)\b/i.test(b) && b.length < 220) {
-    return `${b.replace(/\.$/, '')} with ${kw}.`;
+  const upgraded = upgradePartialMention(base, kw);
+  if (upgraded) return `${upgraded.replace(/\.$/, '')}.`;
+
+  const form = weaveSuffixForm(kw);
+  if (!form) return b;
+  if (form.startsWith('(')) {
+    // Tool parenthetical only where real stack context exists
+    if (!bulletHasTechContext(base)) return b;
+    return `${base} ${form}.`;
   }
-  if (/^[A-Z]/.test(b) && !/^(I |Built|Led|Designed|Engineered|Architected|Developed|Implemented|Delivered|Shipped|Owned|Cut|Reduced)/i.test(b)) {
-    return `${b.replace(/\.$/, '')} using ${kw}.`;
-  }
-  // Prefer a clean tool-clause over keyword stuffing
-  return `${b.replace(/\.$/, '')} (${kw}).`;
+  // Clause forms must not stack onto a trailing prepositional phrase
+  if (/\b(with|in|across|via|on)\s+[^,.]{2,40}$/i.test(base)) return b;
+  if (base.length > 190) return b;
+  return `${base}, ${form}.`;
 }
 
 function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
@@ -607,8 +789,8 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
     return { resume, stats: { competenciesAdded: 0, bulletsAligned: 0, summaryPatched: false } };
   }
 
-  const cleanKws = jdKeywords.filter((kw) => isWeavableKeyword(kw));
-  const bulletKws = (opts.bulletKeywords || cleanKws).filter((kw) => isWeavableKeyword(kw));
+  const cleanKws = jdKeywords.filter((kw) => isWeaveableNounPhrase(kw));
+  const bulletKws = (opts.bulletKeywords || cleanKws).filter((kw) => isWeaveableNounPhrase(kw));
   const weaveEvery = opts.weaveEveryBullet === true;
   const weaveRoles = Array.isArray(opts.weaveRoleIndices) ? new Set(opts.weaveRoleIndices.map(Number)) : null;
 
@@ -636,7 +818,6 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
   copy.summary = weaveKeywordsIntoSummary(copy.summary, summaryKws, 4);
   summaryPatched = beforeSummary !== copy.summary;
 
-  const sourceBullets = (sourceExperience || []).flatMap((e) => e?.bullets || []);
   let kwIdx = 0;
 
   const alignGroup = (bullets, groupIdx) => {
@@ -651,12 +832,6 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
       kwIdx += 1;
       weavesThisRole += 1;
       bulletsAligned += 1;
-      if (bi === 0 && sourceBullets[groupIdx]) {
-        const src = String(sourceBullets[groupIdx] || bullet);
-        if (!bulletMissingJd(src, bulletKws)) {
-          return weaveKeywordIntoBullet(src, kw);
-        }
-      }
       return weaveKeywordIntoBullet(bullet, kw);
     });
   };

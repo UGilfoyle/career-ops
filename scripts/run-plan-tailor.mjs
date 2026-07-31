@@ -22,6 +22,7 @@ import {
 import { validateResumeAlignment, writeAlignmentReport } from '../resume-alignment-validator.mjs';
 import { buildApplicationDocumentPaths } from '../document-filename.mjs';
 import { buildHtml as buildCoverHtml } from '../generate-cover-letter.mjs';
+import { isJunkKeyword, isWeavableKeyword, isWeaveableNounPhrase } from '../jd-keyword-align.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -40,18 +41,28 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+// .summary-block uses white-space: pre-line — emit plain escaped text with newlines
 function formatResumeSummaryHtml(rawSummary) {
   const lines = String(rawSummary || '').split(/\n+/).map((l) => l.trim()).filter(Boolean);
   if (!lines.length) return '';
-  return lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('');
+  return escapeHtml(lines.join('\n'));
 }
 
 function renderEducation(edu) {
   if (!Array.isArray(edu) || !edu.length) return '';
   return edu.map((e) => {
     const line = formatEducationLine(e) || `${e.degree || ''} | ${e.school || ''} | ${e.period || ''}`;
-    return `<div class="education-item">${escapeHtml(line)}</div>`;
+    return `<div>${escapeHtml(line)}</div>`;
   }).join('');
+}
+
+function renderAchievements(proofPoints) {
+  if (!Array.isArray(proofPoints) || !proofPoints.length) return '';
+  return `<ul>${proofPoints.map((p) => {
+    const name = escapeHtml(p?.name || 'Achievement');
+    const metric = escapeHtml(p?.hero_metric || '');
+    return `<li><strong>${name}:</strong> ${metric}</li>`;
+  }).join('')}</ul>`;
 }
 
 function renderExperience(profile, resume) {
@@ -62,24 +73,77 @@ function renderExperience(profile, resume) {
     return `
     <div class="job">
       <div class="job-header">
-        <div class="job-title-company">
-          <span class="job-title">${escapeHtml(job.role || '')}</span>
-          <span class="company-name">${escapeHtml(job.company || '')}</span>
-        </div>
-        <div class="job-date">${escapeHtml(job.period || '')}</div>
+        <div><span class="job-company">${escapeHtml(job.company || '')}</span> — <span class="job-title">${escapeHtml(job.role || '')}</span></div>
+        <div class="job-dates">${escapeHtml(job.period || '')}</div>
       </div>
-      <ul class="job-bullets">${li}</ul>
+      <ul>${li}</ul>
     </div>`;
   }).join('\n');
 }
 
-function renderCompetencies(comps) {
-  return (comps || []).map((c) => `<span class="competency-tag">${escapeHtml(c)}</span>`).join('');
+const SKILL_TECH_PATTERNS = [
+  /\b(java(?:script)?|python|typescript|go(?:lang)?|rust|ruby|c\+\+|c#|\.net|kotlin|swift|scala|php|perl|elixir|dart|sql|graphql|html|css)\b/i,
+  /\b(react|angular|vue|svelte|next\.?js|nest\.?js|express|fastapi|flask|django|spring|rails|node\.?js|deno|bun)\b/i,
+  /\b(postgres|postgresql|mysql|mongo(?:db)?|redis|dynamodb|cassandra|elastic(?:search)?|sqlite|oracle|snowflake|redshift)\b/i,
+  /\b(aws|gcp|azure|ecs|ec2|lambda|fargate|s3|terraform|pulumi|cloudformation|ansible)\b/i,
+  /\b(docker|kubernetes|k8s|helm|nginx|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|prometheus|grafana|datadog|elk|opentelemetry)\b/i,
+  /\b(kafka|rabbitmq|spark|airflow|dbt|databricks|pytorch|tensorflow|langchain|openai|llm|rag)\b/i,
+  /\b(jest|pytest|cypress|playwright|selenium|postman|swagger|webpack|vite|git|jira)\b/i,
+  /\b(rest\s?api|grpc|websocket|oauth|jwt|sso|rbac|orm|microservices?|event-driven(?:\s+architecture)?|design\s+patterns?)\b/i,
+];
+
+function isTechSkill(text) {
+  const t = String(text || '').trim();
+  if (!t || isJunkKeyword(t) || !isWeaveableNounPhrase(t)) return false;
+  if (/\b(cursor|copilot|claude code|gpts?|chatgpt)\b/i.test(t)) return false;
+  return SKILL_TECH_PATTERNS.some((p) => p.test(t));
 }
 
-function renderSkills(comps) {
-  const tech = (comps || []).slice(0, 14).join(', ');
-  return `<p><strong>Technical Skills:</strong> ${escapeHtml(tech)}</p>`;
+function renderSkillsLines(profileSuperpowers, tailoredCompetencies) {
+  const superpowers = Array.isArray(profileSuperpowers) ? profileSuperpowers : [];
+  const competencies = Array.isArray(tailoredCompetencies) ? tailoredCompetencies : [];
+  if (!superpowers.length && !competencies.length) return '';
+
+  const coreComp = [];
+  const techSkills = [];
+  for (const item of competencies) {
+    const s = String(item || '').trim();
+    if (!s || !isWeaveableNounPhrase(s)) continue;
+    if (isTechSkill(s)) techSkills.push(s);
+    else coreComp.push(s);
+  }
+
+  const existingLower = new Set([...coreComp, ...techSkills].map((x) => x.toLowerCase()));
+  for (const sp of superpowers) {
+    const s = String(sp || '').trim();
+    if (!s || existingLower.has(s.toLowerCase())) continue;
+    // Never unpack editor tools from "AI-native tool integration (Cursor, Claude Code, GPTs)"
+    if (/\b(cursor|copilot|claude code|gpts?|chatgpt)\b/i.test(s)) continue;
+    const cleanedSp = s.replace(/\s*\([^)]*\)\s*/g, '').trim();
+    if (cleanedSp && !existingLower.has(cleanedSp.toLowerCase()) && isWeaveableNounPhrase(cleanedSp)) {
+      if (isTechSkill(cleanedSp)) techSkills.push(cleanedSp);
+      else coreComp.push(cleanedSp);
+      existingLower.add(cleanedSp.toLowerCase());
+    }
+  }
+
+  const uniqueCore = [...new Set(coreComp)].slice(0, 12);
+  const uniqueTech = [...new Set(techSkills)].slice(0, 16);
+
+  let html = '';
+  if (uniqueCore.length) {
+    html += `<div class="skill-line"><span class="skill-label">Core Competencies:</span> ${escapeHtml(uniqueCore.join(', '))}</div>`;
+  }
+  if (uniqueTech.length) {
+    html += `<div class="skill-line"><span class="skill-label">Technical Skills:</span> ${escapeHtml(uniqueTech.join(', '))}</div>`;
+  }
+  if (!html) {
+    const allItems = competencies.filter((s) => isWeaveableNounPhrase(s)).slice(0, 12);
+    if (allItems.length) {
+      html = `<div class="skill-line"><span class="skill-label">Skills:</span> ${escapeHtml(allItems.join(', '))}</div>`;
+    }
+  }
+  return html;
 }
 
 const jdPath = arg('--jd');
@@ -186,36 +250,42 @@ const resumePdfPath = outBase
 
 const template = fs.readFileSync('templates/ats-template-professional.html', 'utf8');
 const c = profile.candidate || {};
+const contactParts = [c.location, c.email, c.phone].map((x) => String(x || '').trim()).filter(Boolean);
+const linkedinRaw = String(c.linkedin || '').trim().replace(/^https?:\/\//i, '');
+const githubRaw = String(c.github || '').trim().replace(/^https?:\/\//i, '');
+const linkParts = [];
+if (linkedinRaw) linkParts.push(`<a href="https://${escapeHtml(linkedinRaw)}">${escapeHtml(linkedinRaw)}</a>`);
+if (githubRaw) linkParts.push(`<a href="https://${escapeHtml(githubRaw)}">${escapeHtml(githubRaw.replace(/^github\.com\//i, ''))}</a>`);
+
+const skillsLines = renderSkillsLines(profile.narrative?.superpowers || [], executed.resume.core_competencies || []);
+const hasExperience = Array.isArray(profile.experience) && profile.experience.length > 0;
+const hasEducation = Array.isArray(profile.education) && profile.education.length > 0;
+const hasAchievements = Array.isArray(profile.narrative?.proof_points) && profile.narrative.proof_points.length > 0;
+
 const reps = {
   NAME: escapeHtml(c.full_name || ''),
-  EMAIL: escapeHtml(c.email || ''),
-  PHONE: escapeHtml(c.phone || ''),
-  LOCATION: escapeHtml(c.location || ''),
-  LINKEDIN_URL: escapeHtml(c.linkedin ? `https://${String(c.linkedin).replace(/^https?:\/\//, '')}` : ''),
-  LINKEDIN_DISPLAY: escapeHtml(c.linkedin || ''),
-  GITHUB_URL: escapeHtml(c.github ? `https://${String(c.github).replace(/^https?:\/\//, '')}` : ''),
-  GITHUB_DISPLAY: escapeHtml(c.github || ''),
+  CONTACT_LINE: escapeHtml(contactParts.join(' · ')),
+  LINKS_LINE: linkParts.join(' · '),
   SUMMARY_TEXT: formatResumeSummaryHtml(executed.resume.summary),
-  COMPETENCIES: renderCompetencies(executed.resume.core_competencies),
-  EXPERIENCE: renderExperience(profile, executed.resume),
-  EDUCATION: renderEducation(profile.education),
-  SKILLS: renderSkills(executed.resume.core_competencies),
-  SECTION_SUMMARY: 'Professional Summary',
-  SECTION_COMPETENCIES: 'Core Competencies',
-  SECTION_EXPERIENCE: 'Professional Experience',
-  SECTION_EDUCATION: 'Education',
-  SECTION_SKILLS: 'Technical Skills',
-  SECTION_PROJECTS: '',
-  PROJECTS: '',
-  SECTION_CERTIFICATIONS: '',
-  CERTIFICATIONS: '',
-  LANG: 'en',
-  PAGE_WIDTH: '210mm',
+  SKILLS_LINES: skillsLines,
+  SKILLS_DISPLAY: skillsLines.trim() ? 'block' : 'none',
+  EXPERIENCE: hasExperience ? renderExperience(profile, executed.resume) : '',
+  EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
+  ACHIEVEMENTS: hasAchievements ? renderAchievements(profile.narrative.proof_points) : '',
+  ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',
+  EDUCATION: hasEducation ? renderEducation(profile.education) : '',
+  EDUCATION_DISPLAY: hasEducation ? 'block' : 'none',
 };
 
 let html = template;
 for (const [k, v] of Object.entries(reps)) {
   html = html.replace(new RegExp(`{{${k}}}`, 'g'), v ?? '');
+}
+// Any remaining {{PLACEHOLDER}} would render literally — fail loudly instead
+const leftover = html.match(/\{\{[A-Z_]+\}\}/g);
+if (leftover) {
+  console.warn(`⚠ Unreplaced template placeholders: ${[...new Set(leftover)].join(', ')}`);
+  html = html.replace(/\{\{[A-Z_]+\}\}/g, '');
 }
 fs.writeFileSync(resumeHtmlPath, html);
 execSync(`node generate-pdf.mjs "${resumeHtmlPath}" "${resumePdfPath}" --format=a4`, { stdio: 'inherit' });
