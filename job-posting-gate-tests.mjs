@@ -19,12 +19,18 @@ assert.equal(fresh.needs_confirm, false);
 assert.equal(fresh.severity, 'fresh');
 
 const stale = analyzePostingHistory(
-  { most_probable_date: '2026-06-01', confidence: 'medium', sources: { json_ld: '2026-06-01' } },
+  { most_probable_date: '2026-04-01', confidence: 'medium', sources: { json_ld: '2026-04-01' } },
   now,
 );
 assert.equal(stale.needs_confirm, true);
 assert.equal(stale.severity, 'stale');
 assert.ok((stale.age_days ?? 0) >= STALE_POSTING_DAYS);
+
+const freshUnder3mo = analyzePostingHistory(
+  { most_probable_date: '2026-06-15', confidence: 'high', sources: { json_ld: '2026-06-15' } },
+  now,
+);
+assert.equal(freshUnder3mo.needs_confirm, false, 'under 3 months should not block');
 
 const ancient = analyzePostingHistory(
   { most_probable_date: '2025-07-01', confidence: 'medium', sources: { wayback: '2025-07-01' } },

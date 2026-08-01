@@ -138,7 +138,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [staleTailorOpen, setStaleTailorOpen] = useState(false);
   const [staleTailorChecking, setStaleTailorChecking] = useState(false);
   const [staleTailorTarget, setStaleTailorTarget] = useState<{
-    jobId: number;
+    /** Numeric pipeline id, or job URL when tailor <url> --deep */
+    target: string;
     command: string;
     company: string;
     title: string;
@@ -501,32 +502,46 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   };
 
   /**
-   * Gate tailor behind posting-age/history check.
-   * Always prints the check into Terminal; Yes/No modal when stale/repost/ancient.
+   * Gate EVERY tailor (id or URL) behind posting-age/history check.
+   * Prints check into Terminal; Yes/No (dialog or type yes/no) before Actions.
    */
-  const requestTailor = async (jobId: number | string, command?: string) => {
-    const id = Number.parseInt(String(jobId), 10);
-    if (!Number.isFinite(id)) {
-      setToast({ show: true, message: 'Invalid job id for tailor.' });
+  const requestTailor = async (targetRaw: number | string, command?: string) => {
+    const target = String(targetRaw || '').trim();
+    const isUrl = /^https?:\/\//i.test(target);
+    const id = Number.parseInt(target, 10);
+    const isId = Number.isFinite(id) && String(id) === target;
+    if (!isUrl && !isId) {
+      setToast({ show: true, message: 'Use: tailor <job_id|url> --deep' });
       return;
     }
-    const cmd = (command && command.trim()) || `tailor ${id} --deep`;
+    const cmd =
+      (command && command.trim())
+      || (isUrl ? `tailor ${target} --deep` : `tailor ${id} --deep`);
     if (staleTailorChecking || isExecuting) return;
 
     setStaleTailorChecking(true);
     setActiveTab('terminal');
     setLogs((prev) => [
       ...prev,
-      { type: 'stdout', content: `\ncareer-ops > checking job posting history for #${id}…\n` },
+      {
+        type: 'stdout',
+        content: `\ncareer-ops > ${cmd}\n📅 Running job posting check before resume…\n`,
+      },
     ]);
     try {
-      const res = await fetch(`/api/job/${id}?refresh=1`);
+      const res = await fetch(
+        isUrl
+          ? `/api/job/posting-check?url=${encodeURIComponent(target)}`
+          : `/api/job/${id}?refresh=1`,
+      );
       if (!res.ok) {
         setLogs((prev) => [
           ...prev,
-          { type: 'stderr', content: `⚠ Posting check failed (HTTP ${res.status}) — continuing without age gate.\n` },
+          {
+            type: 'stderr',
+            content: `⚠ Posting check failed (HTTP ${res.status}) — not starting tailor. Fix URL/auth and retry.\n`,
+          },
         ]);
-        runCommand(cmd);
         return;
       }
       const job = await res.json();
@@ -534,13 +549,28 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       const gateMessage = String(job?.posting_gate_message || '').trim();
       if (gateMessage) {
         setLogs((prev) => [...prev, { type: 'stdout', content: `\n${gateMessage}\n` }]);
+      } else {
+        setLogs((prev) => [
+          ...prev,
+          { type: 'stdout', content: 'ℹ Posting check returned no message.\n' },
+        ]);
       }
 
       const needsConfirm = Boolean(analysis?.needs_confirm);
       if (needsConfirm) {
         const postedAt = analysis?.posted_at ?? job?.posted_at ?? null;
+        setLogs((prev) => [
+          ...prev,
+          {
+            type: 'stdout',
+            content:
+              '\n❓ Continue with resume generation?\n'
+              + '   Type Yes or No in the terminal (or use the dialog).\n'
+              + 'auth@career-ops:~$ ',
+          },
+        ]);
         setStaleTailorTarget({
-          jobId: id,
+          target: isUrl ? target : String(id),
           command: cmd,
           company: String(job?.company || 'Unknown company'),
           title: String(job?.title || 'Role'),
@@ -552,13 +582,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         setStaleTailorOpen(true);
         return;
       }
+      setLogs((prev) => [
+        ...prev,
+        { type: 'stdout', content: '✓ Posting looks OK — starting tailor…\n' },
+      ]);
       runCommand(cmd);
     } catch {
       setLogs((prev) => [
         ...prev,
-        { type: 'stderr', content: '⚠ Posting check errored — continuing without age gate.\n' },
+        { type: 'stderr', content: '⚠ Posting check errored — tailor not started. Retry.\n' },
       ]);
-      runCommand(cmd);
     } finally {
       setStaleTailorChecking(false);
     }
@@ -572,9 +605,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       setActiveTab('terminal');
       setLogs((prev) => [
         ...prev,
-        { type: 'stdout', content: '✓ You chose Yes — generating resume & cover letter…\n' },
+        { type: 'stdout', content: 'yes\n✓ You chose Yes — generating resume & cover letter…\n' },
       ]);
-      // --yes skips the non-interactive CI gate after dashboard confirmation
       const withYes = /\s--yes\b/i.test(cmd) ? cmd : `${cmd} --yes`;
       runCommand(withYes);
     }
@@ -583,7 +615,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const cancelStaleTailor = () => {
     setLogs((prev) => [
       ...prev,
-      { type: 'stdout', content: '✗ You chose No — resume generation cancelled.\n' },
+      { type: 'stdout', content: 'no\n✗ You chose No — resume generation cancelled.\n' },
     ]);
     setStaleTailorOpen(false);
     setStaleTailorTarget(null);
@@ -591,19 +623,92 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
   const handleCommandSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cmdInput.trim() || isExecuting || staleTailorChecking) return;
-    
     const q = cmdInput.trim();
-    setHistory(prev => [q, ...prev].slice(0, 50));
+    if (!q) return;
+
+    // Terminal Yes/No while posting gate is waiting
+    if (staleTailorOpen && staleTailorTarget) {
+      setHistory((prev) => [q, ...prev].slice(0, 50));
+      setHistoryIndex(-1);
+      setCmdInput('');
+      if (/^(y|yes)$/i.test(q)) {
+        confirmStaleTailor();
+        return;
+      }
+      if (/^(n|no)$/i.test(q)) {
+        cancelStaleTailor();
+        return;
+      }
+      setLogs((prev) => [
+        ...prev,
+        { type: 'stdout', content: `${q}\n⚠ Type Yes or No to continue (posting check pending).\n` },
+      ]);
+      return;
+    }
+
+    if (isExecuting || staleTailorChecking) return;
+
+    setHistory((prev) => [q, ...prev].slice(0, 50));
     setHistoryIndex(-1);
 
-    const tailorMatch = q.match(/^tailor\s+(\d+)\b(.*)$/i);
+    // ANY tailor — id or URL — must hit posting gate first
+    const tailorMatch = q.match(/^tailor\s+(.+)$/i);
     if (tailorMatch) {
-      const id = tailorMatch[1];
-      const rest = (tailorMatch[2] || '').trim();
-      const cmd = rest ? `tailor ${id} ${rest}` : `tailor ${id} --deep`;
+      const rest = tailorMatch[1].trim();
+      const deep = /\s--deep\b/i.test(rest);
+      const yes = /\s--yes\b|\s-y\b|\s--confirm-stale\b/i.test(rest);
+      const target = rest
+        .replace(/\s+--deep\b/gi, '')
+        .replace(/\s+--yes\b/gi, '')
+        .replace(/\s+-y\b/gi, '')
+        .replace(/\s+--confirm-stale\b/gi, '')
+        .trim();
+      if (!target) {
+        setLogs((prev) => [
+          ...prev,
+          { type: 'stderr', content: 'Usage: tailor <job_id|url> --deep\n' },
+        ]);
+        setCmdInput('');
+        return;
+      }
+      // Dashboard terminal tailor always uses --deep (GitHub Actions path)
+      const cmd = `tailor ${target} --deep${yes ? ' --yes' : ''}`.replace(/\s+/g, ' ').trim();
       setCmdInput('');
-      void requestTailor(id, cmd);
+      // If user already passed --yes, still show check but auto-confirm after print
+      void (async () => {
+        if (yes) {
+          setActiveTab('terminal');
+          setLogs((prev) => [
+            ...prev,
+            { type: 'stdout', content: `\ncareer-ops > ${cmd}\n📅 Posting check (--yes provided)…\n` },
+          ]);
+          try {
+            const isUrl = /^https?:\/\//i.test(target);
+            const id = Number.parseInt(target, 10);
+            const res = await fetch(
+              isUrl
+                ? `/api/job/posting-check?url=${encodeURIComponent(target)}`
+                : `/api/job/${id}?refresh=1`,
+            );
+            if (res.ok) {
+              const job = await res.json();
+              const gateMessage = String(job?.posting_gate_message || '').trim();
+              if (gateMessage) {
+                setLogs((prev) => [...prev, { type: 'stdout', content: `\n${gateMessage}\n` }]);
+              }
+            }
+          } catch {
+            /* still proceed with --yes */
+          }
+          setLogs((prev) => [
+            ...prev,
+            { type: 'stdout', content: '✓ --yes set — starting tailor…\n' },
+          ]);
+          runCommand(cmd);
+          return;
+        }
+        await requestTailor(target, cmd);
+      })();
       return;
     }
 
@@ -3840,14 +3945,14 @@ System Initialized — v2.0`}
                         ? 'Job posting looks ~1 year old'
                         : staleTailorTarget.analysis?.possible_repost
                           ? 'Possible repost — check history'
-                          : 'Job posting is 1 month or older'}
+                          : 'Job posting is 3 months or older'}
                     </h3>
                     <p className="text-xs text-[#6B6B6B]">
                       {staleTailorTarget.ageDays != null
                         ? `Posted ${staleTailorTarget.ageDays} day${staleTailorTarget.ageDays === 1 ? '' : 's'} ago`
                         : 'Posting age unclear'}
                       {staleTailorTarget.ageDays != null && staleTailorTarget.ageDays >= STALE_POSTING_DAYS
-                        ? ` (≥ ${STALE_POSTING_DAYS} days)`
+                        ? ` (≥ ${STALE_POSTING_DAYS} days / ~3 months)`
                         : ''}
                       {staleTailorTarget.ageDays != null && staleTailorTarget.ageDays >= ANCIENT_POSTING_DAYS
                         ? ` · ~${(staleTailorTarget.ageDays / 365).toFixed(1)} years`
@@ -3860,8 +3965,8 @@ System Initialized — v2.0`}
               <div className="p-6">
                 <p className="text-sm text-[#6B6B6B] mb-4">
                   {staleTailorTarget.analysis?.possible_repost
-                    ? 'History suggests this role may have been live much longer (or reposted). Generate resume & cover letter anyway?'
-                    : 'This job looks old. Do you still want to create the resume and cover letter?'}
+                    ? 'History suggests this role may have been live much longer (or reposted within ~1 year). Type Yes or No in the terminal — or use the buttons.'
+                    : 'This job is 3+ months old (or has old history). Type Yes or No in the terminal — or use the buttons.'}
                 </p>
                 <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
                   <div className="font-bold text-[#1C1C1E] mb-1">{staleTailorTarget.company}</div>

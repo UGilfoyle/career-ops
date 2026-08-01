@@ -39,8 +39,8 @@ export type JobPostingDateResult = {
   raw?: Record<string, unknown>;
 };
 
-/** Days after which tailor prompts before generating resume/cover. */
-export const STALE_POSTING_DAYS = 30;
+/** Days after which tailor prompts before generating resume/cover (3 months). */
+export const STALE_POSTING_DAYS = 90;
 export const ANCIENT_POSTING_DAYS = 365;
 export const REPOST_GAP_DAYS = 60;
 
@@ -150,12 +150,19 @@ export function analyzePostingHistory(
 
   const ancient = ageDays != null && ageDays >= ANCIENT_POSTING_DAYS;
   const stale = ageDays != null && ageDays >= STALE_POSTING_DAYS;
-  const needsConfirm = Boolean(stale || ancient || possibleRepost);
+  // History ≥ 3 months even if the listing looks "fresh" (common on reposts)
+  const historyOld = firstSeenDays != null && firstSeenDays >= STALE_POSTING_DAYS;
+  // Repost signal with history still inside ~1 year (or older — still confirm)
+  const repostWithinYear =
+    possibleRepost
+    && firstSeenDays != null
+    && firstSeenDays <= ANCIENT_POSTING_DAYS;
+  const needsConfirm = Boolean(stale || ancient || historyOld || repostWithinYear || possibleRepost);
 
   let severity: JobPostingAnalysis['severity'] = 'fresh';
   if (ancient || (possibleRepost && (firstSeenDays ?? 0) >= ANCIENT_POSTING_DAYS)) severity = 'ancient';
-  else if (possibleRepost) severity = 'repost';
-  else if (stale) severity = 'stale';
+  else if (possibleRepost || repostWithinYear) severity = 'repost';
+  else if (stale || historyOld) severity = 'stale';
   else if (postedAt == null) severity = 'unknown';
 
   return {
@@ -221,7 +228,7 @@ export function formatPostingGateMessage(opts: {
       `⚠ Possible REPOST: history is ${ageLabel(a.first_seen_days)} old, advertised date is newer (gap ${a.repost_gap_days} days).`,
     );
   } else if (a.stale) {
-    lines.push(`⚠ Posting is ${STALE_POSTING_DAYS}+ days old.`);
+    lines.push(`⚠ Posting is ${STALE_POSTING_DAYS}+ days old (~3 months).`);
   } else if (a.severity === 'unknown') {
     lines.push('ℹ Could not determine posting date — proceed with caution.');
   } else {

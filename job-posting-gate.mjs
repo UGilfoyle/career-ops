@@ -5,7 +5,7 @@
 
 import readline from 'node:readline';
 
-export const STALE_POSTING_DAYS = 30;
+export const STALE_POSTING_DAYS = 90; // 3 months — Yes/No before tailor
 export const ANCIENT_POSTING_DAYS = 365;
 export const REPOST_GAP_DAYS = 60;
 
@@ -96,12 +96,17 @@ export function analyzePostingHistory(raw = {}, now = new Date()) {
 
   const ancient = ageDays != null && ageDays >= ANCIENT_POSTING_DAYS;
   const stale = ageDays != null && ageDays >= STALE_POSTING_DAYS;
-  const needsConfirm = Boolean(stale || ancient || possibleRepost);
+  const historyOld = firstSeenDays != null && firstSeenDays >= STALE_POSTING_DAYS;
+  const repostWithinYear =
+    possibleRepost
+    && firstSeenDays != null
+    && firstSeenDays <= ANCIENT_POSTING_DAYS;
+  const needsConfirm = Boolean(stale || ancient || historyOld || repostWithinYear || possibleRepost);
 
   let severity = 'fresh';
   if (ancient || (possibleRepost && (firstSeenDays ?? 0) >= ANCIENT_POSTING_DAYS)) severity = 'ancient';
-  else if (possibleRepost) severity = 'repost';
-  else if (stale) severity = 'stale';
+  else if (possibleRepost || repostWithinYear) severity = 'repost';
+  else if (stale || historyOld) severity = 'stale';
   else if (postedAt == null) severity = 'unknown';
 
   return {
@@ -236,7 +241,7 @@ export function formatPostingGateMessage({
       + ` advertised date is newer (gap ${a.repost_gap_days} days).`,
     );
   } else if (a.stale) {
-    lines.push(`⚠ Posting is ${STALE_POSTING_DAYS}+ days old.`);
+    lines.push(`⚠ Posting is ${STALE_POSTING_DAYS}+ days old (~3 months).`);
   } else if (a.severity === 'unknown') {
     lines.push('ℹ Could not determine posting date — proceed with caution.');
   } else {
