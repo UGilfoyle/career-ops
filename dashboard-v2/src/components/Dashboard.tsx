@@ -542,7 +542,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         setStaleTailorTarget({
           jobId: id,
           command: cmd,
-          company: String(job?.company || analysis?.company || 'Unknown company'),
+          company: String(job?.company || 'Unknown company'),
           title: String(job?.title || 'Role'),
           posted_at: postedAt ? String(postedAt) : null,
           ageDays: analysis?.age_days ?? daysSincePosted(postedAt),
