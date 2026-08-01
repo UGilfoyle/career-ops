@@ -16,7 +16,7 @@ const KNOWN_TECH = [
   'Webpack', 'Vite', 'Material UI', 'HTML5', 'CSS3',
   'Git', 'Agile', 'Scrum', 'Microservices', 'System Design', 'Unit Testing', 'Integration Testing',
   'Machine Learning', 'ML', 'LLM', 'RAG', 'LangChain', 'PyTorch', 'TensorFlow',
-  'Cursor', 'Copilot', 'GitHub Copilot', 'Github Copilot',
+  // NOTE: never list Cursor / Copilot / ChatGPT / Claude Code here — IDE assistants are not tech-stack skills
   '.NET Core', '.NET', 'C#',
   'Snowflake', 'Spark', 'Airflow', 'dbt', 'Databricks',
   // ETL / data-validation stack
@@ -26,6 +26,15 @@ const KNOWN_TECH = [
   'SQL Server', 'Microsoft SQL Server', 'Telerik', 'DevExpress', 'jQuery', 'MVC',
 ];
 
+/**
+ * IDE / chat assistants — never emit as Technical Skills or Core Competencies.
+ * These come from profile superpowers like "AI-native tool integration (Cursor, Claude Code, GPTs)".
+ */
+export function isEditorIdeTool(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return false;
+  return /\b(cursor|windsurf|antigravity|copilot|github\s*copilot|chatgpt|chat\s*gpt|claude(?:\s*code)?|gpts?)\b/i.test(t);
+}
 /**
  * Seed domain / methodology phrases (not company-specific).
  * extractJdDomainPhrases ALSO pulls fresh multi-word requirements from any JD.
@@ -353,6 +362,8 @@ const MID_CLAUSE_RE = /\b(?:and|or|but|so|yet)\s+(?:the|a|an|that|this|these|tho
 export function isJunkKeyword(kw) {
   const k = normalizeKeyword(kw).toLowerCase();
   if (!k || k.length < 2) return true;
+  // IDE assistants are never skills / ATS keywords
+  if (isEditorIdeTool(k)) return true;
   // Bare version fragments split from model names ("3-large" from text-embedding-3-large)
   if (/^\d+-[a-z0-9-]+$/.test(k)) return true;
   if (STOPWORDS.has(k)) return true;

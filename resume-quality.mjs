@@ -1133,7 +1133,8 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
   if (Array.isArray(resume.core_competencies)) {
     resume.core_competencies = resume.core_competencies
       .map((c) => String(c || '').trim())
-      .filter((c) => c && !/^(find|apply|search|sign|join|save|share|view|click)$/i.test(c));
+      .filter((c) => c && !/^(find|apply|search|sign|join|save|share|view|click)$/i.test(c))
+      .filter((c) => !/\b(cursor|copilot|chatgpt|chat\s*gpt|claude\s*code|\bclaude\b|\bgpts?\b)\b/i.test(c));
   }
 
   audit = auditResumeQuality(resume);

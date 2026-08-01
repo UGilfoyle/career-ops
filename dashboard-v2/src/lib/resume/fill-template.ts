@@ -184,9 +184,10 @@ export function renderAchievementsHtml(
 }
 
 export function renderSkillsLines(superpowers: string[] | undefined): string {
+  const editorRe = /\b(cursor|windsurf|antigravity|copilot|github\s*copilot|chatgpt|chat\s*gpt|claude\s*code|\bclaude\b|\bgpts?\b)\b/i;
   const items = (Array.isArray(superpowers) ? superpowers : [])
-    .map((s) => String(s || '').trim())
-    .filter(Boolean)
+    .map((s) => String(s || '').replace(/\s*\([^)]*\)\s*/g, '').trim())
+    .filter((s) => s && !editorRe.test(s) && !/^ai-?native tool integration$/i.test(s))
     .slice(0, 16);
   if (items.length === 0) return '';
   return `<div class="skill-line"><span class="skill-label">Core Competencies:</span> ${escapeHtml(items.join(', '))}</div>`;

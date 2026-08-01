@@ -8,6 +8,7 @@ import {
   isJunkKeyword,
   isWeavableKeyword,
   isWeaveableNounPhrase,
+  isEditorIdeTool,
 } from './jd-keyword-align.mjs';
 import {
   explodeWallOfTextBullets,
@@ -40,10 +41,6 @@ const PROFILE_TECH_PATTERNS = [
   /\bRAG\b/gi,
   /\bChromaDB\b/gi,
   /\bOpenAI\b/gi,
-  /\bClaude\b/gi,
-  /\bGPT\b/gi,
-  /\bCursor\b/gi,
-  /\bCopilot\b/gi,
   /\bGitHub Actions\b/gi,
   /\bJest\b/gi,
   /\bCypress\b/gi,
@@ -331,19 +328,18 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
   const comps = [];
   const seen = new Set();
   const jdLower = String(jdText || '').toLowerCase();
-  // Only treat the JD as AI-tooling-focused when it names the tools as skills,
-  // not when boilerplate mentions "we use AI tools" / "LLM" in legal copy.
+  // Editor IDE tools are NEVER skills — even if JD name-drops Cursor/Copilot.
+  // Soft label "AI-Assisted Development" is added separately when JD wants AI tooling.
   const jdWantsAiTools =
     /\b(copilot|cursor|generative ai|langchain|openai|chatgpt|ai agent)\b/.test(jdLower) &&
     !/\bwe may use artificial intelligence\b/.test(jdLower);
-  const isEditorTool = (raw) => /\b(cursor|copilot|chatgpt|claude code|gpts?|llm\s*\(?rag\)?)\b/i.test(String(raw));
 
   const add = (item) => {
     const raw = String(item || '').trim();
     if (!raw || isJunkKeyword(raw)) return;
     // Block generic filler labels that waste ATS real estate
     if (/^(software|applications?|services?|development|technologies?|engineering|solutions?)$/i.test(raw)) return;
-    if (isEditorTool(raw) && !jdWantsAiTools) return;
+    if (isEditorIdeTool(raw)) return;
     if (!isWeaveableNounPhrase(raw)) return;
     const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
@@ -429,7 +425,7 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
   }
 
   for (const s of profile?.narrative?.superpowers || []) {
-    if (isEditorTool(s)) continue; // never inject Cursor/Copilot/Claude from profile into competencies
+    if (isEditorIdeTool(s)) continue; // never inject Cursor/Copilot/Claude from profile into competencies
     if (jdLower.split(/\W+/).some((w) => w.length > 4 && s.toLowerCase().includes(w))) add(s);
   }
 
@@ -445,7 +441,6 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   const y = Number(yearsExp) || 0;
   // Lead stack = real JD tech only (never Indeed chrome like "Find")
   // Prefer languages/frameworks/cloud over editor tools (Copilot/Cursor) in the identity line
-  const isEditorTool = (k) => /\b(copilot|cursor|chatgpt|claude code)\b/i.test(String(k));
   const isGapOnlyTool = (k) => /\b(mainframe|rally|qtest|telerik|devexpress|jquery)\b/i.test(String(k));
   const honestList = (honestKeywords || []).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k));
   const honestKeys = new Set(honestList.map((k) => normalizeKey(k)));
@@ -456,7 +451,7 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
       if (FRAGMENT_BLOCKLIST.has(normalizeKey(k)) || !isWeavableKeyword(k)) return false;
       if (isJunkKeyword(k)) return false;
       if (isGapOnlyTool(k) && !honestKeys.has(normalizeKey(k))) return false;
-      if (isEditorTool(k)) return false;
+      if (isEditorIdeTool(k)) return false;
       // Prefer real stack over soft process labels in the identity line
       if (/^(unit testing|agile|scrum|full[-\s]?stack experience|ci\/cd)$/i.test(String(k))) return false;
       if (String(k).split(/\s+/).length >= 2) {
@@ -467,8 +462,8 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
       return honestKeys.has(normalizeKey(k)) || jdTech.some((t) => normalizeKey(t) === normalizeKey(k));
     });
   const rankedLead = [
-    ...leadPool.filter((k) => !isEditorTool(k)),
-    ...leadPool.filter((k) => isEditorTool(k)),
+    ...leadPool.filter((k) => !isEditorIdeTool(k)),
+    ...leadPool.filter((k) => isEditorIdeTool(k)),
   ];
   const leadTerms = [...new Set(rankedLead.map((k) => String(k).trim()))].slice(0, 5);
   const lead = leadTerms.length

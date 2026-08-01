@@ -29,6 +29,7 @@ import {
   isWeavableKeyword,
 } from './jd-keyword-align.mjs';
 import { callFirstAvailableFallback } from './llm-fallback.mjs';
+import { renderCategorizedSkills } from './resume-skills-html.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
 import { classifyCompany } from './gcc-classify.mjs';
 import { hydrateResumeProfile } from './profile-hydrate.mjs';
@@ -411,107 +412,6 @@ function renderProjects(projects) {
   `).join('');
 }
 
-function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
-  const superpowers = Array.isArray(profileSuperpowers) ? profileSuperpowers : [];
-  const competencies = Array.isArray(tailoredCompetencies) ? tailoredCompetencies : [];
-
-  if (superpowers.length === 0 && competencies.length === 0) return '';
-
-  // Known tech stacks / tools — if a competency looks like an actual technology, it goes to Technical Skills.
-  // This list covers the most common stacks seen in JDs; short tokens matched case-insensitively.
-  const techPatterns = [
-    // Languages
-    /\b(java(?:script)?|python|typescript|go(?:lang)?|rust|ruby|c\+\+|c#|\.net|kotlin|swift|scala|php|perl|elixir|haskell|dart|r\b|sql|graphql|html|css|sass|less)\b/i,
-    // Frameworks & runtimes
-    /\b(react|angular|vue|svelte|next\.?js|nuxt|nest\.?js|express|fastapi|flask|django|spring|rails|laravel|gin|echo|fiber|fastify|hono|remix|gatsby|astro|node\.?js|deno|bun)\b/i,
-    // Databases
-    /\b(postgres|postgresql|mysql|mariadb|mongo(?:db)?|redis|dynamodb|aurora|cockroach|cassandra|elastic|opensearch|sqlite|supabase|neon|firebase|firestore|couchdb|neo4j|memcached|influxdb)\b/i,
-    // Cloud & infra
-    /\b(aws|gcp|azure|cloudflare|vercel|heroku|digital\s?ocean|ecs|ec2|lambda|fargate|s3|cloudfront|route\s?53|iam|vpc|sqs|sns|step\s?functions|api\s?gateway|cloud\s?run|cloud\s?functions|bigquery|pubsub|terraform|pulumi|cdk|cloudformation|ansible)\b/i,
-    // DevOps & containers
-    /\b(docker|kubernetes|k8s|helm|istio|envoy|nginx|haproxy|traefik|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|circle\s?ci|argo\s?cd|flux|buildkite|drone|prometheus|grafana|datadog|new\s?relic|pagerduty|splunk|elk|loki|jaeger|opentelemetry)\b/i,
-    // Data & ML
-    /\b(kafka|rabbitmq|nats|pulsar|flink|spark|airflow|dbt|snowflake|redshift|databricks|mlflow|sagemaker|pytorch|tensorflow|langchain|openai|hugging\s?face|llm|rag|vector\s?db|pinecone|weaviate|qdrant|milvus)\b/i,
-    // Testing & tools
-    /\b(jest|mocha|pytest|cypress|playwright|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack)\b/i,
-    // Patterns that are clearly tech (short tokens)
-    /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet)\b/i,
-  ];
-
-  const isTechStack = (text) => {
-    const t = text.trim();
-    if (!t || isJunkKeyword(t) || !isWeavableKeyword(t)) return false;
-    // Short items (≤30 chars) that look like tool/tech names (few spaces, no verb phrases)
-    if (t.length <= 30 && (t.split(/\s+/).length <= 3)) {
-      // Check against known patterns
-      if (techPatterns.some(p => p.test(t))) return true;
-      // Short tokens: only if they match a tech pattern (never "Find")
-      return false;
-    }
-    // Longer items — check for tech patterns
-    return techPatterns.some(p => p.test(t));
-  };
-
-  // Separate competencies into Core Competencies (broad skills) and Technical Skills (tech stacks)
-  const coreComp = [];
-  const techSkills = [];
-
-  // Process tailored competencies FIRST (JD-aligned, highest priority)
-  for (const item of competencies) {
-    const s = String(item || '').trim();
-    if (!s || isJunkKeyword(s)) continue;
-    if (isTechStack(s)) {
-      techSkills.push(s);
-    } else if (isWeavableKeyword(s) || s.split(/\s+/).length >= 2) {
-      coreComp.push(s);
-    }
-  }
-
-  // Then add profile superpowers that aren't already covered
-  const existingLower = new Set([...coreComp, ...techSkills].map(x => x.toLowerCase()));
-  for (const sp of superpowers) {
-    const s = String(sp || '').trim();
-    if (!s || existingLower.has(s.toLowerCase())) continue;
-    // Extract parenthesized tech stacks from superpowers like "AWS platform engineering (ECS, Lambda, Aurora, IAM)"
-    const parenMatch = s.match(/\(([^)]+)\)/);
-    if (parenMatch) {
-      const techs = parenMatch[1].split(',').map(t => t.trim()).filter(Boolean);
-      for (const tech of techs) {
-        if (!existingLower.has(tech.toLowerCase())) {
-          techSkills.push(tech);
-          existingLower.add(tech.toLowerCase());
-        }
-      }
-    }
-    // The superpower phrase itself goes to Core Competencies (without the parenthesized part)
-    const cleanedSp = s.replace(/\s*\([^)]*\)\s*/g, '').trim();
-    if (cleanedSp && !existingLower.has(cleanedSp.toLowerCase())) {
-      coreComp.push(cleanedSp);
-      existingLower.add(cleanedSp.toLowerCase());
-    }
-  }
-
-  // Deduplicate and limit — denser skills rows for Zety/ATS hybrid
-  const uniqueCore = [...new Set(coreComp)].slice(0, 12);
-  const uniqueTech = [...new Set(techSkills)].slice(0, 16);
-
-  // Generate HTML
-  let html = '';
-  if (uniqueCore.length > 0) {
-    html += `<div class="skill-line"><span class="skill-label">Core Competencies:</span> ${uniqueCore.join(', ')}</div>`;
-  }
-  if (uniqueTech.length > 0) {
-    html += `<div class="skill-line"><span class="skill-label">Technical Skills:</span> ${uniqueTech.join(', ')}</div>`;
-  }
-
-  // Fallback if somehow both are empty
-  if (!html) {
-    const allItems = [...superpowers, ...competencies].slice(0, 12);
-    html = `<div class="skill-line"><span class="skill-label">Skills:</span> ${allItems.join(', ')}</div>`;
-  }
-
-  return html;
-}
 
 // Career span from earliest role start → latest end (or present)
 function parseJobMonthIndex(periodStr, which = 'start') {
