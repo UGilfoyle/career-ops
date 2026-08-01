@@ -51,8 +51,9 @@ import GeneratedDocsPanel from './GeneratedDocsPanel';
 import { GccCampaignPanel, defaultGccCampaign, type GccCampaign } from './GccCampaignPanel';
 import {
   STALE_POSTING_DAYS,
+  ANCIENT_POSTING_DAYS,
   daysSincePosted,
-  isStalePosting,
+  type JobPostingAnalysis,
 } from '@/lib/job-posting-date';
 
 /** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
@@ -141,8 +142,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     command: string;
     company: string;
     title: string;
-    posted_at: string;
-    ageDays: number;
+    posted_at: string | null;
+    ageDays: number | null;
+    analysis: JobPostingAnalysis | null;
+    gateMessage: string;
   } | null>(null);
 
   const [clearPipelineOpen, setClearPipelineOpen] = useState(false);
@@ -498,7 +501,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   };
 
   /**
-   * Gate tailor behind posting-age check. ≥30 days → confirm; unknown/fresh → run.
+   * Gate tailor behind posting-age/history check.
+   * Always prints the check into Terminal; Yes/No modal when stale/repost/ancient.
    */
   const requestTailor = async (jobId: number | string, command?: string) => {
     const id = Number.parseInt(String(jobId), 10);
@@ -510,30 +514,50 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     if (staleTailorChecking || isExecuting) return;
 
     setStaleTailorChecking(true);
+    setActiveTab('terminal');
+    setLogs((prev) => [
+      ...prev,
+      { type: 'stdout', content: `\ncareer-ops > checking job posting history for #${id}…\n` },
+    ]);
     try {
-      const res = await fetch(`/api/job/${id}`);
+      const res = await fetch(`/api/job/${id}?refresh=1`);
       if (!res.ok) {
-        // Unknown job / API fail — do not block tailor
+        setLogs((prev) => [
+          ...prev,
+          { type: 'stderr', content: `⚠ Posting check failed (HTTP ${res.status}) — continuing without age gate.\n` },
+        ]);
         runCommand(cmd);
         return;
       }
       const job = await res.json();
-      const postedAt = job?.posted_at ?? null;
-      if (isStalePosting(postedAt)) {
-        const ageDays = daysSincePosted(postedAt) ?? STALE_POSTING_DAYS;
+      const analysis = (job?.posting_analysis || null) as JobPostingAnalysis | null;
+      const gateMessage = String(job?.posting_gate_message || '').trim();
+      if (gateMessage) {
+        setLogs((prev) => [...prev, { type: 'stdout', content: `\n${gateMessage}\n` }]);
+      }
+
+      const needsConfirm = Boolean(analysis?.needs_confirm);
+      if (needsConfirm) {
+        const postedAt = analysis?.posted_at ?? job?.posted_at ?? null;
         setStaleTailorTarget({
           jobId: id,
           command: cmd,
-          company: String(job?.company || 'Unknown company'),
+          company: String(job?.company || analysis?.company || 'Unknown company'),
           title: String(job?.title || 'Role'),
-          posted_at: String(postedAt),
-          ageDays,
+          posted_at: postedAt ? String(postedAt) : null,
+          ageDays: analysis?.age_days ?? daysSincePosted(postedAt),
+          analysis,
+          gateMessage,
         });
         setStaleTailorOpen(true);
         return;
       }
       runCommand(cmd);
     } catch {
+      setLogs((prev) => [
+        ...prev,
+        { type: 'stderr', content: '⚠ Posting check errored — continuing without age gate.\n' },
+      ]);
       runCommand(cmd);
     } finally {
       setStaleTailorChecking(false);
@@ -546,11 +570,21 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     setStaleTailorTarget(null);
     if (cmd) {
       setActiveTab('terminal');
-      runCommand(cmd);
+      setLogs((prev) => [
+        ...prev,
+        { type: 'stdout', content: '✓ You chose Yes — generating resume & cover letter…\n' },
+      ]);
+      // --yes skips the non-interactive CI gate after dashboard confirmation
+      const withYes = /\s--yes\b/i.test(cmd) ? cmd : `${cmd} --yes`;
+      runCommand(withYes);
     }
   };
 
   const cancelStaleTailor = () => {
+    setLogs((prev) => [
+      ...prev,
+      { type: 'stdout', content: '✗ You chose No — resume generation cancelled.\n' },
+    ]);
     setStaleTailorOpen(false);
     setStaleTailorTarget(null);
   };
@@ -3778,7 +3812,7 @@ System Initialized — v2.0`}
         )}
       </AnimatePresence>
 
-      {/* Stale posting confirm before tailor */}
+      {/* Stale / repost / ancient posting confirm before tailor */}
       <AnimatePresence>
         {staleTailorOpen && staleTailorTarget && (
           <motion.div
@@ -3801,10 +3835,23 @@ System Initialized — v2.0`}
                     <Clock size={24} className="text-amber-700" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#1C1C1E] text-lg">Job posting is 1 month or older</h3>
+                    <h3 className="font-bold text-[#1C1C1E] text-lg">
+                      {staleTailorTarget.analysis?.severity === 'ancient'
+                        ? 'Job posting looks ~1 year old'
+                        : staleTailorTarget.analysis?.possible_repost
+                          ? 'Possible repost — check history'
+                          : 'Job posting is 1 month or older'}
+                    </h3>
                     <p className="text-xs text-[#6B6B6B]">
-                      Posted {staleTailorTarget.ageDays} day{staleTailorTarget.ageDays === 1 ? '' : 's'} ago
-                      {staleTailorTarget.ageDays >= STALE_POSTING_DAYS ? ` (≥ ${STALE_POSTING_DAYS} days)` : ''}
+                      {staleTailorTarget.ageDays != null
+                        ? `Posted ${staleTailorTarget.ageDays} day${staleTailorTarget.ageDays === 1 ? '' : 's'} ago`
+                        : 'Posting age unclear'}
+                      {staleTailorTarget.ageDays != null && staleTailorTarget.ageDays >= STALE_POSTING_DAYS
+                        ? ` (≥ ${STALE_POSTING_DAYS} days)`
+                        : ''}
+                      {staleTailorTarget.ageDays != null && staleTailorTarget.ageDays >= ANCIENT_POSTING_DAYS
+                        ? ` · ~${(staleTailorTarget.ageDays / 365).toFixed(1)} years`
+                        : ''}
                     </p>
                   </div>
                 </div>
@@ -3812,15 +3859,31 @@ System Initialized — v2.0`}
 
               <div className="p-6">
                 <p className="text-sm text-[#6B6B6B] mb-4">
-                  This job was posted 1 month ago or earlier. Do you still want to create the resume and cover letter?
+                  {staleTailorTarget.analysis?.possible_repost
+                    ? 'History suggests this role may have been live much longer (or reposted). Generate resume & cover letter anyway?'
+                    : 'This job looks old. Do you still want to create the resume and cover letter?'}
                 </p>
                 <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
                   <div className="font-bold text-[#1C1C1E] mb-1">{staleTailorTarget.company}</div>
                   <div className="text-xs text-[#6B6B6B]">{staleTailorTarget.title}</div>
                   <div className="text-[10px] text-[#9CA3AF] mt-2 uppercase tracking-wider font-bold">
-                    Posted {formatRelativeTime(staleTailorTarget.posted_at)}
+                    {staleTailorTarget.posted_at
+                      ? `Posted ${formatRelativeTime(staleTailorTarget.posted_at)}`
+                      : 'Posted date unknown'}
                   </div>
+                  {staleTailorTarget.analysis?.first_seen_at
+                    && staleTailorTarget.analysis.first_seen_at !== staleTailorTarget.posted_at && (
+                    <div className="text-[10px] text-amber-700 mt-1 font-semibold">
+                      First seen {formatRelativeTime(staleTailorTarget.analysis.first_seen_at)}
+                      {staleTailorTarget.analysis.first_seen_days != null
+                        ? ` (${staleTailorTarget.analysis.first_seen_days}d history)`
+                        : ''}
+                    </div>
+                  )}
                 </div>
+                <p className="text-[11px] text-[#9CA3AF] mt-3">
+                  Full check is also printed in the Terminal tab.
+                </p>
               </div>
 
               <div className="p-4 border-t border-[#E5E5E0] flex gap-3">
@@ -3829,7 +3892,7 @@ System Initialized — v2.0`}
                   onClick={cancelStaleTailor}
                   className="flex-1 px-4 py-3 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] font-bold text-sm hover:bg-[#F5F5F0] transition-colors"
                 >
-                  Cancel
+                  No
                 </button>
                 <button
                   type="button"
@@ -3837,7 +3900,7 @@ System Initialized — v2.0`}
                   className="flex-1 px-4 py-3 rounded-xl bg-[#1C1C1E] text-white font-bold text-sm hover:bg-[#27272a] transition-colors flex items-center justify-center gap-2"
                 >
                   <FileText size={16} />
-                  <span>Proceed with resume &amp; cover letter</span>
+                  <span>Yes — generate resume</span>
                 </button>
               </div>
             </motion.div>

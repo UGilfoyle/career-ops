@@ -4,6 +4,8 @@ import { auth } from '@/auth';
 import {
   ensureJobPostingDateColumns,
   fetchJobPostingDate,
+  analyzePostingHistory,
+  formatPostingGateMessage,
 } from '@/lib/job-posting-date';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +14,7 @@ export const maxDuration = 120;
 /** Re-check posting date at most once per day when previously unknown. */
 const RECHECK_AFTER_MS = 24 * 60 * 60 * 1000;
 
-export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -24,6 +26,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     if (!Number.isFinite(jobId)) {
       return NextResponse.json({ error: 'Invalid job id' }, { status: 400 });
     }
+
+    const forceRefresh = new URL(req.url).searchParams.get('refresh') === '1';
 
     try {
       await ensureJobPostingDateColumns(sql);
@@ -86,15 +90,29 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
 
     const jobUrl = String(job.canonical_url || job.url || '');
     const checkedAt = job.posted_checked_at ? new Date(job.posted_checked_at).getTime() : 0;
-    // Lazy enrich only when we have no date yet; retry unknowns at most once per day
+    // Lazy enrich when missing date, daily retry for unknowns, or explicit refresh (tailor gate)
     const needsEnrich =
-      Boolean(jobUrl) &&
-      !job.posted_at &&
-      (!checkedAt || Date.now() - checkedAt > RECHECK_AFTER_MS);
+      Boolean(jobUrl)
+      && (
+        forceRefresh
+        || !job.posted_at
+        || !checkedAt
+        || Date.now() - checkedAt > RECHECK_AFTER_MS
+      );
+
+    let analysis = null;
+    let gateMessage = '';
 
     if (needsEnrich) {
       const enrich = await fetchJobPostingDate(jobUrl);
       const now = new Date();
+      analysis = enrich.analysis || analyzePostingHistory(enrich.raw || {});
+      gateMessage = formatPostingGateMessage({
+        company: job.company,
+        title: job.title,
+        url: jobUrl,
+        analysis,
+      });
       try {
         await sql`
           UPDATE jobs
@@ -110,12 +128,23 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         job.posted_reason = enrich.reason;
         job.posted_checked_at = now.toISOString();
       } catch {
-        // Persist failed (missing columns); still return enrich result for this response
         job.posted_at = enrich.posted_at ?? job.posted_at;
         job.posted_confidence = enrich.confidence ?? job.posted_confidence;
         job.posted_reason = enrich.reason ?? job.posted_reason;
         job.posted_checked_at = now.toISOString();
       }
+    } else if (job.posted_at) {
+      analysis = analyzePostingHistory({
+        most_probable_date: job.posted_at,
+        confidence: job.posted_confidence,
+        reason: job.posted_reason,
+      });
+      gateMessage = formatPostingGateMessage({
+        company: job.company,
+        title: job.title,
+        url: jobUrl,
+        analysis,
+      });
     }
 
     return NextResponse.json({
@@ -132,6 +161,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       posted_confidence: job.posted_confidence || null,
       posted_reason: job.posted_reason || null,
       posted_checked_at: job.posted_checked_at || null,
+      posting_analysis: analysis,
+      posting_gate_message: gateMessage,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

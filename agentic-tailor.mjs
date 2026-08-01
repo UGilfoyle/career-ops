@@ -30,6 +30,7 @@ import {
 } from './jd-keyword-align.mjs';
 import { callFirstAvailableFallback } from './llm-fallback.mjs';
 import { renderCategorizedSkills } from './resume-skills-html.mjs';
+import { gateResumeOnPostingAge, argvHasYes } from './job-posting-gate.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
 import { classifyCompany } from './gcc-classify.mjs';
 import { hydrateResumeProfile } from './profile-hydrate.mjs';
@@ -1747,6 +1748,20 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     }
 
     console.log(`🎯 Target identified: ${entry.company}`);
+
+    // Posting age/history gate — print check, ask Yes/No before spending LLM credits
+    const postingGate = await gateResumeOnPostingAge({
+      url: entry.url,
+      company: entry.company,
+      title: entry.title || entry.role || '',
+      forceYes: argvHasYes(process.argv),
+    });
+    if (!postingGate.ok) {
+      console.error('❌ Tailor aborted: posting check not confirmed (Yes required for old/reposted jobs).');
+      process.exitCode = 2;
+      return;
+    }
+
     const jdText = await resolveJdText(entry);
     if (!jdText || jdText.length < 100) {
       console.warn(`⚠️ JD text is very short (${jdText?.length || 0} chars). Resume tailoring may be generic. Re-scan or paste JD into pipeline.`);

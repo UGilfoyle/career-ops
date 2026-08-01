@@ -8,15 +8,23 @@ import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
-/** Parse `verb <target> [--deep]` preserving full URLs (incl. query strings). */
+/** Parse `verb <target> [--deep] [--yes]` preserving full URLs (incl. query strings). */
 function parseCommandWithDeep(q: string, verb: string) {
   const trimmed = q.trim();
-  const deep = /\s--deep\s*$/i.test(trimmed);
+  const deep = /\s--deep\b/i.test(trimmed);
+  const yes = /\s--yes\b|\s-y\b|\s--confirm-stale\b/i.test(trimmed);
   const target = trimmed
     .replace(new RegExp(`^${verb}\\s+`, 'i'), '')
-    .replace(/\s+--deep\s*$/i, '')
+    .replace(/\s+--deep\b/gi, '')
+    .replace(/\s+--yes\b/gi, '')
+    .replace(/\s+-y\b/gi, '')
+    .replace(/\s+--confirm-stale\b/gi, '')
     .trim();
-  return { target, deep };
+  return { target, deep, yes };
+}
+
+function buildTailorActionArgs(target: string, deep: boolean, yes: boolean) {
+  return [target, deep ? '--deep' : '', yes ? '--yes' : ''].filter(Boolean).join(' ');
 }
 
 function tailorUsage(cmd: string, deep = false) {
@@ -73,7 +81,7 @@ export async function GET(req: NextRequest) {
           }
           scriptName = 'scratch-scan.mjs';
         } else if (cmd === 'tailor' || cmd === 'offer-match') {
-          const { target, deep } = parseCommandWithDeep(q, cmd);
+          const { target, deep, yes } = parseCommandWithDeep(q, cmd);
           const useDeep = deep || process.env.VERCEL === '1';
           if (useDeep) {
             if (!target) {
@@ -82,7 +90,13 @@ export async function GET(req: NextRequest) {
               controller.close();
               return;
             }
-            await triggerGitHubAction(send, controller, userId, 'agentic-tailor.mjs', target);
+            await triggerGitHubAction(
+              send,
+              controller,
+              userId,
+              'agentic-tailor.mjs',
+              buildTailorActionArgs(target, true, yes),
+            );
             return;
           }
           scriptName = 'agentic-tailor.mjs';
@@ -92,7 +106,7 @@ export async function GET(req: NextRequest) {
             controller.close();
             return;
           }
-          scriptArgs = [target];
+          scriptArgs = [target, ...(yes ? ['--yes'] : [])];
         } else if (cmd === 'apply') {
           const { target, deep } = parseCommandWithDeep(q, cmd);
           const useDeep = deep || process.env.VERCEL === '1';
@@ -589,8 +603,8 @@ export async function POST(req: NextRequest) {
         scriptArgs = q.replace(/^add\s+/i, '').trim();
       } else if (cmd === 'tailor' || cmd === 'offer-match') {
         script = 'agentic-tailor.mjs';
-        const { target } = parseCommandWithDeep(q, cmd);
-        scriptArgs = target || args.find((a: string) => a !== '--deep') || '';
+        const { target, deep, yes } = parseCommandWithDeep(q, cmd);
+        scriptArgs = buildTailorActionArgs(target || args.find((a: string) => a !== '--deep' && a !== '--yes' && a !== '-y') || '', true, yes);
       } else if (cmd === 'apply') {
         script = 'auto-apply.mjs';
         const { target } = parseCommandWithDeep(q, 'apply');
@@ -600,7 +614,8 @@ export async function POST(req: NextRequest) {
         scriptArgs = '';
       } else if (/^\d+$/.test(cmd)) {
         script = 'agentic-tailor.mjs';
-        scriptArgs = cmd;
+        const yes = args.includes('--yes') || args.includes('-y');
+        scriptArgs = buildTailorActionArgs(cmd, true, yes);
       } else {
         return NextResponse.json({ error: `Command ${cmd} not supported in deep mode` }, { status: 400 });
       }
