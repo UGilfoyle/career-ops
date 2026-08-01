@@ -857,38 +857,108 @@ async function scrapeJD(url) {
     }
   }
 
+  async function fetchHtmlJdFallback() {
+    const res = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const html = await res.text();
+    const jsonLdMatches = html.match(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+    for (const block of jsonLdMatches) {
+      try {
+        const jsonStr = block.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '').trim();
+        const data = JSON.parse(jsonStr);
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          if (item['@type'] === 'JobPosting' || item['@type']?.includes?.('JobPosting')) {
+            const parts = [];
+            if (item.title) parts.push(`Job Title: ${item.title}`);
+            if (item.hiringOrganization?.name) parts.push(`Company: ${item.hiringOrganization.name}`);
+            if (item.description) {
+              const descText = String(item.description)
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<\/p>/gi, '\n\n')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+              parts.push(`Description:\n${descText}`);
+            }
+            const text = parts.join('\n');
+            if (text.length > 200) return text.slice(0, 15000);
+          }
+        }
+      } catch {
+        /* try next block */
+      }
+    }
+    const stripped = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+\n/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+    if (stripped.length > 200) return stripped.slice(0, 15000);
+    throw new Error('HTML fetch returned insufficient content');
+  }
+
   const chromium = await getChromium();
   if (chromium) {
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      viewport: { width: 1280, height: 800 },
-      extraHTTPHeaders: {
-        'Accept-Language': 'en-US,en;q=0.9',
-      }
-    });
-    const page = await context.newPage();
-    try {
-      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForTimeout(2000);
-      
-      let text = '';
-      if (targetUrl.includes('indeed.com')) {
-        text = await page.evaluate(() => {
-          const jdContainer = document.getElementById('jobDescriptionText') || 
-                              document.querySelector('.jobsearch-JobComponent-description') ||
-                              document.querySelector('.jobsearch-BodyContainer');
-          return jdContainer ? jdContainer.innerText : document.body.innerText;
+    const launchAttempts = [
+      { args: ['--disable-http2'], label: 'http1' },
+      { args: [], label: 'default' },
+    ];
+    let lastErr = null;
+    for (const attempt of launchAttempts) {
+      let browser;
+      try {
+        browser = await chromium.launch({ headless: true, args: attempt.args });
+        const context = await browser.newContext({
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          viewport: { width: 1280, height: 800 },
+          ignoreHTTPSErrors: true,
+          extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
         });
-      } else {
-        text = await page.evaluate(() => document.body.innerText);
+        const page = await context.newPage();
+        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await page.waitForTimeout(2000);
+
+        let text = '';
+        if (targetUrl.includes('indeed.com')) {
+          text = await page.evaluate(() => {
+            const jdContainer = document.getElementById('jobDescriptionText')
+              || document.querySelector('.jobsearch-JobComponent-description')
+              || document.querySelector('.jobsearch-BodyContainer');
+            return jdContainer ? jdContainer.innerText : document.body.innerText;
+          });
+        } else {
+          text = await page.evaluate(() => document.body.innerText);
+        }
+        await browser.close();
+        if (text && text.trim().length > 100) return text.trim();
+        lastErr = new Error('Playwright returned empty page text');
+      } catch (err) {
+        lastErr = err;
+        console.warn(`⚠ Playwright scrape (${attempt.label}) failed: ${err.message}`);
+        if (browser) {
+          try { await browser.close(); } catch { /* ignore */ }
+        }
+        if (!/ERR_HTTP2|PROTOCOL_ERROR|net::|Timeout/i.test(String(err.message || ''))) {
+          break;
+        }
       }
-      
-      await browser.close();
-      return text.trim();
-    } catch (err) {
-      await browser.close();
-      throw new Error(`Scrape failed: ${err.message}`);
+    }
+    try {
+      console.warn('⚠ Falling back to HTML fetch after Playwright errors…');
+      return await fetchHtmlJdFallback();
+    } catch (fetchErr) {
+      throw new Error(`Scrape failed: ${lastErr?.message || 'unknown'} | fetch fallback: ${fetchErr.message}`);
     }
   }
 

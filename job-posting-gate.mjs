@@ -101,13 +101,17 @@ export function analyzePostingHistory(raw = {}, now = new Date()) {
     possibleRepost
     && firstSeenDays != null
     && firstSeenDays <= ANCIENT_POSTING_DAYS;
-  const needsConfirm = Boolean(stale || ancient || historyOld || repostWithinYear || possibleRepost);
+  const unknown = postedAt == null;
+  // Unknown date = confirm too (MCP/REST couldn't read age — don't silently tailor)
+  const needsConfirm = Boolean(
+    stale || ancient || historyOld || repostWithinYear || possibleRepost || unknown,
+  );
 
   let severity = 'fresh';
   if (ancient || (possibleRepost && (firstSeenDays ?? 0) >= ANCIENT_POSTING_DAYS)) severity = 'ancient';
   else if (possibleRepost || repostWithinYear) severity = 'repost';
   else if (stale || historyOld) severity = 'stale';
-  else if (postedAt == null) severity = 'unknown';
+  else if (unknown) severity = 'unknown';
 
   return {
     posted_at: postedAt,
@@ -144,48 +148,57 @@ export async function fetchJobPostingHistory(jobUrl, opts = {}) {
   }
 
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  try {
-    const endpoint = new URL(CHECK_URL);
-    endpoint.searchParams.set('url', url);
-    const res = await fetch(endpoint.toString(), {
-      method: 'GET',
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) {
-      const analysis = analyzePostingHistory({});
+  const attempt = async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const endpoint = new URL(CHECK_URL);
+      endpoint.searchParams.set('url', url);
+      const res = await fetch(endpoint.toString(), {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) {
+        return {
+          posted_at: null,
+          confidence: null,
+          reason: `http_${res.status}`,
+          analysis: analyzePostingHistory({}),
+          raw: null,
+        };
+      }
+      const data = await res.json();
+      const analysis = analyzePostingHistory(data);
+      return {
+        posted_at: analysis.posted_at,
+        confidence: analysis.confidence,
+        reason: analysis.reason,
+        analysis,
+        raw: data,
+      };
+    } catch (err) {
+      const msg = err?.name === 'AbortError' ? 'timeout' : (err?.message || 'fetch_failed');
       return {
         posted_at: null,
         confidence: null,
-        reason: `http_${res.status}`,
-        analysis,
+        reason: msg,
+        analysis: analyzePostingHistory({}),
         raw: null,
       };
+    } finally {
+      clearTimeout(timer);
     }
-    const data = await res.json();
-    const analysis = analyzePostingHistory(data);
-    return {
-      posted_at: analysis.posted_at,
-      confidence: analysis.confidence,
-      reason: analysis.reason,
-      analysis,
-      raw: data,
-    };
-  } catch (err) {
-    const msg = err?.name === 'AbortError' ? 'timeout' : (err?.message || 'fetch_failed');
-    return {
-      posted_at: null,
-      confidence: null,
-      reason: msg,
-      analysis: analyzePostingHistory({}),
-      raw: null,
-    };
-  } finally {
-    clearTimeout(timer);
+  };
+
+  let result = await attempt();
+  // One retry when MCP/REST network flakes (common on Actions runners)
+  if (!result.posted_at && /fetch_failed|timeout|http_5\d\d/i.test(String(result.reason || ''))) {
+    await new Promise((r) => setTimeout(r, 1500));
+    result = await attempt();
   }
+  return result;
 }
 
 function fmtDay(iso) {
@@ -243,7 +256,7 @@ export function formatPostingGateMessage({
   } else if (a.stale) {
     lines.push(`⚠ Posting is ${STALE_POSTING_DAYS}+ days old (~3 months).`);
   } else if (a.severity === 'unknown') {
-    lines.push('ℹ Could not determine posting date — proceed with caution.');
+    lines.push('⚠ Could not determine posting date (MCP/API failed or no date). Confirm before resume.');
   } else {
     lines.push('✓ Posting looks relatively fresh.');
   }

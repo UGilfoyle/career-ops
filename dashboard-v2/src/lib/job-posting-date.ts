@@ -157,13 +157,17 @@ export function analyzePostingHistory(
     possibleRepost
     && firstSeenDays != null
     && firstSeenDays <= ANCIENT_POSTING_DAYS;
-  const needsConfirm = Boolean(stale || ancient || historyOld || repostWithinYear || possibleRepost);
+  const unknown = postedAt == null;
+  // Unknown date = confirm too (MCP/REST couldn't read age — don't silently tailor)
+  const needsConfirm = Boolean(
+    stale || ancient || historyOld || repostWithinYear || possibleRepost || unknown,
+  );
 
   let severity: JobPostingAnalysis['severity'] = 'fresh';
   if (ancient || (possibleRepost && (firstSeenDays ?? 0) >= ANCIENT_POSTING_DAYS)) severity = 'ancient';
   else if (possibleRepost || repostWithinYear) severity = 'repost';
   else if (stale || historyOld) severity = 'stale';
-  else if (postedAt == null) severity = 'unknown';
+  else if (unknown) severity = 'unknown';
 
   return {
     posted_at: postedAt,
@@ -230,7 +234,7 @@ export function formatPostingGateMessage(opts: {
   } else if (a.stale) {
     lines.push(`⚠ Posting is ${STALE_POSTING_DAYS}+ days old (~3 months).`);
   } else if (a.severity === 'unknown') {
-    lines.push('ℹ Could not determine posting date — proceed with caution.');
+    lines.push('⚠ Could not determine posting date (MCP/API failed or no date). Confirm before resume.');
   } else {
     lines.push('✓ Posting looks relatively fresh.');
   }

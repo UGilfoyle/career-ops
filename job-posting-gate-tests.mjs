@@ -32,6 +32,10 @@ const freshUnder3mo = analyzePostingHistory(
 );
 assert.equal(freshUnder3mo.needs_confirm, false, 'under 3 months should not block');
 
+const unknown = analyzePostingHistory({}, now);
+assert.equal(unknown.severity, 'unknown');
+assert.equal(unknown.needs_confirm, true, 'unknown date must prompt Yes/No');
+
 const ancient = analyzePostingHistory(
   { most_probable_date: '2025-07-01', confidence: 'medium', sources: { wayback: '2025-07-01' } },
   now,
