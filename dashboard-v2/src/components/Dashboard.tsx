@@ -655,7 +655,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     const tailorMatch = q.match(/^tailor\s+(.+)$/i);
     if (tailorMatch) {
       const rest = tailorMatch[1].trim();
-      const deep = /\s--deep\b/i.test(rest);
       const yes = /\s--yes\b|\s-y\b|\s--confirm-stale\b/i.test(rest);
       const target = rest
         .replace(/\s+--deep\b/gi, '')
