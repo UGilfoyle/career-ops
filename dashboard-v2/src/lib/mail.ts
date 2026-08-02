@@ -4,7 +4,19 @@ const brevo = new BrevoClient({
     apiKey: process.env.BREVO_API_KEY || ''
 });
 
-const SENDER = { name: 'Career-Ops', email: 'akashkaintura.ak@gmail.com' };
+const getSender = () => ({
+  name: (process.env.BREVO_SENDER_NAME || 'Career-Ops').trim(),
+  email: (process.env.BREVO_SENDER_EMAIL || '').trim(),
+});
+
+function assertSenderConfigured(context: string): { name: string; email: string } | null {
+  const sender = getSender();
+  if (sender.email) return sender;
+  console.warn(
+    `⚠️ BREVO_SENDER_EMAIL missing (${context}). Verify a sender in Brevo (Senders), then set BREVO_SENDER_EMAIL on Vercel + GitHub Actions.`
+  );
+  return null;
+}
 
 function emailShell(inner: string): string {
   return `
@@ -51,7 +63,12 @@ export const sendVerificationEmail = async (email: string, token: string) => {
       console.warn('⚠️ BREVO_API_KEY missing. Verification token for', email, 'is:', token);
       return;
     }
+    if (!assertSenderConfigured('verification email')) {
+      console.warn('Verification token for', email, 'is:', token);
+      return;
+    }
 
+    const sender = getSender();
     const result = await brevo.transactionalEmails.sendTransacEmail({
       subject: "Career-Ops Identity Verification",
       htmlContent: emailShell(`
@@ -67,7 +84,7 @@ export const sendVerificationEmail = async (email: string, token: string) => {
               </div>
             </div>
       `),
-      sender: SENDER,
+      sender,
       to: [{ email }]
     });
     
@@ -100,6 +117,9 @@ export const sendMonthlyNewsletterEmail = async (params: MonthlyNewsletterParams
 
   if (!process.env.BREVO_API_KEY) {
     console.warn('⚠️ BREVO_API_KEY missing. Skipping monthly newsletter for', email);
+    return null;
+  }
+  if (!assertSenderConfigured('monthly newsletter')) {
     return null;
   }
 
@@ -144,7 +164,7 @@ export const sendMonthlyNewsletterEmail = async (params: MonthlyNewsletterParams
     const result = await brevo.transactionalEmails.sendTransacEmail({
       subject,
       htmlContent,
-      sender: SENDER,
+      sender: getSender(),
       to: [{ email }],
     });
     console.log('Monthly newsletter sent:', email);

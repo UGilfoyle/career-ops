@@ -152,7 +152,14 @@ export async function sendViaBrevo({ to, subject, htmlContent }) {
     console.warn('[newsletter] BREVO_API_KEY missing — skip send to', to);
     return false;
   }
-  const senderEmail = process.env.BREVO_SENDER_EMAIL || 'akashkaintura.ak@gmail.com';
+  const senderEmail = (process.env.BREVO_SENDER_EMAIL || '').trim();
+  const senderName = (process.env.BREVO_SENDER_NAME || 'Career-Ops').trim();
+  if (!senderEmail) {
+    console.error(
+      '[newsletter] BREVO_SENDER_EMAIL missing. In Brevo → Senders, verify an email/domain, then set BREVO_SENDER_EMAIL in GitHub Actions (+ Vercel). Do not use an unverified @gmail.com From address.'
+    );
+    return false;
+  }
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -161,7 +168,7 @@ export async function sendViaBrevo({ to, subject, htmlContent }) {
       'api-key': apiKey,
     },
     body: JSON.stringify({
-      sender: { name: 'Career-Ops', email: senderEmail },
+      sender: { name: senderName, email: senderEmail },
       to: [{ email: to }],
       subject,
       htmlContent,
