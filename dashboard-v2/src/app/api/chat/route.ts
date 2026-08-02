@@ -84,7 +84,7 @@ Instructions:
       );
     }
 
-    // GitHub Models retired 2026-07-30. Prefer live providers + OpenRouter as catalog drop-in.
+    // GitHub Models retired 2026-07-30. Prefer OpenRouter free tier, then other live providers.
     const attempts: Array<() => Promise<{ content: string; provider: string }>> = [];
 
     const pushOpenAiCompat = (
@@ -93,6 +93,7 @@ Instructions:
       baseUrl: string,
       model: string,
       extraHeaders: Record<string, string> = {},
+      skipIf?: (status: number, body: string) => boolean,
     ) => {
       if (!apiKey || isPlaceholderKey(apiKey) || isGithubModelsUrl(baseUrl)) return;
       attempts.push(async () => {
@@ -117,10 +118,14 @@ Instructions:
             temperature: 0.7,
           }),
         });
+        const bodyText = await response.text();
         if (!response.ok) {
-          throw new Error(`${name} failed with status ${response.status}: ${await response.text()}`);
+          if (skipIf?.(response.status, bodyText)) {
+            throw new Error(`${name} skipped (${response.status})`);
+          }
+          throw new Error(`${name} failed with status ${response.status}: ${bodyText}`);
         }
-        const result = await response.json();
+        const result = JSON.parse(bodyText);
         return {
           content: result.choices?.[0]?.message?.content || '',
           provider: `${name} (${model})`,
@@ -128,7 +133,33 @@ Instructions:
       });
     };
 
-    // ── Attempt 1: Gemini ──
+    const openRouterHeaders = {
+      'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://careerops.dpdns.org',
+      'X-Title': process.env.OPENROUTER_APP_NAME || 'career-ops',
+    };
+
+    // ── OpenRouter free models first (user has OPENROUTER_API_KEY) ──
+    const openRouterModels = (
+      process.env.OPENROUTER_MODELS
+      || process.env.OPENROUTER_MODEL
+      || 'openrouter/free,google/gemma-2-9b-it:free,meta-llama/llama-3.2-3b-instruct:free,qwen/qwen-2.5-7b-instruct:free'
+    )
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean);
+
+    for (const model of openRouterModels) {
+      pushOpenAiCompat(
+        'OpenRouter',
+        openrouterKey,
+        'https://openrouter.ai/api/v1',
+        model,
+        openRouterHeaders,
+        (status, body) => status === 402 || /insufficient balance/i.test(body),
+      );
+    }
+
+    // ── Gemini (direct API) ──
     if (geminiKey && !isPlaceholderKey(geminiKey)) {
       attempts.push(async () => {
         const contents = messages.map((m: { role: string; content: string }) => ({
@@ -163,30 +194,32 @@ Instructions:
       });
     }
 
-    // ── OpenAI-compatible catalog (OpenRouter closest to old GitHub Models IDs) ──
     pushOpenAiCompat(
-      'OpenRouter',
-      openrouterKey,
-      'https://openrouter.ai/api/v1',
-      process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
-      {
-        'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://github.com/UGilfoyle/career-ops',
-        'X-Title': process.env.OPENROUTER_APP_NAME || 'career-ops',
-      },
+      'Groq',
+      groqKey,
+      'https://api.groq.com/openai/v1',
+      process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
     );
-    pushOpenAiCompat('DeepSeek', deepseekKey, 'https://api.deepseek.com', process.env.DEEPSEEK_MODEL || 'deepseek-chat');
-    pushOpenAiCompat('Groq', groqKey, 'https://api.groq.com/openai/v1', process.env.GROQ_MODEL || 'llama-3.3-70b-versatile');
     pushOpenAiCompat(
       'Together',
       togetherKey,
       'https://api.together.xyz/v1',
       process.env.TOGETHER_MODEL || 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
     );
+    // DeepSeek last — often 402 on empty balance
+    pushOpenAiCompat(
+      'DeepSeek',
+      deepseekKey,
+      'https://api.deepseek.com',
+      process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+      {},
+      (status, body) => status === 402 || /insufficient balance/i.test(body),
+    );
 
-    // ── Hugging Face Router ──
-    if (hfToken && !isPlaceholderKey(hfToken)) {
+    // ── Hugging Face Router (only when HUGGINGFACE_MODEL is explicitly set) ──
+    const hfModel = (process.env.HUGGINGFACE_MODEL || '').trim();
+    if (hfToken && !isPlaceholderKey(hfToken) && hfModel) {
       attempts.push(async () => {
-        const hfModel = process.env.HUGGINGFACE_MODEL || 'HuggingFaceH4/zephyr-7b-beta';
         const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -238,7 +271,9 @@ Instructions:
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         console.warn(`Attempt ${i + 1} failed: ${message}`);
-        errors.push(message);
+        if (!message.includes(' skipped (')) {
+          errors.push(message);
+        }
       }
     }
 

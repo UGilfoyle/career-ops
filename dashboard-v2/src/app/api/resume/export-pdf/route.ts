@@ -369,6 +369,7 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const resumeContext = (body.resume_context || {}) as ResumeContext;
+    const cacheOnly = Boolean(body.cache_only);
     const validation = validateResumeDraft(resumeContext);
     if (!resumeContext.candidate?.full_name?.trim()) {
       return NextResponse.json(
@@ -389,6 +390,13 @@ export async function POST(req: Request) {
     const cached = await loadCachedMasterPdf(userId, hash);
     if (cached?.length) {
       return pdfResponse(cached, safeName, 'r2-cache');
+    }
+
+    if (cacheOnly) {
+      return NextResponse.json(
+        { cached: false, error: 'No cached PDF for this resume version. Edit content or wait for first export to finish.' },
+        { status: 404 },
+      );
     }
 
     // Persist HTML to DB so GitHub Actions can render even when Vercel lacks R2_*.

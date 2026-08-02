@@ -113,6 +113,23 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  input, textarea, select, button {
+    font-size: max(16px, 1rem);
+  }
+
+  @media (min-width: 640px) {
+    input, textarea, select, button {
+      font-size: inherit;
+    }
   }
 
   h1 {
@@ -148,13 +165,11 @@
   }
 
   button {
-    font-size: 14px;
     font-weight: 500;
     line-height: 1.5;
   }
 
   input, textarea, select {
-    font-size: 14px;
     font-weight: 400;
     line-height: 1.5;
   }

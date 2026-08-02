@@ -328,7 +328,7 @@ export default function GeneratedDocsPanel({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="flex h-[min(90vh,820px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white shadow-2xl"
+              className="flex h-[min(92dvh,820px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white shadow-2xl mx-2 sm:mx-4"
             >
               <div className="flex items-center justify-between border-b border-[#E5E5E0] px-5 py-4">
                 <div>

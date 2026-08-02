@@ -31,6 +31,8 @@ type ResumeStudioProps = {
     title?: string;
     score?: string | number | null;
     ats_content_score?: number | null;
+    has_resume_html?: boolean;
+    has_resume_pdf?: boolean;
   } | null;
   onClearReviewJob?: () => void;
 };
@@ -220,19 +222,30 @@ export default function ResumeStudio({
     setExportingPdf(true);
     setBanner(null);
     try {
-      const res = await fetch('/api/resume/export-pdf', {
+      const payload = JSON.stringify({ resume_context: draft, cache_only: true });
+      let res = await fetch('/api/resume/export-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume_context: draft }),
+        body: payload,
       });
+
+      if (res.status === 404) {
+        res = await fetch('/api/resume/export-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resume_context: draft }),
+        });
+      }
+
       const contentType = res.headers.get('content-type') || '';
 
       if (res.ok && contentType.includes('application/pdf')) {
         const blob = await res.blob();
         if (!blob.size) throw new Error('Empty PDF returned');
         const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
+        const source = res.headers.get('X-CareerOps-PDF-Source');
         downloadBlob(`${name}_master_resume.pdf`, blob);
-        setBanner('PDF downloaded.');
+        setBanner(source === 'r2-cache' ? 'PDF loaded from cache (no re-render).' : 'PDF downloaded.');
         setTimeout(() => setBanner(null), 3000);
         return;
       }
@@ -264,7 +277,7 @@ export default function ResumeStudio({
   }, []);
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] min-h-[640px] flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-[#FAFAF8] shadow-sm">
+    <div className="flex min-h-[min(640px,calc(100dvh-8rem))] flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-[#FAFAF8] shadow-sm lg:h-[calc(100dvh-2rem)] lg:min-h-[640px]">
       <StudioToolbar
         saveStatus={saveStatus}
         saveError={saveError}
@@ -310,6 +323,12 @@ export default function ResumeStudio({
               }}
               onTailor={onTailorJob}
               onAtsUpdate={onAtsUpdate}
+              hasGeneratedResume={Boolean(
+                reviewJob?.has_resume_html
+                || reviewJob?.has_resume_pdf
+                || (reviewJob?.jobId && selectedJobId === reviewJob.jobId
+                  && (reviewJob.has_resume_html || reviewJob.has_resume_pdf))
+              )}
             />
 
             {reviewJob ? (
@@ -320,6 +339,8 @@ export default function ResumeStudio({
                 title={reviewJob.title}
                 pipelineScore={reviewJob.score}
                 atsContentScore={reviewJob.ats_content_score}
+                hasResumeHtml={reviewJob.has_resume_html}
+                hasResumePdf={reviewJob.has_resume_pdf}
                 onClose={onClearReviewJob}
               />
             ) : null}
@@ -389,7 +410,7 @@ export default function ResumeStudio({
           </div>
         </div>
 
-        <div className="min-h-[420px] lg:min-h-0">
+        <div className="min-h-[320px] lg:min-h-0">
           <LivePreview
             draft={draft}
             zoom={zoom}

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Loader2, Target, Zap } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Download, FileCheck2, Loader2, Target, Zap } from 'lucide-react';
 import type { ResumeContext } from '@/lib/resume/types';
+import { getCompetencies } from '@/lib/resume/types';
 
 export type PipelineJobOption = {
   pipeline_id?: number | string;
@@ -11,6 +12,8 @@ export type PipelineJobOption = {
   title?: string;
   score?: string | number | null;
   has_jd?: boolean;
+  has_resume_html?: boolean;
+  has_resume_pdf?: boolean;
 };
 
 type JdMatchPanelProps = {
@@ -20,6 +23,7 @@ type JdMatchPanelProps = {
   onSelectJob: (id: number | null) => void;
   onTailor?: (jobId: number) => void;
   onAtsUpdate?: (score: number | null, source: 'jd' | 'structure') => void;
+  hasGeneratedResume?: boolean;
 };
 
 type MatchState = {
@@ -33,6 +37,17 @@ type MatchState = {
   hasJd: boolean;
 };
 
+function draftMatchKey(draft: ResumeContext): string {
+  return JSON.stringify({
+    template: draft.studio?.template_id,
+    name: draft.candidate?.full_name,
+    headline: draft.narrative?.headline,
+    exp: (draft.experience || []).map((e) => `${e.company}|${e.role}|${(e.bullets || []).length}`),
+    edu: (draft.education || []).map((e) => `${e.school}|${e.degree}`),
+    skills: getCompetencies(draft).slice(0, 40),
+  });
+}
+
 export function JdMatchPanel({
   draft,
   pipeline,
@@ -40,6 +55,7 @@ export function JdMatchPanel({
   onSelectJob,
   onTailor,
   onAtsUpdate,
+  hasGeneratedResume = false,
 }: JdMatchPanelProps) {
   const [state, setState] = useState<MatchState>({
     loading: false,
@@ -51,6 +67,8 @@ export function JdMatchPanel({
     atsSource: 'structure',
     hasJd: false,
   });
+
+  const matchDraftKey = useMemo(() => draftMatchKey(draft), [draft]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,12 +144,15 @@ export function JdMatchPanel({
     return () => {
       cancelled = true;
     };
-  }, [selectedJobId, draft, onAtsUpdate]);
+  }, [selectedJobId, matchDraftKey, onAtsUpdate, draft]);
 
   const options = (pipeline || []).slice(0, 40);
+  const selectedJob = options.find((j) => Number(j.pipeline_id ?? j.id) === selectedJobId);
+  const jobHasDoc = hasGeneratedResume
+    || Boolean(selectedJob?.has_resume_html || selectedJob?.has_resume_pdf);
 
   return (
-    <div className="rounded-2xl border border-[#E5E5E0] bg-white p-4 space-y-3">
+    <div className="space-y-3 rounded-2xl border border-[#E5E5E0] bg-white p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Target size={16} className="text-[#1C1C1E]" />
@@ -153,10 +174,12 @@ export function JdMatchPanel({
           {options.map((j) => {
             const id = Number(j.pipeline_id ?? j.id);
             if (!Number.isFinite(id)) return null;
+            const saved = j.has_resume_html || j.has_resume_pdf ? ' ✓' : '';
             return (
               <option key={id} value={id}>
                 {j.company || 'Company'} — {j.title || 'Role'}
                 {j.score != null ? ` ★${j.score}` : ''}
+                {saved}
               </option>
             );
           })}
@@ -164,22 +187,38 @@ export function JdMatchPanel({
       </label>
 
       {!selectedJobId ? (
-        <p className="text-xs text-[#6B6B6B] font-medium">
+        <p className="text-xs font-medium text-[#6B6B6B]">
           {options.length === 0
             ? 'No pipeline jobs yet — run Scan from the Job Pipeline, then come back to match a JD.'
             : 'Pick a sourced job to see honest keyword matches and a real ATS score against the JD.'}
         </p>
       ) : null}
 
+      {jobHasDoc ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+          <div className="flex items-center gap-2 text-xs font-medium text-emerald-900">
+            <FileCheck2 size={14} />
+            Tailored resume already saved for this job
+          </div>
+          <a
+            href={`/api/view/${selectedJobId}?format=pdf&download=1`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-900"
+          >
+            <Download size={12} />
+            PDF
+          </a>
+        </div>
+      ) : null}
+
       {state.error ? (
-        <p className="text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
           {state.error}
         </p>
       ) : null}
 
       {selectedJobId && state.hasJd ? (
         <>
-          <div className="flex items-center gap-3 rounded-xl bg-[#F5F5F0] border border-[#E5E5E0] px-3 py-2.5">
+          <div className="flex items-center gap-3 rounded-xl border border-[#E5E5E0] bg-[#F5F5F0] px-3 py-2.5">
             <div className="rounded-full bg-[#1C1C1E] px-3 py-1 font-mono text-sm text-white">
               ATS {state.atsScore ?? '—'}/100
             </div>
@@ -191,7 +230,7 @@ export function JdMatchPanel({
           </div>
 
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-1.5">
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-700">
               Proven in profile
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -211,7 +250,7 @@ export function JdMatchPanel({
           </div>
 
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-amber-700 mb-1.5">
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-700">
               JD gaps (do not claim)
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -230,11 +269,11 @@ export function JdMatchPanel({
             </div>
           </div>
 
-          {onTailor ? (
+          {onTailor && !jobHasDoc ? (
             <button
               type="button"
               onClick={() => onTailor(selectedJobId)}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#27272a]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#27272a]"
             >
               <Zap size={14} />
               Tailor this job — deep

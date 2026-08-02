@@ -42,7 +42,8 @@ import {
   Filter,
   ArrowUpDown,
   Target,
-  Mail
+  Mail,
+  Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -133,6 +134,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [jobDetails, setJobDetails] = useState<any>(null);
   const [jobDetailsError, setJobDetailsError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Visitor analytics state
   const [visitorStats, setVisitorStats] = useState<any>(null);
@@ -168,6 +170,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     title?: string;
     score?: string | number | null;
     ats_content_score?: number | null;
+    has_resume_html?: boolean;
+    has_resume_pdf?: boolean;
   } | null>(null);
   const [studioInitialJobId, setStudioInitialJobId] = useState<number | null>(null);
   const [betaBannerDismissed, setBetaBannerDismissed] = useState(false);
@@ -292,10 +296,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     title?: string;
     score?: string | number | null;
     ats_content_score?: number | null;
+    has_resume_html?: boolean;
+    has_resume_pdf?: boolean;
   }) => {
     setStudioReviewJob(job);
     setStudioInitialJobId(job.jobId);
     setActiveTab('resume-studio');
+    setMobileNavOpen(false);
   };
 
   const openFunnelStage = (key: string) => {
@@ -1519,12 +1526,20 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   );
 
   return (
-    <div className="flex h-screen bg-[#FAFAF8] text-[#1C1C1E] font-[family-name:var(--font-inter)] selection:bg-[#1C1C1E]/10">
-      {/* Sidebar: collapsible — icons only when collapsed */}
+    <div className="flex h-[100dvh] min-h-[100dvh] bg-[#FAFAF8] text-[#1C1C1E] font-[family-name:var(--font-inter)] selection:bg-[#1C1C1E]/10">
+      {mobileNavOpen ? (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          className="fixed inset-0 z-40 bg-[#1C1C1E]/40 backdrop-blur-[2px] lg:hidden"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      ) : null}
+      {/* Sidebar: drawer on mobile, fixed rail on desktop */}
       <aside
-        className={`relative flex h-screen flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-[width] duration-300 ease-in-out ${
-          sidebarCollapsed ? 'w-[4.5rem]' : 'w-60'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+          mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        } ${sidebarCollapsed ? 'w-[4.5rem] lg:w-[4.5rem]' : 'w-60'}`}
       >
         <div className={`flex-1 overflow-y-auto overflow-x-hidden ${sidebarCollapsed ? 'px-2 py-4' : 'px-4 py-6'}`}>
           <div
@@ -1544,14 +1559,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           </div>
 
           <nav className="space-y-0.5">
-            <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('dashboard')} />
-            <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('pipeline')} />
-            <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('apps')} />
-            <NavItem id="nav-gcc" icon={<Target size={18}/>} label="GCC Campaign" active={activeTab === 'gcc'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('gcc')} />
-            <NavItem id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('resume-studio')} badge={showBetaBanner || process.env.NEXT_PUBLIC_BETA_MODE === '1' ? 'Beta' : undefined} />
-            <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('generated-docs')} />
-            <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('terminal')} />
-            <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('chat')} />
+            <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); }} />
+            <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('pipeline'); setMobileNavOpen(false); }} />
+            <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('apps'); setMobileNavOpen(false); }} />
+            <NavItem id="nav-gcc" icon={<Target size={18}/>} label="GCC Campaign" active={activeTab === 'gcc'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('gcc'); setMobileNavOpen(false); }} />
+            <NavItem id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('resume-studio'); setMobileNavOpen(false); }} badge={showBetaBanner || process.env.NEXT_PUBLIC_BETA_MODE === '1' ? 'Beta' : undefined} />
+            <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('generated-docs'); setMobileNavOpen(false); }} />
+            <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('terminal'); setMobileNavOpen(false); }} />
+            <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('chat'); setMobileNavOpen(false); }} />
             {SHOW_RESUME_MANAGER_NAV && (
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
             )}
@@ -1590,7 +1605,25 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-[#FAFAF8] p-5 sm:p-6 lg:p-8">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#FAFAF8]">
+        <div className="flex shrink-0 items-center justify-between border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen(true)}
+            className="inline-flex items-center justify-center rounded-xl border border-[#E5E5E0] bg-white p-2.5 text-[#1C1C1E]"
+            aria-label="Open navigation menu"
+          >
+            <Menu size={18} />
+          </button>
+          <div className="min-w-0 text-center">
+            <p className="truncate text-sm font-bold text-[#1C1C1E]">Career-Ops</p>
+            <p className="text-[10px] font-medium uppercase tracking-widest text-[#9CA3AF]">
+              {activeTab.replace('-', ' ')}
+            </p>
+          </div>
+          <div className="w-10" aria-hidden />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8">
         <AnimatePresence>
           {isSearchOpen && (
             <motion.div
@@ -2307,6 +2340,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   title: job.title,
                                   score: job.score,
                                   ats_content_score: job.ats_content_score ?? null,
+                                  has_resume_html: Boolean(job.has_resume_html),
+                                  has_resume_pdf: Boolean(job.has_resume_pdf || job.is_tailored),
                                 })
                               }
                               className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
@@ -2439,6 +2474,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   title: doc.title,
                   score: null,
                   ats_content_score: doc.ats_content_score ?? null,
+                  has_resume_html: doc.has_resume_html,
+                  has_resume_pdf: doc.has_resume_pdf,
                 })
               }
             />
@@ -3809,6 +3846,7 @@ System Initialized — v2.0`}
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </main>
 
       {/* Job Details Modal */}
@@ -3898,6 +3936,8 @@ System Initialized — v2.0`}
                         title: jobDetails.title,
                         score: jobDetails.score,
                         ats_content_score: jobDetails.ats_content_score ?? null,
+                        has_resume_html: Boolean(jobDetails.has_resume_html),
+                        has_resume_pdf: Boolean(jobDetails.has_resume_pdf),
                       });
                     }}
                     className="px-5 py-2.5 bg-white border border-[#E5E5E0] text-[#1C1C1E] rounded-xl font-bold text-xs hover:bg-[#F5F5F0] transition-all inline-flex items-center gap-2"
