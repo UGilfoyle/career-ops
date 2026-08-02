@@ -1,15 +1,29 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 
+function envTrim(key: string): string {
+  return String(process.env[key] || '').trim();
+}
+
+/**
+ * Cloudflare R2 via S3 API.
+ * Secrets are trimmed (Vercel/GitHub often store trailing newlines → SignatureDoesNotMatch).
+ * Path-style is ON by default for R2 unless R2_FORCE_PATH_STYLE=0.
+ */
 export function getR2Client(): S3Client | null {
-  const accountId = process.env.R2_ACCOUNT_ID || '';
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID || '';
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || '';
+  const accountId = envTrim('R2_ACCOUNT_ID');
+  const accessKeyId = envTrim('R2_ACCESS_KEY_ID');
+  const secretAccessKey = envTrim('R2_SECRET_ACCESS_KEY');
   if (!accountId || !accessKeyId || !secretAccessKey) return null;
+
   const endpoint =
-    process.env.R2_ENDPOINT?.trim()
+    envTrim('R2_ENDPOINT')
     || `https://${accountId}.r2.cloudflarestorage.com`;
-  const forcePathStyle = process.env.R2_FORCE_PATH_STYLE === '1';
+
+  // Default true for R2; set R2_FORCE_PATH_STYLE=0 to disable.
+  const forceFlag = envTrim('R2_FORCE_PATH_STYLE');
+  const forcePathStyle = forceFlag === '' || forceFlag === '1' || forceFlag.toLowerCase() === 'true';
+
   return new S3Client({
     region: 'auto',
     endpoint,
@@ -18,8 +32,25 @@ export function getR2Client(): S3Client | null {
   });
 }
 
+export function getR2Bucket(): string {
+  return envTrim('R2_BUCKET');
+}
+
+export function r2ConfigDebug(): Record<string, string | boolean> {
+  const accountId = envTrim('R2_ACCOUNT_ID');
+  return {
+    hasAccountId: Boolean(accountId),
+    accountIdPrefix: accountId ? `${accountId.slice(0, 6)}…` : '',
+    hasAccessKey: Boolean(envTrim('R2_ACCESS_KEY_ID')),
+    hasSecret: Boolean(envTrim('R2_SECRET_ACCESS_KEY')),
+    bucket: getR2Bucket() || '(empty)',
+    endpoint: envTrim('R2_ENDPOINT') || (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : '(none)'),
+    forcePathStyle: envTrim('R2_FORCE_PATH_STYLE') !== '0',
+  };
+}
+
 export async function streamR2Object(key: string): Promise<ReadableStream | null> {
-  const bucket = process.env.R2_BUCKET || '';
+  const bucket = getR2Bucket();
   const client = getR2Client();
   if (!bucket || !client) return null;
 
@@ -56,9 +87,12 @@ export async function uploadToR2({
   body: Buffer | Uint8Array;
   contentType: string;
 }): Promise<boolean> {
-  const bucket = process.env.R2_BUCKET || '';
+  const bucket = getR2Bucket();
   const client = getR2Client();
-  if (!bucket || !client) return false;
+  if (!bucket || !client) {
+    console.warn('[R2] Skip upload — missing bucket or credentials', r2ConfigDebug());
+    return false;
+  }
 
   try {
     await client.send(
@@ -72,13 +106,13 @@ export async function uploadToR2({
     return true;
   } catch (e: unknown) {
     const err = e as { name?: string; message?: string };
-    console.error(`[R2] Upload failed for ${key}:`, err?.name || err?.message);
+    console.error(`[R2] Upload failed for ${key}:`, err?.name || err?.message, r2ConfigDebug());
     return false;
   }
 }
 
 export async function readR2Object(key: string): Promise<Buffer | null> {
-  const bucket = process.env.R2_BUCKET || '';
+  const bucket = getR2Bucket();
   const client = getR2Client();
   if (!bucket || !client) return null;
 
