@@ -122,6 +122,26 @@ gcc:
   - postman
   - meesho
 
+  # Pune / Bangalore GCC hubs (product captives & finance tech)
+  - nutanix
+  - rubrik
+  - zendesk
+  - optiver
+  - bloomberg
+  - thomson reuters
+  - factset
+  - nokia
+  - ericsson
+  - texas instruments
+  - micron
+  - marvell
+  - walmart labs
+  - walmart global tech
+  - morgan stanley muFG
+  - barclays gbs
+  - deutsche bank technology
+  - sap labs
+
 it_services:
   - tcs
   - tata consultancy services
