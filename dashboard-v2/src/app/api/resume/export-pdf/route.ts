@@ -93,26 +93,26 @@ async function tryPlaywrightPdf(html: string): Promise<Buffer | null> {
 
 async function tryPuppeteerPdf(html: string): Promise<Buffer | null> {
   try {
-    const puppeteerMod = await import('puppeteer-core');
-    const puppeteer = (puppeteerMod as { default?: typeof import('puppeteer-core') }).default ?? puppeteerMod;
+    // Dynamic imports — use loose typing; CJS/ESM interop differs on Vercel vs local.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const puppeteerMod: any = await import('puppeteer-core');
+    const puppeteer = puppeteerMod.default ?? puppeteerMod;
     const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
     let browser;
     if (isServerless) {
-      const chromiumMod = await import('@sparticuz/chromium-min');
-      const chromium = (chromiumMod as { default?: Record<string, unknown> }).default ?? chromiumMod;
-      if (typeof (chromium as { setGraphicsMode?: (v: boolean) => void }).setGraphicsMode === 'function') {
-        (chromium as { setGraphicsMode: (v: boolean) => void }).setGraphicsMode(false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chromiumMod: any = await import('@sparticuz/chromium-min');
+      const chromium = chromiumMod.default ?? chromiumMod;
+      if (typeof chromium.setGraphicsMode === 'function') {
+        chromium.setGraphicsMode(false);
       }
       const packUrl =
         process.env.CHROMIUM_REMOTE_EXEC_PATH
         || 'https://github.com/Sparticuz/chromium/releases/download/v138.0.2/chromium-v138.0.2-pack.tar';
-      const executablePath = await (chromium as {
-        executablePath: (url: string) => Promise<string>;
-        args: string[];
-      }).executablePath(packUrl);
+      const executablePath = await chromium.executablePath(packUrl);
       browser = await puppeteer.launch({
-        args: (chromium as { args: string[] }).args,
+        args: chromium.args,
         defaultViewport: { width: 1280, height: 720, deviceScaleFactor: 1 },
         executablePath,
         headless: true,

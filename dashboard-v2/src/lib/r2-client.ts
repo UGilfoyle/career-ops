@@ -23,19 +23,28 @@ export async function streamR2Object(key: string): Promise<ReadableStream | null
   const client = getR2Client();
   if (!bucket || !client) return null;
 
-  let out: Awaited<ReturnType<S3Client['send']>>;
   try {
-    out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    const body = out.Body as Readable | { transformToByteArray?: () => Promise<Uint8Array> } | undefined;
+    if (!body) return null;
+
+    if (body instanceof Readable) {
+      return Readable.toWeb(body) as unknown as ReadableStream;
+    }
+    if (typeof (body as { transformToByteArray?: unknown }).transformToByteArray === 'function') {
+      const bytes = await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
+      return new ReadableStream({
+        start(controller) {
+          controller.enqueue(bytes);
+          controller.close();
+        },
+      });
+    }
+    return null;
   } catch (e: unknown) {
     const err = e as { name?: string; message?: string };
     throw new Error(err?.name || err?.message || 'R2GetObjectFailed');
   }
-
-  const body = (out as { Body?: unknown }).Body;
-  if (!body) return null;
-
-  const nodeStream = body instanceof Readable ? body : Readable.fromWeb(body as ReadableStream);
-  return Readable.toWeb(nodeStream) as unknown as ReadableStream;
 }
 
 export async function uploadToR2({
@@ -75,7 +84,7 @@ export async function readR2Object(key: string): Promise<Buffer | null> {
 
   try {
     const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-    const body = (out as { Body?: { transformToByteArray?: () => Promise<Uint8Array> } }).Body;
+    const body = out.Body as { transformToByteArray?: () => Promise<Uint8Array> } | undefined;
     if (!body?.transformToByteArray) return null;
     return Buffer.from(await body.transformToByteArray());
   } catch {
