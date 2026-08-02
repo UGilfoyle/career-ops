@@ -67,6 +67,7 @@ Instructions:
 3. If the user asks for LinkedIn outreach messages, draft messages that are concise, conversational, and personalized. Avoid spammy-sounding templates.
 4. If writing code snippets, explain them briefly.`;
 
+    const mistralKey = process.env.MISTRAL_API_KEY || '';
     const deepseekKey = process.env.DEEPSEEK_API_KEY || '';
     const geminiKey = process.env.GEMINI_API_KEY || '';
     const hfToken = process.env.HUGGINGFACE_TOKEN || userHfToken || '';
@@ -138,7 +139,15 @@ Instructions:
       'X-Title': process.env.OPENROUTER_APP_NAME || 'career-ops',
     };
 
-    // ── OpenRouter free models first (user has OPENROUTER_API_KEY) ──
+    // ── Mistral AI (primary when MISTRAL_API_KEY is set) ──
+    pushOpenAiCompat(
+      'Mistral',
+      mistralKey,
+      'https://api.mistral.ai/v1',
+      process.env.MISTRAL_MODEL || 'mistral-small-latest',
+    );
+
+    // ── OpenRouter free models ──
     const openRouterModels = (
       process.env.OPENROUTER_MODELS
       || process.env.OPENROUTER_MODEL
@@ -291,8 +300,8 @@ Instructions:
     return NextResponse.json(
       {
         error:
-          'No LLM Provider configured. Recommended: OPENROUTER_API_KEY (drop-in for old GitHub Models catalog) '
-          + 'or GEMINI_API_KEY / DEEPSEEK_API_KEY / GROQ_API_KEY / TOGETHER_API_KEY. '
+          'No LLM Provider configured. Set MISTRAL_API_KEY, OPENROUTER_API_KEY, '
+          + 'GEMINI_API_KEY, GROQ_API_KEY, or DEEPSEEK_API_KEY on Vercel (Production). '
           + 'GitHub Models (models.github.ai) is permanently retired.',
       },
       { status: 400 }
