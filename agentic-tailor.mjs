@@ -79,6 +79,11 @@ const TEMPLATE_FILES = {
   'ats-precision': 'templates/ats-template-precision.html',
   'ats-header': 'templates/ats-template-header.html',
   'ats-traditional': 'templates/ats-template-traditional.html',
+  'ats-ivy': 'templates/ats-template-ivy.html',
+  'ats-single': 'templates/ats-template-single.html',
+  'ats-timeline': 'templates/ats-template-timeline.html',
+  'ats-clean': 'templates/ats-template-clean.html',
+  'ats-crest': 'templates/ats-template-crest.html',
 };
 const TEMPLATE = TEMPLATE_FILES['ats-professional'];
 const require = createRequire(import.meta.url);

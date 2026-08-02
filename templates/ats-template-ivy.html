@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{NAME}} - Resume</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page { size: A4; margin: 0.55in; }
+        html, body { background: #fff; }
+        @media print {
+            body { padding: 0 !important; }
+            a { color: #111; text-decoration: none; }
+        }
+        .contact:empty { display: none; }
+        .contact a { color: #111; text-decoration: none; }
+        .job { page-break-inside: avoid; }
+        .job-header > div:first-child { flex: 1; min-width: 0; }
+        .job-dates { white-space: nowrap; flex-shrink: 0; }
+        .skills-list {
+            list-style-type: disc;
+            margin: 2px 0 0 1.15em;
+            padding: 0;
+            columns: 2;
+            column-gap: 1.75em;
+        }
+        .skills-list li {
+            margin-bottom: 3px;
+            break-inside: avoid;
+            line-height: 1.4;
+            padding-left: 2px;
+        }
+        
+        body {
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-size: 10.5pt;
+            line-height: 1.42;
+            color: #1f2937;
+            padding: 0.6in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 18px; }
+        h1 {
+            font-size: 22pt; font-weight: 700; letter-spacing: 2px;
+            text-transform: uppercase; margin-bottom: 8px; line-height: 1.15;
+            color: #111827;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .contact {
+            font-size: 9pt; color: #4b5563; line-height: 1.5; margin-bottom: 2px;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .top-rule { margin-top: 12px; border-top: 1px solid #9ca3af; }
+        section { margin-top: 16px; }
+        h2 {
+            font-size: 10pt; font-weight: 700; letter-spacing: 1.6px;
+            text-transform: uppercase; margin-bottom: 5px; color: #374151;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .rule { border-top: 1px solid #d1d5db; margin-bottom: 8px; }
+        .skills-lines {
+            font-size: 10pt; line-height: 1.45;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .skills-list { columns: 2; column-gap: 1.5em; }
+        .job { margin-bottom: 14px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 10.5pt; margin-bottom: 4px;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .job-title { font-weight: 700; color: #111827; }
+        .job-company { font-weight: 600; color: #4b5563; font-style: italic; }
+        .job-dates { font-weight: 600; color: #6b7280; font-size: 9.5pt; }
+        .job ul { list-style-type: disc; margin: 4px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 3.5px; line-height: 1.42; }
+        .summary-block { font-size: 10.5pt; line-height: 1.5; white-space: pre-line; }
+        .edu {
+            font-size: 10pt; line-height: 1.42;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .edu > div { margin-bottom: 5px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>{{NAME}}</h1>
+            <div class="contact">{{CONTACT_LINE}}</div>
+            <div class="contact">{{LINKS_LINE}}</div>
+            <div class="top-rule"></div>
+        </header>
+        <section>
+            <h2>Professional Summary</h2>
+            <div class="rule"></div>
+            <p class="summary-block">{{SUMMARY_TEXT}}</p>
+        </section>
+        <section style="display: {{SKILLS_DISPLAY}};">
+            <h2>Technical Skills</h2>
+            <div class="rule"></div>
+            <div class="skills-lines">{{SKILLS_LINES}}</div>
+        </section>
+        <section style="display: {{EXPERIENCE_DISPLAY}};">
+            <h2>Professional Experience</h2>
+            <div class="rule"></div>
+            {{EXPERIENCE}}
+        </section>
+        <section style="display: {{ACHIEVEMENTS_DISPLAY}};">
+            <h2>Selected Achievements</h2>
+            <div class="rule"></div>
+            <div class="edu">{{ACHIEVEMENTS}}</div>
+        </section>
+        <section style="display: {{EDUCATION_DISPLAY}};">
+            <h2>Education</h2>
+            <div class="rule"></div>
+            <div class="edu">{{EDUCATION}}</div>
+        </section>
+    </div>
+
+</body>
+</html>

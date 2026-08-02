@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{NAME}} - Resume</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page { size: A4; margin: 0.55in; }
+        html, body { background: #fff; }
+        @media print {
+            body { padding: 0 !important; }
+            a { color: #111; text-decoration: none; }
+        }
+        .contact:empty { display: none; }
+        .contact a { color: #111; text-decoration: none; }
+        .job { page-break-inside: avoid; }
+        .job-header > div:first-child { flex: 1; min-width: 0; }
+        .job-dates { white-space: nowrap; flex-shrink: 0; }
+        .skills-list {
+            list-style-type: disc;
+            margin: 2px 0 0 1.15em;
+            padding: 0;
+            columns: 2;
+            column-gap: 1.75em;
+        }
+        .skills-list li {
+            margin-bottom: 3px;
+            break-inside: avoid;
+            line-height: 1.4;
+            padding-left: 2px;
+        }
+        
+        body {
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.4;
+            color: #111827;
+            padding: 0.65in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 20px; }
+        h1 {
+            font-size: 26pt; font-weight: 700; letter-spacing: -0.3px;
+            text-transform: none; margin-bottom: 8px; line-height: 1.1;
+            color: #0f172a;
+        }
+        .contact { font-size: 9.5pt; color: #6b7280; line-height: 1.5; margin-bottom: 2px; }
+        .top-rule { margin-top: 14px; border-top: 1px solid #e5e7eb; }
+        section { margin-top: 18px; }
+        h2 {
+            font-size: 11pt; font-weight: 700; letter-spacing: 0.5px;
+            text-transform: none; margin-bottom: 6px; color: #111827;
+        }
+        .rule { border-top: 2px solid #111827; margin-bottom: 10px; width: 48px; }
+        .skills-lines { font-size: 10pt; line-height: 1.5; color: #374151; }
+        .skills-list { columns: 2; column-gap: 2em; }
+        .job { margin-bottom: 15px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 14px; font-size: 11pt; margin-bottom: 5px;
+        }
+        .job-title { font-weight: 700; }
+        .job-company { font-weight: 600; color: #4b5563; }
+        .job-dates { font-weight: 500; color: #9ca3af; font-size: 9.5pt; }
+        .job ul { list-style-type: disc; margin: 4px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 4px; line-height: 1.45; color: #1f2937; }
+        .summary-block { font-size: 10.5pt; line-height: 1.55; color: #374151; white-space: pre-line; }
+        .edu { font-size: 10.5pt; line-height: 1.45; }
+        .edu > div { margin-bottom: 5px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>{{NAME}}</h1>
+            <div class="contact">{{CONTACT_LINE}}</div>
+            <div class="contact">{{LINKS_LINE}}</div>
+            <div class="top-rule"></div>
+        </header>
+        <section>
+            <h2>Professional Summary</h2>
+            <div class="rule"></div>
+            <p class="summary-block">{{SUMMARY_TEXT}}</p>
+        </section>
+        <section style="display: {{SKILLS_DISPLAY}};">
+            <h2>Technical Skills</h2>
+            <div class="rule"></div>
+            <div class="skills-lines">{{SKILLS_LINES}}</div>
+        </section>
+        <section style="display: {{EXPERIENCE_DISPLAY}};">
+            <h2>Professional Experience</h2>
+            <div class="rule"></div>
+            {{EXPERIENCE}}
+        </section>
+        <section style="display: {{ACHIEVEMENTS_DISPLAY}};">
+            <h2>Selected Achievements</h2>
+            <div class="rule"></div>
+            <div class="edu">{{ACHIEVEMENTS}}</div>
+        </section>
+        <section style="display: {{EDUCATION_DISPLAY}};">
+            <h2>Education</h2>
+            <div class="rule"></div>
+            <div class="edu">{{EDUCATION}}</div>
+        </section>
+    </div>
+
+</body>
+</html>

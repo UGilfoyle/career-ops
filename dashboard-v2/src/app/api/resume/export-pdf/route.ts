@@ -238,7 +238,74 @@ async function pollR2Pdf(pdfKey: string, attempts = 28, intervalMs = 3000): Prom
   return null;
 }
 
+async function ensureMasterPdfTable(): Promise<void> {
+  await sql`
+    CREATE TABLE IF NOT EXISTS master_pdf_exports (
+      user_id TEXT NOT NULL,
+      content_hash TEXT NOT NULL,
+      html TEXT,
+      pdf BYTEA,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, content_hash)
+    )
+  `;
+}
+
+async function persistPendingHtml(userId: string, hash: string, html: string): Promise<void> {
+  await ensureMasterPdfTable();
+  await sql`
+    INSERT INTO master_pdf_exports (user_id, content_hash, html, updated_at)
+    VALUES (${userId}, ${hash}, ${html}, NOW())
+    ON CONFLICT (user_id, content_hash) DO UPDATE SET
+      html = EXCLUDED.html,
+      updated_at = NOW()
+  `;
+}
+
+async function persistMasterPdfBytes(userId: string, hash: string, pdf: Buffer): Promise<void> {
+  await ensureMasterPdfTable();
+  await sql`
+    INSERT INTO master_pdf_exports (user_id, content_hash, pdf, updated_at)
+    VALUES (${userId}, ${hash}, ${pdf}, NOW())
+    ON CONFLICT (user_id, content_hash) DO UPDATE SET
+      pdf = EXCLUDED.pdf,
+      updated_at = NOW()
+  `;
+}
+
+async function loadPdfFromDb(userId: string, hash: string): Promise<Buffer | null> {
+  try {
+    await ensureMasterPdfTable();
+    const [row] = await sql`
+      SELECT pdf FROM master_pdf_exports
+      WHERE user_id = ${userId} AND content_hash = ${hash} AND pdf IS NOT NULL
+      LIMIT 1
+    `;
+    if (!row?.pdf) return null;
+    return Buffer.isBuffer(row.pdf) ? row.pdf : Buffer.from(row.pdf);
+  } catch {
+    return null;
+  }
+}
+
+async function pollDbPdf(
+  userId: string,
+  hash: string,
+  attempts = 20,
+  intervalMs = 3000
+): Promise<Buffer | null> {
+  for (let i = 0; i < attempts; i++) {
+    const buf = await loadPdfFromDb(userId, hash);
+    if (buf?.length) return buf;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  return null;
+}
+
 async function loadCachedMasterPdf(userId: string, hash: string): Promise<Buffer | null> {
+  const fromDb = await loadPdfFromDb(userId, hash);
+  if (fromDb?.length) return fromDb;
+
   const [row] = await sql`
     SELECT resume_context FROM user_profiles WHERE user_id = ${userId} LIMIT 1
   `;
@@ -324,37 +391,45 @@ export async function POST(req: Request) {
       return pdfResponse(cached, safeName, 'r2-cache');
     }
 
-    // HTML → R2 so GitHub Actions can render with Playwright (same stack as tailor).
+    // Persist HTML to DB so GitHub Actions can render even when Vercel lacks R2_*.
+    await persistPendingHtml(userId, hash, html).catch((e) => {
+      console.error('[export-pdf] pending HTML persist failed:', e);
+    });
+
+    // Fast path: Chromium on this runtime — does NOT require R2.
+    const localPdf = await renderPdfLocal(html);
+    if (localPdf?.length) {
+      await persistMasterPdfBytes(userId, hash, localPdf).catch(() => {});
+      await uploadToR2({ key: pdfKey, body: localPdf, contentType: 'application/pdf' }).catch(() => false);
+      await persistMasterPdfMeta(userId, hash, pdfKey).catch(() => {});
+      return pdfResponse(localPdf, safeName, 'render');
+    }
+
+    // Optional: stage HTML on R2 when credentials exist (Actions also reads DB).
     const htmlUploaded = await uploadToR2({
       key: htmlKey,
       body: Buffer.from(html, 'utf8'),
       contentType: 'text/html; charset=utf-8',
     });
-    if (!htmlUploaded) {
+
+    // Reliable path: GitHub Actions + Playwright (R2 on Actions secrets, HTML from DB fallback).
+    const dispatched = await dispatchMasterPdfAction(userId, hash);
+    if (!dispatched.ok) {
       return NextResponse.json(
         {
           error:
-            'Could not upload resume HTML to R2. Check R2_* credentials on Vercel (same bucket as tailor PDFs).',
+            dispatched.error
+            || (!htmlUploaded
+              ? 'PDF engine failed on server and GitHub Actions is not configured (GITHUB_PAT). Add R2_* on Vercel for caching, or set GITHUB_PAT for Actions PDF.'
+              : 'GitHub Actions dispatch failed'),
         },
         { status: 503 }
       );
     }
 
-    // Fast path: local/Vercel Chromium if it works.
-    const localPdf = await renderPdfLocal(html);
-    if (localPdf?.length) {
-      await uploadToR2({ key: pdfKey, body: localPdf, contentType: 'application/pdf' });
-      await persistMasterPdfMeta(userId, hash, pdfKey).catch(() => {});
-      return pdfResponse(localPdf, safeName, 'render');
-    }
-
-    // Reliable path: GitHub Actions + Playwright → R2 (same as job tailor PDFs).
-    const dispatched = await dispatchMasterPdfAction(userId, hash);
-    if (!dispatched.ok) {
-      return NextResponse.json({ error: dispatched.error || 'Actions dispatch failed' }, { status: 503 });
-    }
-
-    const fromActions = await pollR2Pdf(pdfKey);
+    const fromActions =
+      (await pollR2Pdf(pdfKey, 20, 3000))
+      || (await pollDbPdf(userId, hash, 10, 3000));
     if (fromActions?.length) {
       await persistMasterPdfMeta(userId, hash, pdfKey).catch(() => {});
       return pdfResponse(fromActions, safeName, 'actions-r2');
@@ -363,7 +438,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          'PDF is still generating via GitHub Actions. Wait ~30–60s and click PDF again — it will download from R2 once ready.',
+          'PDF is still generating via GitHub Actions. Wait ~30–60s and click PDF again. Tip: add the same R2_* env vars on Vercel as GitHub Actions for faster cache hits.',
         pending: true,
         hash,
       },

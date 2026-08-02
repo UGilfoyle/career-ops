@@ -1,14 +1,11 @@
 #!/usr/bin/env node
 /**
- * export-master-pdf.mjs — Generate master resume PDF via Playwright (GitHub Actions)
- * then upload to Cloudflare R2.
+ * export-master-pdf.mjs — Generate master resume PDF via Playwright (GitHub Actions).
  *
- * Usage (Actions):
- *   ACTION_SCRIPT=export-master-pdf.mjs ACTION_ARGS=<contentHash> SCAN_USER_ID=<userId>
- *   node export-master-pdf.mjs <contentHash>
+ * Prefers HTML from R2; falls back to master_pdf_exports.html in Neon
+ * (so Vercel does not need R2_* to queue an export).
  *
- * Expects HTML already at R2: users/{userId}/master-resume/{hash}.html
- * Writes PDF to:           users/{userId}/master-resume/{hash}.pdf
+ * Writes PDF to R2 when configured, and always to master_pdf_exports.pdf.
  */
 
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
@@ -59,33 +56,77 @@ function getR2Client() {
 async function readR2(key) {
   const bucket = process.env.R2_BUCKET || '';
   const client = getR2Client();
-  if (!bucket || !client) throw new Error('R2 not configured');
-  const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-  const bytes = await out.Body.transformToByteArray();
-  return Buffer.from(bytes);
+  if (!bucket || !client) return null;
+  try {
+    const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    const bytes = await out.Body.transformToByteArray();
+    return Buffer.from(bytes);
+  } catch (e) {
+    console.warn(`[master-pdf] R2 read miss ${key}:`, e?.name || e?.message);
+    return null;
+  }
 }
 
 async function putR2(key, body, contentType) {
   const bucket = process.env.R2_BUCKET || '';
   const client = getR2Client();
-  if (!bucket || !client) throw new Error('R2 not configured');
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-    })
-  );
+  if (!bucket || !client) {
+    console.warn('[master-pdf] R2 not configured — skipping upload');
+    return false;
+  }
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      })
+    );
+    return true;
+  } catch (e) {
+    console.error(`[master-pdf] R2 upload failed:`, e?.name || e?.message);
+    return false;
+  }
+}
+
+async function ensureTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS master_pdf_exports (
+      user_id TEXT NOT NULL,
+      content_hash TEXT NOT NULL,
+      html TEXT,
+      pdf BYTEA,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, content_hash)
+    )
+  `;
+}
+
+async function loadHtmlFromDb() {
+  await ensureTable();
+  const [row] = await sql`
+    SELECT html FROM master_pdf_exports
+    WHERE user_id = ${userId} AND content_hash = ${hashArg} AND html IS NOT NULL
+    LIMIT 1
+  `;
+  return row?.html ? Buffer.from(String(row.html), 'utf8') : null;
 }
 
 async function main() {
   const htmlKey = `users/${userId}/master-resume/${hashArg}.html`;
   const pdfKey = `users/${userId}/master-resume/${hashArg}.pdf`;
   console.log(`[master-pdf] user=${userId} hash=${hashArg}`);
-  console.log(`[master-pdf] fetching ${htmlKey}`);
 
-  const htmlBuf = await readR2(htmlKey);
+  let htmlBuf = await readR2(htmlKey);
+  if (!htmlBuf?.length) {
+    console.log('[master-pdf] R2 HTML miss — loading from Neon master_pdf_exports');
+    htmlBuf = await loadHtmlFromDb();
+  }
+  if (!htmlBuf?.length) {
+    throw new Error('No HTML found in R2 or database for this export');
+  }
+
   const workDir = path.join(__dirname, 'output', 'master-pdf');
   fs.mkdirSync(workDir, { recursive: true });
   const htmlPath = path.join(workDir, `${hashArg}.html`);
@@ -106,8 +147,18 @@ async function main() {
   const pdfBuf = fs.readFileSync(pdfPath);
   if (!pdfBuf.length) throw new Error('Empty PDF output');
 
-  console.log(`[master-pdf] uploading ${pdfKey} (${pdfBuf.length} bytes)`);
-  await putR2(pdfKey, pdfBuf, 'application/pdf');
+  await ensureTable();
+  await sql`
+    INSERT INTO master_pdf_exports (user_id, content_hash, pdf, updated_at)
+    VALUES (${userId}, ${hashArg}, ${pdfBuf}, NOW())
+    ON CONFLICT (user_id, content_hash) DO UPDATE SET
+      pdf = EXCLUDED.pdf,
+      updated_at = NOW()
+  `;
+  console.log('[master-pdf] PDF saved to Neon');
+
+  const uploaded = await putR2(pdfKey, pdfBuf, 'application/pdf');
+  console.log(uploaded ? `[master-pdf] uploaded ${pdfKey}` : '[master-pdf] R2 upload skipped/failed');
 
   const patch = {
     _master_export: {
@@ -121,7 +172,7 @@ async function main() {
     SET resume_context = COALESCE(resume_context, '{}'::jsonb) || ${sql.json(patch)}
     WHERE user_id = ${userId}
   `;
-  console.log('[master-pdf] done — key saved to user_profiles');
+  console.log('[master-pdf] done');
 
   try {
     fs.unlinkSync(htmlPath);

@@ -443,6 +443,231 @@ const TRADITIONAL_CSS = `
         .edu > div { margin-bottom: 6px; }
 `;
 
+/** Enhancv Ivy League–inspired: grey accents, classic recruiter layout */
+const IVY_CSS = `
+        body {
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-size: 10.5pt;
+            line-height: 1.42;
+            color: #1f2937;
+            padding: 0.6in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 18px; }
+        h1 {
+            font-size: 22pt; font-weight: 700; letter-spacing: 2px;
+            text-transform: uppercase; margin-bottom: 8px; line-height: 1.15;
+            color: #111827;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .contact {
+            font-size: 9pt; color: #4b5563; line-height: 1.5; margin-bottom: 2px;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .top-rule { margin-top: 12px; border-top: 1px solid #9ca3af; }
+        section { margin-top: 16px; }
+        h2 {
+            font-size: 10pt; font-weight: 700; letter-spacing: 1.6px;
+            text-transform: uppercase; margin-bottom: 5px; color: #374151;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .rule { border-top: 1px solid #d1d5db; margin-bottom: 8px; }
+        .skills-lines {
+            font-size: 10pt; line-height: 1.45;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .skills-list { columns: 2; column-gap: 1.5em; }
+        .job { margin-bottom: 14px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 10.5pt; margin-bottom: 4px;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .job-title { font-weight: 700; color: #111827; }
+        .job-company { font-weight: 600; color: #4b5563; font-style: italic; }
+        .job-dates { font-weight: 600; color: #6b7280; font-size: 9.5pt; }
+        .job ul { list-style-type: disc; margin: 4px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 3.5px; line-height: 1.42; }
+        .summary-block { font-size: 10.5pt; line-height: 1.5; white-space: pre-line; }
+        .edu {
+            font-size: 10pt; line-height: 1.42;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .edu > div { margin-bottom: 5px; }
+`;
+
+/** Enhancv Single Column–inspired: substantial spacing, ATS-safe */
+const SINGLE_COLUMN_CSS = `
+        body {
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.4;
+            color: #111;
+            padding: 0.55in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: left; margin-bottom: 16px; }
+        h1 {
+            font-size: 24pt; font-weight: 700; letter-spacing: 0.2px;
+            text-transform: none; margin-bottom: 6px; line-height: 1.1;
+            color: #0f172a;
+        }
+        .contact { font-size: 9.5pt; color: #475569; line-height: 1.5; margin-bottom: 2px; }
+        .top-rule { margin-top: 10px; border-top: 2px solid #16a34a; }
+        section { margin-top: 15px; }
+        h2 {
+            font-size: 10.5pt; font-weight: 700; letter-spacing: 0.9px;
+            text-transform: uppercase; margin-bottom: 4px; color: #15803d;
+        }
+        .rule { border-top: 1px solid #bbf7d0; margin-bottom: 8px; }
+        .skills-lines { font-size: 10pt; line-height: 1.45; }
+        .skills-list { columns: 2; column-gap: 1.75em; }
+        .job { margin-bottom: 13px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 10.5pt; margin-bottom: 3px;
+        }
+        .job-title { font-weight: 700; }
+        .job-company { font-weight: 600; color: #334155; }
+        .job-dates { font-weight: 600; color: #64748b; font-size: 9.5pt; }
+        .job ul { list-style-type: disc; margin: 3px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 3.5px; line-height: 1.4; }
+        .summary-block { font-size: 10.5pt; line-height: 1.48; white-space: pre-line; }
+        .edu { font-size: 10pt; line-height: 1.4; }
+        .edu > div { margin-bottom: 4px; }
+`;
+
+/** Enhancv Timeline–inspired: left accent rail (still single-column ATS text) */
+const TIMELINE_CSS = `
+        body {
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.38;
+            color: #1a1a1a;
+            padding: 0.55in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: left; margin-bottom: 14px; padding-left: 14px; border-left: 4px solid #2563eb; }
+        h1 {
+            font-size: 20pt; font-weight: 700; letter-spacing: 0.4px;
+            text-transform: none; margin-bottom: 5px; line-height: 1.15;
+            color: #0f172a;
+        }
+        .contact { font-size: 9pt; color: #475569; line-height: 1.45; margin-bottom: 2px; }
+        .top-rule { display: none; }
+        section { margin-top: 14px; }
+        h2 {
+            font-size: 10pt; font-weight: 700; letter-spacing: 1px;
+            text-transform: uppercase; margin-bottom: 6px; color: #1d4ed8;
+        }
+        .rule { border-top: 1px solid #bfdbfe; margin-bottom: 8px; }
+        .skills-lines { font-size: 10pt; line-height: 1.42; }
+        .job {
+            margin-bottom: 12px; padding-left: 14px;
+            border-left: 2px solid #93c5fd;
+        }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 10.5pt; margin-bottom: 3px;
+        }
+        .job-title { font-weight: 700; }
+        .job-company { font-weight: 600; color: #1e40af; }
+        .job-dates { font-weight: 700; color: #2563eb; font-size: 9pt; }
+        .job ul { list-style-type: disc; margin: 3px 0 0 1.1em; padding: 0; }
+        .job li { margin-bottom: 3px; line-height: 1.38; }
+        .summary-block { font-size: 10pt; line-height: 1.48; white-space: pre-line; padding-left: 14px; }
+        .edu { font-size: 10pt; line-height: 1.4; padding-left: 14px; }
+        .edu > div { margin-bottom: 4px; }
+`;
+
+/** Resume-Now Clean ATS–inspired: airy modern single column */
+const CLEAN_ATS_CSS = `
+        body {
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.4;
+            color: #111827;
+            padding: 0.65in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 20px; }
+        h1 {
+            font-size: 26pt; font-weight: 700; letter-spacing: -0.3px;
+            text-transform: none; margin-bottom: 8px; line-height: 1.1;
+            color: #0f172a;
+        }
+        .contact { font-size: 9.5pt; color: #6b7280; line-height: 1.5; margin-bottom: 2px; }
+        .top-rule { margin-top: 14px; border-top: 1px solid #e5e7eb; }
+        section { margin-top: 18px; }
+        h2 {
+            font-size: 11pt; font-weight: 700; letter-spacing: 0.5px;
+            text-transform: none; margin-bottom: 6px; color: #111827;
+        }
+        .rule { border-top: 2px solid #111827; margin-bottom: 10px; width: 48px; }
+        .skills-lines { font-size: 10pt; line-height: 1.5; color: #374151; }
+        .skills-list { columns: 2; column-gap: 2em; }
+        .job { margin-bottom: 15px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 14px; font-size: 11pt; margin-bottom: 5px;
+        }
+        .job-title { font-weight: 700; }
+        .job-company { font-weight: 600; color: #4b5563; }
+        .job-dates { font-weight: 500; color: #9ca3af; font-size: 9.5pt; }
+        .job ul { list-style-type: disc; margin: 4px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 4px; line-height: 1.45; color: #1f2937; }
+        .summary-block { font-size: 10.5pt; line-height: 1.55; color: #374151; white-space: pre-line; }
+        .edu { font-size: 10.5pt; line-height: 1.45; }
+        .edu > div { margin-bottom: 5px; }
+`;
+
+/** Enhancv Crest–inspired: refined executive single column */
+const CREST_CSS = `
+        body {
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.4;
+            color: #1c1917;
+            padding: 0.6in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 18px; }
+        h1 {
+            font-size: 21pt; font-weight: 700; letter-spacing: 2.5px;
+            text-transform: uppercase; margin-bottom: 8px; line-height: 1.2;
+            color: #1c1917;
+        }
+        .contact { font-size: 9pt; color: #57534e; line-height: 1.5; margin-bottom: 2px; }
+        .top-rule { margin-top: 12px; border-top: 3px double #78716c; }
+        section { margin-top: 16px; }
+        h2 {
+            font-size: 10pt; font-weight: 700; letter-spacing: 1.8px;
+            text-transform: uppercase; margin-bottom: 5px; color: #44403c;
+            text-align: center;
+        }
+        .rule { border-top: 1px solid #a8a29e; margin-bottom: 9px; }
+        .skills-lines { font-size: 10pt; line-height: 1.45; text-align: center; }
+        .skills-list { columns: 2; column-gap: 1.5em; text-align: left; }
+        .job { margin-bottom: 14px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 10.5pt; margin-bottom: 4px;
+        }
+        .job-title { font-weight: 700; }
+        .job-company { font-weight: 600; color: #57534e; }
+        .job-dates { font-weight: 600; color: #78716c; font-size: 9.5pt; }
+        .job ul { list-style-type: disc; margin: 4px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 3.5px; line-height: 1.42; }
+        .summary-block { font-size: 10.5pt; line-height: 1.5; text-align: center; white-space: pre-line; }
+        .edu { font-size: 10pt; line-height: 1.42; text-align: center; }
+        .edu > div { margin-bottom: 5px; }
+`;
+
 export type TemplateMeta = {
   id: string;
   name: string;
@@ -458,6 +683,39 @@ export const TEMPLATE_CATALOG: TemplateMeta[] = [
     badge: 'Recommended',
     description: 'Single-column with strong rules — safest for Greenhouse, Workday, Ashby.',
     file: 'templates/ats-template-professional.html',
+  },
+  {
+    id: 'ats-ivy',
+    name: 'Ivy League',
+    badge: 'Enhancv style',
+    description: 'Classic grey accents + serif body — recruiter-trusted ATS layout.',
+    file: 'templates/ats-template-ivy.html',
+  },
+  {
+    id: 'ats-single',
+    name: 'Single Column',
+    badge: 'ATS',
+    description: 'Substantial single-column green accents — fills space for experienced pros.',
+    file: 'templates/ats-template-single.html',
+  },
+  {
+    id: 'ats-clean',
+    name: 'Clean ATS',
+    badge: 'Resume-Now style',
+    description: 'Airy modern headings with a short rule under each section.',
+    file: 'templates/ats-template-clean.html',
+  },
+  {
+    id: 'ats-timeline',
+    name: 'Timeline ATS',
+    description: 'Left accent rail on roles — still single-column for ATS parsers.',
+    file: 'templates/ats-template-timeline.html',
+  },
+  {
+    id: 'ats-crest',
+    name: 'Crest',
+    description: 'Refined double-rule header — executive feel, fully ATS-readable.',
+    file: 'templates/ats-template-crest.html',
   },
   {
     id: 'ats-prime',
@@ -513,6 +771,11 @@ export const ATS_PRIME_TEMPLATE = wrap(PRIME_CSS);
 export const ATS_PRECISION_TEMPLATE = wrap(PRECISION_CSS);
 export const ATS_HEADER_TEMPLATE = wrap(HEADER_ATS_CSS);
 export const ATS_TRADITIONAL_TEMPLATE = wrap(TRADITIONAL_CSS);
+export const ATS_IVY_TEMPLATE = wrap(IVY_CSS);
+export const ATS_SINGLE_TEMPLATE = wrap(SINGLE_COLUMN_CSS);
+export const ATS_TIMELINE_TEMPLATE = wrap(TIMELINE_CSS);
+export const ATS_CLEAN_TEMPLATE = wrap(CLEAN_ATS_CSS);
+export const ATS_CREST_TEMPLATE = wrap(CREST_CSS);
 
 export const TEMPLATE_REGISTRY: Record<string, string> = {
   'ats-professional': ATS_PROFESSIONAL_TEMPLATE,
@@ -523,6 +786,11 @@ export const TEMPLATE_REGISTRY: Record<string, string> = {
   'ats-precision': ATS_PRECISION_TEMPLATE,
   'ats-header': ATS_HEADER_TEMPLATE,
   'ats-traditional': ATS_TRADITIONAL_TEMPLATE,
+  'ats-ivy': ATS_IVY_TEMPLATE,
+  'ats-single': ATS_SINGLE_TEMPLATE,
+  'ats-timeline': ATS_TIMELINE_TEMPLATE,
+  'ats-clean': ATS_CLEAN_TEMPLATE,
+  'ats-crest': ATS_CREST_TEMPLATE,
 };
 
 export const DEFAULT_TEMPLATE_ID = 'ats-professional';

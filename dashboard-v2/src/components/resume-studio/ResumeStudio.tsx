@@ -248,7 +248,7 @@ export default function ResumeStudio({
       throw new Error(
         json?.error
         || (res.status === 501 || res.status === 503
-          ? 'PDF export failed — needs GITHUB_PAT (same as tailor --deep) + R2. Check Actions run.'
+          ? 'PDF export failed — server will try Chromium first, then GitHub Actions. Optional: add R2_* on Vercel (same as Actions) for caching.'
           : 'PDF export failed')
       );
     } catch (e: unknown) {
