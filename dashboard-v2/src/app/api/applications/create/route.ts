@@ -27,7 +27,12 @@ export async function POST(req: Request) {
     `;
 
     if (existing.length > 0) {
-      return NextResponse.json({ error: 'Application already exists for this job' }, { status: 400 });
+      return NextResponse.json({
+        success: true,
+        alreadyExists: true,
+        applicationId: existing[0].id,
+        status: appStatus,
+      });
     }
 
     // Insert new application record

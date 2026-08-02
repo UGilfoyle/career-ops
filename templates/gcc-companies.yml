@@ -142,6 +142,35 @@ gcc:
   - deutsche bank technology
   - sap labs
 
+# GCC scan engine — used by dashboard `gcc-scan` command (not generic `scan`)
+gcc_scan:
+  batch_size: 18
+  locations:
+    - Pune
+    - Bengaluru
+    - Bangalore
+    - Hyderabad
+  # Rotated first each run; rest of list follows alphabetically
+  priority:
+    - stripe
+    - google
+    - microsoft
+    - amazon
+    - jpmorgan
+    - goldman sachs
+    - barclays
+    - deutsche bank
+    - walmart global tech
+    - sap labs
+    - nutanix
+    - rubrik
+    - freshworks
+    - zoho
+    - bloomberg
+    - optiver
+    - texas instruments
+    - micron
+
 it_services:
   - tcs
   - tata consultancy services

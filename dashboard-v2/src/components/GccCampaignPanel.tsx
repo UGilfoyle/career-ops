@@ -294,7 +294,7 @@ export function GccCampaignPanel({ campaign, onChange, onSave, onImportHighValue
       </div>
 
       <p className="text-xs text-[#9CA3AF]">
-        Tip: Add GCC pipeline jobs with <code className="text-[#6B6B6B]">scan --deep</code>, tailor with PAR bullets, then log outreach here — avoid blind Apply Now buttons.
+        Tip: Run <code className="text-[#6B6B6B]">gcc-scan --deep</code> for captive employers, tailor with PAR bullets, then log outreach here — avoid blind Apply Now buttons.
       </p>
     </motion.div>
   );

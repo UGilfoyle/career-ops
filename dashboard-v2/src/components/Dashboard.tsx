@@ -52,6 +52,7 @@ import ResumeStudio from './resume-studio/ResumeStudio';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
 import AdminUsersPanel from './AdminUsersPanel';
 import { GccCampaignPanel, defaultGccCampaign, type GccCampaign } from './GccCampaignPanel';
+import { ONBOARDING_STORAGE_KEY, DASHBOARD_TOUR_STEPS } from '@/lib/onboarding-flow';
 import {
   STALE_POSTING_DAYS,
   ANCIENT_POSTING_DAYS,
@@ -82,6 +83,25 @@ function statusChipClass(status?: string | null) {
   if (['OFFER', 'OFERTA'].includes(s)) return 'bg-purple-50 text-purple-700 border-purple-200';
   if (['REJECTED', 'DISCARDED', 'SKIP', 'RECHAZADO', 'DESCARTADO'].includes(s)) return 'bg-stone-100 text-stone-600 border-stone-200';
   return 'bg-amber-50 text-amber-700 border-amber-200';
+}
+
+function jobIsApplied(job: { is_applied?: boolean; application_status?: string | null; app_id?: number | null }) {
+  return Boolean(job?.is_applied || job?.app_id || job?.application_status);
+}
+
+function formatJdForDisplay(text: string | null | undefined): string {
+  if (!text?.trim()) {
+    return 'No JD captured yet. Run Tailor to scrape and persist it, or open the posting link.';
+  }
+  if (/access denied|edgesuite\.net|don't have permission to access/i.test(text)) {
+    return [
+      'This job board blocked automated access (common on Naukri / Indeed).',
+      '',
+      '• Open the posting link above to read the full description',
+      '• Run Tailor — our worker may capture the JD another way',
+    ].join('\n');
+  }
+  return text;
 }
 
 export default function Dashboard({ initialData }: { initialData?: any }) {
@@ -383,7 +403,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     const label =
       script === 'scratch-scan.mjs'
         ? 'Scan'
-        : script === 'rank-pipeline.mjs'
+        : script === 'gcc-scan.mjs'
+          ? 'GCC Scan'
+          : script === 'rank-pipeline.mjs'
           ? 'Rank'
           : script === 'agentic-tailor.mjs'
             ? 'Tailor'
@@ -404,52 +426,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     return { toast: `[OK] ✔ ${label} ${outcome}${hint}`, terminal: `[OK] ✔ ${label} ${outcome}${hint}` };
   };
 
-  const steps = [
-    {
-      target: null,
-      title: "Welcome to Career Command Center",
-      content: "Your AI-powered job search pipeline is ready. This dashboard helps you scan 45+ portals, auto-tailor ATS-optimized resumes, track applications, and prepare for interviews — all from one place. Let's get you set up for success.",
-      icon: <Zap size={24}/>
-    },
-    {
-      target: "nav-terminal",
-      title: "The Command Terminal",
-      content: "Your control center for background jobs. Type 'scan' to crawl job portals, 'rank' to score matches, 'tailor 123 --deep' to generate ATS-optimized resumes, or 'apply 123 --deep' to auto-fill applications. Use '--deep' to run heavy tasks on GitHub Actions (recommended).",
-      icon: <TerminalIcon size={24}/>
-    },
-    {
-      target: "nav-settings",
-      title: "Build Your Profile",
-      content: "The AI needs to know you to represent you well. Upload your resume or manually fill in your Experience, Education, and skills. The more complete your profile, the better your tailored resumes and cover letters will be.",
-      icon: <Settings size={24}/>
-    },
-    {
-      target: "config-narrative",
-      title: "Your Professional Story",
-      content: "This shapes every resume and cover letter. Write a 2-3 sentence headline that captures what you do best (e.g., 'Senior Backend Engineer specializing in distributed systems and 99.99% uptime'). Add 3-5 'superpowers' — specific skills where you excel (e.g., 'Microservices Architecture', 'AWS Cost Optimization', 'Team Leadership').",
-      icon: <FileText size={24}/>,
-      tab: 'settings'
-    },
-    {
-      target: "config-targeting",
-      title: "Smart Job Filtering",
-      content: "Define what you're hunting for. Add POSITIVE keywords for roles you want (e.g., 'Senior', 'Backend', 'Remote', 'AWS'). Add NEGATIVE keywords to filter out noise (e.g., 'Frontend', 'Junior', 'PHP'). The AI uses this to score every job 0-10 and surface your best matches.",
-      icon: <Search size={24}/>,
-      tab: 'settings'
-    },
-    {
-      target: "nav-pipeline",
-      title: "Your Job Pipeline",
-      content: "Every discovered job lands here with an AI score. High scores (7+) are strong matches — click 'Tailor' to generate a resume/cover letter customized to that specific JD. Your tailored documents are saved and accessible via the 'Generated Docs' section.",
-      icon: <BarChart3 size={24}/>
-    },
-    {
-      target: null,
-      title: "You're Ready to Hunt",
-      content: "Quick start: 1) Complete your profile in Settings, 2) Set targeting keywords, 3) Run 'scan --deep' in the terminal, 4) Review high-scoring jobs in Pipeline, 5) Click 'Tailor' to generate ATS-optimized applications. Good luck!",
-      icon: <CheckCircle2 size={24}/>
-    }
+  const tourIcons = [
+    <Zap key="zap" size={24} />,
+    <Settings key="settings" size={24} />,
+    <Search key="search" size={24} />,
+    <TerminalIcon key="terminal" size={24} />,
+    <BarChart3 key="pipeline" size={24} />,
+    <Target key="gcc" size={24} />,
+    <Sparkles key="studio" size={24} />,
+    <MessageSquare key="chat" size={24} />,
+    <CheckCircle2 key="done" size={24} />,
   ];
+
+  const steps = DASHBOARD_TOUR_STEPS.map((step, index) => ({
+    ...step,
+    icon: tourIcons[index] ?? <Zap size={24} />,
+  }));
 
   useEffect(() => {
     if (walkthroughStep !== null) {
@@ -487,7 +479,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
 
     const userKey = session?.user?.email || session?.user?.id || 'default';
-    const onboardingKey = `career_ops_onboarding_v2:${userKey}`;
+    const onboardingKey = `${ONBOARDING_STORAGE_KEY}:${userKey}`;
     const hasSeenOnboarding = localStorage.getItem(onboardingKey);
 
     if (!hasSeenOnboarding) {
@@ -510,7 +502,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
   const completeOnboarding = () => {
     const userKey = session?.user?.email || session?.user?.id || 'default';
-    localStorage.setItem(`career_ops_onboarding_v2:${userKey}`, 'true');
+    localStorage.setItem(`${ONBOARDING_STORAGE_KEY}:${userKey}`, 'true');
     setWalkthroughStep(null);
   };
 
@@ -1046,7 +1038,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const importHighValueGccFromPipeline = () => {
     const highValue = (data?.pipeline || []).filter((j: any) => j.gcc_high_value);
     if (highValue.length === 0) {
-      setToast({ show: true, message: 'No high-value GCC jobs in pipeline yet. Run scan + rank first.' });
+      setToast({ show: true, message: 'No high-value GCC jobs in pipeline yet. Run gcc-scan --deep first.' });
       return;
     }
     const existing = new Set(
@@ -1342,7 +1334,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
   };
 
-  const handleMarkApplied = async (jobId: number) => {
+  const handleMarkApplied = async (jobId: number, options?: { keepModalOpen?: boolean }) => {
     try {
       const res = await fetch('/api/applications/create', {
         method: 'POST',
@@ -1358,7 +1350,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         setData(freshData);
       }
 
-      setToast({ show: true, message: '[OK] ✔ Job moved to Applications board' });
+      if (options?.keepModalOpen || (jobDetailsOpen && Number(jobDetails?.id) === jobId)) {
+        const detailRes = await fetch(`/api/job/${jobId}`);
+        if (detailRes.ok) {
+          setJobDetails(await detailRes.json());
+        }
+      }
+
+      setToast({
+        show: true,
+        message: json.alreadyExists
+          ? '[OK] ✔ Already applied — status shown on pipeline'
+          : '[OK] ✔ Marked as applied — visible on pipeline & Applications board',
+      });
       setTimeout(() => setToast({ show: false, message: '' }), 4000);
     } catch (e: any) {
       setToast({ show: true, message: `[ERR] ✗ ${e?.message || 'Action failed'}` });
@@ -1765,9 +1769,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                      onClick: () => setActiveTab('settings'),
                    },
                    {
+                     id: 'gcc-scan',
+                     label: 'Run GCC scan (optional)',
+                     hint: 'gcc-scan --deep — captive employers in India hubs',
+                     done: (data?.pipeline || []).some((j: any) => j.company_type === 'GCC'),
+                     onClick: () => { setActiveTab('terminal'); runCommand('gcc-scan --deep'); },
+                   },
+                   {
                      id: 'scan',
-                     label: 'Run first job scan',
-                     hint: 'Discover roles across your portals',
+                     label: 'Run broad job scan',
+                     hint: 'scan --deep — LinkedIn, Naukri, Indeed & more',
                      done: scanDone,
                      onClick: () => { setActiveTab('terminal'); runCommand('scan --deep'); },
                    },
@@ -2299,13 +2310,17 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     <tr className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
                       <th className="px-6 py-4">Target / Company</th>
                       <th className="px-6 py-4">Job Title</th>
+                      <th className="px-6 py-4">Status</th>
                       <th className="px-6 py-4">AI Score</th>
                       <th className="px-6 py-4">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F5F5F0]">
                     {filteredPipeline.map((job: any, i: number) => (
-                      <tr key={i} className="transition-colors hover:bg-[#FAFAF8]">
+                      <tr
+                        key={job.pipeline_id ?? i}
+                        className={`transition-colors hover:bg-[#FAFAF8] ${jobIsApplied(job) ? 'bg-emerald-50/50' : ''}`}
+                      >
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <CompanyAvatar name={job.company} />
@@ -2341,7 +2356,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               ? `Posted ${formatRelativeTime(job.posted_at)}`
                               : `Added ${formatRelativeTime(job.created_at)}`}
                             {job.posted_confidence ? ` · ${job.posted_confidence}` : ''}
+                            {jobIsApplied(job) && job.applied_at
+                              ? ` · Applied ${formatRelativeTime(job.applied_at)}`
+                              : ''}
                           </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          {jobIsApplied(job) ? (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusChipClass(job.application_status || 'APPLIED')}`}
+                            >
+                              <CheckCircle2 size={12} />
+                              {String(job.application_status || 'APPLIED')}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#C4C4BE]">Open</span>
+                          )}
                         </td>
                         <td className="px-6 py-5">
                           <AiScoreBadge score={job.score} />
@@ -2354,6 +2384,20 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             >
                               Evaluate
                             </button>
+                            {jobIsApplied(job) ? (
+                              <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                                <CheckCircle2 size={12} />
+                                Applied
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleMarkApplied(Number(job.pipeline_id))}
+                                className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-emerald-800 transition-all hover:bg-emerald-100"
+                              >
+                                Mark Applied
+                              </button>
+                            )}
                             <button
                               onClick={() => { setActiveTab('terminal'); void requestTailor(job.pipeline_id); }}
                               className="rounded-xl border border-[#E5E5E0] bg-white px-4 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
@@ -2408,7 +2452,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     ))}
                     {filteredPipeline.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-6 py-16 text-center">
+                        <td colSpan={5} className="px-6 py-16 text-center">
                           <p className="text-sm font-semibold text-[#1C1C1E]">No jobs in pipeline yet</p>
                           <p className="mt-2 text-xs font-medium text-[#6B6B6B]">
                             Run a scan to discover roles, then open Resume Studio to match a JD.
@@ -2801,10 +2845,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   </p>
                   <div className="space-y-4">
                     {[
-                      { step: '1', title: 'Identity Setup', text: 'Go to Settings, define your candidate details, previous experiences, education, and target keywords.' },
-                      { step: '2', title: 'Job Discovery', text: 'Scan platforms automatically or add specific job URLs manually via the Terminal.' },
-                      { step: '3', title: 'Dynamic Tailoring', text: 'Tailor your resume and cover letter with extreme semantic accuracy for a specific job.' },
-                      { step: '4', title: 'Form Application', text: 'Record your application details and let the system assist with automated draft filing.' },
+                      { step: '1', title: 'Identity Setup', text: 'Settings: profile, experience, education, and targeting keywords.' },
+                      { step: '2', title: 'Job Discovery', text: 'gcc-scan --deep for GCC captives, or scan --deep for all boards. add <url> for a single posting.' },
+                      { step: '3', title: 'Pipeline & Status', text: 'Review AI scores, Mark Applied when done, Tailor high matches.' },
+                      { step: '4', title: 'GCC Outreach', text: 'GCC Campaign tab: import high-value jobs, log DMs — avoid blind Apply.' },
+                      { step: '5', title: 'Tailor & Apply', text: 'Resume Studio or tailor <id> --deep for ATS PDFs; apply when ready.' },
                     ].map((s) => (
                       <div key={s.step} className="flex gap-4">
                         <div className="h-8 w-8 rounded-full bg-white border border-[#E5E5E0] text-[#1C1C1E] flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
@@ -2869,6 +2914,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {[
+                    {
+                      cmd: 'gcc-scan --deep',
+                      desc: 'Hunt GCC/captive employers (Stripe, Google, JPMorgan…) in Pune, Bengaluru & Hyderabad.',
+                      usage: 'Separate from generic scan — only adds verified GCC employers with signal scoring.',
+                      badge: 'GCC',
+                      badgeColor: 'violet'
+                    },
                     {
                       cmd: 'scan --deep',
                       desc: 'Auto-discover new job postings matching target keywords across all major boards.',
@@ -2993,11 +3045,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 System Initialized — v2.0`}
                      </pre>
                      <div className="text-[#6B6B6B] space-y-2 mb-4">
-                       <p><strong className="text-[#57534e]">1. scan --deep</strong> <span className="text-[#9CA3AF]">→</span> Auto-discover new job matches</p>
-                       <p><strong className="text-[#57534e]">2. rank --deep</strong> <span className="text-[#9CA3AF]">→</span> Score and rank discovered roles</p>
-                       <p><strong className="text-[#57534e]">3. tailor &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Generate hyper-custom Resumes & Cover Letters</p>
-                       <p><strong className="text-[#57534e]">4. apply &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Automatically apply to role</p>
-                       <p><strong className="text-[#57534e]">5. add &lt;url&gt;</strong> <span className="text-[#9CA3AF]">→</span> Scrape & add job to pipeline</p>
+                       <p><strong className="text-[#57534e]">1. gcc-scan --deep</strong> <span className="text-[#9CA3AF]">→</span> GCC/captive employers (India hubs)</p>
+                       <p><strong className="text-[#57534e]">2. scan --deep</strong> <span className="text-[#9CA3AF]">→</span> Broad job-board discovery</p>
+                       <p><strong className="text-[#57534e]">3. rank --deep</strong> <span className="text-[#9CA3AF]">→</span> Score and rank discovered roles</p>
+                       <p><strong className="text-[#57534e]">4. tailor &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Generate hyper-custom Resumes & Cover Letters</p>
+                       <p><strong className="text-[#57534e]">5. apply &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Automatically apply to role</p>
+                       <p><strong className="text-[#57534e]">6. add &lt;url&gt;</strong> <span className="text-[#9CA3AF]">→</span> Scrape & add job to pipeline</p>
                        <br/>
                        <p><strong className="text-[#57534e]">help</strong>        <span className="text-[#9CA3AF]">→</span> View full command reference</p>
                        <br/>
@@ -3075,7 +3128,7 @@ System Initialized — v2.0`}
                  <div className="flex items-center gap-3">
                    <button
                      onClick={() => {
-                       localStorage.removeItem(`career_ops_onboarding_v2:${session?.user?.email || session?.user?.id || 'default'}`);
+                       localStorage.removeItem(`${ONBOARDING_STORAGE_KEY}:${session?.user?.email || session?.user?.id || 'default'}`);
                        setWalkthroughStep(0);
                      }}
                      className="flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-bold text-[#6B6B6B] transition-all hover:bg-[#F5F5F0] hover:text-[#1C1C1E]"
@@ -3922,6 +3975,13 @@ System Initialized — v2.0`}
                     </a>
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-mono text-[#9CA3AF]">
+                    {jobIsApplied(jobDetails) && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                        <CheckCircle2 size={11} />
+                        {String(jobDetails.application_status || 'APPLIED')}
+                        {jobDetails.applied_at ? ` · ${formatRelativeTime(jobDetails.applied_at)}` : ''}
+                      </span>
+                    )}
                     {jobDetails?.posted_at ? (
                       <span>
                         Posted {formatRelativeTime(jobDetails.posted_at)}
@@ -3957,7 +4017,7 @@ System Initialized — v2.0`}
                       Job description
                     </div>
                     <pre className="whitespace-pre-wrap text-sm leading-relaxed text-[#1C1C1E]">
-                      {jobDetails?.jd_text || 'No JD captured yet. Run Tailor to scrape and persist it.'}
+                      {formatJdForDisplay(jobDetails?.jd_text)}
                     </pre>
                   </>
                 )}
@@ -3995,12 +4055,19 @@ System Initialized — v2.0`}
                   >
                     Apply (Auto)
                   </button>
-                  <button
-                    onClick={() => { setJobDetailsOpen(false); handleMarkApplied(Number(jobDetails.id)); }}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all"
-                  >
-                    Mark Applied
-                  </button>
+                  {jobIsApplied(jobDetails) ? (
+                    <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-bold text-xs">
+                      <CheckCircle2 size={14} />
+                      Already applied
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleMarkApplied(Number(jobDetails.id), { keepModalOpen: true })}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all"
+                    >
+                      Mark Applied
+                    </button>
+                  )}
                 </div>
               )}
             </motion.div>

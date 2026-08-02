@@ -92,6 +92,12 @@ export async function GET(req: NextRequest) {
             return;
           }
           scriptName = 'scratch-scan.mjs';
+        } else if (cmd === 'gcc-scan') {
+          if (args.includes('--deep')) {
+            await triggerGitHubAction(send, controller, userId, 'gcc-scan.mjs', '');
+            return;
+          }
+          scriptName = 'gcc-scan.mjs';
         } else if (cmd === 'tailor' || cmd === 'offer-match') {
           const { target, deep, yes } = parseCommandWithDeep(q, cmd);
           const useDeep = deep || process.env.VERCEL === '1';
@@ -141,7 +147,7 @@ export async function GET(req: NextRequest) {
           }
           scriptArgs = [target];
         } else if (cmd === 'ls') {
-          send({ type: 'stdout', content: 'config/  data/  output/  templates/  agentic-tailor.mjs  auto-apply.mjs  rank-pipeline.mjs  scratch-scan.mjs\n' });
+          send({ type: 'stdout', content: 'config/  data/  output/  templates/  agentic-tailor.mjs  auto-apply.mjs  rank-pipeline.mjs  scratch-scan.mjs  gcc-scan.mjs\n' });
           send({ type: 'done', code: 0 });
           controller.close();
           return;
@@ -184,12 +190,14 @@ export async function GET(req: NextRequest) {
   ┌─────────────────────────────────────────────────────┐
   │  THE CAREER-OPS SEQUENCE                             │
   │    1. scan --deep      Auto-discover new job matches │
-  │    2. rank --deep      Score & rank discovered roles │
-  │    3. tailor <id|url> --deep  Generate hyper-custom Resumes │
-  │    4. apply <id|url> --deep   Automatically apply to role  │
+  │    2. gcc-scan --deep  Hunt GCC/captive employers (India) │
+  │    3. rank --deep      Score & rank discovered roles │
+  │    4. tailor <id|url> --deep  Generate hyper-custom Resumes │
+  │    5. apply <id|url> --deep   Automatically apply to role  │
   │                                                     │
   │  UTILITIES                                          │
   │    scan              Quick discovery check           │
+  │    gcc-scan          Quick GCC employer check        │
   │    tailor <id|url>   Quick Resume preview (local)  │
   │    sync-stories      Sync STAR stories to master bank│
   │    ls                List project files              │
@@ -403,12 +411,20 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
     return;
   }
 
-  const actionName = script === 'scratch-scan.mjs' ? 'deep scan' : script === 'agentic-tailor.mjs' ? 'agentic tailoring' : 'auto-apply';
+  const actionName = script === 'scratch-scan.mjs'
+    ? 'deep scan'
+    : script === 'gcc-scan.mjs'
+      ? 'GCC scan'
+      : script === 'agentic-tailor.mjs'
+        ? 'agentic tailoring'
+        : 'auto-apply';
   const actionDesc = script === 'scratch-scan.mjs'
     ? 'Scouting the market for your best-fit opportunities...'
-    : script === 'agentic-tailor.mjs'
-    ? 'Crafting a tailored application package just for you...'
-    : 'Submitting your application intelligently...';
+    : script === 'gcc-scan.mjs'
+      ? 'Hunting GCC/captive employers in Pune, Bengaluru & Hyderabad...'
+      : script === 'agentic-tailor.mjs'
+        ? 'Crafting a tailored application package just for you...'
+        : 'Submitting your application intelligently...';
   send({ type: 'stdout', content: `[EXEC] ▶ ${actionDesc}\n` });
 
   try {
@@ -532,19 +548,19 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
             percentage = 98;
             statusText = 'Saving your documents — almost done';
           }
-        } else if (script === 'scratch-scan.mjs') {
+        } else if (script === 'scratch-scan.mjs' || script === 'gcc-scan.mjs') {
           if (tick < 4) {
             percentage = 10 + tick * 5;
-            statusText = 'Warming up the opportunity scanner';
+            statusText = script === 'gcc-scan.mjs' ? 'Warming up GCC employer scanner' : 'Warming up the opportunity scanner';
           } else if (tick < 12) {
             percentage = 30 + (tick - 4) * 4;
-            statusText = 'Scanning target companies for open roles';
+            statusText = script === 'gcc-scan.mjs' ? 'Searching captive employers on LinkedIn & Naukri' : 'Scanning target companies for open roles';
           } else if (tick < 22) {
             percentage = 62 + (tick - 12) * 3;
-            statusText = 'Scoring and filtering roles by fit';
+            statusText = 'Scoring GCC signals and filtering by fit';
           } else {
             percentage = 92 + (tick - 22) * 1;
-            statusText = 'Adding new matches to your pipeline';
+            statusText = 'Adding GCC matches to your pipeline';
           }
           if (percentage > 98) percentage = 98;
         } else {
@@ -632,6 +648,9 @@ export async function POST(req: NextRequest) {
         scriptArgs = target || args.find((a: string) => a !== '--deep') || '';
       } else if (cmd === 'scan') {
         script = 'scratch-scan.mjs';
+        scriptArgs = '';
+      } else if (cmd === 'gcc-scan') {
+        script = 'gcc-scan.mjs';
         scriptArgs = '';
       } else if (/^\d+$/.test(cmd)) {
         script = 'agentic-tailor.mjs';
@@ -727,6 +746,8 @@ export async function POST(req: NextRequest) {
         scriptName = 'rank-pipeline.mjs';
       } else if (cmd === 'scan') {
         scriptName = 'scratch-scan.mjs';
+      } else if (cmd === 'gcc-scan') {
+        scriptName = 'gcc-scan.mjs';
       } else if (cmd === 'tailor' || cmd === 'offer-match') {
         scriptName = 'agentic-tailor.mjs';
       } else if (cmd === 'apply') {

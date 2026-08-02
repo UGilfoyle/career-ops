@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { WhatsNewPanel } from '@/components/WhatsNewPanel';
+import { ProductFlowPanel } from '@/components/ProductFlowPanel';
 import { releaseSeenKey } from '@/lib/product-updates';
 
 export default function LandingPage() {
   const [visitorStats, setVisitorStats] = useState<any>(null);
   const [showTourModal, setShowTourModal] = useState(false);
+  const [tourTab, setTourTab] = useState<'new' | 'flow'>('flow');
 
   useEffect(() => {
     fetch('/api/view')
@@ -20,6 +22,7 @@ export default function LandingPage() {
     const hasSeen = localStorage.getItem(releaseSeenKey());
     if (!hasSeen) {
       const timer = setTimeout(() => {
+        setTourTab('flow');
         setShowTourModal(true);
         localStorage.setItem(releaseSeenKey(), 'true');
       }, 1500);
@@ -44,7 +47,14 @@ export default function LandingPage() {
         <div className="flex items-center gap-6">
           <button
             type="button"
-            onClick={() => setShowTourModal(true)}
+            onClick={() => { setTourTab('flow'); setShowTourModal(true); }}
+            className="text-sm font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors cursor-pointer"
+          >
+            How it works
+          </button>
+          <button
+            type="button"
+            onClick={() => { setTourTab('new'); setShowTourModal(true); }}
             className="text-sm font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors cursor-pointer"
           >
             What&apos;s New
@@ -97,13 +107,22 @@ export default function LandingPage() {
             </Link>
             <button
               type="button"
-              onClick={() => setShowTourModal(true)}
+              onClick={() => { setTourTab('flow'); setShowTourModal(true); }}
               className="w-full md:w-auto px-10 py-5 bg-white border border-[#E5E5E0] text-[#1C1C1E] font-bold text-lg rounded-2xl flex items-center justify-center gap-3 hover:bg-[#F5F5F0] transition-all active:scale-95 cursor-pointer"
             >
-              See What&apos;s New
+              See How It Works
             </button>
           </div>
         </motion.div>
+
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.7 }}
+          className="mt-24 w-full mb-8"
+        >
+          <ProductFlowPanel variant="landing" />
+        </motion.section>
 
         <motion.div
           initial={{ opacity: 0 }}
@@ -198,18 +217,40 @@ export default function LandingPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-              className="w-full max-w-2xl bg-[#FAFAF8] rounded-[2.5rem] border border-[#E5E5E0] shadow-2xl overflow-hidden relative"
+              className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-[#FAFAF8] rounded-[2.5rem] border border-[#E5E5E0] shadow-2xl relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                type="button"
-                onClick={() => setShowTourModal(false)}
-                className="absolute right-6 top-6 h-10 w-10 rounded-full bg-white/10 border border-white/20 hover:bg-white/20 flex items-center justify-center text-white transition-all cursor-pointer z-10"
-                aria-label="Close"
-              >
-                ×
-              </button>
-              <WhatsNewPanel variant="modal" onDismiss={() => setShowTourModal(false)} />
+              <div className="sticky top-0 z-10 flex items-center gap-2 p-4 border-b border-[#E5E5E0] bg-[#FAFAF8]/95 backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={() => setTourTab('flow')}
+                  className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all ${tourTab === 'flow' ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:bg-white'}`}
+                >
+                  How it works
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTourTab('new')}
+                  className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all ${tourTab === 'new' ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:bg-white'}`}
+                >
+                  What&apos;s New
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowTourModal(false)}
+                  className="h-10 w-10 rounded-full border border-[#E5E5E0] bg-white hover:bg-[#F5F5F0] flex items-center justify-center text-[#6B6B6B] transition-all cursor-pointer shrink-0"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              {tourTab === 'flow' ? (
+                <div className="p-6">
+                  <ProductFlowPanel variant="landing" showSignupCta />
+                </div>
+              ) : (
+                <WhatsNewPanel variant="modal" onDismiss={() => setShowTourModal(false)} />
+              )}
             </motion.div>
           </motion.div>
         )}

@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { TurnstileWidget } from '@/components/TurnstileWidget';
 import { WhatsNewPanel } from '@/components/WhatsNewPanel';
+import { ProductFlowPanel } from '@/components/ProductFlowPanel';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || '';
 
@@ -139,6 +140,7 @@ function SignupForm() {
         </div>
 
         <WhatsNewPanel variant="signup" showCta={false} />
+        <ProductFlowPanel variant="signup" showSignupCta={false} />
 
         <div className="bg-white border border-[#E5E5E0] rounded-[2.5rem] p-10 shadow-2xl shadow-black/[0.02] relative overflow-hidden">
           <AnimatePresence mode="wait">

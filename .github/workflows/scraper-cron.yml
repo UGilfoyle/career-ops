@@ -76,7 +76,7 @@ jobs:
           CAREER_OPS_ALLOW_DETERMINISTIC_TAILOR: '1'
         run: |
           # Allowlist validation — only permit known scripts (CodeRabbit security fix)
-          ALLOWED_SCRIPTS="scratch-scan.mjs agentic-tailor.mjs rank-pipeline.mjs auto-apply.mjs add-job.mjs export-master-pdf.mjs"
+          ALLOWED_SCRIPTS="scratch-scan.mjs gcc-scan.mjs agentic-tailor.mjs rank-pipeline.mjs auto-apply.mjs add-job.mjs export-master-pdf.mjs"
           SCRIPT="${ACTION_SCRIPT:-scratch-scan.mjs}"
           # Exact string matching instead of regex-based grep to prevent partial matches (CodeRabbit fix)
           if ! printf '%s\n' "$ALLOWED_SCRIPTS" | tr ' ' '\n' | grep -Fxq "$SCRIPT"; then

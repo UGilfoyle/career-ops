@@ -39,21 +39,29 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     try {
       const rows = await sql`
         SELECT
-          id,
-          company,
-          title,
-          url,
-          canonical_url,
-          source,
-          score,
-          jd_text,
-          created_at,
-          posted_at,
-          posted_confidence,
-          posted_reason,
-          posted_checked_at
-        FROM jobs
-        WHERE id = ${jobId} AND user_id = ${userId}
+          j.id,
+          j.company,
+          j.title,
+          j.url,
+          j.canonical_url,
+          j.source,
+          j.score,
+          j.jd_text,
+          j.created_at,
+          j.posted_at,
+          j.posted_confidence,
+          j.posted_reason,
+          j.posted_checked_at,
+          j.ats_content_score,
+          (j.resume_html IS NOT NULL) AS has_resume_html,
+          (j.resume_pdf_key IS NOT NULL OR j.resume_pdf IS NOT NULL) AS has_resume_pdf,
+          a.id AS app_id,
+          a.status AS application_status,
+          a.applied_at,
+          (a.id IS NOT NULL) AS is_applied
+        FROM jobs j
+        LEFT JOIN applications a ON a.job_id = j.id AND a.user_id = ${userId}
+        WHERE j.id = ${jobId} AND j.user_id = ${userId}
         LIMIT 1
       `;
       job = rows[0] || null;
@@ -163,6 +171,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       posted_checked_at: job.posted_checked_at || null,
       posting_analysis: analysis,
       posting_gate_message: gateMessage,
+      app_id: job.app_id ?? null,
+      application_status: job.application_status ?? null,
+      applied_at: job.applied_at ?? null,
+      is_applied: Boolean(job.is_applied ?? job.app_id),
+      has_resume_html: Boolean(job.has_resume_html),
+      has_resume_pdf: Boolean(job.has_resume_pdf),
+      ats_content_score: job.ats_content_score ?? null,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

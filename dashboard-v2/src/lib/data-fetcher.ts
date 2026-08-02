@@ -84,16 +84,13 @@ export async function getDashboardData(userId: string) {
   };
 
   const fetchPipeline = async () => {
-    const notInApplications = sql`
-      AND NOT EXISTS (
-        SELECT 1 FROM applications a
-        WHERE a.user_id = ${userId} AND a.job_id = jobs.id
-      )
-    `;
     const scoreFilter = sql`AND (score IS NULL OR COALESCE(score, 0) >= 0)`;
     const orderBy = sql`ORDER BY score DESC NULLS LAST, created_at DESC`;
 
-    const mapRow = (p: Record<string, unknown>, extras: Record<string, unknown> = {}) => ({
+    const mapRow = (p: Record<string, unknown>, extras: Record<string, unknown> = {}) => {
+      const appStatus = p.application_status ? String(p.application_status) : null;
+      const isApplied = Boolean(p.is_applied ?? p.app_id);
+      return {
       pipeline_id: p.pipeline_id,
       url: p.url,
       canonical_url: p.canonical_url ?? p.url,
@@ -107,40 +104,49 @@ export async function getDashboardData(userId: string) {
       company_type: p.company_type ?? null,
       gcc_signal_score: p.gcc_signal_score ?? null,
       gcc_high_value: p.gcc_high_value ?? false,
+      app_id: p.app_id ?? null,
+      application_status: appStatus,
+      applied_at: p.applied_at ?? null,
+      is_applied: isApplied,
       is_tailored: Boolean(extras.is_tailored),
       has_resume_html: Boolean(extras.has_resume_html),
       has_resume_pdf: Boolean(extras.has_resume_pdf),
       ats_content_score:
         extras.ats_content_score != null ? Number(extras.ats_content_score) : null,
-    });
+    };
+    };
 
     try {
       const rows = await sql`
         SELECT
-          id as pipeline_id,
-          url,
-          canonical_url,
-          title,
-          company,
-          score,
-          source,
-          created_at,
-          posted_at,
-          posted_confidence,
-          company_type,
-          gcc_signal_score,
-          gcc_high_value,
-          ats_content_score,
-          (resume_html IS NOT NULL) AS has_resume_html,
-          (resume_pdf_key IS NOT NULL OR resume_pdf IS NOT NULL) AS has_resume_pdf,
+          j.id as pipeline_id,
+          j.url,
+          j.canonical_url,
+          j.title,
+          j.company,
+          j.score,
+          j.source,
+          j.created_at,
+          j.posted_at,
+          j.posted_confidence,
+          j.company_type,
+          j.gcc_signal_score,
+          j.gcc_high_value,
+          j.ats_content_score,
+          (j.resume_html IS NOT NULL) AS has_resume_html,
+          (j.resume_pdf_key IS NOT NULL OR j.resume_pdf IS NOT NULL) AS has_resume_pdf,
           (
-            resume_pdf_key IS NOT NULL OR cover_letter_pdf_key IS NOT NULL
-            OR resume_html IS NOT NULL OR cover_letter_html IS NOT NULL
-          ) AS is_tailored
-        FROM jobs
-        WHERE user_id = ${userId}
+            j.resume_pdf_key IS NOT NULL OR j.cover_letter_pdf_key IS NOT NULL
+            OR j.resume_html IS NOT NULL OR j.cover_letter_html IS NOT NULL
+          ) AS is_tailored,
+          a.id AS app_id,
+          a.status AS application_status,
+          a.applied_at,
+          (a.id IS NOT NULL) AS is_applied
+        FROM jobs j
+        LEFT JOIN applications a ON a.job_id = j.id AND a.user_id = ${userId}
+        WHERE j.user_id = ${userId}
         ${scoreFilter}
-        ${notInApplications}
         ${orderBy}
       `;
       return rows.map((p: Record<string, unknown>) =>
@@ -158,20 +164,24 @@ export async function getDashboardData(userId: string) {
     try {
       const rows = await sql`
         SELECT
-          id as pipeline_id,
-          url,
-          title,
-          company,
-          score,
-          source,
-          created_at,
-          company_type,
-          gcc_signal_score,
-          gcc_high_value
-        FROM jobs
-        WHERE user_id = ${userId}
+          j.id as pipeline_id,
+          j.url,
+          j.title,
+          j.company,
+          j.score,
+          j.source,
+          j.created_at,
+          j.company_type,
+          j.gcc_signal_score,
+          j.gcc_high_value,
+          a.id AS app_id,
+          a.status AS application_status,
+          a.applied_at,
+          (a.id IS NOT NULL) AS is_applied
+        FROM jobs j
+        LEFT JOIN applications a ON a.job_id = j.id AND a.user_id = ${userId}
+        WHERE j.user_id = ${userId}
         ${scoreFilter}
-        ${notInApplications}
         ${orderBy}
       `;
       return rows.map((p: Record<string, unknown>) => mapRow(p));
@@ -181,11 +191,22 @@ export async function getDashboardData(userId: string) {
 
     try {
       const rows = await sql`
-        SELECT id as pipeline_id, url, title, company, score, source, created_at
-        FROM jobs
-        WHERE user_id = ${userId}
+        SELECT
+          j.id as pipeline_id,
+          j.url,
+          j.title,
+          j.company,
+          j.score,
+          j.source,
+          j.created_at,
+          a.id AS app_id,
+          a.status AS application_status,
+          a.applied_at,
+          (a.id IS NOT NULL) AS is_applied
+        FROM jobs j
+        LEFT JOIN applications a ON a.job_id = j.id AND a.user_id = ${userId}
+        WHERE j.user_id = ${userId}
         ${scoreFilter}
-        ${notInApplications}
         ${orderBy}
       `;
       return rows.map((p: Record<string, unknown>) => mapRow(p));
