@@ -238,6 +238,198 @@ const MINIMAL_CSS = `
         .edu > div { margin-bottom: 6px; }
 `;
 
+/** resume.io Prime ATS–inspired: streamlined, navy accent, strong readability */
+const PRIME_CSS = `
+        body {
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.4;
+            color: #1a1a1a;
+            padding: 0.6in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: left; margin-bottom: 16px; }
+        h1 {
+            font-size: 22pt; font-weight: 700; letter-spacing: 0.5px;
+            text-transform: none; margin-bottom: 6px; line-height: 1.15;
+            color: #0f172a;
+        }
+        .contact { font-size: 9.5pt; color: #475569; line-height: 1.5; margin-bottom: 2px; }
+        .top-rule { margin-top: 12px; border-top: 3px solid #1e40af; }
+        section { margin-top: 15px; }
+        h2 {
+            font-size: 10.5pt; font-weight: 700; letter-spacing: 0.8px;
+            text-transform: uppercase; margin-bottom: 5px; color: #1e40af;
+        }
+        .rule { border-top: 1.5px solid #93c5fd; margin-bottom: 8px; }
+        .skills-lines { font-size: 10pt; line-height: 1.45; color: #1e293b; }
+        .skill-line { margin-bottom: 4px; }
+        .skill-label { font-weight: 700; color: #0f172a; }
+        .job { margin-bottom: 14px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 10.5pt; margin-bottom: 4px;
+        }
+        .job-title { font-weight: 700; color: #0f172a; }
+        .job-company { font-weight: 600; color: #1e40af; }
+        .job-dates { font-weight: 600; color: #64748b; font-size: 9.5pt; }
+        .job ul { list-style-type: disc; margin: 4px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 4px; line-height: 1.42; color: #1e293b; }
+        .summary-block { font-size: 10.5pt; line-height: 1.5; color: #1e293b; white-space: pre-line; }
+        .edu { font-size: 10pt; line-height: 1.45; color: #1e293b; }
+        .edu > div { margin-bottom: 5px; }
+`;
+
+/** resume.io Precision ATS–inspired: skills band highlighted for keyword scan */
+const PRECISION_CSS = `
+        body {
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.38;
+            color: #1a1a1a;
+            padding: 0.55in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 14px; }
+        h1 {
+            font-size: 20pt; font-weight: 700; letter-spacing: 1px;
+            text-transform: uppercase; margin-bottom: 6px; line-height: 1.15;
+            color: #0f172a;
+        }
+        .contact { font-size: 9pt; color: #475569; line-height: 1.45; margin-bottom: 2px; }
+        .top-rule { margin-top: 10px; border-top: 2px solid #0f766e; }
+        section { margin-top: 14px; }
+        h2 {
+            font-size: 10pt; font-weight: 700; letter-spacing: 1px;
+            text-transform: uppercase; margin-bottom: 4px; color: #0f766e;
+        }
+        .rule { border-top: 1px solid #99f6e4; margin-bottom: 7px; }
+        .skills-lines {
+            font-size: 10pt; line-height: 1.48; color: #134e4a;
+            background: #f0fdfa; border: 1px solid #99f6e4;
+            border-radius: 4px; padding: 10px 12px;
+        }
+        .skill-line { margin-bottom: 4px; }
+        .skill-label { font-weight: 700; color: #0f766e; }
+        .job { margin-bottom: 12px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 10pt; margin-bottom: 3px;
+        }
+        .job-title { font-weight: 700; color: #0f172a; }
+        .job-company { font-weight: 600; color: #334155; }
+        .job-dates { font-weight: 600; color: #64748b; font-size: 9pt; }
+        .job ul { list-style-type: disc; margin: 3px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 3.5px; line-height: 1.4; }
+        .summary-block { font-size: 10pt; line-height: 1.48; color: #1e293b; white-space: pre-line; }
+        .edu { font-size: 10pt; line-height: 1.4; }
+        .edu > div { margin-bottom: 4px; }
+`;
+
+/** resume.io Header ATS–inspired: bold name band, achievements-friendly */
+const HEADER_ATS_CSS = `
+        body {
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.4;
+            color: #1a1a1a;
+            padding: 0.5in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header {
+            text-align: left; margin-bottom: 16px;
+            background: #0f172a; color: #fff; padding: 16px 18px; border-radius: 2px;
+        }
+        h1 {
+            font-size: 21pt; font-weight: 700; letter-spacing: 0.8px;
+            text-transform: uppercase; margin-bottom: 6px; line-height: 1.15;
+            color: #fff;
+        }
+        .contact { font-size: 9pt; color: #cbd5e1; line-height: 1.45; margin-bottom: 2px; }
+        .contact a { color: #e2e8f0 !important; }
+        .top-rule { display: none; }
+        section { margin-top: 14px; }
+        h2 {
+            font-size: 10pt; font-weight: 700; letter-spacing: 1.1px;
+            text-transform: uppercase; margin-bottom: 4px; color: #0f172a;
+            border-bottom: 2px solid #0f172a; padding-bottom: 3px;
+        }
+        .rule { display: none; }
+        .skills-lines { font-size: 10pt; line-height: 1.45; }
+        .skill-line { margin-bottom: 3px; }
+        .skill-label { font-weight: 700; }
+        .job { margin-bottom: 13px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 10.5pt; margin-bottom: 4px;
+        }
+        .job-title { font-weight: 700; }
+        .job-company { font-weight: 600; color: #334155; }
+        .job-dates { font-weight: 600; color: #64748b; font-size: 9.5pt; }
+        .job ul { list-style-type: disc; margin: 4px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 4px; line-height: 1.42; }
+        .summary-block { font-size: 10.5pt; line-height: 1.5; white-space: pre-line; }
+        .edu { font-size: 10pt; line-height: 1.42; }
+        .edu > div { margin-bottom: 5px; }
+`;
+
+/** resume.io Traditional–inspired: sizable sections for robust career history (7+ yrs) */
+const TRADITIONAL_CSS = `
+        body {
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-size: 11pt;
+            line-height: 1.45;
+            color: #1a1a1a;
+            padding: 0.65in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 20px; }
+        h1 {
+            font-size: 22pt; font-weight: 700; letter-spacing: 1.5px;
+            text-transform: uppercase; margin-bottom: 8px; line-height: 1.2;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .contact {
+            font-size: 9.5pt; color: #444; line-height: 1.5; margin-bottom: 3px;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .top-rule { margin-top: 12px; border-top: 2px solid #111; }
+        section { margin-top: 18px; }
+        h2 {
+            font-size: 11pt; font-weight: 700; letter-spacing: 1.2px;
+            text-transform: uppercase; margin-bottom: 6px;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .rule { border-top: 1px solid #999; margin-bottom: 10px; }
+        .skills-lines {
+            font-size: 10.5pt; line-height: 1.5;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .skill-line { margin-bottom: 5px; }
+        .skill-label { font-weight: 700; }
+        .job { margin-bottom: 16px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 14px; font-size: 11pt; margin-bottom: 6px;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .job-title { font-weight: 700; }
+        .job-company { font-weight: 600; }
+        .job-dates { font-weight: 600; color: #555; font-size: 10pt; }
+        .job ul { list-style-type: disc; margin: 5px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 5px; line-height: 1.48; }
+        .summary-block { font-size: 11pt; line-height: 1.52; white-space: pre-line; }
+        .edu {
+            font-size: 10.5pt; line-height: 1.45;
+            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+        .edu > div { margin-bottom: 6px; }
+`;
+
 export type TemplateMeta = {
   id: string;
   name: string;
@@ -251,13 +443,39 @@ export const TEMPLATE_CATALOG: TemplateMeta[] = [
     id: 'ats-professional',
     name: 'ATS Classic',
     badge: 'Recommended',
-    description: 'Single-column Arial with strong rules — safest for Greenhouse, Workday, Ashby.',
+    description: 'Single-column with strong rules — safest for Greenhouse, Workday, Ashby.',
     file: 'templates/ats-template-professional.html',
+  },
+  {
+    id: 'ats-prime',
+    name: 'Prime ATS',
+    badge: 'resume.io style',
+    description: 'Streamlined navy accent layout — optimized for ATS parse + recruiter skim.',
+    file: 'templates/ats-template-prime.html',
+  },
+  {
+    id: 'ats-traditional',
+    name: 'Traditional',
+    badge: '7+ years',
+    description: 'Sizable sections and serif body — fills 2 pages for senior career history.',
+    file: 'templates/ats-template-traditional.html',
+  },
+  {
+    id: 'ats-precision',
+    name: 'Precision ATS',
+    description: 'Highlighted skills band for keyword density — clean single-column body.',
+    file: 'templates/ats-template-precision.html',
+  },
+  {
+    id: 'ats-header',
+    name: 'Header ATS',
+    description: 'Bold dark name band — achievements and experience stay ATS-readable.',
+    file: 'templates/ats-template-header.html',
   },
   {
     id: 'ats-modern-compact',
     name: 'Modern Compact',
-    description: 'Tighter spacing and muted headers — more content per page without losing parseability.',
+    description: 'Tighter spacing — more content per page (better for mid-level, not 7+ yrs).',
     file: 'templates/ats-template-modern-compact.html',
   },
   {
@@ -278,12 +496,20 @@ export const ATS_PROFESSIONAL_TEMPLATE = wrap(CLASSIC_CSS);
 export const ATS_MODERN_COMPACT_TEMPLATE = wrap(MODERN_COMPACT_CSS);
 export const ATS_TECHNICAL_TEMPLATE = wrap(TECHNICAL_CSS);
 export const ATS_MINIMAL_TEMPLATE = wrap(MINIMAL_CSS);
+export const ATS_PRIME_TEMPLATE = wrap(PRIME_CSS);
+export const ATS_PRECISION_TEMPLATE = wrap(PRECISION_CSS);
+export const ATS_HEADER_TEMPLATE = wrap(HEADER_ATS_CSS);
+export const ATS_TRADITIONAL_TEMPLATE = wrap(TRADITIONAL_CSS);
 
 export const TEMPLATE_REGISTRY: Record<string, string> = {
   'ats-professional': ATS_PROFESSIONAL_TEMPLATE,
   'ats-modern-compact': ATS_MODERN_COMPACT_TEMPLATE,
   'ats-technical': ATS_TECHNICAL_TEMPLATE,
   'ats-minimal': ATS_MINIMAL_TEMPLATE,
+  'ats-prime': ATS_PRIME_TEMPLATE,
+  'ats-precision': ATS_PRECISION_TEMPLATE,
+  'ats-header': ATS_HEADER_TEMPLATE,
+  'ats-traditional': ATS_TRADITIONAL_TEMPLATE,
 };
 
 export const DEFAULT_TEMPLATE_ID = 'ats-professional';

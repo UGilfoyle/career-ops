@@ -238,11 +238,17 @@ export default function ResumeStudio({
       }
 
       const json = await res.json().catch(() => ({}));
+      if (res.status === 202 || json?.pending) {
+        throw new Error(
+          json?.error
+          || 'PDF generating via GitHub Actions — wait ~1 min and click PDF again.'
+        );
+      }
       // Never auto-download HTML when the user clicked PDF
       throw new Error(
         json?.error
         || (res.status === 501 || res.status === 503
-          ? 'PDF engine unavailable — try again after deploy, or run tailor --deep for Actions PDF.'
+          ? 'PDF export failed — needs GITHUB_PAT (same as tailor --deep) + R2. Check Actions run.'
           : 'PDF export failed')
       );
     } catch (e: unknown) {

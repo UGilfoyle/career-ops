@@ -134,8 +134,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; company: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Stale posting confirm before tailor
-  const [staleTailorOpen, setStaleTailorOpen] = useState(false);
+  // Shell-style Yes/No before tailor (like bash read -p) — no modal
   const [staleTailorChecking, setStaleTailorChecking] = useState(false);
   const [staleTailorTarget, setStaleTailorTarget] = useState<{
     /** Numeric pipeline id, or job URL when tailor <url> --deep */
@@ -148,6 +147,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     analysis: JobPostingAnalysis | null;
     gateMessage: string;
   } | null>(null);
+  const cmdInputRef = useRef<HTMLInputElement | null>(null);
+  const awaitingPostingConfirm = Boolean(staleTailorTarget);
 
   const [clearPipelineOpen, setClearPipelineOpen] = useState(false);
   const [clearPipelineScope, setClearPipelineScope] = useState<'all' | 'visible'>('all');
@@ -559,14 +560,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       const needsConfirm = Boolean(analysis?.needs_confirm);
       if (needsConfirm) {
         const postedAt = analysis?.posted_at ?? job?.posted_at ?? null;
+        // Bash/zsh-style blocking prompt — answer on the input line below
         setLogs((prev) => [
           ...prev,
           {
             type: 'stdout',
             content:
-              '\n❓ Continue with resume generation?\n'
-              + '   Type Yes or No in the terminal (or use the dialog).\n'
-              + 'auth@career-ops:~$ ',
+              '\n'
+              + 'Continue with resume generation? [Yes/No]:\n'
+              + '(same as shell: type yes or no, then Enter — Ctrl+C to cancel)\n',
           },
         ]);
         setStaleTailorTarget({
@@ -579,7 +581,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           analysis,
           gateMessage,
         });
-        setStaleTailorOpen(true);
+        setCmdInput('');
+        setTimeout(() => cmdInputRef.current?.focus(), 50);
         return;
       }
       setLogs((prev) => [
@@ -599,13 +602,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
   const confirmStaleTailor = () => {
     const cmd = staleTailorTarget?.command;
-    setStaleTailorOpen(false);
     setStaleTailorTarget(null);
     if (cmd) {
       setActiveTab('terminal');
       setLogs((prev) => [
         ...prev,
-        { type: 'stdout', content: 'yes\n✓ You chose Yes — generating resume & cover letter…\n' },
+        { type: 'stdout', content: 'yes\n✓ Proceeding — generating resume & cover letter…\n' },
       ]);
       const withYes = /\s--yes\b/i.test(cmd) ? cmd : `${cmd} --yes`;
       runCommand(withYes);
@@ -615,9 +617,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const cancelStaleTailor = () => {
     setLogs((prev) => [
       ...prev,
-      { type: 'stdout', content: 'no\n✗ You chose No — resume generation cancelled.\n' },
+      { type: 'stdout', content: 'no\n✗ Cancelled — no resume generated.\n' },
     ]);
-    setStaleTailorOpen(false);
     setStaleTailorTarget(null);
   };
 
@@ -626,11 +627,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     const q = cmdInput.trim();
     if (!q) return;
 
-    // Terminal Yes/No while posting gate is waiting
-    if (staleTailorOpen && staleTailorTarget) {
+    // Shell-style Yes/No while posting gate is waiting (like read -p in bash)
+    if (awaitingPostingConfirm && staleTailorTarget) {
       setHistory((prev) => [q, ...prev].slice(0, 50));
       setHistoryIndex(-1);
       setCmdInput('');
+      setLogs((prev) => [
+        ...prev,
+        { type: 'stdout', content: `Continue with resume generation? [Yes/No]: ${q}\n` },
+      ]);
       if (/^(y|yes)$/i.test(q)) {
         confirmStaleTailor();
         return;
@@ -641,8 +646,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       }
       setLogs((prev) => [
         ...prev,
-        { type: 'stdout', content: `${q}\n⚠ Type Yes or No to continue (posting check pending).\n` },
+        { type: 'stdout', content: `⚠ Please answer Yes or No (got "${q}").\nContinue with resume generation? [Yes/No]:\n` },
       ]);
+      setTimeout(() => cmdInputRef.current?.focus(), 30);
       return;
     }
 
@@ -716,9 +722,17 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Ctrl+C to clear current line (terminal-style)
+    // Ctrl+C to clear current line (terminal-style) — also aborts Yes/No wait
     if (e.key === 'c' && e.ctrlKey) {
       e.preventDefault();
+      if (awaitingPostingConfirm) {
+        appendTerminalLine('^C');
+        appendTerminalLine('✗ Posting confirm cancelled (Ctrl+C).');
+        setStaleTailorTarget(null);
+        setCmdInput('');
+        setHistoryIndex(-1);
+        return;
+      }
       if (cmdInput.trim()) {
         appendTerminalLine(`^C`);
         setCmdInput('');
@@ -2916,20 +2930,34 @@ System Initialized — v2.0`}
 
               <div className="p-5 bg-[#F5F5F0] border-t border-[#E5E5E0]">
                  <div className="flex items-center gap-3">
-                    <span className="text-[#1C1C1E] font-bold font-mono">auth@career-ops:~$</span>
+                    <span className={`font-bold font-mono ${awaitingPostingConfirm ? 'text-amber-700' : 'text-[#1C1C1E]'}`}>
+                      {awaitingPostingConfirm
+                        ? 'Continue with resume generation? [Yes/No]:'
+                        : 'auth@career-ops:~$'}
+                    </span>
                     <form onSubmit={handleCommandSubmit} className="flex-1">
-                       <input 
+                       <input
+                         ref={cmdInputRef}
                          type="text"
                          value={cmdInput}
                          onChange={(e) => setCmdInput(e.target.value)}
                          onKeyDown={handleKeyDown}
-                         placeholder="scan / apply <id> / help (Ctrl+C to clear)"
-                         disabled={isExecuting}
+                         placeholder={
+                           awaitingPostingConfirm
+                             ? 'yes  or  no'
+                             : 'scan / apply <id> / help (Ctrl+C to clear)'
+                         }
+                         disabled={isExecuting || staleTailorChecking}
                          className="w-full bg-transparent outline-none border-none text-[#1C1C1E] font-mono placeholder:text-[#6B6B6B] caret-[#1C1C1E] select-text"
                          autoFocus
                        />
                     </form>
                  </div>
+                 {awaitingPostingConfirm && (
+                   <p className="mt-2 text-[10px] font-mono text-amber-700/80">
+                     Waiting for answer (like bash) — type yes/no + Enter · Ctrl+C cancel
+                   </p>
+                 )}
               </div>
             </div>
             </motion.div>
@@ -3909,102 +3937,6 @@ System Initialized — v2.0`}
                       <span>Delete</span>
                     </>
                   )}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Stale / repost / ancient posting confirm before tailor */}
-      <AnimatePresence>
-        {staleTailorOpen && staleTailorTarget && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[95] flex items-center justify-center p-4 sm:p-6"
-            onClick={cancelStaleTailor}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-md bg-white rounded-3xl border border-amber-200 shadow-2xl overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6 bg-gradient-to-r from-amber-50 to-white border-b border-amber-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center">
-                    <Clock size={24} className="text-amber-700" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-[#1C1C1E] text-lg">
-                      {staleTailorTarget.analysis?.severity === 'ancient'
-                        ? 'Job posting looks ~1 year old'
-                        : staleTailorTarget.analysis?.possible_repost
-                          ? 'Possible repost — check history'
-                          : 'Job posting is 3 months or older'}
-                    </h3>
-                    <p className="text-xs text-[#6B6B6B]">
-                      {staleTailorTarget.ageDays != null
-                        ? `Posted ${staleTailorTarget.ageDays} day${staleTailorTarget.ageDays === 1 ? '' : 's'} ago`
-                        : 'Posting age unclear'}
-                      {staleTailorTarget.ageDays != null && staleTailorTarget.ageDays >= STALE_POSTING_DAYS
-                        ? ` (≥ ${STALE_POSTING_DAYS} days / ~3 months)`
-                        : ''}
-                      {staleTailorTarget.ageDays != null && staleTailorTarget.ageDays >= ANCIENT_POSTING_DAYS
-                        ? ` · ~${(staleTailorTarget.ageDays / 365).toFixed(1)} years`
-                        : ''}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6">
-                <p className="text-sm text-[#6B6B6B] mb-4">
-                  {staleTailorTarget.analysis?.possible_repost
-                    ? 'History suggests this role may have been live much longer (or reposted within ~1 year). Type Yes or No in the terminal — or use the buttons.'
-                    : 'This job is 3+ months old (or has old history). Type Yes or No in the terminal — or use the buttons.'}
-                </p>
-                <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
-                  <div className="font-bold text-[#1C1C1E] mb-1">{staleTailorTarget.company}</div>
-                  <div className="text-xs text-[#6B6B6B]">{staleTailorTarget.title}</div>
-                  <div className="text-[10px] text-[#9CA3AF] mt-2 uppercase tracking-wider font-bold">
-                    {staleTailorTarget.posted_at
-                      ? `Posted ${formatRelativeTime(staleTailorTarget.posted_at)}`
-                      : 'Posted date unknown'}
-                  </div>
-                  {staleTailorTarget.analysis?.first_seen_at
-                    && staleTailorTarget.analysis.first_seen_at !== staleTailorTarget.posted_at && (
-                    <div className="text-[10px] text-amber-700 mt-1 font-semibold">
-                      First seen {formatRelativeTime(staleTailorTarget.analysis.first_seen_at)}
-                      {staleTailorTarget.analysis.first_seen_days != null
-                        ? ` (${staleTailorTarget.analysis.first_seen_days}d history)`
-                        : ''}
-                    </div>
-                  )}
-                </div>
-                <p className="text-[11px] text-[#9CA3AF] mt-3">
-                  Full check is also printed in the Terminal tab.
-                </p>
-              </div>
-
-              <div className="p-4 border-t border-[#E5E5E0] flex gap-3">
-                <button
-                  type="button"
-                  onClick={cancelStaleTailor}
-                  className="flex-1 px-4 py-3 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] font-bold text-sm hover:bg-[#F5F5F0] transition-colors"
-                >
-                  No
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmStaleTailor}
-                  className="flex-1 px-4 py-3 rounded-xl bg-[#1C1C1E] text-white font-bold text-sm hover:bg-[#27272a] transition-colors flex items-center justify-center gap-2"
-                >
-                  <FileText size={16} />
-                  <span>Yes — generate resume</span>
                 </button>
               </div>
             </motion.div>

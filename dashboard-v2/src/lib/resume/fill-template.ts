@@ -95,16 +95,26 @@ export function calculateYearsOfExperience(experience: ExperienceEntry[] | undef
   return Math.max(1, Math.round(months / 12));
 }
 
+/**
+ * Senior profiles (7+ yrs) should fill ~2 pages; 10+ can use 3.
+ * Modern Compact can still look short — budget + traditional spacing fix that.
+ */
 function resolveResumePageBudget(yearsExp: number, roleCount: number): number {
   if (yearsExp >= 10 || roleCount >= 8) return 3;
-  if (yearsExp >= 6 || roleCount >= 5) return 2;
+  // 7+ years → always at least 2 full pages of content budget
+  if (yearsExp >= 7 || roleCount >= 5) return 2;
   if (yearsExp >= 4 || roleCount >= 4) return 2;
+  if (yearsExp >= 6) return 2;
   return 1;
 }
 
-function bulletsBudgetForRole(roleIndex: number, maxPages: number): number {
-  if (maxPages >= 3) return roleIndex < 3 ? 6 : roleIndex < 5 ? 4 : 3;
-  if (maxPages >= 2) return roleIndex < 3 ? 5 : roleIndex < 5 ? 3 : 2;
+function bulletsBudgetForRole(roleIndex: number, maxPages: number, yearsExp = 0): number {
+  // Fuller bullets so 7–9 yr resumes don't look like a half-page dump
+  if (maxPages >= 3) return roleIndex < 3 ? 7 : roleIndex < 6 ? 5 : 3;
+  if (maxPages >= 2) {
+    if (yearsExp >= 7) return roleIndex < 3 ? 7 : roleIndex < 5 ? 5 : 3;
+    return roleIndex < 3 ? 6 : roleIndex < 5 ? 4 : 3;
+  }
   return roleIndex < 2 ? 4 : 3;
 }
 
@@ -122,12 +132,16 @@ function stripDates(text: string): string {
   return cleaned.replace(/\s*[|—–-]\s*$/, '').replace(/^\s*[|—–-]\s*/, '').trim();
 }
 
-export function renderExperienceHtml(exp: ExperienceEntry[] | undefined, maxPages = 2): string {
+export function renderExperienceHtml(
+  exp: ExperienceEntry[] | undefined,
+  maxPages = 2,
+  yearsExp = 0
+): string {
   if (!Array.isArray(exp) || exp.length === 0) return '';
 
   return exp
     .map((job, idx) => {
-      const bullets = (job.bullets || []).slice(0, bulletsBudgetForRole(idx, maxPages));
+      const bullets = (job.bullets || []).slice(0, bulletsBudgetForRole(idx, maxPages, yearsExp));
       let role = String(job.role || '').trim().replace(/\s*\((?:contract|freelance|temporary|project)\)\s*/gi, '').trim();
       let company = String(job.company || '').trim();
       const dates = String(job.period || '').trim();
@@ -183,12 +197,12 @@ export function renderAchievementsHtml(
     .join('')}</ul>`;
 }
 
-export function renderSkillsLines(superpowers: string[] | undefined): string {
+export function renderSkillsLines(superpowers: string[] | undefined, limit = 16): string {
   const editorRe = /\b(cursor|windsurf|antigravity|copilot|github\s*copilot|chatgpt|chat\s*gpt|claude\s*code|\bclaude\b|\bgpts?\b)\b/i;
   const items = (Array.isArray(superpowers) ? superpowers : [])
     .map((s) => String(s || '').replace(/\s*\([^)]*\)\s*/g, '').trim())
     .filter((s) => s && !editorRe.test(s) && !/^ai-?native tool integration$/i.test(s))
-    .slice(0, 16);
+    .slice(0, limit);
   if (items.length === 0) return '';
   return `<div class="skill-line"><span class="skill-label">Core Competencies:</span> ${escapeHtml(items.join(', '))}</div>`;
 }
@@ -207,7 +221,9 @@ function normalizeResumeSummaryPlain(rawSummary: string, yearsExp: number): stri
     const parts = t.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
     if (parts.length > 1) lines = parts.slice(0, 4);
   }
-  lines = lines.slice(0, 4).map((line) => (line.length > 200 ? `${line.slice(0, 197)}…` : line));
+  const maxLines = y >= 7 ? 5 : 4;
+  const maxLen = y >= 7 ? 240 : 200;
+  lines = lines.slice(0, maxLines).map((line) => (line.length > maxLen ? `${line.slice(0, maxLen - 1)}…` : line));
   return lines.join('\n');
 }
 
@@ -263,7 +279,10 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   }
   const linksLine = linkParts.join(' · ');
 
-  const skillsLines = renderSkillsLines(profile.narrative?.superpowers);
+  const skillsLines = renderSkillsLines(
+    profile.narrative?.superpowers,
+    yearsExp >= 7 ? 22 : 16
+  );
   const hasSkills = Boolean(skillsLines.trim());
   const hasExperience = experience.length > 0;
   const hasEducation = education.length > 0;
@@ -284,7 +303,7 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     LINKEDIN_DISPLAY: escapeHtml(displayLink(linkedinRaw)),
     PORTFOLIO_LINK: '',
     SUMMARY_TEXT: escapeHtml(normalizeResumeSummaryPlain(masterSummaryText(profile), yearsExp)),
-    EXPERIENCE: hasExperience ? renderExperienceHtml(experience, maxPages) : '',
+    EXPERIENCE: hasExperience ? renderExperienceHtml(experience, maxPages, yearsExp) : '',
     EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
     ACHIEVEMENTS: hasAchievements ? renderAchievementsHtml(profile.narrative?.proof_points) : '',
     ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',
