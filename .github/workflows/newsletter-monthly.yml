@@ -2,8 +2,8 @@ name: Monthly Newsletter
 
 on:
   schedule:
-    # 1st of each month at 09:00 UTC
-    - cron: '0 9 1 * *'
+    # 2nd of each month at 09:00 UTC
+    - cron: '0 9 2 * *'
   workflow_dispatch:
     inputs:
       dry_run:
