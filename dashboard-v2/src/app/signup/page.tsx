@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Briefcase, User, Mail, Key, ArrowRight, Github, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { TurnstileWidget } from '@/components/TurnstileWidget';
+import { WhatsNewPanel } from '@/components/WhatsNewPanel';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || '';
 
 function SignupForm() {
   const router = useRouter();
@@ -20,6 +24,11 @@ function SignupForm() {
     email: '',
     password: '',
   });
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const onTurnstileToken = useCallback((token: string | null) => {
+    setTurnstileToken(token);
+  }, []);
 
   useEffect(() => {
     const ref = (searchParams.get('ref') || '').trim().toUpperCase();
@@ -59,6 +68,12 @@ function SignupForm() {
     setIsLoading(true);
     setError(null);
 
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setError('Please complete the security check.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
@@ -66,6 +81,7 @@ function SignupForm() {
         body: JSON.stringify({
           ...formData,
           ...(referralCode ? { referral_code: referralCode } : {}),
+          ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
         }),
       });
 
@@ -121,6 +137,8 @@ function SignupForm() {
             </p>
           ) : null}
         </div>
+
+        <WhatsNewPanel variant="signup" showCta={false} />
 
         <div className="bg-white border border-[#E5E5E0] rounded-[2.5rem] p-10 shadow-2xl shadow-black/[0.02] relative overflow-hidden">
           <AnimatePresence mode="wait">
@@ -211,6 +229,10 @@ function SignupForm() {
                     <span>{error}</span>
                   </div>
                 )}
+
+                {TURNSTILE_SITE_KEY ? (
+                  <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onToken={onTurnstileToken} />
+                ) : null}
 
                 <button
                   type="submit"

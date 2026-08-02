@@ -6,6 +6,7 @@ import { fillAtsTemplate } from '@/lib/resume/fill-template';
 import { validateResumeDraft } from '@/lib/resume/schema';
 import type { ResumeContext } from '@/lib/resume/types';
 import { readR2Object, uploadToR2 } from '@/lib/r2-client';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { writeFile, unlink, mkdir, readFile, access } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -367,6 +368,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userId = session.user.id;
+    const pdfLimit = await rateLimit(`pdf:${userId}`, { windowMs: 60 * 60_000, max: 15 });
+    if (!pdfLimit.ok) {
+      return rateLimitResponse(pdfLimit, 'PDF export rate limit reached. Try again later.');
+    }
+
     const body = await req.json().catch(() => ({}));
     const resumeContext = (body.resume_context || {}) as ResumeContext;
     const cacheOnly = Boolean(body.cache_only);
@@ -380,7 +387,6 @@ export async function POST(req: Request) {
 
     const html = fillAtsTemplate(resumeContext);
     const hash = contentHash(html);
-    const userId = session.user.id;
     const safeName = String(resumeContext.candidate?.full_name || 'resume')
       .replace(/[^\w\- ]+/g, '')
       .replace(/\s+/g, '_');

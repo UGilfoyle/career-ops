@@ -145,6 +145,132 @@ export function buildMonthlyEmailHtml({
 </body></html>`;
 }
 
+const BADGE_COLORS = {
+  New: { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
+  Flagship: { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
+  Improved: { bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd' },
+  Security: { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
+  Live: { bg: '#1C1C1E', text: '#ffffff', border: '#1C1C1E' },
+  Bonus: { bg: '#F5F5F0', text: '#6B6B6B', border: '#E5E5E0' },
+};
+
+function featureCardHtml(feature) {
+  const colors = BADGE_COLORS[feature.badge] || BADGE_COLORS.New;
+  return `
+    <tr>
+      <td style="padding:0 0 16px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF8;border:1px solid #E5E5E0;border-radius:16px;">
+          <tr>
+            <td style="padding:18px 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:${colors.bg};color:${colors.text};border:1px solid ${colors.border};margin-bottom:8px;">${feature.badge}</span>
+                    <h3 style="margin:6px 0 6px;font-size:15px;font-weight:700;color:#1C1C1E;">${feature.title}</h3>
+                    <p style="margin:0;font-size:13px;line-height:1.55;color:#6B6B6B;">${feature.summary}</p>
+                    <p style="margin:8px 0 0;font-size:12px;line-height:1.5;color:#9CA3AF;">${feature.detail}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
+/** Product announcement email (v3 release, Copilot, Resume Studio, etc.). */
+export function buildProductUpdateEmailHtml({
+  name,
+  release,
+  dashboardUrl,
+  signupUrl,
+  referralUrl,
+  unsubscribeUrl: unsub,
+}) {
+  const first = String(name || '').trim().split(/\s+/)[0] || 'there';
+  const features = Array.isArray(release?.features) ? release.features : [];
+  const version = release?.version || 'v3.0';
+  const tagline = release?.tagline || 'Major platform update';
+  const headline = release?.headline || "What's new in Career-Ops";
+
+  const featureRows = features.map(featureCardHtml).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${headline}</title>
+</head>
+<body style="margin:0;padding:0;background:#FAFAF8;font-family:Inter,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF8;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #E5E5E0;border-radius:28px;overflow:hidden;">
+          <!-- Hero -->
+          <tr>
+            <td style="background:#1C1C1E;padding:40px 32px;text-align:center;">
+              <div style="width:52px;height:52px;background:rgba(255,255,255,0.12);border-radius:14px;margin:0 auto 20px;line-height:52px;font-size:22px;">⚡</div>
+              <p style="margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.55);">${version} · Product Update</p>
+              <h1 style="margin:0 0 10px;font-size:26px;font-weight:700;color:#ffffff;line-height:1.25;">${headline}</h1>
+              <p style="margin:0;font-size:14px;line-height:1.55;color:rgba(255,255,255,0.72);">${tagline}</p>
+            </td>
+          </tr>
+          <!-- Intro -->
+          <tr>
+            <td style="padding:32px 32px 8px;">
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#1C1C1E;">Hey <strong>${first}</strong>,</p>
+              <p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:#6B6B6B;">
+                We shipped a big update to Career-Ops — Career Copilot, Resume Studio, saved tailored docs, mobile polish, and stronger security. Here is everything that landed:
+              </p>
+            </td>
+          </tr>
+          <!-- Features -->
+          <tr>
+            <td style="padding:8px 32px 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                ${featureRows}
+              </table>
+            </td>
+          </tr>
+          <!-- CTA -->
+          <tr>
+            <td style="padding:16px 32px 32px;text-align:center;">
+              <a href="${dashboardUrl}" style="display:inline-block;background:#1C1C1E;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:14px 32px;border-radius:14px;margin:0 6px 10px;">Open Dashboard</a>
+              <a href="${signupUrl}" style="display:inline-block;background:#ffffff;color:#1C1C1E;text-decoration:none;font-weight:700;font-size:14px;padding:13px 28px;border-radius:14px;border:1px solid #E5E5E0;margin:0 6px 10px;">Invite a friend</a>
+            </td>
+          </tr>
+          <!-- Referral -->
+          <tr>
+            <td style="padding:0 32px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF8;border:1px solid #E5E5E0;border-radius:18px;">
+                <tr>
+                  <td style="padding:22px 24px;text-align:center;">
+                    <h2 style="margin:0 0 8px;font-size:15px;font-weight:700;color:#1C1C1E;">Your referral link</h2>
+                    <p style="margin:0 0 12px;font-size:13px;line-height:1.5;color:#6B6B6B;">Share Career-Ops with someone job hunting — they sign up with your code pre-filled.</p>
+                    <a href="${referralUrl}" style="font-size:12px;font-weight:600;color:#1C1C1E;word-break:break-all;">${referralUrl}</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;border-top:1px solid #F5F5F0;text-align:center;">
+              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9CA3AF;">You are receiving this one-time product update because you have a Career-Ops account with email notifications enabled.</p>
+              <p style="margin:0;font-size:11px;color:#9CA3AF;"><a href="${unsub}" style="color:#6B6B6B;text-decoration:underline;">Unsubscribe from emails</a></p>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:20px 0 0;font-size:10px;color:#9CA3AF;letter-spacing:0.05em;">Career-Ops · careerops.dpdns.org</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 /** Send via Brevo REST (no SDK required in Actions). */
 export async function sendViaBrevo({ to, subject, htmlContent }) {
   const apiKey = process.env.BREVO_API_KEY || '';

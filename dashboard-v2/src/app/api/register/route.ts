@@ -4,7 +4,8 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { generateVerificationToken } from '@/lib/tokens';
 import { sendVerificationEmail } from '@/lib/mail';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { verifyTurnstile } from '@/lib/turnstile';
 import {
   ensureNewsletterSchema,
   ensureUserReferralCode,
@@ -17,12 +18,13 @@ const RegistrationSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   referral_code: z.string().trim().max(32).optional(),
+  turnstile_token: z.string().optional(),
 });
 
 export async function POST(req: Request) {
   try {
-    const clientIp = req.headers.get('x-forwarded-for') || 'unknown';
-    const rl = rateLimit(`register:${clientIp}`, { windowMs: 60_000, max: 8 });
+    const clientIp = getClientIp(req);
+    const rl = await rateLimit(`register:ip:${clientIp}`, { windowMs: 60_000, max: 8 });
     if (!rl.ok) {
       return NextResponse.json({ error: `Too many attempts. Try again in ${rl.retryAfterSec}s.` }, { status: 429 });
     }
@@ -42,7 +44,18 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const { name, email, password, referral_code: rawRef } = validation.data;
+    const { name, email, password, referral_code: rawRef, turnstile_token } = validation.data;
+
+    const captchaOk = await verifyTurnstile(turnstile_token, clientIp);
+    if (!captchaOk) {
+      return NextResponse.json({ error: 'Security check failed. Please complete the captcha.' }, { status: 400 });
+    }
+
+    const emailRl = await rateLimit(`register:email:${email.trim().toLowerCase()}`, { windowMs: 60 * 60_000, max: 3 });
+    if (!emailRl.ok) {
+      return NextResponse.json({ error: `Too many signup attempts for this email. Try again in ${emailRl.retryAfterSec}s.` }, { status: 429 });
+    }
+
     const referredBy = String(rawRef || '').trim().toUpperCase() || null;
 
     // 2. Lead Engineer Schema Guard: Ensure tables exist

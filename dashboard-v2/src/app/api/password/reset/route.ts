@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import bcrypt from 'bcryptjs';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
   try {
-    const clientIp = req.headers.get('x-forwarded-for') || 'unknown';
-    const rl = rateLimit(`reset-password:${clientIp}`, { windowMs: 60_000, max: 8 });
+    const clientIp = getClientIp(req);
+    const rl = await rateLimit(`reset-password:ip:${clientIp}`, { windowMs: 60_000, max: 8 });
     if (!rl.ok) {
       return NextResponse.json({ error: `Too many attempts. Try again in ${rl.retryAfterSec}s.` }, { status: 429 });
     }

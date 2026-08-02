@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, Suspense } from 'react';
+import { useEffect, useRef, useState, Suspense, useCallback } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Briefcase, Key, Mail, ArrowRight, Github, Loader2, AlertCircle, CheckCircle2, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { TurnstileWidget } from '@/components/TurnstileWidget';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || '';
 
 function LoginContent() {
   const router = useRouter();
@@ -18,7 +21,12 @@ function LoginContent() {
   const githubCallbackUrl = '/';
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const autoGithubStarted = useRef(false);
+
+  const onTurnstileToken = useCallback((token: string | null) => {
+    setTurnstileToken(token);
+  }, []);
 
   const oauthErrorMessage =
     authError === 'github-email-missing'
@@ -42,10 +50,17 @@ function LoginContent() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setError('Please complete the security check.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const result = await signIn('credentials', {
         email,
         password,
+        turnstileToken: turnstileToken || '',
         redirect: false,
         callbackUrl,
       });
@@ -55,7 +70,7 @@ function LoginContent() {
            router.push(`/verify?email=${encodeURIComponent(email)}`);
            return;
         }
-        setError("Invalid credentials or access denied.");
+        setError(result.error === 'CredentialsSignin' ? 'Invalid credentials or access denied.' : result.error);
       } else {
         router.push(callbackUrl);
         router.refresh();
@@ -157,6 +172,10 @@ function LoginContent() {
                 {error}
               </motion.div>
             )}
+
+            {TURNSTILE_SITE_KEY ? (
+              <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onToken={onTurnstileToken} />
+            ) : null}
 
             <button 
               type="submit"

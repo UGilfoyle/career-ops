@@ -1,0 +1,67 @@
+{
+  "id": "v3-aug-2026",
+  "version": "v3.0",
+  "title": "August 2026 Release",
+  "tagline": "Copilot, Resume Studio, security hardening & mobile polish",
+  "headline": "What's new in Career-Ops",
+  "subheadline": "Your AI career command center just got a major upgrade.",
+  "storageKey": "career_ops_seen_release_v3",
+  "features": [
+    {
+      "id": "copilot",
+      "badge": "New",
+      "title": "Career Copilot",
+      "summary": "Chat with an AI that knows your profile, targeting keywords, and resume context.",
+      "detail": "Draft LinkedIn outreach, prep interview answers, spot skill gaps, and get role-specific advice — powered by Mistral AI with OpenRouter fallback."
+    },
+    {
+      "id": "resume-studio",
+      "badge": "Flagship",
+      "title": "Resume Studio",
+      "summary": "Live ATS preview, JD match scoring, and one-click tailored PDFs.",
+      "detail": "Edit your master resume with real-time preview, match against job descriptions, save tailored versions per role, and export polished PDFs cached in the cloud."
+    },
+    {
+      "id": "saved-docs",
+      "badge": "New",
+      "title": "Saved tailored resumes",
+      "summary": "Re-open generated docs without re-running the AI pipeline.",
+      "detail": "Your tailored resumes and PDFs are stored securely — load them instantly from Generated Docs or Resume Studio."
+    },
+    {
+      "id": "mobile",
+      "badge": "Improved",
+      "title": "Mobile-ready dashboard",
+      "summary": "Works smoothly on iPhone and Android.",
+      "detail": "Hamburger nav, safe-area layouts, touch-friendly inputs, and auto-scaling resume preview on smaller screens."
+    },
+    {
+      "id": "security",
+      "badge": "Security",
+      "title": "Hardened auth & rate limits",
+      "summary": "Login lockout, OTP protection, and API quotas.",
+      "detail": "Brute-force protection on login, per-email OTP limits, Copilot/PDF/terminal rate limits, and optional Cloudflare Turnstile on signup."
+    },
+    {
+      "id": "admin",
+      "badge": "New",
+      "title": "Admin registry",
+      "summary": "User analytics and visitor insights for platform admins.",
+      "detail": "See verified users, job counts, newsletter opt-ins, and traffic stats from one admin panel."
+    },
+    {
+      "id": "domain",
+      "badge": "Live",
+      "title": "careerops.dpdns.org",
+      "summary": "Custom domain with verified email delivery.",
+      "detail": "Production runs on your branded domain with Brevo-authenticated sender for OTP and newsletters."
+    },
+    {
+      "id": "referral",
+      "badge": "Bonus",
+      "title": "Referral links",
+      "summary": "Invite friends — they land on signup with your code pre-filled.",
+      "detail": "Every user gets a unique referral code. Share it from Settings or your monthly email."
+    }
+  ]
+}

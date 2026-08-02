@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = Number.parseInt(String(session.user.id), 10);
+
+    const hourlyLimit = await rateLimit(`chat:hour:${userId}`, { windowMs: 60 * 60_000, max: 40 });
+    if (!hourlyLimit.ok) {
+      return rateLimitResponse(hourlyLimit, 'Copilot rate limit reached. Try again later.');
+    }
+
+    const dailyLimit = await rateLimit(`chat:day:${userId}`, { windowMs: 24 * 60 * 60_000, max: 120 });
+    if (!dailyLimit.ok) {
+      return rateLimitResponse(dailyLimit, 'Daily Copilot quota reached. Try again tomorrow.');
+    }
 
     // 2. Parse request payload
     const { messages } = await req.json();

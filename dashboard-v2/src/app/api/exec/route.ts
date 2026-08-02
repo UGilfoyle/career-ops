@@ -5,6 +5,7 @@ import fs from 'fs';
 import yaml from 'js-yaml';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,17 @@ export async function GET(req: NextRequest) {
           return;
         }
         const userId = String(session.user.id || '1');
+
+        const execLimit = await rateLimit(`exec:${userId}`, { windowMs: 60 * 60_000, max: 30 });
+        if (!execLimit.ok) {
+          send({
+            type: 'stderr',
+            content: `Rate limit: max 30 terminal commands per hour. Retry in ${execLimit.retryAfterSec}s.\n`,
+          });
+          send({ type: 'done', code: 429 });
+          controller.close();
+          return;
+        }
 
         // 1. Simple Command Parsing
         const [cmd, ...args] = q.trim().split(/\s+/);
@@ -582,6 +594,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
+
+    const execLimit = await rateLimit(`exec:${userId}`, { windowMs: 60 * 60_000, max: 30 });
+    if (!execLimit.ok) {
+      return NextResponse.json(
+        { error: `Rate limit: max 30 terminal commands per hour. Retry in ${execLimit.retryAfterSec}s.` },
+        { status: 429, headers: { 'Retry-After': String(execLimit.retryAfterSec) } }
+      );
+    }
+
     const body = await req.json();
     const q = body.cmd?.trim() || '';
     if (!q) {

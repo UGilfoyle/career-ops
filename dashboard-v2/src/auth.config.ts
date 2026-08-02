@@ -2,6 +2,13 @@ import GitHub from "next-auth/providers/github"
 import Credentials from "next-auth/providers/credentials"
 import type { NextAuthConfig } from "next-auth"
 import { adminPassword, isAdminEmail } from "@/lib/admin"
+import {
+  checkLoginAttemptLimits,
+  clearLoginFailures,
+  getClientIpFromHeaders,
+  recordLoginFailure,
+} from "@/lib/rate-limit"
+import { verifyTurnstile } from "@/lib/turnstile"
 
 export const authConfig = {
   providers: [
@@ -13,55 +20,80 @@ export const authConfig = {
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        turnstileToken: { label: "Turnstile", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        // Note: For Edge compatibility, we use a separate fetch or 
-        // a subset of DB logic if required. For now, this is Node-compatible.
+        const email = String(credentials.email);
+        const ip = await getClientIpFromHeaders();
+
+        const captchaOk = await verifyTurnstile(
+          credentials.turnstileToken as string | undefined,
+          ip
+        );
+        if (!captchaOk) {
+          throw new Error("Security check failed. Please complete the captcha and try again.");
+        }
+
+        const limits = await checkLoginAttemptLimits(email, ip);
+        if (!limits.ok) {
+          throw new Error(
+            `Too many login attempts. Try again in ${Math.ceil(limits.retryAfterSec / 60)} minutes.`
+          );
+        }
+
         const pg = require("pg");
-        const pool = new pg.Pool({ 
+        const pool = new pg.Pool({
           connectionString: process.env.DATABASE_URL,
-          ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+          ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
         });
         const bcrypt = require("bcryptjs");
 
         try {
-          const res = await pool.query('SELECT * FROM users WHERE email = $1 LIMIT 1', [credentials.email]);
+          const res = await pool.query("SELECT * FROM users WHERE email = $1 LIMIT 1", [email]);
           const user = res.rows[0];
 
           if (user && user.password) {
-            if (!user.email_verified && !isAdminEmail(credentials.email as string)) {
+            if (!user.email_verified && !isAdminEmail(email)) {
               throw new Error("Please verify your email before logging in.");
             }
             const isMatch = await bcrypt.compare(credentials.password as string, user.password);
             if (isMatch) {
+              await clearLoginFailures(email);
               return { id: user.id.toString(), name: user.name, email: user.email };
             }
           }
 
-          // Dedicated admin credentials (admin@career-ops.local or any ADMIN_EMAILS entry)
-          if (isAdminEmail(credentials.email as string)) {
+          if (isAdminEmail(email)) {
             const pass = adminPassword();
             if (pass && credentials.password === pass) {
+              await clearLoginFailures(email);
               return {
                 id: user?.id?.toString() || "admin",
                 name: user?.name || "Admin",
-                email: credentials.email as string,
+                email,
               };
             }
           }
 
+          await recordLoginFailure(email);
           return null;
         } catch (error) {
+          if (error instanceof Error && error.message.includes("verify your email")) {
+            throw error;
+          }
+          if (error instanceof Error && (error.message.includes("Too many") || error.message.includes("Security check"))) {
+            throw error;
+          }
           console.error("Auth Error:", error);
           return null;
         } finally {
           await pool.end();
         }
-      }
-    })
+      },
+    }),
   ],
   callbacks: {
     async session({ session, token }) {
@@ -81,7 +113,7 @@ export const authConfig = {
         token.isAdmin = isAdminEmail(String(token.email));
       }
       return token;
-    }
+    },
   },
   session: { strategy: "jwt" },
   pages: {

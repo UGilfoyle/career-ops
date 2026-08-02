@@ -1,0 +1,54 @@
+name: Product Update Newsletter
+
+# One-off v3 (and future) release emails — manual trigger only.
+# Monthly digest uses newsletter-monthly.yml instead.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (log only, no Brevo sends)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      force:
+        description: 'Re-send even if already sent (testing only)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  product-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --production
+
+      - name: Send product update newsletter
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
+          BREVO_SENDER_NAME: ${{ secrets.BREVO_SENDER_NAME }}
+          APP_URL: ${{ secrets.APP_URL }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          NEWSLETTER_UNSUB_SECRET: ${{ secrets.NEWSLETTER_UNSUB_SECRET }}
+          NEWSLETTER_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
+          NEWSLETTER_FORCE: ${{ github.event.inputs.force == 'true' && '1' || '' }}
+        run: node newsletter-product-update.mjs
