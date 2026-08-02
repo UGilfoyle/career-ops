@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { headers } from 'next/headers';
 import crypto from 'crypto';
+import { isAdminEmail } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +75,7 @@ export async function GET() {
     // Import auth dynamically to avoid circular deps
     const { auth } = await import('@/auth');
     const session = await auth();
-    const isAdmin = session?.user?.email === "admin@career-ops.local";
+    const isAdmin = isAdminEmail(session?.user?.email);
 
     await ensureTable();
 

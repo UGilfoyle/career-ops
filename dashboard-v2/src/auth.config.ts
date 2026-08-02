@@ -1,6 +1,7 @@
 import GitHub from "next-auth/providers/github"
 import Credentials from "next-auth/providers/credentials"
 import type { NextAuthConfig } from "next-auth"
+import { adminPassword, isAdminEmail } from "@/lib/admin"
 
 export const authConfig = {
   providers: [
@@ -31,18 +32,25 @@ export const authConfig = {
           const user = res.rows[0];
 
           if (user && user.password) {
-            if (!user.email_verified && credentials.email !== "admin@career-ops.local") {
+            if (!user.email_verified && !isAdminEmail(credentials.email as string)) {
               throw new Error("Please verify your email before logging in.");
             }
-            const isMatch = await bcrypt.compare(credentials.password, user.password);
+            const isMatch = await bcrypt.compare(credentials.password as string, user.password);
             if (isMatch) {
               return { id: user.id.toString(), name: user.name, email: user.email };
             }
           }
-          
-          // Legacy Admin Fallback (Optional)
-          if (credentials.email === "admin@career-ops.local" && credentials.password === "career2026") {
-            return { id: "1", name: "Admin", email: "admin@career-ops.local" };
+
+          // Dedicated admin credentials (admin@career-ops.local or any ADMIN_EMAILS entry)
+          if (isAdminEmail(credentials.email as string)) {
+            const pass = adminPassword();
+            if (pass && credentials.password === pass) {
+              return {
+                id: user?.id?.toString() || "admin",
+                name: user?.name || "Admin",
+                email: credentials.email as string,
+              };
+            }
           }
 
           return null;
@@ -60,11 +68,17 @@ export const authConfig = {
       if (token?.sub) {
         session.user.id = token.sub;
       }
+      if (session.user?.email) {
+        session.user.isAdmin = Boolean(token.isAdmin) || isAdminEmail(session.user.email);
+      }
       return session;
     },
     async jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
+        token.isAdmin = isAdminEmail(user.email);
+      } else if (token.email) {
+        token.isAdmin = isAdminEmail(String(token.email));
       }
       return token;
     }

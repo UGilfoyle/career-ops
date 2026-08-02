@@ -50,6 +50,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHeader';
 import ResumeStudio from './resume-studio/ResumeStudio';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
+import AdminUsersPanel from './AdminUsersPanel';
 import { GccCampaignPanel, defaultGccCampaign, type GccCampaign } from './GccCampaignPanel';
 import {
   STALE_POSTING_DAYS,
@@ -85,7 +86,10 @@ function statusChipClass(status?: string | null) {
 
 export default function Dashboard({ initialData }: { initialData?: any }) {
   const { data: session, status } = useSession();
-  const isAdmin = session?.user?.email === 'admin@career-ops.local';
+  const isAdmin = Boolean(
+    (session?.user as { isAdmin?: boolean } | undefined)?.isAdmin
+    || session?.user?.email === 'admin@career-ops.local'
+  );
   const [data, setData] = useState<any>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -138,6 +142,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
   // Visitor analytics state
   const [visitorStats, setVisitorStats] = useState<any>(null);
+  const [adminOverview, setAdminOverview] = useState<any>(null);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
 
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -289,6 +296,28 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const showBetaBanner =
     (process.env.NEXT_PUBLIC_BETA_MODE === '1' || process.env.NEXT_PUBLIC_BETA_MODE === 'true') &&
     !betaBannerDismissed;
+
+  const loadAdminData = async () => {
+    setAdminLoading(true);
+    setAdminError(null);
+    try {
+      const [usersRes, viewsRes] = await Promise.all([
+        fetch('/api/admin/overview'),
+        fetch('/api/view'),
+      ]);
+      const usersJson = await usersRes.json().catch(() => ({}));
+      const viewsJson = await viewsRes.json().catch(() => ({}));
+      if (!usersRes.ok) {
+        throw new Error(usersJson?.error || 'Failed to load user registry');
+      }
+      setAdminOverview(usersJson);
+      setVisitorStats(viewsJson);
+    } catch (e: unknown) {
+      setAdminError(e instanceof Error ? e.message : 'Admin load failed');
+    } finally {
+      setAdminLoading(false);
+    }
+  };
 
   const openInStudio = (job: {
     jobId: number;
@@ -1571,7 +1600,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
             )}
             {isAdmin && (
-              <NavItem id="nav-analytics" icon={<Eye size={18}/>} label="Analytics" active={activeTab === 'analytics'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('analytics'); if (!visitorStats) { fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {}); } }} />
+              <NavItem id="nav-analytics" icon={<Shield size={18}/>} label="Admin" active={activeTab === 'analytics'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('analytics'); if (!adminOverview) { void loadAdminData(); } }} />
             )}
             <NavItem id="nav-docs" icon={<BookOpen size={18}/>} label="Tutorial & Docs" active={activeTab === 'docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('docs')} />
           </nav>
@@ -2644,8 +2673,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             </motion.div>
           )}
 
-          {activeTab === 'analytics' && (
-            <motion.div key="analytics" className="space-y-8">
+          {activeTab === 'analytics' && isAdmin && (
+            <motion.div key="analytics" className="space-y-12">
+              <AdminUsersPanel
+                data={adminOverview}
+                loading={adminLoading}
+                error={adminError}
+                onRefresh={() => { void loadAdminData(); }}
+              />
+
+              <div className="border-t border-[#E5E5E0] pt-10 space-y-8">
               <div>
                 <h2 className="text-2xl font-bold mb-2 text-[#1C1C1E]">Visitor Analytics</h2>
                 <p className="text-[#9CA3AF] font-medium">Track unique visitors to your Career-Ops dashboard</p>
@@ -2732,12 +2769,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 )}
               </div>
 
-              {!visitorStats && (
+              {!visitorStats && !adminLoading && (
                 <div className="text-center py-20 text-[#9CA3AF]">
                   <Eye size={48} className="mx-auto mb-4 opacity-30" />
                   <p className="font-bold">Loading analytics...</p>
                 </div>
               )}
+              </div>
             </motion.div>
           )}
 
