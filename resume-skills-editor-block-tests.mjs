@@ -21,8 +21,10 @@ assert(!/\bGPTs?\b/i.test(html), 'HTML must not contain GPTs');
 assert(!/\bChatGPT\b/i.test(html), 'HTML must not contain ChatGPT');
 assert(!/\bCopilot\b/i.test(html), 'HTML must not contain Copilot');
 assert(!/AI-native tool integration/i.test(html), 'HTML must not contain AI-native tool integration filler');
-assert(/Technical Skills:/i.test(html), 'keeps Technical Skills row');
-assert(/ECS/i.test(html) || /Lambda/i.test(html) || /Node\.js/i.test(html), 'keeps real tech stacks');
+assert(/skills-list/i.test(html), 'renders skills as bullet list');
+assert(/<li>[^<]*Node\.js/i.test(html) || /<li>Node\.js<\/li>/i.test(html), 'keeps real tech stacks as bullets');
+assert(!/Core Competencies/i.test(html), 'no Core Competencies label');
+assert(!/Technical Skills:/i.test(html), 'no nested Technical Skills label under section');
 assert(!/Technical Skills:[^<]*Cursor/i.test(html), 'Technical Skills must not list Cursor');
 
 console.log('resume-skills-editor-block-tests: ok');

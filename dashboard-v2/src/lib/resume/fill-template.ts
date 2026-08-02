@@ -204,7 +204,10 @@ export function renderSkillsLines(superpowers: string[] | undefined, limit = 16)
     .filter((s) => s && !editorRe.test(s) && !/^ai-?native tool integration$/i.test(s))
     .slice(0, limit);
   if (items.length === 0) return '';
-  return `<div class="skill-line"><span class="skill-label">Core Competencies:</span> ${escapeHtml(items.join(', '))}</div>`;
+  // Section heading is already "Technical Skills" — list skills as bullets, no "Core Competencies" label.
+  return `<ul class="skills-list">${items
+    .map((s) => `<li>${escapeHtml(s)}</li>`)
+    .join('')}</ul>`;
 }
 
 function normalizeResumeSummaryPlain(rawSummary: string, yearsExp: number): string {

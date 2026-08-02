@@ -1,5 +1,5 @@
 /**
- * resume-skills-html.mjs — Core Competencies / Technical Skills HTML.
+ * resume-skills-html.mjs — Technical Skills HTML as bullet list.
  * IDE assistants (Cursor, Claude Code, ChatGPT, Copilot) are NEVER skills.
  */
 
@@ -29,8 +29,25 @@ export function isTechStackSkill(text) {
   return TECH_PATTERNS.some((p) => p.test(t));
 }
 
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function skillsBulletList(items) {
+  const unique = [...new Set(items.map((x) => String(x || '').trim()).filter(Boolean))];
+  if (!unique.length) return '';
+  return `<ul class="skills-list">${unique
+    .map((s) => `<li>${escapeHtml(s)}</li>`)
+    .join('')}</ul>`;
+}
+
 /**
- * Split profile superpowers + tailored competencies into Core / Technical Skills HTML.
+ * Build Technical Skills as a bullet list (no "Core Competencies:" label —
+ * the section heading already says Technical Skills).
  * Never unpacks IDE assistants from parentheticals like "(Cursor, Claude Code, GPTs)".
  */
 export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
@@ -38,21 +55,20 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
   const competencies = Array.isArray(tailoredCompetencies) ? tailoredCompetencies : [];
   if (superpowers.length === 0 && competencies.length === 0) return '';
 
-  const coreComp = [];
   const techSkills = [];
+  const otherSkills = [];
 
   for (const item of competencies) {
     const s = String(item || '').trim();
     if (!s || isEditorIdeTool(s) || isJunkKeyword(s)) continue;
     if (isTechStackSkill(s)) techSkills.push(s);
-    else if (isWeavableKeyword(s) || s.split(/\s+/).length >= 2) coreComp.push(s);
+    else if (isWeavableKeyword(s) || s.split(/\s+/).length >= 2) otherSkills.push(s);
   }
 
-  const existingLower = new Set([...coreComp, ...techSkills].map((x) => x.toLowerCase()));
+  const existingLower = new Set([...techSkills, ...otherSkills].map((x) => x.toLowerCase()));
   for (const sp of superpowers) {
     const s = String(sp || '').trim();
     if (!s || existingLower.has(s.toLowerCase())) continue;
-    // Block entire superpower that names IDE assistants — do not unpack parentheses
     if (isEditorIdeTool(s)) continue;
     const parenMatch = s.match(/\(([^)]+)\)/);
     if (parenMatch) {
@@ -71,33 +87,26 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
       && !existingLower.has(cleanedSp.toLowerCase())
       && !/^ai-?native tool integration$/i.test(cleanedSp)
     ) {
-      coreComp.push(cleanedSp);
+      if (isTechStackSkill(cleanedSp)) techSkills.push(cleanedSp);
+      else otherSkills.push(cleanedSp);
       existingLower.add(cleanedSp.toLowerCase());
     }
   }
 
-  const uniqueCore = [...new Set(coreComp)]
-    .filter((x) => !isEditorIdeTool(x) && !isJunkKeyword(x))
-    .slice(0, 12);
   const uniqueTech = [...new Set(techSkills)]
     .filter((x) => !isEditorIdeTool(x) && isTechStackSkill(x))
     .slice(0, 16);
+  const uniqueOther = [...new Set(otherSkills)]
+    .filter((x) => !isEditorIdeTool(x) && !isJunkKeyword(x))
+    .slice(0, 12);
 
-  let html = '';
-  if (uniqueCore.length > 0) {
-    html += `<div class="skill-line"><span class="skill-label">Core Competencies:</span> ${uniqueCore.join(', ')}</div>`;
-  }
-  if (uniqueTech.length > 0) {
-    html += `<div class="skill-line"><span class="skill-label">Technical Skills:</span> ${uniqueTech.join(', ')}</div>`;
-  }
-  if (!html) {
-    const allItems = [...competencies, ...superpowers]
-      .map((x) => String(x || '').replace(/\s*\([^)]*\)\s*/g, '').trim())
-      .filter((x) => x && !isEditorIdeTool(x) && !isJunkKeyword(x) && !/^ai-?native tool integration$/i.test(x))
-      .slice(0, 12);
-    if (allItems.length) {
-      html = `<div class="skill-line"><span class="skill-label">Skills:</span> ${allItems.join(', ')}</div>`;
-    }
-  }
-  return html;
+  // Tech stack first, then other skills — all as bullets under Technical Skills.
+  const combined = [...uniqueTech, ...uniqueOther];
+  if (combined.length) return skillsBulletList(combined);
+
+  const fallback = [...competencies, ...superpowers]
+    .map((x) => String(x || '').replace(/\s*\([^)]*\)\s*/g, '').trim())
+    .filter((x) => x && !isEditorIdeTool(x) && !isJunkKeyword(x) && !/^ai-?native tool integration$/i.test(x))
+    .slice(0, 16);
+  return skillsBulletList(fallback);
 }

@@ -62,7 +62,9 @@ function run() {
   assert.ok(expHtml.includes('job-company'), 'experience markup');
 
   const skills = renderSkillsLines(sample.narrative?.superpowers);
-  assert.ok(skills.includes('Core Competencies'), 'skills label');
+  assert.ok(skills.includes('<ul class="skills-list">'), 'skills as bullet list');
+  assert.ok(skills.includes('<li>TypeScript</li>'), 'skill as list item');
+  assert.ok(!skills.includes('Core Competencies'), 'no Core Competencies label');
 
   assert.equal(calculateYearsOfExperience(sample.experience) >= 1, true);
   assert.ok(masterSummaryText(sample).includes('Senior engineer'));

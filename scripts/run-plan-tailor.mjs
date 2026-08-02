@@ -130,20 +130,17 @@ function renderSkillsLines(profileSuperpowers, tailoredCompetencies) {
   const uniqueCore = [...new Set(coreComp)].slice(0, 12);
   const uniqueTech = [...new Set(techSkills)].slice(0, 16);
 
-  let html = '';
-  if (uniqueCore.length) {
-    html += `<div class="skill-line"><span class="skill-label">Core Competencies:</span> ${escapeHtml(uniqueCore.join(', '))}</div>`;
+  const combined = [...uniqueTech, ...uniqueCore];
+  if (combined.length) {
+    return `<ul class="skills-list">${combined
+      .map((s) => `<li>${escapeHtml(s)}</li>`)
+      .join('')}</ul>`;
   }
-  if (uniqueTech.length) {
-    html += `<div class="skill-line"><span class="skill-label">Technical Skills:</span> ${escapeHtml(uniqueTech.join(', '))}</div>`;
-  }
-  if (!html) {
-    const allItems = competencies.filter((s) => isWeaveableNounPhrase(s)).slice(0, 12);
-    if (allItems.length) {
-      html = `<div class="skill-line"><span class="skill-label">Skills:</span> ${escapeHtml(allItems.join(', '))}</div>`;
-    }
-  }
-  return html;
+  const allItems = competencies.filter((s) => isWeaveableNounPhrase(s)).slice(0, 12);
+  if (!allItems.length) return '';
+  return `<ul class="skills-list">${allItems
+    .map((s) => `<li>${escapeHtml(s)}</li>`)
+    .join('')}</ul>`;
 }
 
 const jdPath = arg('--jd');
