@@ -4,17 +4,18 @@ const brevo = new BrevoClient({
     apiKey: process.env.BREVO_API_KEY || ''
 });
 
+/** Prefer env; fallback to Brevo-verified sender so OTP never silently dies. */
+const DEFAULT_SENDER_EMAIL = 'akash.k96.official@gmail.com';
+
 const getSender = () => ({
   name: (process.env.BREVO_SENDER_NAME || 'Career-Ops').trim(),
-  email: (process.env.BREVO_SENDER_EMAIL || '').trim(),
+  email: (process.env.BREVO_SENDER_EMAIL || DEFAULT_SENDER_EMAIL).trim(),
 });
 
 function assertSenderConfigured(context: string): { name: string; email: string } | null {
   const sender = getSender();
   if (sender.email) return sender;
-  console.warn(
-    `⚠️ BREVO_SENDER_EMAIL missing (${context}). Verify a sender in Brevo (Senders), then set BREVO_SENDER_EMAIL on Vercel + GitHub Actions.`
-  );
+  console.warn(`⚠️ No sender email for ${context}`);
   return null;
 }
 
