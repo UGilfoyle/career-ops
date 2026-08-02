@@ -26,6 +26,8 @@
     "verify:portals": "node verify-portals.mjs",
     "tracker": "node tracker.mjs",
     "patterns": "node analyze-patterns.mjs",
+    "newsletter": "node newsletter-monthly.mjs",
+    "newsletter:dry": "NEWSLETTER_DRY_RUN=1 node newsletter-monthly.mjs",
     "gemini:eval": "node gemini-eval.mjs",
     "simulate:align": "node simulate-jd-align.mjs",
     "postinstall": "node -e \"if (process.env.VERCEL) process.exit(0)\" && (npx playwright install chromium --with-deps || npx playwright install chromium --with-deps)"

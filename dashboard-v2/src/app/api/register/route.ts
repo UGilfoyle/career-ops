@@ -5,12 +5,18 @@ import { z } from 'zod';
 import { generateVerificationToken } from '@/lib/tokens';
 import { sendVerificationEmail } from '@/lib/mail';
 import { rateLimit } from '@/lib/rate-limit';
+import {
+  ensureNewsletterSchema,
+  ensureUserReferralCode,
+  generateReferralCode,
+} from '@/lib/newsletter';
 
 // Lead Engineer Note: Enforcing a strict schema for the registration payload
 const RegistrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters")
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  referral_code: z.string().trim().max(32).optional(),
 });
 
 export async function POST(req: Request) {
@@ -36,7 +42,8 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const { name, email, password } = validation.data;
+    const { name, email, password, referral_code: rawRef } = validation.data;
+    const referredBy = String(rawRef || '').trim().toUpperCase() || null;
 
     // 2. Lead Engineer Schema Guard: Ensure tables exist
     // This prevents 500 errors if the DB is fresh
@@ -50,6 +57,7 @@ export async function POST(req: Request) {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         )
       `;
+      await ensureNewsletterSchema(sql);
     } catch (schemaError) {
        console.error('Schema Sync Warning:', schemaError);
        // We continue as the table might already exist but we lack permissions to 'CREATE'
@@ -61,15 +69,65 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User with this identity record already exists.' }, { status: 400 });
     }
 
+    // Validate referrer code if present (ignore invalid codes — don't block signup)
+    let validReferredBy: string | null = null;
+    if (referredBy) {
+      const [refUser] = await sql`
+        SELECT id FROM users WHERE UPPER(referral_code) = ${referredBy} LIMIT 1
+      `;
+      if (refUser) validReferredBy = referredBy;
+    }
+
     // 4. Hash password with lead engineer grade security
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // 5. Create User in DB (Unverified)
-    const [user] = await sql`
-      INSERT INTO users (name, email, password)
-      VALUES (${name}, ${email}, ${hashedPassword})
-      RETURNING id, name, email
-    `;
+    // 5. Create User in DB (Unverified) with referral fields
+    let user: { id: number | string; name: string; email: string } | undefined;
+    let ownCode = generateReferralCode();
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        const rows = await sql`
+          INSERT INTO users (name, email, password, newsletter_opt_in, referral_code, referred_by)
+          VALUES (${name}, ${email}, ${hashedPassword}, true, ${ownCode}, ${validReferredBy})
+          RETURNING id, name, email
+        `;
+        user = rows[0] as typeof user;
+        break;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (/referral_code|unique/i.test(msg) && attempt < 5) {
+          ownCode = generateReferralCode();
+          continue;
+        }
+        // Columns may not exist yet on very old DBs — fall back
+        if (/newsletter_opt_in|referral_code|referred_by|column/i.test(msg)) {
+          const rows = await sql`
+            INSERT INTO users (name, email, password)
+            VALUES (${name}, ${email}, ${hashedPassword})
+            RETURNING id, name, email
+          `;
+          user = rows[0] as typeof user;
+          break;
+        }
+        throw e;
+      }
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: 'Could not create user account.' }, { status: 500 });
+    }
+
+    try {
+      await ensureUserReferralCode(sql, user.id);
+      if (validReferredBy) {
+        await sql`
+          UPDATE users SET referred_by = COALESCE(referred_by, ${validReferredBy})
+          WHERE id = ${user.id}
+        `;
+      }
+    } catch (refErr) {
+      console.warn('Referral code post-create warning:', refErr);
+    }
 
     // 6. Initialize User Profile for Onboarding
     await sql`

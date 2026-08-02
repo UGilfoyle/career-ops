@@ -41,7 +41,8 @@ import {
   Files,
   Filter,
   ArrowUpDown,
-  Target
+  Target,
+  Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -108,7 +109,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [walkthroughStep, setWalkthroughStep] = useState<number | null>(null);
   const [spotlightRect, setSpotlightRect] = useState<{ top: number, left: number, width: number, height: number } | null>(null);
-  const [accountInfo, setAccountInfo] = useState({ email: '', password: '', confirmPassword: '' });
+  const [accountInfo, setAccountInfo] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    newsletter_opt_in: true,
+    referral_code: '',
+    referral_url: '',
+  });
   const [tagInputPositive, setTagInputPositive] = useState('');
   const [tagInputNegative, setTagInputNegative] = useState('');
   const [tagInputPortals, setTagInputPortals] = useState('');
@@ -882,7 +890,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             studio: d.resume_context?.studio || { template_id: 'ats-professional' },
           });
           setGccCampaign(d.resume_context?.gcc_campaign || defaultGccCampaign());
-          setAccountInfo(prev => ({ ...prev, email: d.email || '' }));
+          setAccountInfo(prev => ({
+            ...prev,
+            email: d.email || '',
+            newsletter_opt_in: d.newsletter_opt_in !== false,
+            referral_code: d.referral_code || '',
+            referral_url: d.referral_url || '',
+          }));
         });
     }
   }, [activeTab]);
@@ -944,7 +958,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           },
           targeting_keywords: profileFormData.targeting_keywords,
           email: accountInfo.email,
-          password: accountInfo.password || undefined
+          password: accountInfo.password || undefined,
+          newsletter_opt_in: accountInfo.newsletter_opt_in,
         })
       });
       if (res.ok) {
@@ -1185,6 +1200,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           targeting_keywords: profileFormData.targeting_keywords,
           email: accountInfo.email,
           password: accountInfo.password || undefined,
+          newsletter_opt_in: accountInfo.newsletter_opt_in,
         }),
       });
       if (res.ok) {
@@ -3011,6 +3027,52 @@ System Initialized — v2.0`}
                      <div className="hidden md:block" />
                      <Input label="New Password" type="password" placeholder="Leave empty to keep current" value={accountInfo.password} onChange={(v) => setAccountInfo({...accountInfo, password: v})} />
                      <Input label="Confirm New Password" type="password" value={accountInfo.confirmPassword} onChange={(v) => setAccountInfo({...accountInfo, confirmPassword: v})} />
+                   </div>
+                 </ConfigSection>
+
+                 <ConfigSection title="Monthly Email & Referrals" icon={<Mail size={18} className="text-[#1C1C1E]" />}>
+                   <div className="space-y-4">
+                     <label className="flex items-start gap-3 cursor-pointer select-none">
+                       <input
+                         type="checkbox"
+                         checked={accountInfo.newsletter_opt_in}
+                         onChange={(e) => setAccountInfo({ ...accountInfo, newsletter_opt_in: e.target.checked })}
+                         className="mt-1 h-4 w-4 rounded border-[#E5E5E0]"
+                       />
+                       <span>
+                         <span className="block text-sm font-bold text-[#1C1C1E]">Monthly Career-Ops email</span>
+                         <span className="block text-xs text-[#6B6B6B] mt-1 leading-relaxed">
+                           One email per month with a check-in and your personal referral link. Turn off anytime.
+                         </span>
+                       </span>
+                     </label>
+                     <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 space-y-2">
+                       <div className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">Your referral link</div>
+                       <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                         <code className="text-xs font-semibold text-[#1C1C1E] break-all flex-1">
+                           {accountInfo.referral_url || 'Save settings to generate your link'}
+                         </code>
+                         <button
+                           type="button"
+                           disabled={!accountInfo.referral_url}
+                           onClick={async () => {
+                             if (!accountInfo.referral_url) return;
+                             try {
+                               await navigator.clipboard.writeText(accountInfo.referral_url);
+                               setToast({ show: true, message: 'Referral link copied' });
+                             } catch {
+                               setToast({ show: true, message: 'Could not copy — select the link manually' });
+                             }
+                           }}
+                           className="shrink-0 rounded-xl bg-[#1C1C1E] px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+                         >
+                           Copy
+                         </button>
+                       </div>
+                       {accountInfo.referral_code ? (
+                         <p className="text-[10px] text-[#9CA3AF]">Code: {accountInfo.referral_code}</p>
+                       ) : null}
+                     </div>
                    </div>
                  </ConfigSection>
 

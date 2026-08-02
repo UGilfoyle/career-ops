@@ -1,0 +1,41 @@
+name: Monthly Newsletter
+
+on:
+  schedule:
+    # 1st of each month at 09:00 UTC
+    - cron: '0 9 1 * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (log only, no Brevo sends)'
+        required: false
+        default: 'false'
+
+jobs:
+  newsletter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --production
+
+      - name: Send monthly newsletter
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
+          APP_URL: ${{ secrets.APP_URL }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          NEWSLETTER_UNSUB_SECRET: ${{ secrets.NEWSLETTER_UNSUB_SECRET }}
+          NEWSLETTER_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
+        run: node newsletter-monthly.mjs

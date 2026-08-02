@@ -26,7 +26,26 @@ async function migrate() {
         ADD COLUMN IF NOT EXISTS posted_reason TEXT,
         ADD COLUMN IF NOT EXISTS posted_checked_at TIMESTAMPTZ
     `;
-    console.log('Migration successful: users, verification_tokens, and jobs.posted_* updated.');
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS newsletter_opt_in BOOLEAN DEFAULT true`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by TEXT`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS newsletter_unsubscribed_at TIMESTAMPTZ`;
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_uidx
+      ON users (referral_code)
+      WHERE referral_code IS NOT NULL
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS newsletter_sends (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        kind TEXT NOT NULL DEFAULT 'monthly',
+        month_key TEXT NOT NULL,
+        UNIQUE (user_id, month_key, kind)
+      )
+    `;
+    console.log('Migration successful: users, newsletter/referral, verification_tokens, jobs.posted_* updated.');
   } catch (error) {
     console.error('Migration failed:', error);
   } finally {

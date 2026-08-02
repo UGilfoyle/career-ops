@@ -3,6 +3,12 @@ import sql from '@/lib/db';
 import { auth } from '@/auth';
 import bcrypt from 'bcryptjs';
 import { normalizeEducationList } from '@/lib/education-format';
+import {
+  appBaseUrl,
+  ensureNewsletterSchema,
+  ensureUserReferralCode,
+  referralSignupUrl,
+} from '@/lib/newsletter';
 
 function normalizeContext(value: unknown): Record<string, unknown> {
   let parsed = value;
@@ -97,10 +103,22 @@ export async function GET() {
       WHERE user_id = ${userId}
     `;
 
-    // Get user core data (email)
-    const userRow = await sql`
-      SELECT email FROM users WHERE id = ${userId}
-    `;
+    // Get user core data (email + newsletter / referral)
+    try {
+      await ensureNewsletterSchema(sql);
+    } catch (e) {
+      console.warn('Newsletter schema ensure warning:', e);
+    }
+
+    let userRow: Array<{ email?: string; newsletter_opt_in?: boolean; referral_code?: string }> = [];
+    try {
+      userRow = await sql`
+        SELECT email, COALESCE(newsletter_opt_in, true) AS newsletter_opt_in, referral_code
+        FROM users WHERE id = ${userId}
+      `;
+    } catch {
+      userRow = await sql`SELECT email FROM users WHERE id = ${userId}`;
+    }
 
     const baseProfile = profileRow[0] || {
       resume_context: {},
@@ -113,6 +131,13 @@ export async function GET() {
     const search = resumeContext.search as { portals?: unknown[] } | undefined;
     const hasSearchPortals = Array.isArray(search?.portals) && search.portals.length > 0;
     const userEmail = userRow[0]?.email || '';
+    let referralCode = userRow[0]?.referral_code ? String(userRow[0].referral_code) : '';
+    try {
+      if (!referralCode) referralCode = await ensureUserReferralCode(sql, userId);
+    } catch (e) {
+      console.warn('Could not ensure referral code:', e);
+    }
+    const newsletterOptIn = userRow[0]?.newsletter_opt_in !== false;
 
     // Seed sensible defaults, especially for Akash's account, while preserving existing user data.
     if (!hasSearchPortals && userEmail === 'akash.k96.official@gmail.com') {
@@ -145,7 +170,10 @@ export async function GET() {
       ...baseProfile,
       targeting_keywords: normalizedTargeting,
       resume_context: resumeContext,
-      email: userEmail
+      email: userEmail,
+      newsletter_opt_in: newsletterOptIn,
+      referral_code: referralCode,
+      referral_url: referralCode ? referralSignupUrl(referralCode) : `${appBaseUrl()}/signup`,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -192,7 +220,7 @@ export async function POST(req: Request) {
         updated_at = CURRENT_TIMESTAMP
     `;
 
-    // 2. Update Core Account Info (Email/Password)
+    // 2. Update Core Account Info (Email/Password/Newsletter)
     if (data.email) {
       await sql`UPDATE users SET email = ${data.email} WHERE id = ${userId}`;
     }
@@ -200,6 +228,29 @@ export async function POST(req: Request) {
     if (data.password) {
       const hashedPassword = await bcrypt.hash(data.password, 10);
       await sql`UPDATE users SET password = ${hashedPassword} WHERE id = ${userId}`;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, 'newsletter_opt_in')) {
+      try {
+        await ensureNewsletterSchema(sql);
+        const optIn = Boolean(data.newsletter_opt_in);
+        if (optIn) {
+          await sql`
+            UPDATE users
+            SET newsletter_opt_in = true, newsletter_unsubscribed_at = NULL
+            WHERE id = ${userId}
+          `;
+        } else {
+          await sql`
+            UPDATE users
+            SET newsletter_opt_in = false,
+                newsletter_unsubscribed_at = COALESCE(newsletter_unsubscribed_at, NOW())
+            WHERE id = ${userId}
+          `;
+        }
+      } catch (e) {
+        console.warn('newsletter_opt_in update failed:', e);
+      }
     }
 
     return NextResponse.json({ success: true });
