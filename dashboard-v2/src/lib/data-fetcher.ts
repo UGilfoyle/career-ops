@@ -144,7 +144,13 @@ export async function getDashboardData(userId: string) {
           a.applied_at,
           (a.id IS NOT NULL) AS is_applied
         FROM jobs j
-        LEFT JOIN applications a ON a.job_id = j.id AND a.user_id = ${userId}
+        LEFT JOIN LATERAL (
+          SELECT id, status, applied_at
+          FROM applications
+          WHERE job_id = j.id AND user_id = ${userId}
+          ORDER BY applied_at DESC NULLS LAST, id DESC
+          LIMIT 1
+        ) a ON true
         WHERE j.user_id = ${userId}
         ${scoreFilter}
         ${orderBy}
@@ -179,7 +185,13 @@ export async function getDashboardData(userId: string) {
           a.applied_at,
           (a.id IS NOT NULL) AS is_applied
         FROM jobs j
-        LEFT JOIN applications a ON a.job_id = j.id AND a.user_id = ${userId}
+        LEFT JOIN LATERAL (
+          SELECT id, status, applied_at
+          FROM applications
+          WHERE job_id = j.id AND user_id = ${userId}
+          ORDER BY applied_at DESC NULLS LAST, id DESC
+          LIMIT 1
+        ) a ON true
         WHERE j.user_id = ${userId}
         ${scoreFilter}
         ${orderBy}
@@ -204,7 +216,13 @@ export async function getDashboardData(userId: string) {
           a.applied_at,
           (a.id IS NOT NULL) AS is_applied
         FROM jobs j
-        LEFT JOIN applications a ON a.job_id = j.id AND a.user_id = ${userId}
+        LEFT JOIN LATERAL (
+          SELECT id, status, applied_at
+          FROM applications
+          WHERE job_id = j.id AND user_id = ${userId}
+          ORDER BY applied_at DESC NULLS LAST, id DESC
+          LIMIT 1
+        ) a ON true
         WHERE j.user_id = ${userId}
         ${scoreFilter}
         ${orderBy}

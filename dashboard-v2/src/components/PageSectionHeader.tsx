@@ -44,10 +44,18 @@ export function PageSectionHeader({
   );
 }
 
-export function CompanyAvatar({ name }: { name?: string | null }) {
+export function CompanyAvatar({ name, size = 'md' }: { name?: string | null; size?: 'sm' | 'md' | 'lg' }) {
   const letter = String(name || '?').trim().charAt(0).toUpperCase() || '?';
+  const sizeClass =
+    size === 'lg'
+      ? 'h-10 w-10 text-sm'
+      : size === 'sm'
+        ? 'h-6 w-6 text-[10px]'
+        : 'h-8 w-8 text-[11px]';
   return (
-    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#E5E5E0] bg-[#F5F5F0] text-[11px] font-bold text-[#6B6B6B]">
+    <div
+      className={`flex shrink-0 items-center justify-center rounded-xl border border-[#E5E5E0] bg-gradient-to-br from-white to-[#F5F5F0] font-bold text-[#1C1C1E] shadow-sm ${sizeClass}`}
+    >
       {letter}
     </div>
   );

@@ -27,11 +27,19 @@ export async function POST(req: Request) {
     `;
 
     if (existing.length > 0) {
+      const rows = await sql`
+        UPDATE applications
+        SET
+          status = ${appStatus},
+          applied_at = COALESCE(applied_at, CURRENT_TIMESTAMP)
+        WHERE id = ${existing[0].id} AND user_id = ${userId}
+        RETURNING id, status, applied_at
+      `;
       return NextResponse.json({
         success: true,
         alreadyExists: true,
-        applicationId: existing[0].id,
-        status: appStatus,
+        applicationId: rows[0]?.id ?? existing[0].id,
+        status: rows[0]?.status ?? appStatus,
       });
     }
 

@@ -89,6 +89,25 @@ function jobIsApplied(job: { is_applied?: boolean; application_status?: string |
   return Boolean(job?.is_applied || job?.app_id || job?.application_status);
 }
 
+/** Normalize pipeline status — PENDING + applied chip → APPLIED for display. */
+function formatPipelineStatus(job: { application_status?: string | null; is_applied?: boolean }) {
+  const raw = String(job.application_status || '').toUpperCase();
+  if (job.is_applied && (raw === 'PENDING' || raw === 'EVALUATED' || !raw)) return 'APPLIED';
+  if (!raw) return 'OPEN';
+  return raw;
+}
+
+function formatRowNumber(index: number, total?: number): string {
+  const pad = total != null && total >= 100 ? 3 : 2;
+  return String(index + 1).padStart(pad, '0');
+}
+
+function formatApplicationStatus(app: { status?: string | null; applied_at?: string | null }) {
+  const raw = String(app.status || '').toUpperCase();
+  if (app.applied_at && (raw === 'PENDING' || raw === 'EVALUATED' || !raw)) return 'APPLIED';
+  return raw || 'EVALUATED';
+}
+
 function formatJdForDisplay(text: string | null | undefined): string {
   if (!text?.trim()) {
     return 'No JD captured yet. Run Tailor to scrape and persist it, or open the posting link.';
@@ -243,6 +262,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const pipelineTotal = data?.pipeline?.length ?? 0;
   const pipelineFiltered = filteredPipeline.length;
   const pipelineFilterActive = q.length > 0 && pipelineFiltered < pipelineTotal;
+  const pipelineAppliedCount = filteredPipeline.filter(jobIsApplied).length;
+  const pipelineOpenCount = filteredPipeline.length - pipelineAppliedCount;
+  const pipelineGccCount = filteredPipeline.filter((j: any) => j.company_type === 'GCC').length;
 
   const pipelineCount = data?.pipeline?.length || 0;
   const appliedCount = data?.stats?.applied || 0;
@@ -1930,13 +1952,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                      </div>
                      <div className="space-y-0 divide-y divide-[#E5E5E0] text-sm">
                        {data?.applications?.length > 0 ? data.applications.slice(0, 4).map((app: any, i: number) => {
-                         const statusLabel = String(app.status || 'EVALUATED').toUpperCase();
+                         const statusLabel = formatApplicationStatus(app);
                          const tailorId = app.job_id || app.pipeline_id;
                          const tailorLocked = ['APPLIED', 'RESPONDED', 'SENT', 'INTERVIEW', 'ENTREVISTA', 'OFFER', 'OFERTA', 'REJECTED', 'DISCARDED', 'SKIP'].includes(statusLabel);
                          return (
                          <div key={app.app_id || i} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
                            <div className="flex min-w-0 items-start gap-3">
-                              <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#9CA3AF]" />
+                              <span className="mt-1 font-mono text-[10px] font-bold tabular-nums text-[#C4C4BE]">{formatRowNumber(i)}</span>
+                              <CompanyAvatar name={app.company} size="sm" />
                               <div className="min-w-0">
                                 <div className="truncate font-bold text-[#1C1C1E]">
                                   {app.company}{app.role ? ` — ${app.role}` : ''}
@@ -2071,8 +2094,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   <div className="p-4">
                     <div className="h-[min(560px,calc(100vh-13rem))] min-h-[420px] overflow-auto rounded-xl border border-[#E5E5E0] bg-white">
                       <table className="w-full min-w-[56rem] text-left">
-                        <thead className="sticky top-0 z-10 bg-[#F5F5F0] border-b border-[#E5E5E0] shadow-[0_1px_0_#E5E5E0]">
-                          <tr className="caps-mono text-[#9CA3AF] tracking-[0.2em]">
+                        <thead className="sticky top-0 z-10 bg-[#FAFAF8] border-b border-[#E5E5E0] shadow-[0_1px_0_#E5E5E0]">
+                          <tr className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
+                            <th className="w-12 px-4 py-4">#</th>
                             <th className="px-5 py-4">Company</th>
                             <th className="px-5 py-4">Role</th>
                             <th className="px-5 py-4">Status</th>
@@ -2082,19 +2106,30 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#F5F5F0]">
-                          {sortedApplications.map((app: any, i: number) => (
+                          {sortedApplications.map((app: any, i: number) => {
+                            const displayStatus = formatApplicationStatus(app);
+                            const isAppliedStage = ['APPLIED', 'RESPONDED', 'SENT', 'INTERVIEW', 'ENTREVISTA', 'OFFER', 'OFERTA', 'REJECTED', 'DISCARDED', 'SKIP'].includes(displayStatus);
+                            return (
                             <tr key={i} className="hover:bg-[#FAFAF8] transition-colors group">
-                              <td className="px-5 py-4 font-bold text-[#1C1C1E] max-w-[12rem] break-words">{app.company}</td>
+                              <td className="px-4 py-4 font-mono text-[11px] font-bold tabular-nums text-[#C4C4BE]">
+                                {formatRowNumber(i, sortedApplications.length)}
+                              </td>
+                              <td className="px-5 py-4">
+                                <div className="flex items-center gap-2.5">
+                                  <CompanyAvatar name={app.company} size="sm" />
+                                  <span className="font-bold text-[#1C1C1E] max-w-[12rem] break-words">{app.company}</span>
+                                </div>
+                              </td>
                               <td className="px-5 py-4 text-[#6B6B6B] font-medium max-w-[14rem] break-words">{app.role}</td>
                             <td className="px-5 py-4">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full caps-mono tracking-wider ${
-                                ['APPLIED', 'SENT'].includes(String(app.status || '').toUpperCase()) ? 'bg-sky-50 text-sky-700 border border-sky-100' :
-                                ['INTERVIEW', 'ENTREVISTA'].includes(String(app.status || '').toUpperCase()) ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
-                                ['OFFER', 'OFERTA'].includes(String(app.status || '').toUpperCase()) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                ['REJECTED', 'DESCARTADO', 'SKIP', 'DISCARDED'].includes(String(app.status || '').toUpperCase()) ? 'bg-stone-100 text-stone-600' :
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                ['APPLIED', 'SENT', 'RESPONDED'].includes(displayStatus) ? 'bg-sky-50 text-sky-700 border border-sky-100' :
+                                ['INTERVIEW', 'ENTREVISTA'].includes(displayStatus) ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                                ['OFFER', 'OFERTA'].includes(displayStatus) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                ['REJECTED', 'DESCARTADO', 'SKIP', 'DISCARDED'].includes(displayStatus) ? 'bg-stone-100 text-stone-600' :
                                 'bg-amber-50 text-amber-700 border border-amber-100'
                               }`}>
-                                {app.status}
+                                {displayStatus}
                               </span>
                             </td>
                             <td className="px-5 py-4 font-mono text-xs text-[#9CA3AF]">
@@ -2106,9 +2141,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             <td className="px-5 py-4 text-[#1C1C1E]">
                               <div className="flex items-center gap-2">
                                 <button
-                                  onClick={() => { setActiveTab('terminal'); runCommand(`apply ${app.job_id} --deep`); }}
-                                  className="p-2 border border-[#E5E5E0] rounded-lg hover:bg-[#1C1C1E] hover:text-white transition-all"
-                                  title="Run tailor/apply"
+                                  disabled={isAppliedStage}
+                                  onClick={() => {
+                                    if (isAppliedStage) return;
+                                    setActiveTab('terminal');
+                                    runCommand(`apply ${app.job_id} --deep`);
+                                  }}
+                                  title={isAppliedStage ? 'Already applied — tailor disabled' : 'Run tailor/apply'}
+                                  className={`p-2 border rounded-lg transition-all ${
+                                    isAppliedStage
+                                      ? 'border-[#E5E5E0] bg-[#F5F5F0] text-[#9CA3AF] cursor-not-allowed'
+                                      : 'border-[#E5E5E0] hover:bg-[#1C1C1E] hover:text-white'
+                                  }`}
                                 >
                                   <Play size={14} />
                                 </button>
@@ -2151,10 +2195,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          );
+                          })}
                         {sortedApplications.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="px-5 py-12 text-center caps-mono tracking-widest text-[#9CA3AF]">
+                            <td colSpan={7} className="px-5 py-12 text-center caps-mono tracking-widest text-[#9CA3AF]">
                               No applications yet
                             </td>
                           </tr>
@@ -2169,7 +2214,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       <div className="grid h-full min-w-[900px] grid-cols-5 gap-3 min-h-0">
                     {kanbanColumns.map((col) => {
                       const colApps = sortedApplications.filter((app: any) =>
-                        col.statuses.includes(String(app.status || '').toUpperCase())
+                        col.statuses.includes(formatApplicationStatus(app))
                       );
 
                       return (
@@ -2184,22 +2229,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               updateApplicationStatus(appId, col.statuses[0]);
                             }
                           }}
-                          className={`flex min-h-0 flex-col overflow-hidden rounded-xl border bg-white transition-all ${
+                          className={`flex min-h-0 flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-all ${
                             appsStageFocus === col.id
                               ? 'border-[#1C1C1E] ring-2 ring-[#1C1C1E]/15 shadow-md'
                               : appsStageFocus
                                 ? 'border-[#E5E5E0] opacity-40'
                                 : 'border-[#E5E5E0]'
-                          }`}
+                          } ${col.color}`}
                         >
                           <div className={`h-1 shrink-0 ${col.bar}`} />
-                          <div className="flex shrink-0 items-center justify-between border-b border-[#F5F5F0] px-3 py-2.5">
-                            <span className="caps-mono text-[#9CA3AF]">{col.id}</span>
-                            <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#1C1C1E] px-1.5 font-mono text-[10px] text-white">{colApps.length}</span>
+                          <div className="flex shrink-0 items-center justify-between border-b border-[#F5F5F0] px-3 py-3">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#1C1C1E]">{col.label}</span>
+                            <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#1C1C1E] px-1.5 font-mono text-[10px] font-semibold text-white">{colApps.length}</span>
                           </div>
 
-                          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
-                            {colApps.map((app: any) => {
+                          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2.5">
+                            {colApps.map((app: any, cardIdx: number) => {
                               const days = app.applied_at 
                                 ? Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24)) 
                                 : null;
@@ -2213,10 +2258,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   onDragStart={(e) => {
                                     e.dataTransfer.setData('text/plain', String(app.app_id));
                                   }}
-                                  className="group relative shrink-0 cursor-grab rounded-lg border border-[#E5E5E0] bg-white p-3 transition-all hover:shadow-sm active:cursor-grabbing"
+                                  className="group relative shrink-0 cursor-grab rounded-xl border border-[#E5E5E0] bg-white p-3.5 transition-all hover:border-[#1C1C1E]/20 hover:shadow-md active:cursor-grabbing"
                                 >
-                                  <div className="mb-2 flex items-start justify-between gap-1.5">
-                                    <CompanyAvatar name={app.company} />
+                                  <div className="mb-2.5 flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="font-mono text-[10px] font-bold tabular-nums text-[#C4C4BE] shrink-0">
+                                        {formatRowNumber(cardIdx)}
+                                      </span>
+                                      <CompanyAvatar name={app.company} size="sm" />
+                                    </div>
                                     <AiScoreBadge score={app.score} />
                                   </div>
                                   <h4 className="mb-0.5 line-clamp-2 break-words text-sm font-bold leading-snug text-[#1C1C1E]">{app.company}</h4>
@@ -2293,13 +2343,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 actions={searchActions}
               />
             <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
-              <div className="flex flex-col gap-4 border-b border-[#E5E5E0] bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-bold text-[#1C1C1E]">Live Job Pipeline</h2>
+              <div className="flex flex-col gap-4 border-b border-[#E5E5E0] bg-gradient-to-r from-[#FAFAF8] to-white p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-[#1C1C1E]">Live Job Pipeline</h2>
+                  <p className="mt-0.5 text-xs font-medium text-[#6B6B6B]">CRM view · ranked by AI match score</p>
+                </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <button
                     type="button"
                     onClick={() => { setActiveTab('terminal'); runCommand('scan --deep'); }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-[#27272a]"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#27272a]"
                   >
                     <Zap size={14} />
                     Scan
@@ -2315,10 +2368,24 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   )}
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-px border-b border-[#E5E5E0] bg-[#E5E5E0] sm:grid-cols-4">
+                {[
+                  { label: 'Total roles', value: filteredPipeline.length },
+                  { label: 'Open', value: pipelineOpenCount },
+                  { label: 'Applied', value: pipelineAppliedCount },
+                  { label: 'GCC targets', value: pipelineGccCount },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-white px-6 py-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">{stat.label}</p>
+                    <p className="mt-1 font-mono text-2xl font-extrabold tabular-nums text-[#1C1C1E]">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
               <div className="max-h-[640px] overflow-x-auto text-sm">
                 <table className="w-full text-left">
-                  <thead className="sticky top-0 border-b border-[#E5E5E0] bg-[#FAFAF8]">
+                  <thead className="sticky top-0 z-10 border-b border-[#E5E5E0] bg-[#FAFAF8] shadow-[0_1px_0_#E5E5E0]">
                     <tr className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
+                      <th className="w-12 px-4 py-4">#</th>
                       <th className="px-6 py-4">Target / Company</th>
                       <th className="px-6 py-4">Job Title</th>
                       <th className="px-6 py-4">Status</th>
@@ -2327,11 +2394,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F5F5F0]">
-                    {filteredPipeline.map((job: any, i: number) => (
+                    {filteredPipeline.map((job: any, i: number) => {
+                      const displayStatus = formatPipelineStatus(job);
+                      return (
                       <tr
                         key={job.pipeline_id ?? i}
-                        className={`transition-colors hover:bg-[#FAFAF8] ${jobIsApplied(job) ? 'bg-emerald-50/50' : ''}`}
+                        className={`transition-colors hover:bg-[#FAFAF8] ${jobIsApplied(job) ? 'bg-emerald-50/40' : ''}`}
                       >
+                        <td className="px-4 py-5 font-mono text-[11px] font-bold tabular-nums text-[#C4C4BE]">
+                          {formatRowNumber(i, filteredPipeline.length)}
+                        </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <CompanyAvatar name={job.company} />
@@ -2375,13 +2447,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         <td className="px-6 py-5">
                           {jobIsApplied(job) ? (
                             <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusChipClass(job.application_status || 'APPLIED')}`}
+                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusChipClass(displayStatus)}`}
                             >
                               <CheckCircle2 size={12} />
-                              {String(job.application_status || 'APPLIED')}
+                              {displayStatus}
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#C4C4BE]">Open</span>
+                            <span className="inline-flex items-center rounded-full border border-[#E5E5E0] bg-[#FAFAF8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Open</span>
                           )}
                         </td>
                         <td className="px-6 py-5">
@@ -2471,10 +2543,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                     {filteredPipeline.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-6 py-16 text-center">
+                        <td colSpan={6} className="px-6 py-16 text-center">
                           <p className="text-sm font-semibold text-[#1C1C1E]">No jobs in pipeline yet</p>
                           <p className="mt-2 text-xs font-medium text-[#6B6B6B]">
                             Run a scan to discover roles, then open Resume Studio to match a JD.
