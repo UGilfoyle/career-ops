@@ -1932,6 +1932,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                        {data?.applications?.length > 0 ? data.applications.slice(0, 4).map((app: any, i: number) => {
                          const statusLabel = String(app.status || 'EVALUATED').toUpperCase();
                          const tailorId = app.job_id || app.pipeline_id;
+                         const tailorLocked = ['APPLIED', 'RESPONDED', 'SENT', 'INTERVIEW', 'ENTREVISTA', 'OFFER', 'OFERTA', 'REJECTED', 'DISCARDED', 'SKIP'].includes(statusLabel);
                          return (
                          <div key={app.app_id || i} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
                            <div className="flex min-w-0 items-start gap-3">
@@ -1964,8 +1965,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                              {tailorId && (
                                <button
                                  type="button"
-                                 onClick={() => { setActiveTab('terminal'); void requestTailor(tailorId); }}
-                                 className="rounded-xl bg-[#1C1C1E] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#27272a] transition-colors"
+                                 disabled={tailorLocked}
+                                 onClick={() => {
+                                   if (tailorLocked) return;
+                                   setActiveTab('terminal');
+                                   void requestTailor(tailorId);
+                                 }}
+                                 title={tailorLocked ? 'Already applied — Tailor disabled' : 'Tailor resume for this role'}
+                                 className={`rounded-xl px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                                   tailorLocked
+                                     ? 'bg-[#E5E5E0] text-[#9CA3AF] cursor-not-allowed'
+                                     : 'bg-[#1C1C1E] text-white hover:bg-[#27272a]'
+                                 }`}
                                >
                                  Tailor
                                </button>
@@ -2399,8 +2410,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </button>
                             )}
                             <button
-                              onClick={() => { setActiveTab('terminal'); void requestTailor(job.pipeline_id); }}
-                              className="rounded-xl border border-[#E5E5E0] bg-white px-4 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
+                              type="button"
+                              disabled={jobIsApplied(job)}
+                              onClick={() => {
+                                if (jobIsApplied(job)) return;
+                                setActiveTab('terminal');
+                                void requestTailor(job.pipeline_id);
+                              }}
+                              title={jobIsApplied(job) ? 'Already applied — Tailor disabled' : 'Tailor resume for this role'}
+                              className={`rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
+                                jobIsApplied(job)
+                                  ? 'border-[#E5E5E0] bg-[#F5F5F0] text-[#9CA3AF] cursor-not-allowed'
+                                  : 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:bg-[#FAFAF8]'
+                              }`}
                             >
                               Tailor
                             </button>
@@ -4044,14 +4066,38 @@ System Initialized — v2.0`}
                     Open in Studio
                   </button>
                   <button
-                    onClick={() => { setJobDetailsOpen(false); setActiveTab('terminal'); void requestTailor(jobDetails.id); }}
-                    className="px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs hover:bg-[#27272a] transition-all"
+                    type="button"
+                    disabled={jobIsApplied(jobDetails)}
+                    onClick={() => {
+                      if (jobIsApplied(jobDetails)) return;
+                      setJobDetailsOpen(false);
+                      setActiveTab('terminal');
+                      void requestTailor(jobDetails.id);
+                    }}
+                    title={jobIsApplied(jobDetails) ? 'Already applied — Tailor disabled' : 'Tailor resume for this role'}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                      jobIsApplied(jobDetails)
+                        ? 'bg-[#E5E5E0] text-[#9CA3AF] cursor-not-allowed'
+                        : 'bg-[#1C1C1E] text-white hover:bg-[#27272a]'
+                    }`}
                   >
                     Tailor
                   </button>
                   <button
-                    onClick={() => { setJobDetailsOpen(false); setActiveTab('terminal'); runCommand(`apply ${jobDetails.id} --deep`); }}
-                    className="px-5 py-2.5 bg-white border border-[#E5E5E0] text-[#1C1C1E] rounded-xl font-bold text-xs hover:bg-[#F5F5F0] transition-all"
+                    type="button"
+                    disabled={jobIsApplied(jobDetails)}
+                    onClick={() => {
+                      if (jobIsApplied(jobDetails)) return;
+                      setJobDetailsOpen(false);
+                      setActiveTab('terminal');
+                      runCommand(`apply ${jobDetails.id} --deep`);
+                    }}
+                    title={jobIsApplied(jobDetails) ? 'Already applied — Apply disabled' : 'Auto-fill application'}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all border ${
+                      jobIsApplied(jobDetails)
+                        ? 'bg-[#F5F5F0] border-[#E5E5E0] text-[#9CA3AF] cursor-not-allowed'
+                        : 'bg-white border-[#E5E5E0] text-[#1C1C1E] hover:bg-[#F5F5F0]'
+                    }`}
                   >
                     Apply (Auto)
                   </button>
