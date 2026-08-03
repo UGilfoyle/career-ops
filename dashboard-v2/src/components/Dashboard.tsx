@@ -114,6 +114,10 @@ function terminalUsernameFromSession(session: { user?: { email?: string | null; 
   return fromEmail || fromName || 'user';
 }
 
+function isGccPipelineJob(job: { company_type?: string | null; source?: string | null }) {
+  return job?.company_type === 'GCC' || String(job?.source || '').includes('GCC Scan');
+}
+
 function formatJdForDisplay(text: string | null | undefined): string {
   if (!text?.trim()) {
     return 'No JD captured yet. Run Tailor to scrape and persist it, or open the posting link.';
@@ -274,7 +278,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const pipelineFilterActive = q.length > 0 && pipelineFiltered < pipelineTotal;
   const pipelineAppliedCount = filteredPipeline.filter(jobIsApplied).length;
   const pipelineOpenCount = filteredPipeline.length - pipelineAppliedCount;
-  const pipelineGccCount = filteredPipeline.filter((j: any) => j.company_type === 'GCC').length;
+  const pipelineGccCount = filteredPipeline.filter(isGccPipelineJob).length;
+  const pipelineGccJobs = (data?.pipeline || []).filter(isGccPipelineJob);
 
   const pipelineCount = data?.pipeline?.length || 0;
   const appliedCount = data?.stats?.applied || 0;
@@ -455,6 +460,20 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       label === 'Tailor' && outcome === 'completed'
         ? ' [FILE] PDF ready in Generated Docs'
         : '';
+
+    if (script === 'gcc-scan.mjs' && status === 'success') {
+      const added = meta?.lastGccScanAdded;
+      const total = meta?.gccPipelineCount;
+      if (added != null && added === 0) {
+        const msg = `[OK] GCC Scan finished — 0 new roles matched your keywords. Try broadening positive keywords in Settings, then re-run.`;
+        return { toast: msg, terminal: msg };
+      }
+      if (added != null && added > 0) {
+        const msg = `[OK] ✔ GCC Scan — ${added} role(s) added${total != null ? ` (${total} total in pipeline)` : ''}`;
+        return { toast: msg, terminal: `${msg}${hint}` };
+      }
+    }
+
     return { toast: `[OK] ✔ ${label} ${outcome}${hint}`, terminal: `[OK] ✔ ${label} ${outcome}${hint}` };
   };
 
@@ -852,7 +871,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               appendTerminalLine(msg.terminal);
               const script = String(meta?.lastBackgroundActionScript || '');
               if (String(meta?.lastBackgroundStatus || '') === 'success' && script === 'gcc-scan.mjs') {
-                appendTerminalLine('[INFO] → GCC roles are in Job Pipeline (GCC badge) and GCC Campaign tab.');
+                const added = meta?.lastGccScanAdded;
+                if (added != null && added > 0) {
+                  appendTerminalLine(`[INFO] → ${added} GCC role(s) added — see Discovered GCC roles tab.`);
+                } else if (added === 0) {
+                  appendTerminalLine('[INFO] → 0 roles added. Broaden keywords in Settings or retry in a few minutes.');
+                } else {
+                  appendTerminalLine('[INFO] → Refreshing pipeline — check GCC Campaign in ~10s.');
+                }
               }
               try {
                 localStorage.setItem(storageKey, String(eventId));
@@ -1069,7 +1095,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
   const importGccFromPipeline = (mode: 'all' | 'high_value') => {
     const pool = (data?.pipeline || []).filter((j: any) =>
-      mode === 'high_value' ? j.gcc_high_value : j.company_type === 'GCC'
+      mode === 'high_value' ? j.gcc_high_value : isGccPipelineJob(j)
     );
     if (pool.length === 0) {
       setToast({
@@ -3227,7 +3253,10 @@ System Initialized — v2.0`}
               onSave={handleSaveGccCampaign}
               onImportHighValue={importHighValueGccFromPipeline}
               onImportAllGcc={importAllGccFromPipeline}
-              pipelineGccJobs={(data?.pipeline || []).filter((j: any) => j.company_type === 'GCC')}
+              pipelineGccJobs={pipelineGccJobs}
+              lastGccScanAdded={data?.meta?.lastGccScanAdded ?? null}
+              lastGccScanAt={data?.meta?.lastGccScanAt ?? null}
+              gccPipelineTotal={data?.meta?.gccPipelineCount ?? pipelineGccJobs.length}
               onOpenPipeline={() => setActiveTab('pipeline')}
               onTailorJob={(jobId: number) => {
                 setActiveTab('terminal');

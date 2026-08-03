@@ -342,6 +342,34 @@ export async function getDashboardData(userId: string) {
     }
   };
 
+  const fetchLastGccScan = async () => {
+    try {
+      const rows = await sql`
+        SELECT jobs_found, duration_ms, created_at
+        FROM scans
+        WHERE user_id = ${userId} AND portal = 'GCC Scan'
+        ORDER BY created_at DESC
+        LIMIT 1
+      `;
+      return rows[0] || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const fetchGccPipelineCount = async () => {
+    try {
+      const rows = await sql`
+        SELECT COUNT(*)::int AS n FROM jobs
+        WHERE user_id = ${userId}
+          AND (company_type = 'GCC' OR source ILIKE '%GCC Scan%')
+      `;
+      return Number(rows[0]?.n ?? 0);
+    } catch {
+      return 0;
+    }
+  };
+
   // Execute all queries concurrently in parallel
   const [
     jobMeta,
@@ -351,6 +379,8 @@ export async function getDashboardData(userId: string) {
     profile,
     pdfs,
     latestEvent,
+    lastGccScan,
+    gccPipelineCount,
   ] = await Promise.all([
     fetchJobMeta(),
     fetchApplications(),
@@ -359,6 +389,8 @@ export async function getDashboardData(userId: string) {
     fetchProfile(),
     fetchPdfs(),
     fetchLatestEvent(),
+    fetchLastGccScan(),
+    fetchGccPipelineCount(),
   ]);
 
   return {
@@ -376,6 +408,9 @@ export async function getDashboardData(userId: string) {
       lastBackgroundActionScript: latestEvent?.action_script ?? null,
       lastBackgroundStatus: latestEvent?.status ?? null,
       lastBackgroundCompletedAt: latestEvent?.created_at ?? null,
+      lastGccScanAdded: lastGccScan?.jobs_found != null ? Number(lastGccScan.jobs_found) : null,
+      lastGccScanAt: lastGccScan?.created_at ?? null,
+      gccPipelineCount,
     },
     timestamp: new Date().toISOString()
   };

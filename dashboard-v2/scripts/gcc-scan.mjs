@@ -4,6 +4,11 @@ import sql from './db/client.mjs';
 import { classifyCompany, getGccScanBatch } from '../../gcc-classify.mjs';
 import { scoreGccSignals } from '../../gcc-signal-engine.mjs';
 import { discoverJobsWithoutBrowser } from './lib/ddg-discovery.mjs';
+import {
+  titleCaseCompany,
+  fetchGreenhouseJobs,
+  fetchLeverJobs,
+} from '../../gcc-scan-engine.mjs';
 
 const rawUserId = process.env.SCAN_USER_ID || process.argv[2] || 1;
 const userId = Number.parseInt(String(rawUserId), 10);
@@ -25,7 +30,7 @@ try {
 }
 
 const primaryKeyword = (keywords.positive?.[0] || 'software engineer').toLowerCase();
-const { batch, total, start, batchSize, locations } = getGccScanBatch({ offset });
+const { batch, total, start, locations } = getGccScanBatch({ offset });
 const locClause = locations.map((l) => `"${l}"`).join(' OR ');
 
 function matchesFilter(title) {
@@ -35,7 +40,7 @@ function matchesFilter(title) {
   }
   const positive = keywords.positive?.length
     ? keywords.positive
-    : ['software engineer', 'developer', 'backend', 'full stack'];
+    : ['software engineer', 'developer', 'backend', 'full stack', 'engineer'];
   return positive.some((p) => t.includes(String(p).toLowerCase()));
 }
 
@@ -69,9 +74,9 @@ try {
 }
 
 const newJobs = [];
-const stats = { checked: 0, found: 0, added: 0, filtered: 0, dup: 0, errors: 0 };
+const stats = { checked: 0, found: 0, added: 0, filtered: 0, dup: 0, errors: 0, api: 0 };
 
-function tryAdd(url, company, title, source) {
+function tryAdd(url, company, title, source, trustedEmployer) {
   if (!url || !title) return 'skip';
   const cleanUrl = url.split('?')[0];
   if (seenUrls.has(url) || seenUrls.has(cleanUrl)) {
@@ -82,13 +87,13 @@ function tryAdd(url, company, title, source) {
     stats.filtered++;
     return 'filtered';
   }
-  const companyType = classifyCompany(company);
-  if (companyType !== 'GCC') {
+  const employer = trustedEmployer ? titleCaseCompany(trustedEmployer) : titleCaseCompany(company);
+  if (!trustedEmployer && classifyCompany(employer) !== 'GCC') {
     stats.filtered++;
     return 'not_gcc';
   }
   seenUrls.add(url);
-  newJobs.push({ url, canonical_url: cleanUrl, company, title, source, company_type: 'GCC' });
+  newJobs.push({ url, canonical_url: cleanUrl, company: employer, title, source, company_type: 'GCC' });
   stats.added++;
   return 'added';
 }
@@ -161,6 +166,7 @@ async function run() {
   console.log('  career-ops — GCC Scan (Captive Employers)');
   console.log(`  Keyword: ${primaryKeyword} · Hubs: ${locations.join(', ')}`);
   console.log(`  Batch: ${batch.length}/${total} companies (offset ${start})`);
+  console.log('  Sources: Greenhouse API → Lever API → DuckDuckGo');
   console.log('═══════════════════════════════════════════\n');
 
   const GLOBAL_TIMEOUT_MS = 5 * 60 * 1000;
@@ -172,21 +178,51 @@ async function run() {
   try {
     for (let i = 0; i < batch.length; i++) {
       const company = batch[i];
-      const queries = buildQueries(company);
       console.log(`\n🏢 [${i + 1}/${batch.length}] ${company}`);
 
+      try {
+        const ghJobs = await fetchGreenhouseJobs(company, matchesFilter);
+        stats.found += ghJobs.length;
+        for (const j of ghJobs) {
+          const res = tryAdd(j.url, j.company, j.title, j.source, company);
+          if (res === 'added') {
+            stats.api++;
+            process.stdout.write(`    ✓ [Greenhouse] ${j.title.slice(0, 72)}\n`);
+          }
+        }
+      } catch (err) {
+        stats.errors++;
+        console.log(`    ✗ Greenhouse: ${err.message}`);
+      }
+
+      try {
+        const leverJobs = await fetchLeverJobs(company, matchesFilter);
+        stats.found += leverJobs.length;
+        for (const j of leverJobs) {
+          const res = tryAdd(j.url, j.company, j.title, j.source, company);
+          if (res === 'added') {
+            stats.api++;
+            process.stdout.write(`    ✓ [Lever] ${j.title.slice(0, 72)}\n`);
+          }
+        }
+      } catch (err) {
+        stats.errors++;
+        console.log(`    ✗ Lever: ${err.message}`);
+      }
+
+      const queries = buildQueries(company);
       for (const q of queries) {
         stats.checked++;
         try {
           const results = await discoverJobsWithoutBrowser(q.query, q.name, { expectedCompany: q.company });
           stats.found += results.length;
           for (const j of results) {
-            const res = tryAdd(j.url, j.company, j.title, `GCC Scan - ${q.name}`);
+            const res = tryAdd(j.url, j.company, j.title, `GCC Scan - ${q.name}`, company);
             if (res === 'added') {
-              process.stdout.write(`    ✓ ${j.title.slice(0, 72)}\n`);
+              process.stdout.write(`    ✓ [DDG] ${j.title.slice(0, 72)}\n`);
             }
           }
-          await new Promise((r) => setTimeout(r, 1200));
+          await new Promise((r) => setTimeout(r, 900));
         } catch (err) {
           stats.errors++;
           console.log(`    ✗ ${q.name}: ${err.message}`);
@@ -201,7 +237,7 @@ async function run() {
 
     await sql`
       INSERT INTO scans (portal, jobs_found, duration_ms, user_id)
-      VALUES (${'GCC Scan'}, ${stats.found}, ${Date.now() - startTime}, ${userId})
+      VALUES (${'GCC Scan'}, ${stats.added}, ${Date.now() - startTime}, ${userId})
     `;
   } finally {
     clearTimeout(timeoutId);
@@ -210,13 +246,15 @@ async function run() {
   console.log('\n═══════════════════════════════════════════');
   console.log('  GCC SCAN RESULTS');
   console.log('───────────────────────────────────────────');
-  console.log(`  Queries run:        ${stats.checked}`);
   console.log(`  Links found:        ${stats.found}`);
-  console.log(`  NEW GCC jobs added: ${stats.added}`);
+  console.log(`  NEW GCC jobs added: ${stats.added} (${stats.api} via board APIs)`);
   console.log(`  Filtered / dup:     ${stats.filtered + stats.dup}`);
   console.log(`  Errors:             ${stats.errors}`);
-  console.log(`  Runtime:            ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
   console.log('═══════════════════════════════════════════');
+  console.log(`CAREER_OPS_GCC_SCAN_ADDED=${stats.added}`);
+  if (stats.added === 0) {
+    console.log('[WARN] No GCC roles added — board APIs and DDG returned nothing matching your keywords.');
+  }
   process.exit(0);
 }
 

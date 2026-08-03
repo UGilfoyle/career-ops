@@ -63,6 +63,9 @@ type Props = {
   onOpenPipeline?: () => void;
   onTailorJob?: (jobId: number) => void;
   onAddToOutreach?: (company: string, role: string) => void;
+  lastGccScanAdded?: number | null;
+  lastGccScanAt?: string | null;
+  gccPipelineTotal?: number;
   highValueCount?: number;
   isSaving: boolean;
   saveStatus: 'idle' | 'saving' | 'success' | 'error';
@@ -78,6 +81,9 @@ export function GccCampaignPanel({
   onOpenPipeline,
   onTailorJob,
   onAddToOutreach,
+  lastGccScanAdded = null,
+  lastGccScanAt = null,
+  gccPipelineTotal = 0,
   highValueCount = 0,
   isSaving,
   saveStatus,
@@ -255,9 +261,21 @@ export function GccCampaignPanel({
         {pipelineGccJobs.length === 0 ? (
           <div className="px-6 py-10 text-center">
             <p className="text-sm font-semibold text-[#1C1C1E]">No GCC roles in pipeline yet</p>
-            <p className="mt-2 text-xs text-[#9CA3AF] max-w-md mx-auto">
-              Run <code className="text-[#6B6B6B]">gcc-scan --deep</code> in Terminal. Captive employers (Stripe, JPMorgan, SAP Labs…) appear here automatically after the scan finishes.
-            </p>
+            {lastGccScanAt && lastGccScanAdded != null ? (
+              <p className="mt-2 text-xs text-amber-700 max-w-md mx-auto">
+                Last scan ({new Date(lastGccScanAt).toLocaleString()}): <strong>{lastGccScanAdded} role(s) added</strong>.
+                {lastGccScanAdded === 0
+                  ? ' DuckDuckGo/board APIs found nothing matching your keywords — broaden positive keywords in Settings.'
+                  : ' Data may still be syncing — refresh in ~10s or open Job Pipeline.'}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-[#9CA3AF] max-w-md mx-auto">
+                Run <code className="text-[#6B6B6B]">gcc-scan --deep</code> in Terminal. Uses Greenhouse + Lever APIs first, then job boards.
+              </p>
+            )}
+            {gccPipelineTotal > 0 && pipelineGccJobs.length === 0 && (
+              <p className="mt-2 text-xs text-[#6B6B6B]">{gccPipelineTotal} GCC role(s) in database — reload dashboard if stale.</p>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
