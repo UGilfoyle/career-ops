@@ -13,7 +13,7 @@ import {
   UserPlus,
   Calendar,
 } from 'lucide-react';
-import { PageSectionHeader } from './PageSectionHeader';
+import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHeader';
 
 export type GccTarget = {
   id: string;
@@ -44,17 +44,44 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
+type PipelineGccJob = {
+  pipeline_id?: number;
+  company?: string;
+  title?: string;
+  score?: string | number | null;
+  gcc_signal_score?: number | null;
+  gcc_high_value?: boolean;
+};
+
 type Props = {
   campaign: GccCampaign;
   onChange: (next: GccCampaign) => void;
   onSave: () => void;
   onImportHighValue?: () => void;
+  onImportAllGcc?: () => void;
+  pipelineGccJobs?: PipelineGccJob[];
+  onOpenPipeline?: () => void;
+  onTailorJob?: (jobId: number) => void;
+  onAddToOutreach?: (company: string, role: string) => void;
   highValueCount?: number;
   isSaving: boolean;
   saveStatus: 'idle' | 'saving' | 'success' | 'error';
 };
 
-export function GccCampaignPanel({ campaign, onChange, onSave, onImportHighValue, highValueCount = 0, isSaving, saveStatus }: Props) {
+export function GccCampaignPanel({
+  campaign,
+  onChange,
+  onSave,
+  onImportHighValue,
+  onImportAllGcc,
+  pipelineGccJobs = [],
+  onOpenPipeline,
+  onTailorJob,
+  onAddToOutreach,
+  highValueCount = 0,
+  isSaving,
+  saveStatus,
+}: Props) {
   const day = todayKey();
   const daily = campaign.daily_log[day] || { connections: 0, applications: 0, mock_interview: false };
 
@@ -114,7 +141,17 @@ export function GccCampaignPanel({ campaign, onChange, onSave, onImportHighValue
         title="GCC Campaign"
         subtitle="30-day break-in system — connections, curated outreach, and interview tracking"
         actions={
-                 <div className="flex items-center gap-3">
+                 <div className="flex flex-wrap items-center gap-3">
+                   {onImportAllGcc && pipelineGccJobs.length > 0 && (
+                     <button
+                       type="button"
+                       onClick={onImportAllGcc}
+                       className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 transition-all hover:bg-emerald-100"
+                     >
+                       <Target size={14} />
+                       Import {pipelineGccJobs.length} to outreach
+                     </button>
+                   )}
                    {onImportHighValue && highValueCount > 0 && (
                      <button
                        type="button"
@@ -190,6 +227,101 @@ export function GccCampaignPanel({ campaign, onChange, onSave, onImportHighValue
         </div>
       </div>
 
+      <div className="bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-[#F5F5F0] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              <h3 className="font-bold text-[#1C1C1E]">Discovered GCC roles</h3>
+              <span className="rounded-full bg-[#1C1C1E] px-2 py-0.5 font-mono text-[10px] font-bold text-white">
+                {pipelineGccJobs.length}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-[#6B6B6B]">
+              From <code className="text-[#57534e]">gcc-scan --deep</code> — also visible in Job Pipeline with a GCC badge.
+            </p>
+          </div>
+          {onOpenPipeline && pipelineGccJobs.length > 0 && (
+            <button
+              type="button"
+              onClick={onOpenPipeline}
+              className="rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-4 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-white"
+            >
+              Open Job Pipeline
+            </button>
+          )}
+        </div>
+
+        {pipelineGccJobs.length === 0 ? (
+          <div className="px-6 py-10 text-center">
+            <p className="text-sm font-semibold text-[#1C1C1E]">No GCC roles in pipeline yet</p>
+            <p className="mt-2 text-xs text-[#9CA3AF] max-w-md mx-auto">
+              Run <code className="text-[#6B6B6B]">gcc-scan --deep</code> in Terminal. Captive employers (Stripe, JPMorgan, SAP Labs…) appear here automatically after the scan finishes.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="bg-[#FAFAF8] text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+                <tr>
+                  <th className="w-12 px-4 py-3 text-left">#</th>
+                  <th className="px-4 py-3 text-left">Company</th>
+                  <th className="px-4 py-3 text-left">Role</th>
+                  <th className="px-4 py-3 text-left">Signal</th>
+                  <th className="px-4 py-3 text-left">Score</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F5F5F0]">
+                {pipelineGccJobs.map((job, i) => (
+                  <tr key={job.pipeline_id ?? i} className="hover:bg-[#FAFAF8]/80 transition-colors">
+                    <td className="px-4 py-3 font-mono text-[11px] font-bold tabular-nums text-[#C4C4BE]">
+                      {String(i + 1).padStart(2, '0')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <CompanyAvatar name={job.company} size="sm" />
+                        <span className="font-bold text-[#1C1C1E]">{job.company}</span>
+                        {job.gcc_high_value && (
+                          <span className="rounded-md border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-violet-800">
+                            High
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[#6B6B6B] font-medium max-w-[14rem] truncate">{job.title}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-[#57534e]">{job.gcc_signal_score ?? '—'}/5</td>
+                    <td className="px-4 py-3"><AiScoreBadge score={job.score} /></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        {onAddToOutreach && (
+                          <button
+                            type="button"
+                            onClick={() => onAddToOutreach(String(job.company || ''), String(job.title || ''))}
+                            className="rounded-lg border border-[#E5E5E0] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#1C1C1E] hover:bg-[#FAFAF8]"
+                          >
+                            Track
+                          </button>
+                        )}
+                        {onTailorJob && job.pipeline_id != null && (
+                          <button
+                            type="button"
+                            onClick={() => onTailorJob(Number(job.pipeline_id))}
+                            className="rounded-lg bg-[#1C1C1E] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#27272a]"
+                          >
+                            Tailor
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       <div className="bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#F5F5F0]">
           <div className="flex items-center gap-2">
@@ -207,7 +339,10 @@ export function GccCampaignPanel({ campaign, onChange, onSave, onImportHighValue
 
         {campaign.targets.length === 0 ? (
           <div className="p-10 text-center text-[#9CA3AF] text-sm">
-            No GCC targets yet. Add companies from your pipeline — track DM, email, connection, and follow-ups here.
+            <p className="font-semibold text-[#6B6B6B]">Outreach tracker is empty</p>
+            <p className="mt-2 max-w-md mx-auto">
+              Import roles from <strong className="text-[#57534e]">Discovered GCC roles</strong> above, or add companies manually — then log DMs, emails, and follow-ups.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">

@@ -108,6 +108,12 @@ function formatApplicationStatus(app: { status?: string | null; applied_at?: str
   return raw || 'EVALUATED';
 }
 
+function terminalUsernameFromSession(session: { user?: { email?: string | null; name?: string | null } | null } | null): string {
+  const fromEmail = session?.user?.email?.split('@')?.[0]?.toLowerCase().replace(/[^a-z0-9._-]/g, '') || '';
+  const fromName = session?.user?.name?.trim()?.split(/\s+/)?.[0]?.toLowerCase().replace(/[^a-z0-9._-]/g, '') || '';
+  return fromEmail || fromName || 'user';
+}
+
 function formatJdForDisplay(text: string | null | undefined): string {
   if (!text?.trim()) {
     return 'No JD captured yet. Run Tailor to scrape and persist it, or open the posting link.';
@@ -230,6 +236,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
+  const lastBgEventRef = useRef<number>(0);
+
+  const terminalUser = terminalUsernameFromSession(session);
+  const terminalPrompt = `${terminalUser}@career-ops:~$`;
 
   const appendTerminalLine = (line: string) => {
     setLogs((prev) => [...prev, { type: 'stdout', content: `\n${line}\n` }]);
@@ -529,7 +539,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   };
 
   const runCommand = (query: string) => {
-    setLogs(prev => [...prev, { type: 'stdout', content: `\ncareer-ops > ${query}\n` }]);
+    setLogs(prev => [...prev, { type: 'stdout', content: `\n${terminalPrompt} ${query}\n` }]);
     setIsExecuting(true);
     
     const eventSource = new EventSource(`/api/exec?q=${encodeURIComponent(query)}`);
@@ -584,7 +594,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       ...prev,
       {
         type: 'stdout',
-        content: `\ncareer-ops > ${cmd}\n📅 Running job posting check before resume…\n`,
+        content: `\n${terminalPrompt} ${cmd}\n📅 Running job posting check before resume…\n`,
       },
     ]);
     try {
@@ -743,7 +753,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           setActiveTab('terminal');
           setLogs((prev) => [
             ...prev,
-            { type: 'stdout', content: `\ncareer-ops > ${cmd}\n📅 Posting check (--yes provided)…\n` },
+            { type: 'stdout', content: `\n${terminalPrompt} ${cmd}\n📅 Posting check (--yes provided)…\n` },
           ]);
           try {
             const isUrl = /^https?:\/\//i.test(target);
@@ -831,45 +841,45 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             const userKey = session?.user?.email || session?.user?.id || 'default';
             const lastSeenKey = `career_ops_last_seen_bg_event:${userKey}`;
 
-            // Toast even on first load (if webhook completed while user was away)
+            // Background job completion — dedupe by event id (avoids double "GCC Scan completed")
+            const notifyBackgroundCompletion = (meta: any, storageKey: string) => {
+              const eventId = Number(meta?.lastBackgroundEventId || 0);
+              if (eventId <= 0 || eventId === lastBgEventRef.current) return false;
+              lastBgEventRef.current = eventId;
+              const msg = formatCompletionMessage(meta);
+              setToast({ show: true, message: msg.toast });
+              setTimeout(() => setToast({ show: false, message: '' }), 5000);
+              appendTerminalLine(msg.terminal);
+              const script = String(meta?.lastBackgroundActionScript || '');
+              if (String(meta?.lastBackgroundStatus || '') === 'success' && script === 'gcc-scan.mjs') {
+                appendTerminalLine('[INFO] → GCC roles are in Job Pipeline (GCC badge) and GCC Campaign tab.');
+              }
+              try {
+                localStorage.setItem(storageKey, String(eventId));
+              } catch {
+                // ignore
+              }
+              return true;
+            };
+
             try {
               const nextMeta = d?.meta || {};
               const nextEventId = Number(nextMeta.lastBackgroundEventId || 0);
               const lastSeen = Number(localStorage.getItem(lastSeenKey) || 0);
-              if (nextEventId > 0 && nextEventId > lastSeen) {
-                const msg = formatCompletionMessage(nextMeta);
-                setToast({ show: true, message: msg.toast });
-                setTimeout(() => setToast({ show: false, message: '' }), 5000);
-                appendTerminalLine(msg.terminal);
-                localStorage.setItem(lastSeenKey, String(nextEventId));
+              if (nextEventId > lastSeen) {
+                notifyBackgroundCompletion(nextMeta, lastSeenKey);
               }
             } catch {
               // ignore storage failures
             }
 
             if (prevData) {
-              // Reliable background completion signals (GitHub Actions / cron)
               const prevMeta = prevData.meta || {};
               const nextMeta = d.meta || {};
-              // Completion toast (even when 0 jobs were added/ranked)
-              // Trigger on event id change OR completed_at change (more robust across reloads/localStorage).
+              const bgNotified = notifyBackgroundCompletion(nextMeta, lastSeenKey);
+
               if (
-                (nextMeta.lastBackgroundEventId &&
-                  nextMeta.lastBackgroundEventId !== prevMeta.lastBackgroundEventId) ||
-                (nextMeta.lastBackgroundCompletedAt &&
-                  nextMeta.lastBackgroundCompletedAt !== prevMeta.lastBackgroundCompletedAt)
-              ) {
-                const msg = formatCompletionMessage(nextMeta);
-                setToast({ show: true, message: msg.toast });
-                setTimeout(() => setToast({ show: false, message: '' }), 5000);
-                appendTerminalLine(msg.terminal);
-                try {
-                  localStorage.setItem(lastSeenKey, String(Number(nextMeta.lastBackgroundEventId || 0)));
-                } catch {
-                  // ignore
-                }
-              }
-              if (
+                !bgNotified &&
                 typeof prevMeta.jobsTotal === 'number' &&
                 typeof nextMeta.jobsTotal === 'number' &&
                 nextMeta.jobsTotal > prevMeta.jobsTotal
@@ -895,13 +905,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 setToast({ show: true, message: '[OK] ✔ Apply completed — application recorded' });
                 setTimeout(() => setToast({ show: false, message: '' }), 5000);
                 appendTerminalLine('[OK] ✔ Apply completed. Application recorded');
-              } else if (prevData.pipeline && d.pipeline) {
+              } else if (!bgNotified && prevData.pipeline && d.pipeline) {
                 const prevScores = prevData.pipeline.map((j: any) => j.score || 0).join(',');
                 const newScores = d.pipeline.map((j: any) => j.score || 0).join(',');
                 if (d.pipeline.length > prevData.pipeline.length) {
-                setToast({ show: true, message: '[OK] ✔ Scan completed — pipeline updated' });
-                setTimeout(() => setToast({ show: false, message: '' }), 5000);
-                appendTerminalLine('[OK] ✔ Scan completed. Pipeline updated');
+                  setToast({ show: true, message: '[OK] ✔ Scan completed — pipeline updated' });
+                  setTimeout(() => setToast({ show: false, message: '' }), 5000);
+                  appendTerminalLine('[OK] ✔ Scan completed. Pipeline updated');
                 } else if (prevScores !== newScores) {
                   setToast({ show: true, message: '[OK] ✔ Rank completed — pipeline scores updated' });
                   setTimeout(() => setToast({ show: false, message: '' }), 5000);
@@ -1057,21 +1067,28 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     setActiveTab('gcc');
   };
 
-  const importHighValueGccFromPipeline = () => {
-    const highValue = (data?.pipeline || []).filter((j: any) => j.gcc_high_value);
-    if (highValue.length === 0) {
-      setToast({ show: true, message: 'No high-value GCC jobs in pipeline yet. Run gcc-scan --deep first.' });
+  const importGccFromPipeline = (mode: 'all' | 'high_value') => {
+    const pool = (data?.pipeline || []).filter((j: any) =>
+      mode === 'high_value' ? j.gcc_high_value : j.company_type === 'GCC'
+    );
+    if (pool.length === 0) {
+      setToast({
+        show: true,
+        message: mode === 'high_value'
+          ? 'No high-value GCC jobs yet. Run gcc-scan --deep first.'
+          : 'No GCC roles in pipeline yet. Run gcc-scan --deep — results appear here and in Job Pipeline.',
+      });
       return;
     }
     const existing = new Set(
       gccCampaign.targets.map((t) => `${t.company.toLowerCase()}|${(t.role || '').toLowerCase()}`)
     );
-    const added = highValue.filter((j: any) => {
+    const added = pool.filter((j: any) => {
       const key = `${String(j.company || '').toLowerCase()}|${String(j.title || '').toLowerCase()}`;
       return !existing.has(key);
     });
     if (added.length === 0) {
-      setToast({ show: true, message: 'All high-value GCC jobs are already tracked' });
+      setToast({ show: true, message: 'All GCC pipeline roles are already in outreach tracker' });
       setActiveTab('gcc');
       return;
     }
@@ -1093,9 +1110,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         })),
       ],
     });
-    setToast({ show: true, message: `Imported ${added.length} high-value GCC job(s) — click Save Campaign` });
+    setToast({ show: true, message: `Imported ${added.length} GCC role(s) — click Save Campaign` });
     setActiveTab('gcc');
   };
+
+  const importHighValueGccFromPipeline = () => importGccFromPipeline('high_value');
+  const importAllGccFromPipeline = () => importGccFromPipeline('all');
 
   const handleSaveGccCampaign = async () => {
     setIsSaving(true);
@@ -1592,10 +1612,20 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       ) : null}
       {/* Sidebar: drawer on mobile, fixed rail on desktop */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-[width,transform] duration-300 ease-in-out lg:static lg:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${sidebarCollapsed ? 'w-[4.5rem] lg:w-[4.5rem]' : 'w-60'}`}
       >
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!sidebarCollapsed}
+          className="absolute -right-3 top-[4.25rem] z-[60] hidden h-7 w-7 items-center justify-center rounded-full border border-[#E5E5E0] bg-white text-[#6B6B6B] shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition-all hover:border-[#1C1C1E]/20 hover:text-[#1C1C1E] hover:shadow-md lg:flex"
+        >
+          {sidebarCollapsed ? <ChevronRight size={14} strokeWidth={2.5} /> : <ChevronLeft size={14} strokeWidth={2.5} />}
+        </button>
         <div className={`flex-1 overflow-y-auto overflow-x-hidden ${sidebarCollapsed ? 'px-2 py-4' : 'px-4 py-6'}`}>
           <div
             className={`mb-6 flex items-center ${
@@ -1643,18 +1673,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           >
             <LogOut size={18} className="opacity-70 transition-opacity group-hover:opacity-100" />
             {!sidebarCollapsed && <span className="text-sm font-bold">Sign Out</span>}
-          </button>
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-expanded={!sidebarCollapsed}
-            className={`mt-2 flex w-full items-center justify-center rounded-xl border border-[#E5E5E0] bg-white py-2.5 text-[#6B6B6B] transition-all hover:border-[#D4D4CE] hover:text-[#1C1C1E] ${
-              sidebarCollapsed ? 'px-0' : 'px-4'
-            }`}
-          >
-            {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
         </div>
       </aside>
@@ -3172,7 +3190,7 @@ System Initialized — v2.0`}
                     <span className={`font-bold font-mono ${awaitingPostingConfirm ? 'text-amber-700' : 'text-[#1C1C1E]'}`}>
                       {awaitingPostingConfirm
                         ? 'Continue with resume generation? [Yes/No]:'
-                        : 'auth@career-ops:~$'}
+                        : `${terminalPrompt}`}
                     </span>
                     <form onSubmit={handleCommandSubmit} className="flex-1">
                        <input
@@ -3208,6 +3226,14 @@ System Initialized — v2.0`}
               onChange={setGccCampaign}
               onSave={handleSaveGccCampaign}
               onImportHighValue={importHighValueGccFromPipeline}
+              onImportAllGcc={importAllGccFromPipeline}
+              pipelineGccJobs={(data?.pipeline || []).filter((j: any) => j.company_type === 'GCC')}
+              onOpenPipeline={() => setActiveTab('pipeline')}
+              onTailorJob={(jobId: number) => {
+                setActiveTab('terminal');
+                void requestTailor(jobId);
+              }}
+              onAddToOutreach={(company: string, role: string) => addToGccCampaign(company, role)}
               highValueCount={(data?.pipeline || []).filter((j: any) => j.gcc_high_value).length}
               isSaving={isSaving}
               saveStatus={saveStatus}

@@ -187,25 +187,23 @@ export async function GET(req: NextRequest) {
           scriptName = `${cmd}.mjs`;
         } else if (cmd === 'help' || cmd === '?') {
           const helpText = `
-  ┌─────────────────────────────────────────────────────┐
-  │  THE CAREER-OPS SEQUENCE                             │
-  │    1. scan --deep      Auto-discover new job matches │
-  │    2. gcc-scan --deep  Hunt GCC/captive employers (India) │
-  │    3. rank --deep      Score & rank discovered roles │
-  │    4. tailor <id|url> --deep  Generate hyper-custom Resumes │
-  │    5. apply <id|url> --deep   Automatically apply to role  │
-  │                                                     │
-  │  UTILITIES                                          │
-  │    scan              Quick discovery check           │
-  │    gcc-scan          Quick GCC employer check        │
-  │    tailor <id|url>   Quick Resume preview (local)  │
-  │    sync-stories      Sync STAR stories to master bank│
-  │    ls                List project files              │
-  │    clear             Clear terminal screen           │
-  │    help              Show this reference             │
-  │                                                     │
-  └─────────────────────────────────────────────────────┘
-\n`;
+CAREER-OPS — COMMAND REFERENCE
+
+THE SEQUENCE
+  1. scan --deep          Discover roles across job boards
+  2. gcc-scan --deep      Hunt GCC/captive employers (India)
+  3. rank --deep          Score and rank pipeline roles
+  4. tailor <id> --deep   Generate tailored resume + cover
+  5. apply <id> --deep    Record / submit application
+
+UTILITIES
+  scan, gcc-scan          Quick discovery (no --deep)
+  tailor <id|url>         Resume preview
+  sync-stories            Sync STAR stories to story bank
+  ls, clear, help         Shell helpers
+
+Tip: gcc-scan results show in Job Pipeline (GCC badge) and GCC Campaign tab.
+`;
           send({ type: 'stdout', content: helpText });
           send({ type: 'done', code: 0 });
           controller.close();
