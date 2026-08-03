@@ -200,6 +200,18 @@ export async function isOtpLockedOut(email: string): Promise<boolean> {
   return failCount >= 5;
 }
 
+export function formatRetryHint(retryAfterSec: number): string {
+  if (retryAfterSec >= 3600) {
+    const hours = Math.ceil(retryAfterSec / 3600);
+    return `Try again in ~${hours} hour${hours === 1 ? '' : 's'}.`;
+  }
+  if (retryAfterSec >= 60) {
+    const mins = Math.ceil(retryAfterSec / 60);
+    return `Try again in ~${mins} minute${mins === 1 ? '' : 's'}.`;
+  }
+  return `Try again in ${Math.max(1, retryAfterSec)}s.`;
+}
+
 export function rateLimitResponse(result: RateLimitResult, message = "Too many requests. Try again later."): Response {
   return Response.json(
     { error: message, retryAfterSec: result.retryAfterSec },

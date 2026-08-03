@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
-import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { rateLimit, rateLimitResponse, formatRetryHint } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,12 +36,18 @@ export async function POST(req: NextRequest) {
 
     const hourlyLimit = await rateLimit(`chat:hour:${userId}`, { windowMs: 60 * 60_000, max: 20 });
     if (!hourlyLimit.ok) {
-      return rateLimitResponse(hourlyLimit, 'Copilot rate limit reached. Try again later.');
+      return rateLimitResponse(
+        hourlyLimit,
+        `Copilot hourly limit reached (20 messages/hour). ${formatRetryHint(hourlyLimit.retryAfterSec)}`
+      );
     }
 
     const dailyLimit = await rateLimit(`chat:day:${userId}`, { windowMs: 24 * 60 * 60_000, max: 60 });
     if (!dailyLimit.ok) {
-      return rateLimitResponse(dailyLimit, 'Daily Copilot quota reached. Try again tomorrow.');
+      return rateLimitResponse(
+        dailyLimit,
+        `Copilot daily limit reached (60 messages/day). ${formatRetryHint(dailyLimit.retryAfterSec)}`
+      );
     }
 
     // 2. Parse request payload

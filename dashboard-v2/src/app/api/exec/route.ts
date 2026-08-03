@@ -5,7 +5,7 @@ import fs from 'fs';
 import yaml from 'js-yaml';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimit, formatRetryHint } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
         if (!execLimit.ok) {
           send({
             type: 'stderr',
-            content: `Rate limit: max 12 terminal commands per hour. Retry in ${execLimit.retryAfterSec}s.\n`,
+            content: `[ERR] Terminal limit reached (12 commands/hour). ${formatRetryHint(execLimit.retryAfterSec)}\n`,
           });
           send({ type: 'done', code: 429 });
           controller.close();
@@ -614,7 +614,9 @@ export async function POST(req: NextRequest) {
     const execLimit = await rateLimit(`exec:${userId}`, { windowMs: 60 * 60_000, max: 12 });
     if (!execLimit.ok) {
       return NextResponse.json(
-        { error: `Rate limit: max 12 terminal commands per hour. Retry in ${execLimit.retryAfterSec}s.` },
+        {
+          error: `Terminal limit reached (12 commands/hour). ${formatRetryHint(execLimit.retryAfterSec)}`,
+        },
         { status: 429, headers: { 'Retry-After': String(execLimit.retryAfterSec) } }
       );
     }

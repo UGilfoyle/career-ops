@@ -6,7 +6,7 @@ import { fillAtsTemplate } from '@/lib/resume/fill-template';
 import { validateResumeDraft } from '@/lib/resume/schema';
 import type { ResumeContext } from '@/lib/resume/types';
 import { readR2Object, uploadToR2 } from '@/lib/r2-client';
-import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { rateLimit, rateLimitResponse, formatRetryHint } from '@/lib/rate-limit';
 import { writeFile, unlink, mkdir, readFile, access } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -371,7 +371,10 @@ export async function POST(req: Request) {
     const userId = session.user.id;
     const pdfLimit = await rateLimit(`pdf:${userId}`, { windowMs: 60 * 60_000, max: 10 });
     if (!pdfLimit.ok) {
-      return rateLimitResponse(pdfLimit, 'PDF export rate limit reached. Try again later.');
+      return rateLimitResponse(
+        pdfLimit,
+        `PDF export limit reached (10 exports/hour). ${formatRetryHint(pdfLimit.retryAfterSec)}`
+      );
     }
 
     const body = await req.json().catch(() => ({}));
