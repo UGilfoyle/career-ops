@@ -60,11 +60,11 @@ export async function GET(req: NextRequest) {
         }
         const userId = String(session.user.id || '1');
 
-        const execLimit = await rateLimit(`exec:${userId}`, { windowMs: 60 * 60_000, max: 30 });
+        const execLimit = await rateLimit(`exec:${userId}`, { windowMs: 60 * 60_000, max: 12 });
         if (!execLimit.ok) {
           send({
             type: 'stderr',
-            content: `Rate limit: max 30 terminal commands per hour. Retry in ${execLimit.retryAfterSec}s.\n`,
+            content: `Rate limit: max 12 terminal commands per hour. Retry in ${execLimit.retryAfterSec}s.\n`,
           });
           send({ type: 'done', code: 429 });
           controller.close();
@@ -611,10 +611,10 @@ export async function POST(req: NextRequest) {
     }
     const userId = session.user.id;
 
-    const execLimit = await rateLimit(`exec:${userId}`, { windowMs: 60 * 60_000, max: 30 });
+    const execLimit = await rateLimit(`exec:${userId}`, { windowMs: 60 * 60_000, max: 12 });
     if (!execLimit.ok) {
       return NextResponse.json(
-        { error: `Rate limit: max 30 terminal commands per hour. Retry in ${execLimit.retryAfterSec}s.` },
+        { error: `Rate limit: max 12 terminal commands per hour. Retry in ${execLimit.retryAfterSec}s.` },
         { status: 429, headers: { 'Retry-After': String(execLimit.retryAfterSec) } }
       );
     }

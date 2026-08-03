@@ -369,7 +369,7 @@ export async function POST(req: Request) {
     }
 
     const userId = session.user.id;
-    const pdfLimit = await rateLimit(`pdf:${userId}`, { windowMs: 60 * 60_000, max: 15 });
+    const pdfLimit = await rateLimit(`pdf:${userId}`, { windowMs: 60 * 60_000, max: 10 });
     if (!pdfLimit.ok) {
       return rateLimitResponse(pdfLimit, 'PDF export rate limit reached. Try again later.');
     }

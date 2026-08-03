@@ -34,12 +34,12 @@ export async function POST(req: NextRequest) {
     }
     const userId = Number.parseInt(String(session.user.id), 10);
 
-    const hourlyLimit = await rateLimit(`chat:hour:${userId}`, { windowMs: 60 * 60_000, max: 40 });
+    const hourlyLimit = await rateLimit(`chat:hour:${userId}`, { windowMs: 60 * 60_000, max: 20 });
     if (!hourlyLimit.ok) {
       return rateLimitResponse(hourlyLimit, 'Copilot rate limit reached. Try again later.');
     }
 
-    const dailyLimit = await rateLimit(`chat:day:${userId}`, { windowMs: 24 * 60 * 60_000, max: 120 });
+    const dailyLimit = await rateLimit(`chat:day:${userId}`, { windowMs: 24 * 60 * 60_000, max: 60 });
     if (!dailyLimit.ok) {
       return rateLimitResponse(dailyLimit, 'Daily Copilot quota reached. Try again tomorrow.');
     }
