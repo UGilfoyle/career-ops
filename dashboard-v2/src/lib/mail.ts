@@ -20,37 +20,54 @@ function assertSenderConfigured(context: string): { name: string; email: string 
 }
 
 function emailShell(inner: string): string {
+  const appUrl = (process.env.NEXTAUTH_URL || process.env.APP_URL || 'https://careerops.dpdns.org').replace(/\/$/, '');
   return `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-            body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background-color: #FAFAF8; }
-            .container { max-width: 600px; margin: 40px auto; padding: 48px 40px; background-color: #ffffff; border: 1px solid #E5E5E0; border-radius: 32px; }
-            .logo { width: 56px; height: 56px; background-color: #1C1C1E; border-radius: 16px; margin: 0 auto 32px auto; display: flex; align-items: center; justify-content: center; }
-            .headline { font-size: 28px; font-weight: 700; color: #1C1C1E; text-align: center; margin-bottom: 12px; letter-spacing: -0.025em; }
-            .subtext { font-size: 15px; color: #6B6B6B; text-align: center; margin-bottom: 32px; line-height: 1.55; }
-            .cta { display: inline-block; background: #1C1C1E; color: #fff !important; text-decoration: none; font-weight: 700; font-size: 14px; padding: 14px 28px; border-radius: 14px; }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; background-color: #F5F5F0; }
+            .wrap { max-width: 520px; margin: 0 auto; padding: 32px 16px 48px; }
+            .card { background: #ffffff; border: 1px solid #E5E5E0; border-radius: 24px; padding: 40px 32px; }
+            .brand { text-align: center; margin-bottom: 28px; }
+            .brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #1C1C1E; border-radius: 14px; margin-bottom: 12px; }
+            .brand-name { font-size: 15px; font-weight: 700; color: #1C1C1E; letter-spacing: -0.02em; }
+            .headline { font-size: 22px; font-weight: 700; color: #1C1C1E; text-align: center; margin: 0 0 10px; letter-spacing: -0.03em; }
+            .subtext { font-size: 14px; color: #6B6B6B; text-align: center; margin: 0 0 28px; line-height: 1.6; }
+            .code-wrap { background: #FAFAF8; border: 1px solid #E5E5E0; border-radius: 16px; padding: 24px 16px; text-align: center; margin-bottom: 24px; }
+            .code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 36px; font-weight: 700; color: #1C1C1E; letter-spacing: 0.35em; padding-left: 0.35em; }
+            .expiry { font-size: 12px; color: #9CA3AF; text-align: center; margin: 0 0 24px; }
+            .cta { display: inline-block; background: #1C1C1E; color: #fff !important; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 12px; }
             .bullets { color: #1C1C1E; font-size: 14px; line-height: 1.7; margin: 0 0 28px 0; padding-left: 20px; }
-            .refer { background: #FAFAF8; border: 1px solid #E5E5E0; border-radius: 20px; padding: 24px; margin: 28px 0; text-align: center; }
-            .refer h2 { font-size: 16px; margin: 0 0 8px 0; color: #1C1C1E; }
-            .refer p { font-size: 13px; color: #6B6B6B; margin: 0 0 14px 0; line-height: 1.5; }
+            .refer { background: #FAFAF8; border: 1px solid #E5E5E0; border-radius: 16px; padding: 20px; margin: 24px 0; text-align: center; }
+            .refer h2 { font-size: 15px; margin: 0 0 8px 0; color: #1C1C1E; }
+            .refer p { font-size: 13px; color: #6B6B6B; margin: 0 0 12px 0; line-height: 1.5; }
             .refer a.link { word-break: break-all; font-size: 12px; color: #1C1C1E; font-weight: 600; }
-            .footer { border-top: 1px solid #F5F5F0; margin-top: 40px; padding-top: 24px; text-align: center; }
-            .footer-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: #9CA3AF; }
-            .notice { font-size: 12px; color: #9CA3AF; line-height: 1.6; margin-bottom: 8px; }
+            .footer { border-top: 1px solid #F0F0EB; margin-top: 28px; padding-top: 20px; text-align: center; }
+            .notice { font-size: 12px; color: #9CA3AF; line-height: 1.6; margin: 0 0 8px; }
+            .footer-link { font-size: 12px; color: #6B6B6B; text-decoration: none; font-weight: 600; }
             .unsub { font-size: 11px; color: #9CA3AF; }
             .unsub a { color: #6B6B6B; }
-            .center { text-align: center; margin: 24px 0 8px; }
+            .center { text-align: center; margin: 20px 0 8px; }
           </style>
         </head>
         <body>
-          <div class="container">
-            <div class="logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          <div class="wrap">
+            <div class="card">
+              <div class="brand">
+                <div class="brand-mark">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <div class="brand-name">Career-Ops</div>
+              </div>
+              ${inner}
             </div>
-            ${inner}
+            <p style="text-align:center;font-size:11px;color:#9CA3AF;margin-top:20px;">
+              <a href="${appUrl}" class="footer-link">${appUrl.replace(/^https?:\/\//, '')}</a>
+            </p>
           </div>
         </body>
         </html>
@@ -59,7 +76,6 @@ function emailShell(inner: string): string {
 
 export const sendVerificationEmail = async (email: string, token: string) => {
   try {
-    // Lead Engineer Note: Fallback to console for easier local debugging if key is placeholder
     if (!process.env.BREVO_API_KEY) {
       console.warn('⚠️ BREVO_API_KEY missing. Verification token for', email, 'is:', token);
       return;
@@ -71,18 +87,16 @@ export const sendVerificationEmail = async (email: string, token: string) => {
 
     const sender = getSender();
     const result = await brevo.transactionalEmails.sendTransacEmail({
-      subject: "Career-Ops Identity Verification",
+      subject: 'Your Career-Ops verification code',
       htmlContent: emailShell(`
-            <h1 class="headline">Verify Identity</h1>
-            <p class="subtext">Enter the secure authentication code below to activate your Career-Ops dashboard and begin your agentic career scan.</p>
-            <div style="background-color: #FAFAF8; border: 1px solid #E5E5E0; padding: 40px; border-radius: 32px; text-align: center; margin-bottom: 32px;">
-              <span style="font-size: 52px; font-weight: 700; color: #1C1C1E; letter-spacing: 12px; margin-left: 12px;">${token}</span>
+            <h1 class="headline">Confirm your email</h1>
+            <p class="subtext">Enter this code on the verification page to finish setting up your account.</p>
+            <div class="code-wrap">
+              <span class="code">${token}</span>
             </div>
+            <p class="expiry">This code expires in 10 minutes. Do not share it with anyone.</p>
             <div class="footer">
-              <p class="notice">If you did not request this code, your identity remains secure. You can safely discard this transmission.</p>
-              <div style="margin-top: 24px;">
-                <span class="footer-tag">SaaS Infrastructure v2.0-modern</span>
-              </div>
+              <p class="notice">Didn't create a Career-Ops account? You can ignore this email — nothing will be changed.</p>
             </div>
       `),
       sender,
@@ -93,14 +107,42 @@ export const sendVerificationEmail = async (email: string, token: string) => {
     return result;
   } catch (error) {
     console.error('Failed to send OTP Email:', error);
-    // Lead Engineer: Do NOT crash the registration flow if email fails. 
-    // Log it and allow the user to see the "Check your email" page so they can try "Resend".
     return null; 
   }
 };
 
 export const sendPasswordResetEmail = async (email: string, token: string) => {
-  return sendVerificationEmail(email, token);
+  try {
+    if (!process.env.BREVO_API_KEY) {
+      console.warn('⚠️ BREVO_API_KEY missing. Reset token for', email, 'is:', token);
+      return;
+    }
+    if (!assertSenderConfigured('password reset email')) {
+      console.warn('Reset token for', email, 'is:', token);
+      return;
+    }
+
+    const sender = getSender();
+    return await brevo.transactionalEmails.sendTransacEmail({
+      subject: 'Reset your Career-Ops password',
+      htmlContent: emailShell(`
+            <h1 class="headline">Reset your password</h1>
+            <p class="subtext">Use this code on the reset page. If you didn't request a reset, ignore this email.</p>
+            <div class="code-wrap">
+              <span class="code">${token}</span>
+            </div>
+            <p class="expiry">This code expires in 10 minutes.</p>
+            <div class="footer">
+              <p class="notice">For security, never share this code. Career-Ops will never ask for it by phone or chat.</p>
+            </div>
+      `),
+      sender,
+      to: [{ email }]
+    });
+  } catch (error) {
+    console.error('Failed to send password reset email:', error);
+    return null;
+  }
 };
 
 export type MonthlyNewsletterParams = {
@@ -156,7 +198,7 @@ export const sendMonthlyNewsletterEmail = async (params: MonthlyNewsletterParams
               <p class="notice">You received this because you use Career-Ops. We send at most one of these per month.</p>
               <p class="unsub"><a href="${unsubscribeUrl}">Unsubscribe from monthly emails</a></p>
               <div style="margin-top: 20px;">
-                <span class="footer-tag">Career-Ops · Monthly</span>
+                <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:#9CA3AF;">Career-Ops · Monthly</span>
               </div>
             </div>
   `);

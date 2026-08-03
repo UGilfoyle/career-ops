@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail, ArrowRight, CheckCircle2, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Loader2, RefreshCw, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
@@ -140,10 +140,14 @@ function VerifyContent() {
       >
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center h-14 w-14 bg-[#1C1C1E] rounded-2xl shadow-xl mb-6">
-            <Mail className="h-7 w-7 text-white" />
+            <Zap className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight mb-2">Check your email</h1>
-          <p className="text-[#9CA3AF] font-medium text-sm">We&apos;ve sent a 6-digit code to <span className="text-[#1C1C1E] font-bold">{email}</span></p>
+          <p className="text-[#6B6B6B] font-medium text-sm leading-relaxed">
+            We sent a 6-digit code to<br />
+            <span className="text-[#1C1C1E] font-bold">{email}</span>
+          </p>
+          <p className="text-[#9CA3AF] text-xs mt-2">Paste the code below — it expires in 10 minutes.</p>
         </div>
 
         <div className="bg-white border border-[#E5E5E0] rounded-[2.5rem] p-10 shadow-2xl shadow-black/[0.02] relative overflow-hidden">
@@ -193,7 +197,7 @@ function VerifyContent() {
                 >
                   {isLoading ? <Loader2 className="animate-spin" size={20} /> : (
                     <>
-                      Verify Identity
+                      Verify email
                       <ArrowRight size={20} className="text-white/40" />
                     </>
                   )}
@@ -206,7 +210,7 @@ function VerifyContent() {
                     className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-widest hover:text-[#1C1C1E] transition-colors disabled:opacity-50 inline-flex items-center gap-2"
                   >
                     <RefreshCw size={12} className={resendCooldown > 0 ? 'animate-spin' : ''} />
-                    {resendCooldown > 0 ? `Retry in ${resendCooldown}s` : 'Resend Identity Code'}
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
                   </button>
                 </div>
               </motion.div>
@@ -217,14 +221,13 @@ function VerifyContent() {
         <p className="mt-10 text-center text-[#9CA3AF] text-sm font-medium">
           Wrong email address?{' '}
           <Link href="/signup" className="text-[#1C1C1E] font-bold hover:underline underline-offset-4 decoration-[#E5E5E0]">
-            Back to Registry
+            Back to sign up
           </Link>
         </p>
 
-        <div className="mt-12 flex items-center justify-center gap-3 text-[#E5E5E0]">
-           <ShieldCheck size={16} />
-           <span className="text-[9px] font-bold uppercase tracking-[0.25em]">SaaS Identity v2.0-modern</span>
-        </div>
+        <p className="mt-8 text-center text-[#9CA3AF] text-[11px] font-medium">
+          careerops.dpdns.org
+        </p>
       </motion.div>
     </div>
   );
