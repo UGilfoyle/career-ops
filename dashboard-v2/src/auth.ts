@@ -39,6 +39,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const client = await pool.connect();
           try {
+            // Best-effort: lifetime Pro needs github_login, but login must never
+            // fail if the column is missing on an older DB (pre-migrate).
+            let hasGithubLoginCol = false;
+            try {
+              await client.query(
+                'ALTER TABLE users ADD COLUMN IF NOT EXISTS github_login TEXT'
+              );
+              hasGithubLoginCol = true;
+            } catch (colErr) {
+              console.warn('github_login column ensure skipped:', colErr);
+            }
+
             // Check if user exists and whether email verification is complete.
             const existing = await client.query(
               'SELECT id, email_verified FROM users WHERE email = $1',
@@ -50,14 +62,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
             if (existing.rows.length === 0) {
               // Create new GitHub user but keep email unverified until OTP confirmation.
-              const inserted = await client.query(
-                `INSERT INTO users (name, email, email_verified, image, github_login)
-                 VALUES ($1, $2, NULL, $3, $4)
-                 ON CONFLICT (email) DO UPDATE SET
-                   github_login = COALESCE(EXCLUDED.github_login, users.github_login)
-                 RETURNING id`,
-                [user.name, user.email, user.image, githubLogin]
-              );
+              let inserted;
+              if (hasGithubLoginCol) {
+                inserted = await client.query(
+                  `INSERT INTO users (name, email, email_verified, image, github_login)
+                   VALUES ($1, $2, NULL, $3, $4)
+                   ON CONFLICT (email) DO UPDATE SET
+                     github_login = COALESCE(EXCLUDED.github_login, users.github_login)
+                   RETURNING id`,
+                  [user.name, user.email, user.image, githubLogin]
+                );
+              } else {
+                inserted = await client.query(
+                  `INSERT INTO users (name, email, email_verified, image)
+                   VALUES ($1, $2, NULL, $3)
+                   ON CONFLICT (email) DO NOTHING
+                   RETURNING id`,
+                  [user.name, user.email, user.image]
+                );
+              }
 
               if (inserted.rows[0]) {
                 userId = inserted.rows[0].id.toString();
@@ -68,11 +91,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             } else {
               userId = existing.rows[0].id.toString();
               emailVerified = Boolean(existing.rows[0].email_verified);
-              if (githubLogin) {
-                await client.query(
-                  'UPDATE users SET github_login = $1 WHERE id = $2',
-                  [githubLogin, userId]
-                );
+              if (githubLogin && hasGithubLoginCol) {
+                try {
+                  await client.query(
+                    'UPDATE users SET github_login = $1 WHERE id = $2',
+                    [githubLogin, userId]
+                  );
+                } catch (updErr) {
+                  console.warn('github_login update skipped:', updErr);
+                }
               }
             }
 

@@ -1,6 +1,6 @@
 import sql from '@/lib/db';
 import { isAdminEmail } from '@/lib/admin';
-import { isLifetimeProGithub } from '@/lib/lifetime-access';
+import { isLifetimeProEmail, isLifetimeProGithub } from '@/lib/lifetime-access';
 import { rateLimit } from '@/lib/rate-limit';
 import { COPILOT_FREE_LIMIT, COPILOT_FREE_WINDOW_MS, resolvePlanForCountry } from './plans';
 import { ensureBillingSchema } from './schema';
@@ -76,6 +76,7 @@ export async function hasProAccess(
   githubLogin?: string | null,
 ): Promise<boolean> {
   if (email && isAdminEmail(email)) return true;
+  if (isLifetimeProEmail(email)) return true;
   if (isLifetimeProGithub(githubLogin)) return true;
   const storedLogin = githubLogin ? null : await getStoredGithubLogin(userId);
   if (isLifetimeProGithub(storedLogin)) return true;
