@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Check,
-  Copy,
   IndianRupee,
   Loader2,
   Smartphone,
@@ -13,6 +12,7 @@ import {
   Clock,
   RefreshCw,
 } from 'lucide-react';
+import { UpiMark } from '@/components/billing/UpiMark';
 
 type Step = 'pay' | 'utr' | 'admin' | 'done';
 
@@ -23,13 +23,13 @@ type Step = 'pay' | 'utr' | 'admin' | 'done';
  */
 export default function BillingSimulateClient() {
   const sp = useSearchParams();
+  // Demo payee only — the real VPA lives in UPI_VPA env, never in source.
   const upiUri =
-    'upi://pay?pa=akashkaintura%40icici&pn=Akash%20Kaintura&am=99.00&cu=INR&tn=Thank%20you%20for%20Choosing%20Career-ops&tr=COSIM1234';
+    'upi://pay?pa=demo%40upi&pn=Career-Ops%20Demo&am=99.00&cu=INR&tn=Simulation%20only&tr=COSIM1234';
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUri)}`;
 
   const [step, setStep] = useState<Step>('pay');
   const [utr, setUtr] = useState('123456789012');
-  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [claimStatus, setClaimStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
@@ -52,16 +52,6 @@ export default function BillingSimulateClient() {
     }),
     [utr],
   );
-
-  async function copyUri() {
-    try {
-      await navigator.clipboard.writeText(upiUri);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
-    }
-  }
 
   function simulatePaid() {
     setStep('utr');
@@ -123,7 +113,10 @@ export default function BillingSimulateClient() {
         <div className="grid lg:grid-cols-2 gap-6 items-start">
           <div className="bg-white border border-[#E5E5E0] rounded-3xl shadow-sm overflow-hidden">
             <div className="px-6 pt-6 pb-4 text-center border-b border-[#E5E5E0] bg-[#FAFAF8]/50">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">User view</p>
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">User view</p>
+                <UpiMark size={16} />
+              </div>
               <h2 className="text-3xl font-bold text-[#1C1C1E] mt-1">₹99</h2>
               <p className="text-xs text-[#6B6B6B]">per month · zero gateway fees</p>
             </div>
@@ -140,15 +133,10 @@ export default function BillingSimulateClient() {
                   >
                     <Smartphone size={16} /> Pay with any UPI app
                   </a>
-                  <p className="text-center font-mono text-sm font-semibold">akashkaintura@icici</p>
-                  <button
-                    type="button"
-                    onClick={() => void copyUri()}
-                    className="w-full flex items-center justify-center gap-2 border border-[#E5E5E0] rounded-xl py-2.5 text-xs font-semibold"
-                  >
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
-                    Copy UPI link
-                  </button>
+                  <p className="text-center font-mono text-sm font-semibold">de••••pi</p>
+                  <p className="text-center text-[10px] text-[#9CA3AF]">
+                    Masked on screen — full UPI ID only appears in the payment app after scanning
+                  </p>
                 </>
               )}
 

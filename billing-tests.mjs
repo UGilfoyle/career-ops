@@ -63,6 +63,17 @@ function buildUpiPayUri(cfg, transactionRef) {
   return `upi://pay?${params.toString()}`;
 }
 
+function maskVpa(vpa) {
+  const [handle = '', bank = ''] = String(vpa).split('@');
+  if (!handle) return '••••';
+  const visible = handle.length <= 4 ? 1 : 2;
+  const head = handle.slice(0, visible);
+  const tail = handle.length > visible * 2 ? handle.slice(-visible) : '';
+  const dots = '•'.repeat(Math.max(4, handle.length - head.length - tail.length));
+  const masked = `${head}${dots}${tail}`;
+  return bank ? `${masked}@${bank}` : masked;
+}
+
 function upiTransactionRef(userId) {
   return `CO${String(userId).replace(/\D/g, '').slice(-8)}${Date.now().toString(36).slice(-4).toUpperCase()}`;
 }
@@ -148,18 +159,30 @@ console.log('\n2. UPI deep link (unit)');
 test('static upi:// never needs CIT page', () => {
   const uri = buildUpiPayUri(
     {
-      vpa: 'akashkaintura@icici',
-      payeeName: 'Akash Kaintura',
+      vpa: 'testpayee@examplebank',
+      payeeName: 'Test Payee',
       amountInr: 99,
       note: 'Thank you for Choosing Career-ops',
     },
     'CO42ABCD',
   );
   assert.ok(uri.startsWith('upi://pay?'));
-  assert.ok(uri.includes('pa=akashkaintura%40icici') || uri.includes('pa=akashkaintura@icici'));
+  assert.ok(uri.includes('pa=testpayee%40examplebank') || uri.includes('pa=testpayee@examplebank'));
   assert.ok(uri.includes('am=99.00'));
   assert.ok(uri.includes('cu=INR'));
   assert.ok(uri.includes('tr=CO42ABCD'));
+});
+test('VPA masked for display, never the full handle', () => {
+  const masked = maskVpa('testpayee@examplebank');
+  assert.ok(masked.startsWith('te'), 'keeps a short prefix for recognition');
+  assert.ok(masked.endsWith('@examplebank'), 'bank handle stays visible');
+  assert.ok(masked.includes('•'), 'middle is masked');
+  assert.ok(!masked.includes('testpayee'), 'full handle must not leak');
+});
+test('masking handles short and malformed VPAs', () => {
+  assert.ok(!maskVpa('abc@ok').includes('abc'));
+  assert.equal(maskVpa(''), '••••');
+  assert.ok(maskVpa('nobank').includes('•'));
 });
 test('transaction ref starts with CO', () => {
   const ref = upiTransactionRef(12345);
@@ -395,6 +418,44 @@ test('schema keeps one pending claim per user', () => {
   const src = readFileSync(join(ROOT, 'dashboard-v2/src/lib/billing/schema.ts'), 'utf8');
   assert.ok(src.includes('upi_payment_claims_user_pending_uidx'));
   assert.ok(src.includes("WHERE status = 'pending'"));
+});
+
+test('UPI API returns only the masked handle', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/upi/route.ts'), 'utf8');
+  assert.ok(src.includes('vpaMasked'), 'response exposes vpaMasked');
+  assert.ok(src.includes('maskVpa('), 'masking applied server-side');
+  assert.ok(!/^\s*vpa:\s*cfg\.vpa/m.test(src), 'raw vpa must not be returned');
+});
+
+test('checkout page shows masked VPA with UPI branding, no copy-ID button', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/app/billing/upi/page.tsx'), 'utf8');
+  assert.ok(src.includes('vpaMasked'), 'renders the masked handle');
+  assert.ok(!src.includes('Copy UPI ID'), 'plain-text UPI ID copy must be gone');
+  assert.ok(src.includes('UpiMark'), 'UPI brand mark present');
+  assert.ok(src.includes('Scan to pay'), 'scan-first instruction present');
+});
+
+test('no real VPA hardcoded in billing source', () => {
+  const files = [
+    'dashboard-v2/src/app/billing/upi/page.tsx',
+    'dashboard-v2/src/app/billing/simulate/BillingSimulateClient.tsx',
+    'dashboard-v2/src/lib/billing/upi.ts',
+    'dashboard-v2/src/components/ProPaywall.tsx',
+  ];
+  for (const rel of files) {
+    const src = readFileSync(join(ROOT, rel), 'utf8');
+    // A live handle would look like name@bank; only env + demo/test values allowed.
+    const hits = src.match(/[a-z0-9._-]+@(icici|okhdfcbank|oksbi|okaxis|ybl|paytm|apl|upi)\b/gi) || [];
+    const bad = hits.filter((h) => !/^(demo|test|example)/i.test(h));
+    assert.deepEqual(bad, [], `${rel} hardcodes a VPA: ${bad.join(', ')}`);
+  }
+});
+
+test('UPI mark component uses brand colors', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/components/billing/UpiMark.tsx'), 'utf8');
+  assert.ok(src.includes('#F26522'), 'UPI orange');
+  assert.ok(src.includes('#0F9D58'), 'UPI green');
+  assert.ok(src.includes('Unified Payments Interface'));
 });
 
 test('session policy: explicit rolling lifetime, shared, env-overridable', () => {

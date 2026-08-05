@@ -32,6 +32,21 @@ export function buildUpiPayUri(cfg: UpiConfig, transactionRef?: string): string 
   return `upi://pay?${params.toString()}`;
 }
 
+/**
+ * Mask a VPA for display. The full handle only reaches the payer's UPI app via
+ * the QR / deep link, so it is never harvestable from the page as plain text.
+ */
+export function maskVpa(vpa: string): string {
+  const [handle = '', bank = ''] = String(vpa).split('@');
+  if (!handle) return '••••';
+  const visible = handle.length <= 4 ? 1 : 2;
+  const head = handle.slice(0, visible);
+  const tail = handle.length > visible * 2 ? handle.slice(-visible) : '';
+  const dots = '•'.repeat(Math.max(4, handle.length - head.length - tail.length));
+  const masked = `${head}${dots}${tail}`;
+  return bank ? `${masked}@${bank}` : masked;
+}
+
 /** Short ref shown in UPI apps so you can match bank SMS to a user. */
 export function upiTransactionRef(userId: string | number): string {
   return `CO${String(userId).replace(/\D/g, '').slice(-8)}${Date.now().toString(36).slice(-4).toUpperCase()}`;

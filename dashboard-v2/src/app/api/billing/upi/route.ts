@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import {
   buildUpiPayUri,
+  maskVpa,
   qrCodeImageUrl,
   upiConfigFromEnv,
   upiTransactionRef,
@@ -43,7 +44,9 @@ export async function GET() {
         }
       : null,
     awaitingReview: blocksNewPayment(claim?.status),
-    vpa: cfg.vpa,
+    // Only the masked handle is exposed; the real VPA travels inside the QR /
+    // deep link straight into the payer's UPI app.
+    vpaMasked: maskVpa(cfg.vpa),
     payeeName: cfg.payeeName,
     amountInr: cfg.amountInr,
     display: `₹${cfg.amountInr}`,

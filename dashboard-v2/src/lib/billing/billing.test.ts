@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { resolvePlanForCountry, planSubtitle, COPILOT_FREE_LIMIT, COPILOT_FREE_WINDOW_MS } from './plans';
-import { buildUpiPayUri, upiTransactionRef, qrCodeImageUrl } from './upi';
+import { buildUpiPayUri, upiTransactionRef, qrCodeImageUrl, maskVpa } from './upi';
 import { createProApproveToken, verifyProApproveToken } from './upi-approve-token';
 import { blocksNewPayment, decideClaimSubmission, normalizeUtr } from './claims';
 
@@ -25,13 +25,20 @@ function run() {
   assert.equal(COPILOT_FREE_WINDOW_MS, 2 * 60 * 60 * 1000);
 
   const uri = buildUpiPayUri(
-    { vpa: 'akashkaintura@icici', payeeName: 'Akash', amountInr: 99, note: 'Pro' },
+    { vpa: 'testpayee@examplebank', payeeName: 'Test', amountInr: 99, note: 'Pro' },
     'CO1',
   );
   assert.ok(uri.startsWith('upi://pay?'));
   assert.ok(uri.includes('am=99.00'));
   assert.ok(upiTransactionRef(99).startsWith('CO'));
   assert.ok(qrCodeImageUrl(uri).includes('create-qr-code'));
+
+  // The QR/deep link must still carry the real VPA; only the display is masked.
+  assert.ok(uri.includes('testpayee'));
+  const masked = maskVpa('testpayee@examplebank');
+  assert.ok(!masked.includes('testpayee'));
+  assert.ok(masked.endsWith('@examplebank'));
+  assert.equal(maskVpa(''), '••••');
 
   const tok = createProApproveToken('12');
   assert.equal(verifyProApproveToken('12', tok), true);

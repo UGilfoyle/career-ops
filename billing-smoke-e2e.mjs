@@ -45,8 +45,9 @@ try {
   const sim = readFileSync(join(ROOT, 'dashboard-v2/src/app/billing/simulate/BillingSimulateClient.tsx'), 'utf8');
   assert.ok(sim.includes('Simulate'));
   assert.ok(sim.includes('Approve'));
-  assert.ok(sim.includes('akashkaintura@icici') || sim.includes('%40icici'));
-  ok('simulate client has pay + approve flow');
+  assert.ok(sim.includes('upi://pay?'), 'simulate renders a UPI deep link');
+  assert.ok(!/akashkaintura|%40icici/.test(sim), 'real VPA must never be hardcoded in source');
+  ok('simulate client has pay + approve flow with no hardcoded VPA');
 } catch (e) {
   bad('simulate client', e);
 }
