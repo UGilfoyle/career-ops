@@ -100,6 +100,25 @@ function isValidUtr(utr) {
   return /^[0-9A-Z]{8,22}$/.test(utr);
 }
 
+function decideClaimSubmission({ userId, hasPro, utr, sameUtrClaim, openClaim }) {
+  if (hasPro) return { action: 'already_pro' };
+  const clean = normalizeUtr(utr);
+  if (!isValidUtr(clean)) return { action: 'invalid_utr' };
+  if (sameUtrClaim) {
+    return String(sameUtrClaim.userId) === String(userId)
+      ? { action: 'reuse_own_claim', claim: sameUtrClaim }
+      : { action: 'utr_taken_by_other_user' };
+  }
+  if (openClaim && openClaim.status === 'pending') {
+    return { action: 'awaiting_review', claim: openClaim };
+  }
+  return { action: 'create' };
+}
+
+function blocksNewPayment(status) {
+  return status === 'pending' || status === 'approved';
+}
+
 console.log('\n🧪 billing unit + integration tests\n');
 
 console.log('1. Geo pricing (unit)');
@@ -189,8 +208,78 @@ test('free limit is 10 / 2hr', () => {
   assert.equal(windowMs, 7_200_000);
 });
 
-console.log('\n6. Integration — billing files wired');
+console.log('\n6. Claim state machine — session/no-double-charge (unit)');
+test('active Pro never gets asked to pay again', () => {
+  const d = decideClaimSubmission({ userId: '7', hasPro: true, utr: '123456789012' });
+  assert.equal(d.action, 'already_pro');
+});
+test('invalid UTR rejected before any DB write', () => {
+  const d = decideClaimSubmission({ userId: '7', hasPro: false, utr: '12' });
+  assert.equal(d.action, 'invalid_utr');
+});
+test('resubmitting the same UTR reuses the existing claim', () => {
+  const d = decideClaimSubmission({
+    userId: '7',
+    hasPro: false,
+    utr: '123456789012',
+    sameUtrClaim: { id: 4, userId: '7', status: 'pending', utr: '123456789012' },
+  });
+  assert.equal(d.action, 'reuse_own_claim');
+  assert.equal(d.claim.id, 4);
+});
+test('another user cannot claim the same UTR', () => {
+  const d = decideClaimSubmission({
+    userId: '7',
+    hasPro: false,
+    utr: '123456789012',
+    sameUtrClaim: { id: 4, userId: '9', status: 'pending', utr: '123456789012' },
+  });
+  assert.equal(d.action, 'utr_taken_by_other_user');
+});
+test('new UTR while one is pending does not create a second claim', () => {
+  const d = decideClaimSubmission({
+    userId: '7',
+    hasPro: false,
+    utr: '999888777666',
+    openClaim: { id: 4, userId: '7', status: 'pending', utr: '123456789012' },
+  });
+  assert.equal(d.action, 'awaiting_review');
+  assert.equal(d.claim.id, 4);
+});
+test('rejected claim allows a fresh submission', () => {
+  const d = decideClaimSubmission({
+    userId: '7',
+    hasPro: false,
+    utr: '999888777666',
+    openClaim: { id: 4, userId: '7', status: 'rejected', utr: '123456789012' },
+  });
+  assert.equal(d.action, 'create');
+});
+test('first-time payer creates a claim', () => {
+  assert.equal(
+    decideClaimSubmission({ userId: '7', hasPro: false, utr: '123456789012' }).action,
+    'create',
+  );
+});
+test('pending and approved both block a new payment prompt', () => {
+  assert.equal(blocksNewPayment('pending'), true);
+  assert.equal(blocksNewPayment('approved'), true);
+  assert.equal(blocksNewPayment('rejected'), false);
+  assert.equal(blocksNewPayment(null), false);
+});
+test('user id type mismatch (number vs string) still matches owner', () => {
+  const d = decideClaimSubmission({
+    userId: 7,
+    hasPro: false,
+    utr: '123456789012',
+    sameUtrClaim: { id: 4, userId: '7', status: 'pending', utr: '123456789012' },
+  });
+  assert.equal(d.action, 'reuse_own_claim');
+});
+
+console.log('\n7. Integration — billing files wired');
 const mustExist = [
+  'dashboard-v2/src/lib/billing/claims.ts',
   'dashboard-v2/src/lib/billing/plans.ts',
   'dashboard-v2/src/lib/billing/upi.ts',
   'dashboard-v2/src/lib/billing/entitlements.ts',
@@ -239,6 +328,73 @@ test('migrate.mjs creates user_subscriptions + upi_payment_claims', () => {
   const src = readFileSync(join(ROOT, 'dashboard-v2/migrate.mjs'), 'utf8');
   assert.ok(src.includes('user_subscriptions'));
   assert.ok(src.includes('upi_payment_claims'));
+});
+
+test('claims.ts mirrors the tested decision branches', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/lib/billing/claims.ts'), 'utf8');
+  for (const action of [
+    'already_pro',
+    'invalid_utr',
+    'utr_taken_by_other_user',
+    'reuse_own_claim',
+    'awaiting_review',
+    'create',
+  ]) {
+    assert.ok(src.includes(action), `claims.ts missing ${action}`);
+  }
+});
+
+test('claim route runs every write through decideClaimSubmission', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/upi/claim/route.ts'), 'utf8');
+  assert.ok(src.includes('decideClaimSubmission'));
+  assert.ok(src.includes('ON CONFLICT DO NOTHING'), 'insert must survive a double submit');
+  assert.ok(!/^\s*const existing = await sql`/m.test(src), 'route should use shared claim lookups');
+});
+
+test('status + upi routes expose the pending claim to the client', () => {
+  const status = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/status/route.ts'), 'utf8');
+  assert.ok(status.includes('getLatestUpiClaim'));
+  assert.ok(status.includes('awaitingReview'));
+  const upi = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/upi/route.ts'), 'utf8');
+  assert.ok(upi.includes('getLatestUpiClaim'));
+  assert.ok(upi.includes('awaitingReview'));
+});
+
+test('checkout short-circuits for Pro users and pending claims', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/checkout/route.ts'), 'utf8');
+  assert.ok(src.includes('hasProAccess'));
+  assert.ok(src.includes('blocksNewPayment'));
+  const proGuard = src.indexOf('hasProAccess(userId, email)');
+  const stripeCall = src.indexOf('api.stripe.com');
+  assert.ok(proGuard > -1 && proGuard < stripeCall, 'Pro guard must run before any provider call');
+});
+
+test('paywall renders a verification state instead of a pay button', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/components/ProPaywall.tsx'), 'utf8');
+  assert.ok(src.includes('pendingPayment'));
+  assert.ok(src.includes('Payment under verification'));
+  assert.ok(src.includes('Check verification status'));
+});
+
+test('UPI page hides the pay flow while a claim is under review', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/app/billing/upi/page.tsx'), 'utf8');
+  assert.ok(src.includes('awaitingReview'));
+  assert.ok(src.includes('Payment under verification'));
+});
+
+test('approve grants access before marking the claim reviewed', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/upi/approve/route.ts'), 'utf8');
+  const activate = src.indexOf('activateProSubscription({');
+  const markApproved = src.indexOf("SET status = 'approved'");
+  assert.ok(activate > -1 && markApproved > -1);
+  assert.ok(activate < markApproved, 'activation must precede the status update');
+  assert.ok(src.includes("claim.status === 'approved'"), 'approve must be idempotent');
+});
+
+test('schema keeps one pending claim per user', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/lib/billing/schema.ts'), 'utf8');
+  assert.ok(src.includes('upi_payment_claims_user_pending_uidx'));
+  assert.ok(src.includes("WHERE status = 'pending'"));
 });
 
 test('mail has sendProAccessEmail + sendUpiClaimAdminEmail', () => {

@@ -3,6 +3,7 @@ import { isAdminEmail } from '@/lib/admin';
 import { rateLimit } from '@/lib/rate-limit';
 import { COPILOT_FREE_LIMIT, COPILOT_FREE_WINDOW_MS, resolvePlanForCountry } from './plans';
 import { ensureBillingSchema } from './schema';
+import type { ClaimRow } from './claims';
 
 export async function getSubscriptionRow(userId: string | number) {
   await ensureBillingSchema(sql);
@@ -13,6 +14,47 @@ export async function getSubscriptionRow(userId: string | number) {
     LIMIT 1
   `;
   return rows[0] || null;
+}
+
+/** Latest UPI claim for a user — drives "already submitted" UI instead of re-asking for payment. */
+export async function getLatestUpiClaim(userId: string | number): Promise<ClaimRow | null> {
+  await ensureBillingSchema(sql);
+  const rows = await sql`
+    SELECT id, user_id, status, utr, created_at, reviewed_at
+    FROM upi_payment_claims
+    WHERE user_id = ${String(userId)}
+    ORDER BY
+      CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
+      created_at DESC
+    LIMIT 1
+  `;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    userId: String(row.user_id),
+    status: String(row.status),
+    utr: String(row.utr),
+    createdAt: row.created_at,
+    reviewedAt: row.reviewed_at,
+  };
+}
+
+export async function getClaimByUtr(utr: string): Promise<ClaimRow | null> {
+  await ensureBillingSchema(sql);
+  const rows = await sql`
+    SELECT id, user_id, status, utr, created_at FROM upi_payment_claims
+    WHERE utr = ${utr} LIMIT 1
+  `;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    userId: String(row.user_id),
+    status: String(row.status),
+    utr: String(row.utr),
+    createdAt: row.created_at,
+  };
 }
 
 export async function hasProAccess(userId: string | number, email?: string | null): Promise<boolean> {

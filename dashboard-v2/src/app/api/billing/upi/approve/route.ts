@@ -22,12 +22,9 @@ async function approveClaim(claimId: number, reviewedBy: string) {
     return { ok: true as const, already: true, userId: String(claim.user_id) };
   }
 
-  await sql`
-    UPDATE upi_payment_claims
-    SET status = 'approved', reviewed_at = NOW(), reviewed_by = ${reviewedBy}
-    WHERE id = ${claimId}
-  `;
-
+  // Grant access before marking the claim reviewed: if the second write fails the
+  // claim stays pending and a retry is safe (activation is an idempotent upsert),
+  // whereas the reverse order could mark a claim approved with no Pro access.
   const userId = String(claim.user_id);
   await activateProSubscription({
     userId,
@@ -37,6 +34,12 @@ async function approveClaim(claimId: number, reviewedBy: string) {
     provider: 'upi_direct',
     externalSubscriptionId: String(claim.utr),
   });
+
+  await sql`
+    UPDATE upi_payment_claims
+    SET status = 'approved', reviewed_at = NOW(), reviewed_by = ${reviewedBy}
+    WHERE id = ${claimId}
+  `;
 
   const email = String(claim.user_email || '');
   if (email) {

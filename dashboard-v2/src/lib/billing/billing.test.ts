@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { resolvePlanForCountry, planSubtitle, COPILOT_FREE_LIMIT, COPILOT_FREE_WINDOW_MS } from './plans';
 import { buildUpiPayUri, upiTransactionRef, qrCodeImageUrl } from './upi';
 import { createProApproveToken, verifyProApproveToken } from './upi-approve-token';
+import { blocksNewPayment, decideClaimSubmission, normalizeUtr } from './claims';
 
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'unit-test-auth-secret';
 
@@ -35,6 +36,54 @@ function run() {
   const tok = createProApproveToken('12');
   assert.equal(verifyProApproveToken('12', tok), true);
   assert.equal(verifyProApproveToken('13', tok), false);
+
+  assert.equal(normalizeUtr(' ab cd 1234 '), 'ABCD1234');
+  assert.equal(
+    decideClaimSubmission({ userId: '5', hasPro: true, utr: '123456789012' }).action,
+    'already_pro',
+  );
+  assert.equal(
+    decideClaimSubmission({ userId: '5', hasPro: false, utr: 'xx' }).action,
+    'invalid_utr',
+  );
+  assert.equal(
+    decideClaimSubmission({
+      userId: 5,
+      hasPro: false,
+      utr: '123456789012',
+      sameUtrClaim: { id: 1, userId: '5', status: 'pending', utr: '123456789012' },
+    }).action,
+    'reuse_own_claim',
+  );
+  assert.equal(
+    decideClaimSubmission({
+      userId: '5',
+      hasPro: false,
+      utr: '123456789012',
+      sameUtrClaim: { id: 1, userId: '6', status: 'pending', utr: '123456789012' },
+    }).action,
+    'utr_taken_by_other_user',
+  );
+  assert.equal(
+    decideClaimSubmission({
+      userId: '5',
+      hasPro: false,
+      utr: '555444333222',
+      openClaim: { id: 1, userId: '5', status: 'pending', utr: '123456789012' },
+    }).action,
+    'awaiting_review',
+  );
+  assert.equal(
+    decideClaimSubmission({
+      userId: '5',
+      hasPro: false,
+      utr: '555444333222',
+      openClaim: { id: 1, userId: '5', status: 'rejected', utr: '123456789012' },
+    }).action,
+    'create',
+  );
+  assert.equal(blocksNewPayment('pending'), true);
+  assert.equal(blocksNewPayment('rejected'), false);
 
   console.log('billing TS unit tests passed');
 }

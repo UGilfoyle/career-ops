@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { countryFromRequest } from '@/lib/billing/geo';
-import { hasProAccess, getSubscriptionRow, checkCopilotRateLimit } from '@/lib/billing/entitlements';
+import {
+  hasProAccess,
+  getSubscriptionRow,
+  checkCopilotRateLimit,
+  getLatestUpiClaim,
+} from '@/lib/billing/entitlements';
+import { blocksNewPayment, claimMessage } from '@/lib/billing/claims';
 import { resolvePlanForCountry, planSubtitle, COPILOT_FREE_LIMIT } from '@/lib/billing/plans';
 
 export const dynamic = 'force-dynamic';
@@ -18,10 +24,21 @@ export async function GET(req: NextRequest) {
   const pro = await hasProAccess(userId, email);
   const sub = await getSubscriptionRow(userId);
   const copilot = await checkCopilotRateLimit(userId, email);
+  const claim = pro ? null : await getLatestUpiClaim(userId);
 
   return NextResponse.json({
     hasPro: pro,
     country,
+    payment: claim
+      ? {
+          provider: 'upi',
+          status: claim.status,
+          utr: claim.utr,
+          submittedAt: claim.createdAt,
+          awaitingReview: blocksNewPayment(claim.status),
+          message: claimMessage(claim.status),
+        }
+      : null,
     plan: {
       display: plan.display,
       currency: plan.currency,

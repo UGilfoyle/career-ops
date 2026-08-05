@@ -10,6 +10,8 @@ import {
   Smartphone,
   X,
   ArrowRight,
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
 
 type Step = 'pay' | 'utr' | 'admin' | 'done';
@@ -175,12 +177,34 @@ export default function BillingSimulateClient() {
                 </form>
               )}
 
-              {(step === 'admin' || step === 'done') && (
+              {(step === 'admin' || step === 'done') && claimStatus === 'pending' && (
+                <div className="space-y-3 py-2">
+                  <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                    <Clock size={18} className="text-amber-700 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900">Payment under verification</p>
+                      <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                        We already have your payment details. Pro unlocks as soon as we confirm it — no need to pay again.
+                      </p>
+                      <p className="text-[11px] font-mono text-amber-900/70 mt-2">UTR {claim.utr}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-center gap-2 border border-[#E5E5E0] rounded-xl py-2.5 text-xs font-semibold text-[#1C1C1E]"
+                  >
+                    <RefreshCw size={14} /> Check verification status
+                  </button>
+                  <p className="text-[11px] text-[#9CA3AF] text-center">
+                    Re-opening the paywall in this state shows this panel — never the pay button again.
+                  </p>
+                </div>
+              )}
+
+              {(step === 'admin' || step === 'done') && claimStatus !== 'pending' && (
                 <div className="text-center py-8 space-y-2">
                   <p className="text-sm font-semibold text-[#1C1C1E]">
-                    {claimStatus === 'pending' && 'Payment submitted — waiting for admin'}
-                    {claimStatus === 'approved' && 'Pro unlocked ✓'}
-                    {claimStatus === 'rejected' && 'Payment rejected'}
+                    {claimStatus === 'approved' ? 'Pro unlocked ✓' : 'Payment rejected'}
                   </p>
                   <p className="text-xs text-[#6B6B6B]">UTR {claim.utr}</p>
                 </div>

@@ -50,7 +50,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHeader';
 import ResumeStudio from './resume-studio/ResumeStudio';
-import ProPaywall from './ProPaywall';
+import ProPaywall, { type PendingPayment } from './ProPaywall';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
 import AdminUsersPanel from './AdminUsersPanel';
 import AdminPaymentsPanel from './AdminPaymentsPanel';
@@ -246,6 +246,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [billing, setBilling] = useState<{
     hasPro: boolean;
     plan: { display: string; subtitle: string };
+    payment?: PendingPayment | null;
     copilot: { limit: number; remaining: number; windowHours: number; pro: boolean };
   } | null>(null);
   const hasPro = Boolean(billing?.hasPro || isAdmin);
@@ -2719,6 +2720,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   feature="resume-studio"
                   planDisplay={billing.plan.display}
                   planSubtitle={billing.plan.subtitle}
+                  pendingPayment={billing.payment}
                 />
               )}
             </motion.div>
@@ -4082,6 +4084,7 @@ System Initialized — v2.0`}
                     planDisplay={billing.plan.display}
                     planSubtitle={billing.plan.subtitle}
                     copilotRemaining={billing.copilot.remaining}
+                    pendingPayment={billing.payment}
                   />
                 </div>
               )}

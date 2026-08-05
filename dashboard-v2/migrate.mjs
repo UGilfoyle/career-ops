@@ -86,6 +86,14 @@ async function migrate() {
       CREATE UNIQUE INDEX IF NOT EXISTS upi_payment_claims_utr_uidx
       ON upi_payment_claims (utr)
     `;
+    try {
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS upi_payment_claims_user_pending_uidx
+        ON upi_payment_claims (user_id) WHERE status = 'pending'
+      `;
+    } catch (e) {
+      console.warn('Skipped upi_payment_claims_user_pending_uidx:', e.message);
+    }
     console.log('Migration successful: users, newsletter/referral, verification_tokens, jobs.posted_*, user_subscriptions, upi_payment_claims updated.');
   } catch (error) {
     console.error('Migration failed:', error);

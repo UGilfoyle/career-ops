@@ -4,6 +4,8 @@ import { appBaseUrl } from '@/lib/newsletter';
 import { countryFromRequest } from '@/lib/billing/geo';
 import { resolvePlanForCountry } from '@/lib/billing/plans';
 import { upiConfigFromEnv } from '@/lib/billing/upi';
+import { getLatestUpiClaim, hasProAccess } from '@/lib/billing/entitlements';
+import { blocksNewPayment, claimMessage } from '@/lib/billing/claims';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +20,22 @@ export async function POST(req: NextRequest) {
   const base = appBaseUrl();
   const userId = session.user.id;
   const email = session.user.email;
+
+  // Never charge twice: an active subscription short-circuits before any provider call.
+  if (await hasProAccess(userId, email)) {
+    return NextResponse.json({ hasPro: true, provider: 'none', message: 'Pro is already active.' });
+  }
+
+  const claim = await getLatestUpiClaim(userId);
+  if (blocksNewPayment(claim?.status)) {
+    return NextResponse.json({
+      provider: 'upi',
+      url: `${base}/billing/upi`,
+      status: claim!.status,
+      awaitingReview: true,
+      message: claimMessage(claim!.status),
+    });
+  }
 
   // India: direct UPI to your VPA — zero fees, link never expires (skip CIT-style short-lived pages).
   const upiConfig = upiConfigFromEnv();

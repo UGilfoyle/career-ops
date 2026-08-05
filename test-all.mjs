@@ -76,6 +76,7 @@ const scripts = [
   { name: 'simulate-jd-align.mjs', expectExit: 0 },
   { name: 'indeed-job-tests.mjs', expectExit: 0 },
   { name: 'billing-tests.mjs', expectExit: 0 },
+  { name: 'billing-db-e2e.mjs', expectExit: 0 }, // skips when DATABASE_URL is unset
   { name: 'billing-smoke-e2e.mjs', expectExit: 0 },
 ];
 

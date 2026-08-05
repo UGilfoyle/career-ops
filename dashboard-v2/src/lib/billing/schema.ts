@@ -47,6 +47,15 @@ export async function ensureBillingSchema(sql: postgres.Sql): Promise<void> {
     CREATE INDEX IF NOT EXISTS upi_payment_claims_status_idx
     ON upi_payment_claims (status)
   `;
+  try {
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS upi_payment_claims_user_pending_uidx
+      ON upi_payment_claims (user_id) WHERE status = 'pending'
+    `;
+  } catch {
+    // A database that already holds duplicate pending claims must keep serving
+    // billing; the API-level guard still prevents new duplicates.
+  }
 }
 
 export type SubscriptionRow = {

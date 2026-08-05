@@ -6,7 +6,8 @@ import {
   upiConfigFromEnv,
   upiTransactionRef,
 } from '@/lib/billing/upi';
-import { hasProAccess } from '@/lib/billing/entitlements';
+import { getLatestUpiClaim, hasProAccess } from '@/lib/billing/entitlements';
+import { blocksNewPayment, claimMessage } from '@/lib/billing/claims';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,11 +27,22 @@ export async function GET() {
     return NextResponse.json({ hasPro: true, amountInr: cfg.amountInr, display: `₹${cfg.amountInr}` });
   }
 
+  const claim = await getLatestUpiClaim(session.user.id);
   const transactionRef = upiTransactionRef(session.user.id);
   const upiUri = buildUpiPayUri(cfg, transactionRef);
 
   return NextResponse.json({
     hasPro: false,
+    claim: claim
+      ? {
+          id: claim.id,
+          status: claim.status,
+          utr: claim.utr,
+          submittedAt: claim.createdAt,
+          message: claimMessage(claim.status),
+        }
+      : null,
+    awaitingReview: blocksNewPayment(claim?.status),
     vpa: cfg.vpa,
     payeeName: cfg.payeeName,
     amountInr: cfg.amountInr,
