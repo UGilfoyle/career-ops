@@ -37,7 +37,7 @@ export default function ProPaywall({
     try {
       const res = await fetch('/api/billing/checkout', { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.message || 'Checkout failed');
+      if (!res.ok) throw new Error(data.message || data.error || 'Checkout failed');
       if (data.provider === 'upi' && data.url) {
         window.location.href = data.url;
         return;

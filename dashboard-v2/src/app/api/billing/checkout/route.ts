@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
   const email = session.user.email;
 
   // India: direct UPI to your VPA — zero fees, link never expires (skip CIT-style short-lived pages).
-  if (country === 'IN' && upiConfigFromEnv()) {
+  const upiConfig = upiConfigFromEnv();
+  if (country === 'IN' && upiConfig) {
     return NextResponse.json({
       provider: 'upi',
       url: `${base}/billing/upi`,
@@ -64,11 +65,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url, provider: 'manual' });
   }
 
-  return NextResponse.json(
-    {
-      error: 'billing_not_configured',
-      message: 'Set STRIPE_SECRET_KEY + STRIPE_PRICE_USD / STRIPE_PRICE_INR or BILLING_CHECKOUT_URL_* env vars.',
-    },
-    { status: 503 },
-  );
+  // Last resort: UPI works for any region when a VPA is set (geo header can be missing).
+  if (upiConfig) {
+    return NextResponse.json({ provider: 'upi', url: `${base}/billing/upi` });
+  }
+
+  const message = process.env.UPI_VPA
+    ? 'Payment temporarily unavailable. Please try again shortly.'
+    : 'Payments are being set up. Please try again shortly or email support.';
+
+  console.error('[billing/checkout] not configured', {
+    country,
+    upiVpaPresent: Boolean(process.env.UPI_VPA),
+    upiEnabled: process.env.BILLING_UPI_ENABLED !== '0',
+    stripeKeyPresent: Boolean(stripeKey),
+    stripePriceIdPresent: Boolean(plan.stripePriceId),
+    hint: 'Set UPI_VPA (and redeploy so env vars load) or STRIPE_SECRET_KEY + price IDs.',
+  });
+
+  return NextResponse.json({ error: 'billing_not_configured', message }, { status: 503 });
 }
