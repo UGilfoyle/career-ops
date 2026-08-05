@@ -21,9 +21,9 @@ export async function GET(req: NextRequest) {
   const email = session.user.email;
   const country = countryFromRequest(req);
   const plan = resolvePlanForCountry(country);
-  const pro = await hasProAccess(userId, email);
+  const pro = await hasProAccess(userId, email, session.user.githubLogin);
   const sub = await getSubscriptionRow(userId);
-  const copilot = await checkCopilotRateLimit(userId, email);
+  const copilot = await checkCopilotRateLimit(userId, email, session.user.githubLogin);
   const claim = pro ? null : await getLatestUpiClaim(userId);
 
   return NextResponse.json({

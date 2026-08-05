@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   await activateProSubscription({ userId: userIdFromToken, provider: 'access_link' });
-  const pro = await hasProAccess(userIdFromToken, session?.user?.email);
+  const pro = await hasProAccess(userIdFromToken, session?.user?.email, session?.user?.githubLogin);
 
   return NextResponse.json({ ok: true, hasPro: pro, userId: userIdFromToken });
 }

@@ -24,12 +24,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
   callbacks: {
     ...authConfig.callbacks,
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       // For GitHub OAuth: auto-create or find user in DB
       if (account?.provider === 'github') {
         if (!user.email) {
           return "/login?error=github-email-missing";
         }
+
+        const githubLogin =
+          profile && typeof profile === 'object' && 'login' in profile
+            ? String((profile as { login: string }).login)
+            : null;
 
         try {
           const client = await pool.connect();
@@ -46,11 +51,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (existing.rows.length === 0) {
               // Create new GitHub user but keep email unverified until OTP confirmation.
               const inserted = await client.query(
-                `INSERT INTO users (name, email, email_verified, image)
-                 VALUES ($1, $2, NULL, $3)
-                 ON CONFLICT (email) DO NOTHING
+                `INSERT INTO users (name, email, email_verified, image, github_login)
+                 VALUES ($1, $2, NULL, $3, $4)
+                 ON CONFLICT (email) DO UPDATE SET
+                   github_login = COALESCE(EXCLUDED.github_login, users.github_login)
                  RETURNING id`,
-                [user.name, user.email, user.image]
+                [user.name, user.email, user.image, githubLogin]
               );
 
               if (inserted.rows[0]) {
@@ -62,6 +68,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             } else {
               userId = existing.rows[0].id.toString();
               emailVerified = Boolean(existing.rows[0].email_verified);
+              if (githubLogin) {
+                await client.query(
+                  'UPDATE users SET github_login = $1 WHERE id = $2',
+                  [githubLogin, userId]
+                );
+              }
             }
 
             if (userId) {

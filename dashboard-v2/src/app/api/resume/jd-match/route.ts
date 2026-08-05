@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
-    const proBlock = await assertProAccess(userId, session.user.email, countryFromRequest(req));
+    const proBlock = await assertProAccess(userId, session.user.email, countryFromRequest(req), session.user.githubLogin);
     if (proBlock) return proBlock;
     const body = await req.json().catch(() => ({}));
     let jdText = String(body.jdText || body.jd_text || '').trim();

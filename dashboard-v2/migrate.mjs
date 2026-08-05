@@ -30,6 +30,7 @@ async function migrate() {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by TEXT`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS newsletter_unsubscribed_at TIMESTAMPTZ`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS github_login TEXT`;
     await sql`
       CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_uidx
       ON users (referral_code)

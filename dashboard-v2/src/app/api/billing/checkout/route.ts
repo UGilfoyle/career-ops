@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const email = session.user.email;
 
   // Never charge twice: an active subscription short-circuits before any provider call.
-  if (await hasProAccess(userId, email)) {
+  if (await hasProAccess(userId, email, session.user.githubLogin)) {
     return NextResponse.json({ hasPro: true, provider: 'none', message: 'Pro is already active.' });
   }
 

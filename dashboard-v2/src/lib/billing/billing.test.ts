@@ -3,6 +3,7 @@ import { resolvePlanForCountry, planSubtitle, COPILOT_FREE_LIMIT, COPILOT_FREE_W
 import { buildUpiPayUri, upiTransactionRef, qrCodeImageUrl, maskVpa } from './upi';
 import { createProApproveToken, verifyProApproveToken } from './upi-approve-token';
 import { blocksNewPayment, decideClaimSubmission, normalizeUtr } from './claims';
+import { isLifetimeProGithub } from '@/lib/lifetime-access';
 
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'unit-test-auth-secret';
 
@@ -91,6 +92,10 @@ function run() {
   );
   assert.equal(blocksNewPayment('pending'), true);
   assert.equal(blocksNewPayment('rejected'), false);
+
+  assert.equal(isLifetimeProGithub('UGilfoyle'), true);
+  assert.equal(isLifetimeProGithub('ugilfoyle'), true);
+  assert.equal(isLifetimeProGithub('random'), false);
 
   console.log('billing TS unit tests passed');
 }

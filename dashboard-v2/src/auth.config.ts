@@ -122,14 +122,20 @@ export const authConfig = {
       if (session.user?.email) {
         session.user.isAdmin = Boolean(token.isAdmin) || isAdminEmail(session.user.email);
       }
+      if (typeof token.githubLogin === 'string') {
+        session.user.githubLogin = token.githubLogin;
+      }
       return session;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, profile }) {
       if (user) {
         token.sub = user.id;
         token.isAdmin = isAdminEmail(user.email);
       } else if (token.email) {
         token.isAdmin = isAdminEmail(String(token.email));
+      }
+      if (account?.provider === 'github' && profile && typeof profile === 'object' && 'login' in profile) {
+        token.githubLogin = String((profile as { login: string }).login);
       }
       return token;
     },

@@ -24,7 +24,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const proBlock = await assertProAccess(session.user.id, session.user.email, countryFromRequest(req));
+    const proBlock = await assertProAccess(
+      session.user.id,
+      session.user.email,
+      countryFromRequest(req),
+      session.user.githubLogin,
+    );
     if (proBlock) return proBlock;
 
     step = 'formData';

@@ -309,7 +309,7 @@ export default function ResumeStudio({
                 </div>
                 <h3 className="text-lg font-bold text-[#1C1C1E]">Start your master resume</h3>
                 <p className="text-sm text-[#6B6B6B] max-w-md mx-auto">
-                  Import a PDF/DOCX or fill the sections below. Then pick a pipeline job for JD match + ATS.
+                  Import a PDF/DOCX or fill the sections below. Paste any job description to match keywords and tailor a resume.
                 </p>
               </div>
             ) : null}

@@ -371,7 +371,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id;
-    const proBlock = await assertProAccess(userId, session.user.email, countryFromRequest(req));
+    const proBlock = await assertProAccess(userId, session.user.email, countryFromRequest(req), session.user.githubLogin);
     if (proBlock) return proBlock;
 
     const pdfLimit = await rateLimit(`pdf:${userId}`, { windowMs: 60 * 60_000, max: 10 });

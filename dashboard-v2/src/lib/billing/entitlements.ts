@@ -1,5 +1,6 @@
 import sql from '@/lib/db';
 import { isAdminEmail } from '@/lib/admin';
+import { isLifetimeProGithub } from '@/lib/lifetime-access';
 import { rateLimit } from '@/lib/rate-limit';
 import { COPILOT_FREE_LIMIT, COPILOT_FREE_WINDOW_MS, resolvePlanForCountry } from './plans';
 import { ensureBillingSchema } from './schema';
@@ -57,8 +58,27 @@ export async function getClaimByUtr(utr: string): Promise<ClaimRow | null> {
   };
 }
 
-export async function hasProAccess(userId: string | number, email?: string | null): Promise<boolean> {
+async function getStoredGithubLogin(userId: string | number): Promise<string | null> {
+  try {
+    const rows = await sql`
+      SELECT github_login FROM users WHERE id = ${String(userId)} LIMIT 1
+    `;
+    const login = rows[0]?.github_login;
+    return login ? String(login) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function hasProAccess(
+  userId: string | number,
+  email?: string | null,
+  githubLogin?: string | null,
+): Promise<boolean> {
   if (email && isAdminEmail(email)) return true;
+  if (isLifetimeProGithub(githubLogin)) return true;
+  const storedLogin = githubLogin ? null : await getStoredGithubLogin(userId);
+  if (isLifetimeProGithub(storedLogin)) return true;
   const row = await getSubscriptionRow(userId);
   if (!row) return false;
   if (row.status !== 'active' && row.status !== 'trialing') return false;
@@ -105,8 +125,12 @@ export async function activateProSubscription(opts: {
 }
 
 /** Free tier: 10 Copilot messages per 2 hours. Pro: 200 / 2hr. */
-export async function checkCopilotRateLimit(userId: string | number, email?: string | null) {
-  const pro = await hasProAccess(userId, email);
+export async function checkCopilotRateLimit(
+  userId: string | number,
+  email?: string | null,
+  githubLogin?: string | null,
+) {
+  const pro = await hasProAccess(userId, email, githubLogin);
   const max = pro ? 200 : COPILOT_FREE_LIMIT;
   const key = pro ? `chat:pro:2hr:${userId}` : `chat:free:2hr:${userId}`;
   const result = await rateLimit(key, { windowMs: COPILOT_FREE_WINDOW_MS, max });
@@ -130,8 +154,9 @@ export async function assertProAccess(
   userId: string | number,
   email?: string | null,
   countryCode?: string | null,
+  githubLogin?: string | null,
 ): Promise<Response | null> {
-  if (await hasProAccess(userId, email)) return null;
+  if (await hasProAccess(userId, email, githubLogin)) return null;
   const plan = resolvePlanForCountry(countryCode);
   return requireProResponse(`${plan.display}/month`);
 }

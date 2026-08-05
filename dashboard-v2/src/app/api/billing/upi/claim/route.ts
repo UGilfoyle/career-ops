@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   const decision = decideClaimSubmission({
     userId: session.user.id,
-    hasPro: await hasProAccess(session.user.id, session.user.email),
+    hasPro: await hasProAccess(session.user.id, session.user.email, session.user.githubLogin),
     utr,
     sameUtrClaim: utr ? await getClaimByUtr(utr) : null,
     openClaim: await getLatestUpiClaim(session.user.id),

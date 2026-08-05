@@ -23,7 +23,7 @@ export async function GET() {
     return NextResponse.json({ error: 'UPI billing not configured' }, { status: 503 });
   }
 
-  const pro = await hasProAccess(session.user.id, session.user.email);
+  const pro = await hasProAccess(session.user.id, session.user.email, session.user.githubLogin);
   if (pro) {
     return NextResponse.json({ hasPro: true, amountInr: cfg.amountInr, display: `₹${cfg.amountInr}` });
   }
