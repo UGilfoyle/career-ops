@@ -17,7 +17,10 @@ export async function extractDocumentText(bytes: Buffer, filename: string): Prom
   if (lower.endsWith('.docx')) {
     const mammothMod: { default?: { extractRawText: (o: { buffer: Buffer }) => Promise<{ value?: string }> } } =
       await import('mammoth');
-    const mammoth = mammothMod?.default || mammothMod;
+    const mammoth =
+      (mammothMod?.default || mammothMod) as {
+        extractRawText: (o: { buffer: Buffer }) => Promise<{ value?: string }>;
+      };
     const result = await mammoth.extractRawText({ buffer: bytes });
     return (result.value || '').trim();
   }
