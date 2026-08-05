@@ -3,23 +3,19 @@
  * Same placeholders; CSS variants only. Single-column for ATS parseability.
  */
 
+import { CONTACT_BAR_CSS } from './contact-bar';
+
 const BODY = `
     <div class="container">
         <header>
             <h1>{{NAME}}</h1>
-            <div class="contact">{{CONTACT_LINE}}</div>
-            <div class="contact">{{LINKS_LINE}}</div>
+            {{CONTACT_BAR}}
             <div class="top-rule"></div>
         </header>
         <section>
             <h2>Professional Summary</h2>
             <div class="rule"></div>
             <p class="summary-block">{{SUMMARY_TEXT}}</p>
-        </section>
-        <section style="display: {{SKILLS_DISPLAY}};">
-            <h2>Technical Skills</h2>
-            <div class="rule"></div>
-            <div class="skills-lines">{{SKILLS_LINES}}</div>
         </section>
         <section style="display: {{EXPERIENCE_DISPLAY}};">
             <h2>Professional Experience</h2>
@@ -35,6 +31,11 @@ const BODY = `
             <h2>Education</h2>
             <div class="rule"></div>
             <div class="edu">{{EDUCATION}}</div>
+        </section>
+        <section style="display: {{SKILLS_DISPLAY}};">
+            <h2>Technical Skills</h2>
+            <div class="rule"></div>
+            <div class="skills-lines">{{SKILLS_LINES}}</div>
         </section>
     </div>
 `;
@@ -56,6 +57,7 @@ function wrap(css: string) {
         }
         .contact:empty { display: none; }
         .contact a { color: #111; text-decoration: none; }
+        ${CONTACT_BAR_CSS}
         .job { page-break-inside: avoid; }
         .job-header > div:first-child { flex: 1; min-width: 0; }
         .job-dates { white-space: nowrap; flex-shrink: 0; }
@@ -91,7 +93,7 @@ const CLASSIC_CSS = `
             -webkit-font-smoothing: antialiased;
         }
         .container { max-width: 100%; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 14px; }
+        header { text-align: center; margin-bottom: 14px; padding-bottom: 2px; }
         h1 {
             font-size: 20pt; font-weight: 700; letter-spacing: 1.2px;
             text-transform: uppercase; margin-bottom: 6px; line-height: 1.15;
@@ -681,7 +683,7 @@ export const TEMPLATE_CATALOG: TemplateMeta[] = [
     id: 'ats-professional',
     name: 'ATS Classic',
     badge: 'Recommended',
-    description: 'Single-column with strong rules — safest for Greenhouse, Workday, Ashby.',
+    description: 'Icon contact row (phone, email, LinkedIn, GitHub) + clean ATS sections.',
     file: 'templates/ats-template-professional.html',
   },
   {

@@ -27,4 +27,16 @@ assert(!/Core Competencies/i.test(html), 'no Core Competencies label');
 assert(!/Technical Skills:/i.test(html), 'no nested Technical Skills label under section');
 assert(!/Technical Skills:[^<]*Cursor/i.test(html), 'Technical Skills must not list Cursor');
 
+const narrative = renderCategorizedSkills(
+  ['Monolith-to-microservices transition, AWS cluster and cost optimization, High-throughput RESTful API design'],
+  ['Java', 'PostgreSQL', 'microservices', 'system design', '.Net']
+);
+assert(!/Monolith-to-microservices/i.test(narrative), 'narrative superpower blob excluded');
+assert(!/cost optimization/i.test(narrative), 'optimization phrase excluded');
+assert(/<li>Java<\/li>/i.test(narrative), 'Java kept');
+assert(/<li>PostgreSQL<\/li>/i.test(narrative), 'PostgreSQL canonical casing');
+assert(/<li>Microservices<\/li>/i.test(narrative), 'microservices title-cased');
+assert(/<li>System Design<\/li>/i.test(narrative), 'system design title-cased');
+assert(/<li>\.NET<\/li>/i.test(narrative), '.Net normalized to .NET');
+
 console.log('resume-skills-editor-block-tests: ok');

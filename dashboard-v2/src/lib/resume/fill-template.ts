@@ -1,4 +1,10 @@
 import { formatEducationLine, type EducationEntry as EduFmt } from '@/lib/education-format';
+import {
+  normalizeExperienceBulletList,
+  sanitizeExperienceEntries,
+} from '@/lib/resume/bullet-pipeline';
+import { renderCategorizedSkills } from '@/lib/resume/skills-html-bridge';
+import { renderContactBarHtml } from '@/lib/resume/contact-bar';
 import { getTemplateHtml } from './ats-professional-template';
 import type { ExperienceEntry, ResumeContext } from './types';
 import { DEFAULT_TEMPLATE_ID } from './types';
@@ -18,24 +24,8 @@ function stripBulletMarkdown(text: string): string {
     .trim();
 }
 
-/** Capitalize first letter; fix trailing junk truncations. */
-function normalizeBulletText(text: string): string {
-  let t = stripBulletMarkdown(text)
-    .replace(/,\s*\./g, '.')
-    .replace(/\.\s*\./g, '.')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-  if (!t) return '';
-  t = t.replace(/\b(the continuous|advancing the continuous|cut|from|and|with|to|of|by)\s*[.,]*$/i, '').trim();
-  t = t.replace(/[,:;]\s*$/g, '').trim();
-  if (!t) return '';
-  t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
-  if (!/[.!?]$/.test(t)) t += '.';
-  return t;
-}
-
 function formatBulletHtml(text: string): string {
-  return escapeHtml(normalizeBulletText(text) || stripBulletMarkdown(text));
+  return escapeHtml(stripBulletMarkdown(text));
 }
 
 function normalizeHref(raw: string): string {
@@ -139,9 +129,16 @@ export function renderExperienceHtml(
 ): string {
   if (!Array.isArray(exp) || exp.length === 0) return '';
 
-  return exp
+  const sanitized = sanitizeExperienceEntries(exp);
+
+  return sanitized
     .map((job, idx) => {
-      const bullets = (job.bullets || []).slice(0, bulletsBudgetForRole(idx, maxPages, yearsExp));
+      const employerKey = `${job.company || ''} ${job.role || ''}`;
+      const budget = bulletsBudgetForRole(idx, maxPages, yearsExp);
+      const bullets = normalizeExperienceBulletList(
+        (job.bullets || []).slice(0, budget + 2),
+        employerKey
+      ).slice(0, budget);
       let role = String(job.role || '').trim().replace(/\s*\((?:contract|freelance|temporary|project)\)\s*/gi, '').trim();
       let company = String(job.company || '').trim();
       const dates = String(job.period || '').trim();
@@ -197,17 +194,10 @@ export function renderAchievementsHtml(
     .join('')}</ul>`;
 }
 
+/** Technical Skills bullet list — tech stacks only, no narrative superpowers. */
 export function renderSkillsLines(superpowers: string[] | undefined, limit = 16): string {
-  const editorRe = /\b(cursor|windsurf|antigravity|copilot|github\s*copilot|chatgpt|chat\s*gpt|claude\s*code|\bclaude\b|\bgpts?\b)\b/i;
-  const items = (Array.isArray(superpowers) ? superpowers : [])
-    .map((s) => String(s || '').replace(/\s*\([^)]*\)\s*/g, '').trim())
-    .filter((s) => s && !editorRe.test(s) && !/^ai-?native tool integration$/i.test(s))
-    .slice(0, limit);
-  if (items.length === 0) return '';
-  // Section heading is already "Technical Skills" — list skills as bullets, no "Core Competencies" label.
-  return `<ul class="skills-list">${items
-    .map((s) => `<li>${escapeHtml(s)}</li>`)
-    .join('')}</ul>`;
+  void limit;
+  return renderCategorizedSkills(superpowers, []);
 }
 
 function normalizeResumeSummaryPlain(rawSummary: string, yearsExp: number): string {
@@ -251,7 +241,7 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   const templateId = options.templateId || profile.studio?.template_id || DEFAULT_TEMPLATE_ID;
   const templateHtml = options.templateHtml || getTemplateHtml(templateId);
   const c = profile.candidate || {};
-  const experience = Array.isArray(profile.experience) ? profile.experience : [];
+  const experience = sanitizeExperienceEntries(Array.isArray(profile.experience) ? profile.experience : []);
   const education = Array.isArray(profile.education) ? profile.education : [];
   const yearsExp = calculateYearsOfExperience(experience);
   const maxPages = resolveResumePageBudget(yearsExp, experience.length);
@@ -260,6 +250,8 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   const githubRaw = String(c.github || '').trim();
   const portfolioRaw = String(c.portfolio_url || '').trim();
 
+  const contactBar = renderContactBarHtml(c);
+  // Legacy plain-text rows (older template copies)
   const contactParts = [c.location, c.email, c.phone]
     .map((x) => String(x || '').trim())
     .filter(Boolean);
@@ -296,6 +288,7 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
 
   const reps: Record<string, string> = {
     NAME: escapeHtml(displayName),
+    CONTACT_BAR: contactBar,
     CONTACT_LINE: contactLine,
     LINKS_LINE: linksLine,
     // Legacy placeholders (kept for older template copies)

@@ -18,6 +18,8 @@ import {
   explodeWallOfTextBullets,
   scrubResumeArtifacts,
   preferSourceIfThin,
+  isEmbeddedJobHeader,
+  sanitizeExperienceEntries,
   parseTenureMonths,
   bulletsBudgetForRole,
   rewriteFirstPersonBullet,
@@ -453,7 +455,71 @@ console.log('resume-quality tests\n');
     'Implemented Artisanssoft payment gateway integrations.',
   ];
   assert(explodeWallOfTextBullets(sevenDiscrete).length === 7, 'explode preserves 7 discrete employer samples');
+}
 
+{
+  assert(isEmbeddedJobHeader('Rubico IT Pvt Ltd - Software Developer Sep 2019 - Sep 2021'), 'detects embedded Rubico job header');
+  assert(!isEmbeddedJobHeader('Developed backend web systems end-to-end from MongoDB schema design through RESTful API construction.'), 'does not flag normal bullet');
+  const cleaned = sanitizeExperienceEntries([
+    {
+      role: 'Full-Stack Developer',
+      company: 'KOCO Schools',
+      period: 'Oct 2021 – Jul 2022',
+      bullets: [
+        'Authored backend architecture for multi-tenant platform.',
+        'Rubico IT Pvt Ltd - Software Developer Sep 2019 - Sep 2021',
+        'Formulated Python ETL scripts for legacy migration.',
+      ],
+    },
+    {
+      role: 'Software Developer',
+      company: 'Rubico IT Pvt Ltd',
+      period: 'Sep 2019 – Sep 2021',
+      bullets: ['Developed backend web systems end-to-end.'],
+    },
+  ]);
+  assert(!cleaned[0].bullets.some((b) => /Rubico IT/i.test(b)), 'strips nested job header from KOCO bullets');
+
+  const dropped = normalizeExperienceBulletList([
+    'Orchestrated deployment workflows that reduced.',
+    'Cut incident resolution time from 45.',
+  ]);
+  assert(dropped.length === 0, 'drops incomplete truncated bullets after normalize');
+
+  const mergedPrevent = normalizeExperienceBulletList([
+    'Implemented rate limiting on APIs.',
+    'Preventing abuse and ensuring stable throughput under peak load.',
+  ]);
+  assert(mergedPrevent.length === 1, 'merges Preventing fragment into prior bullet');
+  assert(!mergedPrevent.some((b) => /^Preventing\b/i.test(b)), 'no standalone Preventing bullet');
+
+  const screenshot = sanitizeExperienceEntries([
+    {
+      role: 'Full-Stack Developer',
+      company: 'KOCO Schools',
+      period: 'Oct 2021 – Jul 2022',
+      bullets: [
+        'Authored the complete backend architecture for a multi-tenant platform, synthesizing complex business logic into scalable, highly available Node.js services Integrity through rigorous validation.',
+        'Rubico IT Pvt Ltd - Software Developer Sep 2019 - Sep 2021',
+        'Developed comprehensive backend web systems spanning from MongoDB schema design to RESTful API.',
+      ],
+    },
+    {
+      role: 'Software Developer',
+      company: 'Rubico IT Pvt Ltd',
+      period: 'Sep 2019 – Sep 2021',
+      bullets: [
+        'Developed backend web systems end-to-end, from MongoDB schema design through RESTful API construction for major client deliverables.',
+      ],
+    },
+  ]);
+  const kocoJob = screenshot.find((j) => /KOCO/i.test(j.company));
+  const rubicoJob = screenshot.find((j) => /Rubico/i.test(j.company));
+  assert(kocoJob && rubicoJob, 'KOCO and Rubico jobs kept');
+  assert(!kocoJob.bullets.some((b) => /Rubico IT/i.test(b)), 'KOCO has no Rubico header bullet');
+  assert(!kocoJob.bullets.some((b) => /MongoDB schema design/i.test(b)), 'KOCO has no Rubico MongoDB bullet');
+  assert(rubicoJob.bullets.some((b) => /MongoDB/i.test(b)), 'Rubico keeps MongoDB bullet');
+  assert(!/services Integrity through/i.test(kocoJob.bullets.join(' ')), 'Integrity mid-sentence repaired');
 }
 
 

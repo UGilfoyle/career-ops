@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
-import { rateLimit, rateLimitResponse, formatRetryHint } from '@/lib/rate-limit';
+import { formatRetryHint } from '@/lib/rate-limit';
+import { checkCopilotRateLimit } from '@/lib/billing/entitlements';
+import { resolvePlanForCountry, planSubtitle } from '@/lib/billing/plans';
+import { countryFromRequest } from '@/lib/billing/geo';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,19 +37,22 @@ export async function POST(req: NextRequest) {
     }
     const userId = Number.parseInt(String(session.user.id), 10);
 
-    const hourlyLimit = await rateLimit(`chat:hour:${userId}`, { windowMs: 60 * 60_000, max: 20 });
-    if (!hourlyLimit.ok) {
-      return rateLimitResponse(
-        hourlyLimit,
-        `Copilot hourly limit reached (20 messages/hour). ${formatRetryHint(hourlyLimit.retryAfterSec)}`
-      );
-    }
-
-    const dailyLimit = await rateLimit(`chat:day:${userId}`, { windowMs: 24 * 60 * 60_000, max: 60 });
-    if (!dailyLimit.ok) {
-      return rateLimitResponse(
-        dailyLimit,
-        `Copilot daily limit reached (60 messages/day). ${formatRetryHint(dailyLimit.retryAfterSec)}`
+    const copilotLimit = await checkCopilotRateLimit(userId, session.user.email);
+    if (!copilotLimit.ok) {
+      const country = countryFromRequest(req);
+      const plan = resolvePlanForCountry(country);
+      return NextResponse.json(
+        {
+          error: 'copilot_rate_limit',
+          message: copilotLimit.pro
+            ? `Copilot limit reached. ${formatRetryHint(copilotLimit.retryAfterSec)}`
+            : `Free Copilot limit: 10 messages every 2 hours. ${formatRetryHint(copilotLimit.retryAfterSec)} Upgrade to Pro for unlimited coaching.`,
+          retryAfterSec: copilotLimit.retryAfterSec,
+          remaining: copilotLimit.remaining,
+          upgrade: !copilotLimit.pro,
+          plan: { display: plan.display, subtitle: planSubtitle(plan) },
+        },
+        { status: 429 },
       );
     }
 

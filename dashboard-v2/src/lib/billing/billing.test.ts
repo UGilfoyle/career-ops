@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import { resolvePlanForCountry, planSubtitle, COPILOT_FREE_LIMIT, COPILOT_FREE_WINDOW_MS } from './plans';
+import { buildUpiPayUri, upiTransactionRef, qrCodeImageUrl } from './upi';
+import { createProApproveToken, verifyProApproveToken } from './upi-approve-token';
+
+process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'unit-test-auth-secret';
+
+function run() {
+  const inPlan = resolvePlanForCountry('IN');
+  assert.equal(inPlan.display, '₹99');
+  assert.equal(inPlan.amountMinor, 9900);
+  assert.ok(planSubtitle(inPlan).includes('₹99'));
+
+  const us = resolvePlanForCountry('US');
+  assert.equal(us.display, '$0.79');
+  assert.equal(COPILOT_FREE_LIMIT, 10);
+  assert.equal(COPILOT_FREE_WINDOW_MS, 2 * 60 * 60 * 1000);
+
+  const uri = buildUpiPayUri(
+    { vpa: 'akashkaintura@icici', payeeName: 'Akash', amountInr: 99, note: 'Pro' },
+    'CO1',
+  );
+  assert.ok(uri.startsWith('upi://pay?'));
+  assert.ok(uri.includes('am=99.00'));
+  assert.ok(upiTransactionRef(99).startsWith('CO'));
+  assert.ok(qrCodeImageUrl(uri).includes('create-qr-code'));
+
+  const tok = createProApproveToken('12');
+  assert.equal(verifyProApproveToken('12', tok), true);
+  assert.equal(verifyProApproveToken('13', tok), false);
+
+  console.log('billing TS unit tests passed');
+}
+
+run();

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomUUID } from 'crypto';
 import { auth } from '@/auth';
 import sql from '@/lib/db';
@@ -7,6 +7,8 @@ import { validateResumeDraft } from '@/lib/resume/schema';
 import type { ResumeContext } from '@/lib/resume/types';
 import { readR2Object, uploadToR2 } from '@/lib/r2-client';
 import { rateLimit, rateLimitResponse, formatRetryHint } from '@/lib/rate-limit';
+import { assertProAccess } from '@/lib/billing/entitlements';
+import { countryFromRequest } from '@/lib/billing/geo';
 import { writeFile, unlink, mkdir, readFile, access } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -361,7 +363,7 @@ function pdfResponse(
   });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -369,6 +371,9 @@ export async function POST(req: Request) {
     }
 
     const userId = session.user.id;
+    const proBlock = await assertProAccess(userId, session.user.email, countryFromRequest(req));
+    if (proBlock) return proBlock;
+
     const pdfLimit = await rateLimit(`pdf:${userId}`, { windowMs: 60 * 60_000, max: 10 });
     if (!pdfLimit.ok) {
       return rateLimitResponse(

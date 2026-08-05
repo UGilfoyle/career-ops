@@ -1,0 +1,44 @@
+import { NextResponse } from 'next/server';
+import { auth } from '@/auth';
+import {
+  buildUpiPayUri,
+  qrCodeImageUrl,
+  upiConfigFromEnv,
+  upiTransactionRef,
+} from '@/lib/billing/upi';
+import { hasProAccess } from '@/lib/billing/entitlements';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const cfg = upiConfigFromEnv();
+  if (!cfg) {
+    return NextResponse.json({ error: 'UPI billing not configured' }, { status: 503 });
+  }
+
+  const pro = await hasProAccess(session.user.id, session.user.email);
+  if (pro) {
+    return NextResponse.json({ hasPro: true, amountInr: cfg.amountInr, display: `₹${cfg.amountInr}` });
+  }
+
+  const transactionRef = upiTransactionRef(session.user.id);
+  const upiUri = buildUpiPayUri(cfg, transactionRef);
+
+  return NextResponse.json({
+    hasPro: false,
+    vpa: cfg.vpa,
+    payeeName: cfg.payeeName,
+    amountInr: cfg.amountInr,
+    display: `₹${cfg.amountInr}`,
+    note: cfg.note,
+    upiUri,
+    qrUrl: qrCodeImageUrl(upiUri),
+    transactionRef,
+    zeroFees: true,
+  });
+}

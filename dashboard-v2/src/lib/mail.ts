@@ -217,3 +217,81 @@ export const sendMonthlyNewsletterEmail = async (params: MonthlyNewsletterParams
     return null;
   }
 };
+
+export const sendProAccessEmail = async (
+  email: string,
+  name: string,
+  accessLink: string,
+  priceDisplay: string,
+) => {
+  const sender = assertSenderConfigured('Pro access email');
+  if (!sender) return null;
+
+  const htmlContent = emailShell(`
+            <h1 class="headline">Your Pro access is ready</h1>
+            <p class="subtext">Hi ${name || 'there'}, thanks for subscribing (${priceDisplay}/month). Use the secure link below to unlock <strong>Resume Studio</strong> and unlimited <strong>Career Copilot</strong>.</p>
+            <div class="center">
+              <a class="cta" href="${accessLink}">Activate Pro access</a>
+            </div>
+            <p class="expiry">This link expires in 7 days. If you're already logged in, you can also open Resume Studio from your dashboard after payment.</p>
+            <ul class="bullets">
+              <li>Master resume editor + live ATS preview</li>
+              <li>PDF export & JD keyword match</li>
+              <li>Copilot synced to your profile (10+ messages / 2hr on free plan)</li>
+            </ul>
+            <div class="footer">
+              <p class="notice">If you didn't purchase Pro, ignore this email.</p>
+            </div>
+  `);
+
+  try {
+    return await brevo.transactionalEmails.sendTransacEmail({
+      subject: 'Your Career-Ops Pro access link',
+      htmlContent,
+      sender,
+      to: [{ email }],
+    });
+  } catch (error) {
+    console.error('Failed to send Pro access email:', email, error);
+    return null;
+  }
+};
+
+export const sendUpiClaimAdminEmail = async (
+  adminEmail: string,
+  payload: {
+    userEmail: string;
+    amountInr: number;
+    utr: string;
+    transactionRef: string | null;
+    approveUrl: string;
+  },
+) => {
+  const sender = assertSenderConfigured('UPI claim admin email');
+  if (!sender) return null;
+
+  const htmlContent = emailShell(`
+            <h1 class="headline">UPI payment to verify</h1>
+            <p class="subtext">${payload.userEmail} submitted ₹${payload.amountInr} Pro payment.</p>
+            <ul class="bullets">
+              <li><strong>UTR:</strong> ${payload.utr}</li>
+              <li><strong>Ref:</strong> ${payload.transactionRef || '—'}</li>
+            </ul>
+            <p class="subtext">Check your ICICI statement, then approve if amount matches.</p>
+            <div class="center">
+              <a class="cta" href="${payload.approveUrl}">Approve Pro access</a>
+            </div>
+  `);
+
+  try {
+    return await brevo.transactionalEmails.sendTransacEmail({
+      subject: `[Career-Ops] Verify UPI ₹${payload.amountInr} — ${payload.utr}`,
+      htmlContent,
+      sender,
+      to: [{ email: adminEmail }],
+    });
+  } catch (error) {
+    console.error('Failed to send UPI admin email:', adminEmail, error);
+    return null;
+  }
+};

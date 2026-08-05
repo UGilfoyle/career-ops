@@ -41,7 +41,10 @@ function run() {
   const html = fillAtsTemplate(sample);
   assert.ok(html.includes('Akash Kaintura'), 'name rendered');
   assert.ok(html.includes('Bengaluru'), 'location in contact line');
-  assert.ok(html.includes('akash@example.com'), 'email in contact line');
+  assert.ok(html.includes('akash@example.com'), 'email in contact bar');
+  assert.ok(html.includes('contact-bar'), 'icon contact bar rendered');
+  assert.ok(html.includes('contact-icon'), 'contact icons present');
+  assert.ok(html.includes('linkedin.com/in/akash'), 'linkedin in contact bar');
   assert.ok(!html.includes(' ·  · '), 'no empty contact separators');
   assert.ok(html.includes('Example Corp'), 'company rendered');
   assert.ok(html.includes('TypeScript'), 'skills rendered');
@@ -58,13 +61,43 @@ function run() {
   assert.ok(!emptyContactHtml.includes('LinkedIn'), 'no LinkedIn placeholder when empty');
   assert.ok(!emptyContactHtml.includes(' · '), 'no stray separators when contact empty');
 
-  const expHtml = renderExperienceHtml(sample.experience, 2);
-  assert.ok(expHtml.includes('job-company'), 'experience markup');
+  const expHtml = renderExperienceHtml(
+    [
+      {
+        role: 'Full-Stack Developer',
+        company: 'KOCO Schools',
+        period: 'Oct 2021 – Jul 2022',
+        bullets: [
+          'Authored backend architecture for multi-tenant platform.',
+          'Rubico IT Pvt Ltd - Software Developer Sep 2019 - Sep 2021',
+        ],
+      },
+    ],
+    2
+  );
+  assert.ok(!expHtml.includes('Rubico IT Pvt Ltd - Software Developer'), 'nested job header stripped from experience HTML');
+  assert.ok(expHtml.includes('KOCO Schools'), 'KOCO job still rendered');
 
-  const skills = renderSkillsLines(sample.narrative?.superpowers);
-  assert.ok(skills.includes('<ul class="skills-list">'), 'skills as bullet list');
-  assert.ok(skills.includes('<li>TypeScript</li>'), 'skill as list item');
-  assert.ok(!skills.includes('Core Competencies'), 'no Core Competencies label');
+  const expHtml2 = renderExperienceHtml(sample.experience, 2);
+  assert.ok(expHtml2.includes('job-company'), 'experience markup');
+
+  const skills = renderSkillsLines([
+    'Monolith-to-microservices transition',
+    'PostgreSQL',
+    'microservices',
+    'Java',
+  ]);
+  assert.ok(skills.includes('PostgreSQL'), 'PostgreSQL in skills');
+  assert.ok(!skills.includes('Monolith-to-microservices'), 'narrative superpower excluded');
+  assert.ok(!skills.includes('monolith'), 'no raw monolith phrase');
+  assert.ok(skills.includes('Microservices') || skills.includes('microservices'), 'microservices present');
+
+  const htmlOrder = fillAtsTemplate(sample);
+  const summaryIdx = htmlOrder.indexOf('Professional Summary');
+  const expIdx = htmlOrder.indexOf('Professional Experience');
+  const eduIdx = htmlOrder.indexOf('Education');
+  const skillsIdx = htmlOrder.indexOf('Technical Skills');
+  assert.ok(summaryIdx < expIdx && expIdx < eduIdx && eduIdx < skillsIdx, 'Technical Skills section is last');
 
   assert.equal(calculateYearsOfExperience(sample.experience) >= 1, true);
   assert.ok(masterSummaryText(sample).includes('Senior engineer'));

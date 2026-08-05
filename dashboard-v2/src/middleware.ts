@@ -5,10 +5,14 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth
-  const publicPages = ["/", "/login", "/signup", "/verify", "/forgot-password", "/reset-password", "/auth/continue", "/docs", "/privacy", "/status"]
+  const publicPages = ["/", "/login", "/signup", "/verify", "/forgot-password", "/reset-password", "/auth/continue", "/docs", "/privacy", "/status", "/billing/simulate"]
+  const alwaysPublic = ["/billing/simulate"]
   const isPublicPage = publicPages.includes(req.nextUrl.pathname)
+  const isAlwaysPublic = alwaysPublic.includes(req.nextUrl.pathname)
 
   if (isPublicPage) {
+    // Local billing demo stays public even when logged in
+    if (isAlwaysPublic) return undefined;
     // If logged in and trying to access login/signup/verify, redirect to dashboard
     if (isLoggedIn && req.nextUrl.pathname !== "/") {
       return Response.redirect(new URL("/", req.nextUrl))
@@ -23,6 +27,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/register|api/verify|api/password|api/view|api/background/complete|_next/static|_next/image|favicon.ico|favicon.svg|icon.png|apple-icon.png|favicon-32.png|favicon-16.png).*)",
+    "/((?!api/|api|_next/static|_next/image|favicon.ico|favicon.svg|icon.png|apple-icon.png|favicon-32.png|favicon-16.png).*)",
   ],
 }

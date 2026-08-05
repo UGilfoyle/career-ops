@@ -616,11 +616,155 @@ export function normalizeBulletText(bullet, companyOrRoleText = '') {
 const BULLET_ACTION_START =
   /^(Developed|Built|Created|Designed|Implemented|Owned|Led|Managed|Delivered|Engineered|Integrated|Deployed|Provisioned|Configured|Wrote|Maintained|Authored|Formulated|Optimized|Architected|Automated|Established|Enhanced|Expanded|Improved|Streamlined|Accelerated|Reduced|Tuned|Partnered|Collaborated|Mentored|Conducted|Analyzed|Migrated|Refactored|Launched|Constructed|Enforced|Spearheaded|Drove|Ran|Cut|Grew|Shipped|Supported|Coordinated|Orchestrated|Remodeled|Reconfigured)\b/;
 
+const EMBEDDED_JOB_DATE =
+  /\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+\d{4}\s*(?:[-–—]|to)\s*(?:Present|Current|Now|\d{4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{4})/i;
+const EMBEDDED_ROLE_KW =
+  /\b(?:Software|Engineer|Developer|Manager|Architect|Lead|Senior|Full-Stack|Full Stack|Back-End|Front-End|DevOps|Associate|Analyst|Consultant|Specialist)\b/i;
+const EMBEDDED_COMPANY_MARKERS =
+  /\b(?:Pvt|Ltd|LLC|Inc|Corp|Services|Technologies|Tech|IT|Global|Solutions|Software|Schools)\b/i;
+
+/** True when a "bullet" is actually a pasted job header (company — role | dates). */
+export function isEmbeddedJobHeader(text) {
+  const t = String(text || '').trim().replace(/^[•\-*▸]\s*/, '');
+  if (!t || t.length < 20) return false;
+  const hasDates =
+    EMBEDDED_JOB_DATE.test(t)
+    || /\b(19|20)\d{2}\s*(?:[-–—]|to)\s*((?:19|20)\d{2}|Present|Current|Now)\b/i.test(t);
+  if (!hasDates) return false;
+  if (/^[\w\s&.',()-]+[-–—|]\s*[\w\s]+(?:Developer|Engineer|Manager|Architect|Lead|Specialist)/i.test(t)) {
+    return true;
+  }
+  const withoutDates = t
+    .replace(EMBEDDED_JOB_DATE, '')
+    .replace(/\b(19|20)\d{2}\s*(?:[-–—]|to)\s*((?:19|20)\d{2}|Present|Current|Now)\b/gi, '')
+    .trim();
+  return EMBEDDED_ROLE_KW.test(withoutDates)
+    && (EMBEDDED_COMPANY_MARKERS.test(withoutDates) || /[-–—|]/.test(withoutDates));
+}
+
+/**
+ * Remove job-header lines that landed inside another role's bullets (import/LLM artifact).
+ * Also strips cross-role contamination and duplicate bullets.
+ */
+function bulletKey(text) {
+  return String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function companyCore(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/\b(pvt|ltd|llc|inc|corp|it|services|technologies|tech|software|global|schools|engineering)\b/g, '')
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
+
+/** Bullet explicitly names a different employer from the jobs list. */
+function bulletMentionsOtherCompany(bullet, ownCompany, allJobs) {
+  if (isEmbeddedJobHeader(bullet)) return true;
+  const b = String(bullet || '').toLowerCase();
+  const own = companyCore(ownCompany);
+  for (const job of allJobs) {
+    const co = companyCore(job.company);
+    if (!co || co.length < 4 || co === own) continue;
+    if (b.includes(co)) return true;
+    const rawCo = String(job.company || '').trim().toLowerCase();
+    if (rawCo.length >= 5 && b.includes(rawCo.slice(0, Math.min(rawCo.length, 14)))) return true;
+  }
+  return false;
+}
+
+/** Fix mid-sentence LLM splice crumbs inside a single bullet string. */
+export function repairMidSentenceArtifacts(bullet) {
+  let t = String(bullet || '');
+  t = t.replace(/\bservices\s+Integrity\s+through\b/gi, 'services, preserving data integrity through');
+  t = t.replace(/\brecords,?\s+preserving\.?\s*Integrity\s+through\b/gi, 'records, preserving data integrity through');
+  t = t.replace(/\bplatform,?\s+synthesizing\.?\s*Logic\s+into\b/gi, 'platform, synthesizing business logic into');
+  t = t.replace(/\s+In addition,?\s+I\s+/gi, '. Also ');
+  t = t.replace(/\bworkflows\s+that\s+reduced\.?\s*$/i, 'workflows that reduced manual effort.');
+  return t.trim();
+}
+
+/** Same bullet copied into multiple roles — keep in the oldest role (bottom of resume). */
+function wordOverlapRatio(a, b) {
+  const wa = new Set(bulletKey(a).split(/\s+/).filter((w) => w.length > 3));
+  const wb = new Set(bulletKey(b).split(/\s+/).filter((w) => w.length > 3));
+  if (!wa.size || !wb.size) return 0;
+  let inter = 0;
+  for (const w of wa) if (wb.has(w)) inter += 1;
+  return inter / Math.min(wa.size, wb.size);
+}
+
+export function dedupeBulletsAcrossJobs(experience) {
+  if (!Array.isArray(experience)) return [];
+  const keyOwners = new Map();
+  experience.forEach((job, idx) => {
+    for (const b of job.bullets || []) {
+      const k = bulletKey(b);
+      if (!k || k.length < 24) continue;
+      if (!keyOwners.has(k)) keyOwners.set(k, new Set());
+      keyOwners.get(k).add(idx);
+    }
+  });
+
+  let jobs = experience.map((job, idx) => ({
+    ...job,
+    bullets: (job.bullets || []).filter((b) => {
+      const k = bulletKey(b);
+      const owners = keyOwners.get(k);
+      if (owners && owners.size > 1) {
+        const keeper = Math.max(...owners);
+        if (idx !== keeper) return false;
+      }
+      for (let j = 0; j < experience.length; j++) {
+        if (j === idx) continue;
+        for (const ob of experience[j].bullets || []) {
+          if (bulletKey(b).length > 35 && wordOverlapRatio(b, ob) >= 0.55) {
+            return idx > j;
+          }
+        }
+      }
+      return true;
+    }),
+  }));
+  return jobs;
+}
+
+export function sanitizeExperienceEntries(experience) {
+  if (!Array.isArray(experience)) return [];
+  let jobs = experience
+    .map((job) => ({
+      ...job,
+      bullets: (Array.isArray(job.bullets) ? job.bullets : [])
+        .map(repairMidSentenceArtifacts)
+        .filter((b) => !isEmbeddedJobHeader(b)),
+    }))
+    .filter((job) => job.role || job.company);
+
+  jobs = jobs.map((job) => ({
+    ...job,
+    bullets: normalizeExperienceBulletList(
+      (job.bullets || []).filter((b) => !bulletMentionsOtherCompany(b, job.company, jobs)),
+      `${job.company || ''} ${job.role || ''}`,
+    ),
+  }));
+
+  jobs = dedupeBulletsAcrossJobs(jobs);
+  return jobs.filter((job) => (job.bullets || []).length > 0 || job.role || job.company);
+}
+
 /** True when a bullet looks truncated (dangling gerund / connector). */
 export function isIncompleteBullet(bullet) {
   const t = String(bullet || '').trim().replace(/[.!]+$/, '');
   if (!t) return true;
   if (/\b(synthesizing|preserving|integrating|including|using|building|deploying|writing|maintaining|and|with|to|of|by|from|via|into)\s*$/i.test(t)) {
+    return true;
+  }
+  if (/\bfrom\s+\d+(?:\.\d+)?\.?\s*$/i.test(t)) return true;
+  if (/\bthat\s+(reduced|cut|decreased|lowered|improved|increased|raised|optimized)\.?\s*$/i.test(t)) return true;
+  if (
+    /\b(reduced|cut|decreased|lowered|improved|increased|orchestrated|configured|integrated)\.?\s*$/i.test(t)
+    && !/\bby\s+\d/i.test(String(bullet || ''))
+  ) {
     return true;
   }
   if (/,\s*$/.test(String(bullet || '').trim())) return true;
@@ -650,6 +794,10 @@ export function isBulletContinuationFragment(bullet) {
   if (/^(Business logic|Data integrity|Complex business|Authentication flows?|Authorization flows?)\b/i.test(t)) {
     return true;
   }
+  if (/^(Preventing|Preserving|Integrating|Including|Maintaining|Synthesizing|Delivered handling)\b/i.test(t)) {
+    return true;
+  }
+  if (/^In addition\b/i.test(t)) return true;
   // Capitalized noun + connector, no action verb — almost always a continuation crumb
   if (
     !BULLET_ACTION_START.test(t)
@@ -875,7 +1023,8 @@ export function explodeWallOfTextBullets(bullets, opts = {}) {
  */
 export function normalizeExperienceBulletList(bullets, companyOrRoleText = '') {
   const company = String(companyOrRoleText || '');
-  const exploded = explodeWallOfTextBullets(bullets);
+  const input = (Array.isArray(bullets) ? bullets : []).filter((b) => !isEmbeddedJobHeader(b));
+  const exploded = explodeWallOfTextBullets(input);
   const raw = exploded.map((b) => String(b || '').trim()).filter(Boolean);
   const merged = [];
   for (const bullet of raw) {
@@ -899,7 +1048,7 @@ export function normalizeExperienceBulletList(bullets, companyOrRoleText = '') {
   }
   return merged
     .map((b) => normalizeBulletText(b, company || b))
-    .filter((b) => b.length >= 20);
+    .filter((b) => b.length >= 20 && !isIncompleteBullet(b));
 }
 
 /**

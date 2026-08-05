@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
       "../education-format.mjs",
       "../profile-hydrate.mjs",
       "../resume-quality.mjs",
+      "../resume-skills-html.mjs",
+      "../resume-contact-html.mjs",
       "../templates/gcc-companies.yml",
       "./portals/**/*",
       "./runtime-assets/**/*",

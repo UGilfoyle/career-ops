@@ -20,9 +20,97 @@ const TECH_PATTERNS = [
   /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet)\b/i,
 ];
 
+/** Narrative / superpower phrases — not Technical Skills bullets. */
+const NARRATIVE_SKILL_RE =
+  /\b(monolith-to-microservices|cost optimization|cluster optimization|high-throughput|tool integration|ai-native|superpower|ownership bar|delivery excellence|engineering velocity|transition|optimisation|optimization)\b/i;
+
+export function isNarrativeSuperpower(text) {
+  const t = String(text || '').trim();
+  if (!t) return true;
+  if (NARRATIVE_SKILL_RE.test(t)) return true;
+  if (t.includes(',') && t.split(',').length >= 2 && t.length > 38) return true;
+  const words = t.split(/\s+/);
+  if (words.length >= 6 && !TECH_PATTERNS.some((p) => p.test(t))) return true;
+  return false;
+}
+
+/** Split comma-joined skill blobs into individual tokens. */
+export function expandSkillTokens(items) {
+  const out = [];
+  for (const item of Array.isArray(items) ? items : []) {
+    const s = String(item || '').trim();
+    if (!s) continue;
+    if (s.includes(',') && s.length > 28) {
+      for (const part of s.split(',').map((x) => x.trim()).filter(Boolean)) {
+        out.push(part);
+      }
+    } else {
+      out.push(s);
+    }
+  }
+  return out;
+}
+
+const SKILL_CANONICAL = new Map([
+  ['postgresql', 'PostgreSQL'],
+  ['postgres', 'PostgreSQL'],
+  ['javascript', 'JavaScript'],
+  ['typescript', 'TypeScript'],
+  ['nodejs', 'Node.js'],
+  ['node.js', 'Node.js'],
+  ['mongodb', 'MongoDB'],
+  ['graphql', 'GraphQL'],
+  ['kubernetes', 'Kubernetes'],
+  ['docker', 'Docker'],
+  ['aws', 'AWS'],
+  ['azure', 'Azure'],
+  ['gcp', 'GCP'],
+  ['cicd', 'CI/CD'],
+  ['ci/cd', 'CI/CD'],
+  ['dotnet', '.NET'],
+  ['.net', '.NET'],
+  ['kotlin', 'Kotlin'],
+  ['java', 'Java'],
+  ['python', 'Python'],
+  ['redis', 'Redis'],
+  ['kafka', 'Kafka'],
+  ['microservices', 'Microservices'],
+  ['system design', 'System Design'],
+  ['restful api', 'RESTful APIs'],
+  ['restful apis', 'RESTful APIs'],
+  ['api design', 'API Design'],
+  ['agile', 'Agile'],
+  ['sql server', 'SQL Server'],
+  ['postgresql', 'PostgreSQL'],
+]);
+
+export function normalizeSkillLabel(text) {
+  const s = String(text || '').trim();
+  if (!s) return '';
+  const lower = s.toLowerCase();
+  if (SKILL_CANONICAL.has(lower)) return SKILL_CANONICAL.get(lower);
+  if (s.split(/\s+/).length <= 4 && !/[A-Z]{2,}/.test(s.slice(1))) {
+    return s
+      .split(/\s+/)
+      .map((w) => {
+        const wl = w.toLowerCase();
+        if (SKILL_CANONICAL.has(wl)) return SKILL_CANONICAL.get(wl);
+        if (wl === 'api') return 'API';
+        if (wl === 'apis') return 'APIs';
+        return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+      })
+      .join(' ');
+  }
+  return s;
+}
+
 export function isTechStackSkill(text) {
   const t = String(text || '').trim();
   if (!t || isEditorIdeTool(t) || isJunkKeyword(t) || !isWeavableKeyword(t)) return false;
+  if (isNarrativeSuperpower(t)) return false;
+  if (t.length > 42 && /\b(transition|optimization|optimisation|integration|ownership|design)\b/i.test(t)) {
+    return false;
+  }
   if (t.length <= 30 && t.split(/\s+/).length <= 3) {
     return TECH_PATTERNS.some((p) => p.test(t));
   }
@@ -38,7 +126,16 @@ function escapeHtml(s) {
 }
 
 function skillsBulletList(items) {
-  const unique = [...new Set(items.map((x) => String(x || '').trim()).filter(Boolean))];
+  const seen = new Set();
+  const unique = [];
+  for (const raw of items) {
+    const label = normalizeSkillLabel(String(raw || '').trim());
+    if (!label || isNarrativeSuperpower(label)) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(label);
+  }
   if (!unique.length) return '';
   return `<ul class="skills-list">${unique
     .map((s) => `<li>${escapeHtml(s)}</li>`)
@@ -51,8 +148,8 @@ function skillsBulletList(items) {
  * Never unpacks IDE assistants from parentheticals like "(Cursor, Claude Code, GPTs)".
  */
 export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
-  const superpowers = Array.isArray(profileSuperpowers) ? profileSuperpowers : [];
-  const competencies = Array.isArray(tailoredCompetencies) ? tailoredCompetencies : [];
+  const superpowers = expandSkillTokens(Array.isArray(profileSuperpowers) ? profileSuperpowers : []);
+  const competencies = expandSkillTokens(Array.isArray(tailoredCompetencies) ? tailoredCompetencies : []);
   if (superpowers.length === 0 && competencies.length === 0) return '';
 
   const techSkills = [];
@@ -60,15 +157,17 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
 
   for (const item of competencies) {
     const s = String(item || '').trim();
-    if (!s || isEditorIdeTool(s) || isJunkKeyword(s)) continue;
+    if (!s || isEditorIdeTool(s) || isJunkKeyword(s) || isNarrativeSuperpower(s)) continue;
     if (isTechStackSkill(s)) techSkills.push(s);
-    else if (isWeavableKeyword(s) || s.split(/\s+/).length >= 2) otherSkills.push(s);
+    else if ((isWeavableKeyword(s) || s.split(/\s+/).length >= 2) && !isNarrativeSuperpower(s)) {
+      otherSkills.push(s);
+    }
   }
 
   const existingLower = new Set([...techSkills, ...otherSkills].map((x) => x.toLowerCase()));
   for (const sp of superpowers) {
     const s = String(sp || '').trim();
-    if (!s || existingLower.has(s.toLowerCase())) continue;
+    if (!s || existingLower.has(s.toLowerCase()) || isNarrativeSuperpower(s)) continue;
     if (isEditorIdeTool(s)) continue;
     const parenMatch = s.match(/\(([^)]+)\)/);
     if (parenMatch) {
@@ -97,7 +196,7 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
     .filter((x) => !isEditorIdeTool(x) && isTechStackSkill(x))
     .slice(0, 16);
   const uniqueOther = [...new Set(otherSkills)]
-    .filter((x) => !isEditorIdeTool(x) && !isJunkKeyword(x))
+    .filter((x) => !isEditorIdeTool(x) && !isJunkKeyword(x) && !isNarrativeSuperpower(x))
     .slice(0, 12);
 
   // Tech stack first, then other skills — all as bullets under Technical Skills.
@@ -106,7 +205,14 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
 
   const fallback = [...competencies, ...superpowers]
     .map((x) => String(x || '').replace(/\s*\([^)]*\)\s*/g, '').trim())
-    .filter((x) => x && !isEditorIdeTool(x) && !isJunkKeyword(x) && !/^ai-?native tool integration$/i.test(x))
+    .filter(
+      (x) =>
+        x
+        && !isEditorIdeTool(x)
+        && !isJunkKeyword(x)
+        && !isNarrativeSuperpower(x)
+        && !/^ai-?native tool integration$/i.test(x)
+    )
     .slice(0, 16);
   return skillsBulletList(fallback);
 }

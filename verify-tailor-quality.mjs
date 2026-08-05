@@ -12,14 +12,14 @@ const sourceExperience = [
     company: 'Quest Global',
     bullets: [
       'Reconfigured EC2 auto-scaling policies to reduce infrastructure costs by 30%.',
-      'Cut server CPU load by 30% on Oracle workloads.',
+      'Lowered server CPU load by 30% on Oracle workloads.',
       'Shipped AWS Lambda event processors with 99.9% success rate.',
     ],
   },
   {
     company: 'INTVERSE',
     bullets: [
-      'Reduced backend server CPU load by 35%.',
+      'Trimmed backend server CPU load by 35%.',
       'Delivered Node.js APIs handling 1,000+ daily transactions.',
     ],
   },
@@ -39,14 +39,14 @@ const resume = {
   experience: {
     '0': [
       'Reconfigured EC2 auto-scaling policies on AWS to cut infrastructure spend',
-      'Cut Oracle workload CPU load with query and capacity tuning',
+      'Tuned Oracle workload CPU load with query and capacity tuning',
       'Shipped AWS Lambda event processors for production traffic',
       'Led team code reviews and mentoring across backend services',
     ],
     '1': [
       'Reduced backend server CPU load on Node.js APIs',
       'Delivered Node.js APIs for billing and operations traffic',
-      'Cut API latency with PostgreSQL indexing',
+      'Improved API latency with PostgreSQL indexing',
     ],
   },
 };

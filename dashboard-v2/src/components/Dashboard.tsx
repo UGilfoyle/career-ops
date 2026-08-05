@@ -43,14 +43,17 @@ import {
   ArrowUpDown,
   Target,
   Mail,
+  Loader2,
   Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHeader';
 import ResumeStudio from './resume-studio/ResumeStudio';
+import ProPaywall from './ProPaywall';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
 import AdminUsersPanel from './AdminUsersPanel';
+import AdminPaymentsPanel from './AdminPaymentsPanel';
 import { GccCampaignPanel, defaultGccCampaign, type GccCampaign } from './GccCampaignPanel';
 import { ONBOARDING_STORAGE_KEY, DASHBOARD_TOUR_STEPS } from '@/lib/onboarding-flow';
 import {
@@ -239,6 +242,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [copilotLimitHit, setCopilotLimitHit] = useState(false);
+  const [billing, setBilling] = useState<{
+    hasPro: boolean;
+    plan: { display: string; subtitle: string };
+    copilot: { limit: number; remaining: number; windowHours: number; pro: boolean };
+  } | null>(null);
+  const hasPro = Boolean(billing?.hasPro || isAdmin);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
   const lastBgEventRef = useRef<number>(0);
 
@@ -414,7 +424,32 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     } catch {
       // ignore
     }
+    if (typeof window !== 'undefined') {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab === 'resume-studio' || tab === 'chat') setActiveTab(tab);
+    }
   }, []);
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    (async () => {
+      try {
+        const res = await fetch('/api/billing/status');
+        if (res.ok) setBilling(await res.json());
+      } catch {
+        // ignore
+      }
+    })();
+  }, [status]);
+
+  const refreshBilling = async () => {
+    try {
+      const res = await fetch('/api/billing/status');
+      if (res.ok) setBilling(await res.json());
+    } catch {
+      // ignore
+    }
+  };
 
   const toggleSidebar = () => {
     setSidebarCollapsed((prev) => {
@@ -1001,6 +1036,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     setChatMessages(newMsgs);
     setChatInput('');
     setChatLoading(true);
+    setCopilotLimitHit(false);
 
     try {
       const res = await fetch('/api/chat', {
@@ -1009,10 +1045,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         body: JSON.stringify({ messages: newMsgs }),
       });
       const data = await res.json();
-      if (data.error) {
+      if (res.status === 429 && data.error === 'copilot_rate_limit') {
+        setCopilotLimitHit(true);
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.message || 'Copilot limit reached. Upgrade to Pro for unlimited coaching.',
+        }]);
+        void refreshBilling();
+      } else if (data.error) {
         setChatMessages(prev => [...prev, { role: 'assistant', content: `⚠️ Error: ${data.error}` }]);
       } else {
         setChatMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+        void refreshBilling();
       }
     } catch (err: any) {
       setChatMessages(prev => [...prev, { role: 'assistant', content: `⚠️ Network error: ${err.message}` }]);
@@ -2620,6 +2664,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 title="Resume Studio"
                 subtitle="Master resume editor with live ATS preview — same profile that powers tailor"
               />
+              {billing === null ? (
+                <div className="flex justify-center py-24">
+                  <Loader2 className="animate-spin text-[#1C1C1E]" size={28} />
+                </div>
+              ) : hasPro ? (
               <ResumeStudio
                 initialProfile={
                   profileFormData?.candidate?.full_name || (profileFormData?.experience || []).length
@@ -2665,6 +2714,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 }}
                 onOpenGeneratedDocs={() => setActiveTab('generated-docs')}
               />
+              ) : (
+                <ProPaywall
+                  feature="resume-studio"
+                  planDisplay={billing.plan.display}
+                  planSubtitle={billing.plan.subtitle}
+                />
+              )}
             </motion.div>
           )}
 
@@ -2858,6 +2914,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
           {activeTab === 'analytics' && isAdmin && (
             <motion.div key="analytics" className="space-y-12">
+              <AdminPaymentsPanel />
+
               <AdminUsersPanel
                 data={adminOverview}
                 loading={adminLoading}
@@ -3997,10 +4055,36 @@ System Initialized — v2.0`}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider">Ready to assist</span>
+                  {billing && !hasPro && (
+                    <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider">
+                      {billing.copilot.remaining}/{billing.copilot.limit} free · 2hr
+                    </span>
+                  )}
+                  {hasPro && (
+                    <>
+                      <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider">Pro · Ready</span>
+                    </>
+                  )}
+                  {!hasPro && !copilotLimitHit && (
+                    <>
+                      <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider">Ready</span>
+                    </>
+                  )}
                 </div>
               </div>
+
+              {copilotLimitHit && !hasPro && billing && (
+                <div className="border-b border-[#E5E5E0] bg-[#FAFAF8]">
+                  <ProPaywall
+                    feature="copilot"
+                    planDisplay={billing.plan.display}
+                    planSubtitle={billing.plan.subtitle}
+                    copilotRemaining={billing.copilot.remaining}
+                  />
+                </div>
+              )}
 
               {/* Message List */}
               <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-[#FAFAF8]/30">

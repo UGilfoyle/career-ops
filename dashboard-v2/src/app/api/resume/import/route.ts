@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { parseResumeText } from '@/lib/resume/parse-resume-text';
+import { assertProAccess } from '@/lib/billing/entitlements';
+import { countryFromRequest } from '@/lib/billing/geo';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -21,6 +23,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const proBlock = await assertProAccess(session.user.id, session.user.email, countryFromRequest(req));
+    if (proBlock) return proBlock;
 
     step = 'formData';
     const form = await req.formData();

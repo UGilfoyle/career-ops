@@ -12,6 +12,10 @@ import {
   normalizeBulletText,
   preferSourceIfThin,
   parseTenureMonths,
+  sanitizeExperienceEntries,
+  isEmbeddedJobHeader,
+  isIncompleteBullet,
+  normalizeExperienceBulletList,
   bulletsBudgetForRole as roleBulletBudget,
   elevateBulletToSenior,
   elevateBulletForEmployer,
@@ -30,6 +34,7 @@ import {
 } from './jd-keyword-align.mjs';
 import { callFirstAvailableFallback } from './llm-fallback.mjs';
 import { renderCategorizedSkills } from './resume-skills-html.mjs';
+import { renderContactBarHtml } from './resume-contact-html.mjs';
 import { gateResumeOnPostingAge, argvHasYes } from './job-posting-gate.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
 import { classifyCompany } from './gcc-classify.mjs';
@@ -264,6 +269,7 @@ function formatBulletHtml(text) {
 
 function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
   if (!Array.isArray(exp) || exp.length === 0) return '';
+  exp = sanitizeExperienceEntries(exp);
 
   // tailoredBullets can be:
   //   (a) a flat array of strings → legacy single-role mode (applied to most-relevant role)
@@ -333,8 +339,9 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       maxBullets: budget,
       company: employerToneKey,
     })
+      .filter((b) => !isEmbeddedJobHeader(b))
       .map((b) => normalizeBulletText(elevateBulletForEmployer(String(b || ''), employerToneKey), employerToneKey))
-      .filter((b) => b.length >= 20);
+      .filter((b) => b.length >= 20 && !isIncompleteBullet(b));
 
     let role = (job.role || '').trim();
     let company = (job.company || '').trim();
@@ -1921,6 +1928,7 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
       EMAIL: c.email || '',
       LOCATION: c.location || '',
       PHONE: c.phone || '',
+      CONTACT_BAR: renderContactBarHtml(c),
       CONTACT_LINE: contactParts.join(' · '),
       LINKS_LINE: linkParts.join(' · '),
       LINKEDIN_URL: linkedinRaw ? `https://${linkedinRaw}` : '#',
@@ -1957,7 +1965,9 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
       for (const key of Object.keys(tailoring.experience)) {
         const bullets = tailoring.experience[key];
         if (Array.isArray(bullets)) {
-          tailoring.experience[key] = bullets.map((b) => removeSplicedFragments(b));
+          tailoring.experience[key] = bullets
+            .filter((b) => !isEmbeddedJobHeader(b))
+            .map((b) => removeSplicedFragments(b));
         }
       }
     }

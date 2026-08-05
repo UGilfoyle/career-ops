@@ -1,19 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import sql from '@/lib/db';
 import { scoreMasterAgainstJd, structureAtsScore } from '@/lib/resume/ats-score';
 import type { ResumeContext } from '@/lib/resume/types';
+import { assertProAccess } from '@/lib/billing/entitlements';
+import { countryFromRequest } from '@/lib/billing/geo';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
+    const proBlock = await assertProAccess(userId, session.user.email, countryFromRequest(req));
+    if (proBlock) return proBlock;
     const body = await req.json().catch(() => ({}));
     let jdText = String(body.jdText || body.jd_text || '').trim();
     const jobId = body.jobId != null ? Number(body.jobId) : null;
