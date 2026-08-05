@@ -2,7 +2,7 @@
 
 export type ProPlanRegion = {
   country: string;
-  currency: 'usd' | 'inr' | 'eur' | 'gbp';
+  currency: 'usd' | 'inr' | 'eur' | 'gbp' | 'cad' | 'aud' | 'sgd' | 'jpy' | 'aed';
   amountMinor: number;
   display: string;
   stripePriceId?: string;
@@ -46,18 +46,73 @@ export function resolvePlanForCountry(countryCode?: string | null): ProPlanRegio
     return {
       country: cc,
       currency: 'eur',
-      amountMinor: 79,
-      display: '€0.79',
+      amountMinor: 89,
+      display: '€0.89',
       stripePriceId: process.env.STRIPE_PRICE_EUR,
       manualCheckoutUrl: process.env.BILLING_CHECKOUT_URL_EU,
+    };
+  }
+
+  if (cc === 'CA') {
+    return {
+      country: 'CA',
+      currency: 'cad',
+      amountMinor: 139,
+      display: 'C$1.39',
+      stripePriceId: process.env.STRIPE_PRICE_CAD,
+      manualCheckoutUrl: process.env.BILLING_CHECKOUT_URL_CA,
+    };
+  }
+
+  if (cc === 'AU') {
+    return {
+      country: 'AU',
+      currency: 'aud',
+      amountMinor: 149,
+      display: 'A$1.49',
+      stripePriceId: process.env.STRIPE_PRICE_AUD,
+      manualCheckoutUrl: process.env.BILLING_CHECKOUT_URL_AU,
+    };
+  }
+
+  if (cc === 'SG') {
+    return {
+      country: 'SG',
+      currency: 'sgd',
+      amountMinor: 129,
+      display: 'S$1.29',
+      stripePriceId: process.env.STRIPE_PRICE_SGD,
+      manualCheckoutUrl: process.env.BILLING_CHECKOUT_URL_SG,
+    };
+  }
+
+  if (cc === 'JP') {
+    return {
+      country: 'JP',
+      currency: 'jpy',
+      amountMinor: 149,
+      display: '¥149',
+      stripePriceId: process.env.STRIPE_PRICE_JPY,
+      manualCheckoutUrl: process.env.BILLING_CHECKOUT_URL_JP,
+    };
+  }
+
+  if (cc === 'AE') {
+    return {
+      country: 'AE',
+      currency: 'aed',
+      amountMinor: 369,
+      display: 'AED 3.69',
+      stripePriceId: process.env.STRIPE_PRICE_AED,
+      manualCheckoutUrl: process.env.BILLING_CHECKOUT_URL_AE,
     };
   }
 
   return {
     country: cc || 'US',
     currency: 'usd',
-    amountMinor: 79,
-    display: '$0.79',
+    amountMinor: 99,
+    display: '$0.99',
     stripePriceId: USD || undefined,
     manualCheckoutUrl: process.env.BILLING_CHECKOUT_URL_US,
   };

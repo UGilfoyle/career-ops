@@ -42,9 +42,14 @@ function resolvePlanForCountry(countryCode) {
     return { country: 'GB', currency: 'gbp', amountMinor: 79, display: '£0.79' };
   }
   if (['DE', 'FR', 'NL', 'ES', 'IT', 'BE', 'AT', 'IE', 'PT'].includes(cc)) {
-    return { country: cc, currency: 'eur', amountMinor: 79, display: '€0.79' };
+    return { country: cc, currency: 'eur', amountMinor: 89, display: '€0.89' };
   }
-  return { country: cc || 'US', currency: 'usd', amountMinor: 79, display: '$0.79' };
+  if (cc === 'CA') return { country: cc, currency: 'cad', amountMinor: 139, display: 'C$1.39' };
+  if (cc === 'AU') return { country: cc, currency: 'aud', amountMinor: 149, display: 'A$1.49' };
+  if (cc === 'SG') return { country: cc, currency: 'sgd', amountMinor: 129, display: 'S$1.29' };
+  if (cc === 'JP') return { country: cc, currency: 'jpy', amountMinor: 149, display: '¥149' };
+  if (cc === 'AE') return { country: cc, currency: 'aed', amountMinor: 369, display: 'AED 3.69' };
+  return { country: cc || 'US', currency: 'usd', amountMinor: 99, display: '$0.99' };
 }
 
 function buildUpiPayUri(cfg, transactionRef) {
@@ -104,15 +109,20 @@ test('IN → ₹99 / inr / 9900 minor', () => {
   assert.equal(p.currency, 'inr');
   assert.equal(p.amountMinor, 9900);
 });
-test('US → $0.79', () => {
-  assert.equal(resolvePlanForCountry('US').display, '$0.79');
-  assert.equal(resolvePlanForCountry(null).display, '$0.79');
+test('US → $0.99', () => {
+  assert.equal(resolvePlanForCountry('US').display, '$0.99');
+  assert.equal(resolvePlanForCountry(null).display, '$0.99');
 });
 test('GB → £0.79', () => {
   assert.equal(resolvePlanForCountry('gb').display, '£0.79');
 });
-test('DE → €0.79', () => {
-  assert.equal(resolvePlanForCountry('DE').display, '€0.79');
+test('localized converted prices', () => {
+  assert.equal(resolvePlanForCountry('DE').display, '€0.89');
+  assert.equal(resolvePlanForCountry('CA').display, 'C$1.39');
+  assert.equal(resolvePlanForCountry('AU').display, 'A$1.49');
+  assert.equal(resolvePlanForCountry('SG').display, 'S$1.29');
+  assert.equal(resolvePlanForCountry('JP').display, '¥149');
+  assert.equal(resolvePlanForCountry('AE').display, 'AED 3.69');
 });
 
 console.log('\n2. UPI deep link (unit)');

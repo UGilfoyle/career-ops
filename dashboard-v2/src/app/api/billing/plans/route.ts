@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     subtitle: planSubtitle(plan),
     providers: {
       upi: Boolean(upiConfigFromEnv()),
-      stripe: Boolean(process.env.STRIPE_SECRET_KEY && plan.stripePriceId),
+      stripe: Boolean(process.env.STRIPE_SECRET_KEY),
     },
   });
 }

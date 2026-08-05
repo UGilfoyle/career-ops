@@ -82,7 +82,7 @@ export default function ProPaywall({
         Unlock Pro — pay via UPI
       </button>
       <p className="text-[11px] text-[#9CA3AF] mt-4 max-w-xs">
-        Pay ₹99 / $0.79 → submit UTR → we verify → Pro access email lands in your inbox.
+        Pay {planDisplay} → submit payment details → we verify → Pro access email lands in your inbox.
       </p>
     </div>
   );

@@ -76,7 +76,7 @@ export function requireProResponse(priceDisplay?: string) {
     {
       error: 'pro_required',
       message: 'Resume Studio is part of Career-Ops Pro.',
-      priceDisplay: priceDisplay || '$0.79/month',
+      priceDisplay: priceDisplay || '$0.99/month',
       upgrade: true,
     },
     { status: 402 },

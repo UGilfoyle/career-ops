@@ -12,7 +12,14 @@ function run() {
   assert.ok(planSubtitle(inPlan).includes('₹99'));
 
   const us = resolvePlanForCountry('US');
-  assert.equal(us.display, '$0.79');
+  assert.equal(us.display, '$0.99');
+  assert.equal(us.amountMinor, 99);
+  assert.equal(resolvePlanForCountry('DE').display, '€0.89');
+  assert.equal(resolvePlanForCountry('CA').display, 'C$1.39');
+  assert.equal(resolvePlanForCountry('AU').display, 'A$1.49');
+  assert.equal(resolvePlanForCountry('SG').display, 'S$1.29');
+  assert.equal(resolvePlanForCountry('JP').display, '¥149');
+  assert.equal(resolvePlanForCountry('AE').display, 'AED 3.69');
   assert.equal(COPILOT_FREE_LIMIT, 10);
   assert.equal(COPILOT_FREE_WINDOW_MS, 2 * 60 * 60 * 1000);
 
