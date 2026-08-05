@@ -10,6 +10,25 @@ import {
 } from "@/lib/rate-limit"
 import { verifyTurnstile } from "@/lib/turnstile"
 
+const DAY_SECONDS = 24 * 60 * 60
+
+/** Login lifetime in days. Env-overridable so ops can tune without a code change. */
+function sessionMaxAgeSeconds(): number {
+  const raw = Number(process.env.AUTH_SESSION_MAX_AGE_DAYS)
+  const days = Number.isFinite(raw) && raw > 0 ? raw : 30
+  return Math.round(days * DAY_SECONDS)
+}
+
+/** Single source of truth for session policy — shared by auth.ts so it can't drift. */
+export const sessionConfig = {
+  strategy: "jwt" as const,
+  // Rolling 30-day login by default; the cookie inherits this maxAge.
+  maxAge: sessionMaxAgeSeconds(),
+  // Re-issue the JWT at most once a day so entitlement/admin claims stay fresh
+  // without a write on every request.
+  updateAge: DAY_SECONDS,
+}
+
 export const authConfig = {
   providers: [
     GitHub({
@@ -115,7 +134,7 @@ export const authConfig = {
       return token;
     },
   },
-  session: { strategy: "jwt" },
+  session: sessionConfig,
   pages: {
     signIn: "/login",
   },

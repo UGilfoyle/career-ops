@@ -1,5 +1,5 @@
 import NextAuth from "next-auth"
-import { authConfig } from "./auth.config"
+import { authConfig, sessionConfig } from "./auth.config"
 import pg from "pg"
 import { generateVerificationToken } from "@/lib/tokens"
 import { sendVerificationEmail } from "@/lib/mail"
@@ -17,10 +17,10 @@ const pool = new pg.Pool({
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  // NO adapter with JWT strategy - handle GitHub user creation in signIn callback
-  session: {
-    strategy: "jwt",
-  },
+  // NO adapter with JWT strategy - handle GitHub user creation in signIn callback.
+  // Reuse the shared session policy (30d rolling, 24h refresh) so it never drifts
+  // from auth.config.ts.
+  session: sessionConfig,
   secret: process.env.AUTH_SECRET,
   callbacks: {
     ...authConfig.callbacks,

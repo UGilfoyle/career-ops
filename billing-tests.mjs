@@ -397,6 +397,24 @@ test('schema keeps one pending claim per user', () => {
   assert.ok(src.includes("WHERE status = 'pending'"));
 });
 
+test('session policy: explicit rolling lifetime, shared, env-overridable', () => {
+  const cfg = readFileSync(join(ROOT, 'dashboard-v2/src/auth.config.ts'), 'utf8');
+  assert.ok(cfg.includes('sessionConfig'), 'must export a single sessionConfig');
+  assert.ok(cfg.includes('AUTH_SESSION_MAX_AGE_DAYS'), 'lifetime must be env-tunable');
+  assert.ok(cfg.includes('maxAge'), 'session maxAge must be set');
+  assert.ok(cfg.includes('updateAge'), 'session updateAge must be set');
+  assert.ok(/days\s*>\s*0\s*\?\s*raw\s*:\s*30/.test(cfg) || cfg.includes(': 30'), 'default 30 days');
+  const auth = readFileSync(join(ROOT, 'dashboard-v2/src/auth.ts'), 'utf8');
+  assert.ok(auth.includes('sessionConfig'), 'auth.ts must reuse sessionConfig, not redefine it');
+  assert.ok(!/session:\s*\{\s*strategy:\s*"jwt",?\s*\}/.test(auth), 'auth.ts must not hardcode a bare session');
+});
+
+test('Pro entitlement is DB-derived, not session-derived (survives re-login)', () => {
+  const ent = readFileSync(join(ROOT, 'dashboard-v2/src/lib/billing/entitlements.ts'), 'utf8');
+  assert.ok(ent.includes('getSubscriptionRow'), 'hasProAccess reads the subscription row');
+  assert.ok(ent.includes('user_subscriptions'), 'entitlement keyed by stable user_subscriptions');
+});
+
 test('mail has sendProAccessEmail + sendUpiClaimAdminEmail', () => {
   const src = readFileSync(join(ROOT, 'dashboard-v2/src/lib/mail.ts'), 'utf8');
   assert.ok(src.includes('sendProAccessEmail'));
