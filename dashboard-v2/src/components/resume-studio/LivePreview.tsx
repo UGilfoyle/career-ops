@@ -6,6 +6,7 @@ import { getTemplateMeta } from '@/lib/resume/ats-professional-template';
 import type { ResumeContext } from '@/lib/resume/types';
 
 const PAGE_WIDTH_PX = 794; // ~210mm at 96dpi
+const PAGE_HEIGHT_PX = 1123; // ~297mm at 96dpi (one A4 page)
 
 export function LivePreview({
   draft,
@@ -23,7 +24,9 @@ export function LivePreview({
   externalAtsSource?: 'jd' | 'structure' | null;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(PAGE_WIDTH_PX);
+  const [contentHeight, setContentHeight] = useState(PAGE_HEIGHT_PX);
   const deferredDraft = useDeferredValue(draft);
   const html = useMemo(() => fillAtsTemplate(deferredDraft), [deferredDraft]);
   const syncing = deferredDraft !== draft;
@@ -45,8 +48,26 @@ export function LivePreview({
     return () => ro.disconnect();
   }, []);
 
+  // Re-measure after HTML changes so multi-page resumes aren't clipped to 1 page.
+  useEffect(() => {
+    setContentHeight(PAGE_HEIGHT_PX);
+  }, [html]);
+
+  const measureIframe = () => {
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc?.body) return;
+    const h = Math.max(
+      PAGE_HEIGHT_PX,
+      Math.ceil(doc.documentElement.scrollHeight || 0),
+      Math.ceil(doc.body.scrollHeight || 0),
+    );
+    setContentHeight(h + 8);
+  };
+
   const fitScale = Math.min(1, Math.max(0.35, (containerWidth - 32) / PAGE_WIDTH_PX));
   const effectiveScale = Math.min(zoom / 100, fitScale);
+  const scaledExtra = contentHeight * (1 - effectiveScale);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -108,23 +129,26 @@ export function LivePreview({
             width: `${PAGE_WIDTH_PX}px`,
             transform: `scale(${effectiveScale})`,
             transformOrigin: 'top center',
-            marginBottom: effectiveScale < 1 ? `${(1 - effectiveScale) * 420}px` : undefined,
+            marginBottom: scaledExtra > 0 ? `${scaledExtra}px` : undefined,
           }}
         >
           <div
-            className="overflow-hidden bg-white"
+            className="bg-white"
             style={{
               width: `${PAGE_WIDTH_PX}px`,
-              minHeight: '1123px',
+              minHeight: `${PAGE_HEIGHT_PX}px`,
+              height: `${contentHeight}px`,
               boxShadow:
                 '0 1px 2px rgba(28,28,30,0.06), 0 12px 40px rgba(28,28,30,0.12), 0 0 0 1px rgba(28,28,30,0.06)',
             }}
           >
             <iframe
+              ref={iframeRef}
               title="Resume preview"
               srcDoc={html}
+              onLoad={measureIframe}
               className="block w-full border-0 bg-white"
-              style={{ width: `${PAGE_WIDTH_PX}px`, height: '1123px', minHeight: '1123px' }}
+              style={{ width: `${PAGE_WIDTH_PX}px`, height: `${contentHeight}px`, minHeight: `${PAGE_HEIGHT_PX}px` }}
               sandbox=""
             />
           </div>

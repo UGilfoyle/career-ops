@@ -514,7 +514,30 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
-/** Plain summary: ≤4 lines, ≤~520 chars; use with white-space: pre-line in HTML. */
+/** Soft-wrap long lines on word boundaries — never mid-word ellipsis. */
+function wrapSummaryLine(line, maxLen) {
+  const text = String(line || '').trim();
+  if (!text) return [];
+  if (text.length <= maxLen) return [text];
+  const words = text.split(/\s+/);
+  const out = [];
+  let cur = '';
+  for (const w of words) {
+    if (!cur) {
+      cur = w;
+      continue;
+    }
+    if (`${cur} ${w}`.length <= maxLen) cur = `${cur} ${w}`;
+    else {
+      out.push(cur);
+      cur = w;
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/** Plain summary for white-space: pre-line — keep full sentences, wrap instead of "…". */
 function normalizeResumeSummaryPlain(rawSummary, yearsExp) {
   let t = String(rawSummary || '').trim();
   const y = Number(yearsExp) || 0;
@@ -527,12 +550,12 @@ function normalizeResumeSummaryPlain(rawSummary, yearsExp) {
   let lines = t.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (lines.length === 1) {
     const parts = t.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
-    if (parts.length > 1) lines = parts.slice(0, 4);
+    if (parts.length > 1) lines = parts;
   }
-  lines = lines.slice(0, 4);
-  lines = lines.map((line) => (line.length > 200 ? `${line.slice(0, 197)}…` : line));
-  const joined = lines.join('\n');
-  return joined.length > 580 ? `${joined.slice(0, 577)}…` : joined;
+  const maxLines = y >= 7 ? 8 : 6;
+  const maxLen = 320;
+  const wrapped = lines.flatMap((line) => wrapSummaryLine(line, maxLen));
+  return wrapped.slice(0, maxLines).join('\n');
 }
 
 function formatResumeSummaryHtml(rawSummary, yearsExp) {

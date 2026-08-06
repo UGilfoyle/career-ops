@@ -200,6 +200,30 @@ export function renderSkillsLines(superpowers: string[] | undefined, limit = 16)
   return renderCategorizedSkills(superpowers, []);
 }
 
+/** Soft-wrap long lines on word boundaries — never mid-word ellipsis. */
+function wrapSummaryLine(line: string, maxLen: number): string[] {
+  const text = String(line || '').trim();
+  if (!text) return [];
+  if (text.length <= maxLen) return [text];
+  const words = text.split(/\s+/);
+  const out: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    if (!cur) {
+      cur = w;
+      continue;
+    }
+    if (`${cur} ${w}`.length <= maxLen) {
+      cur = `${cur} ${w}`;
+    } else {
+      out.push(cur);
+      cur = w;
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
 function normalizeResumeSummaryPlain(rawSummary: string, yearsExp: number): string {
   let t = String(rawSummary || '').trim();
   const y = Number(yearsExp) || 0;
@@ -212,12 +236,13 @@ function normalizeResumeSummaryPlain(rawSummary: string, yearsExp: number): stri
   let lines = t.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (lines.length === 1) {
     const parts = t.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
-    if (parts.length > 1) lines = parts.slice(0, 4);
+    if (parts.length > 1) lines = parts;
   }
-  const maxLines = y >= 7 ? 5 : 4;
-  const maxLen = y >= 7 ? 240 : 200;
-  lines = lines.slice(0, maxLines).map((line) => (line.length > maxLen ? `${line.slice(0, maxLen - 1)}…` : line));
-  return lines.join('\n');
+  // Full summary — wrap long lines, keep enough room for senior profiles. No "…" cuts.
+  const maxLines = y >= 7 ? 8 : 6;
+  const maxLen = 320;
+  const wrapped = lines.flatMap((line) => wrapSummaryLine(line, maxLen));
+  return wrapped.slice(0, maxLines).join('\n');
 }
 
 /** Master summary: headline + exit_story (no LLM tailor package). */

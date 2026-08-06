@@ -103,6 +103,22 @@ function run() {
   assert.ok(masterSummaryText(sample).includes('Senior engineer'));
   assert.ok(estimateMasterAtsScore(sample) >= 70);
 
+  // Long summary must not be mid-word truncated with ellipsis
+  const longSummary: ResumeContext = {
+    ...sample,
+    narrative: {
+      ...sample.narrative,
+      headline:
+        'Senior Full-Stack Engineer with 7+ years owning production backends, cloud platforms, and API systems including React, CI/CD, Agile, microservices, Docker, Kubernetes, and Node.js across enterprise SaaS products.',
+      exit_story:
+        'Lead LLM-backed features and AI-assisted delivery with focus on reliability, observability, and incident response.',
+    },
+  };
+  const longHtml = fillAtsTemplate(longSummary);
+  assert.ok(!longHtml.includes('microservi…'), 'no mid-word ellipsis in summary');
+  assert.ok(longHtml.includes('microservices'), 'full microservices word kept');
+  assert.ok(longHtml.includes('Kubernetes') || longHtml.includes('Node.js'), 'summary keeps later keywords');
+
   const empty = emptyResumeContext();
   const v = validateResumeDraft(empty);
   assert.equal(v.ok, false, 'empty draft fails validation');
