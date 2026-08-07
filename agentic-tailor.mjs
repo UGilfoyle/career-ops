@@ -1333,7 +1333,7 @@ GLOBAL RULES:
 - NO buzzwords: passion, leveraging, synergies, robust, seamless, cutting-edge, proven track record
 - NO AI-sounding phrases
 - Individual Ownership (I, not We): Position all technical achievements, summaries, and cover letters as direct personal contributions. Never use team-oriented language like "we", "our", "us", "assisted with", "participated in", or "worked in a team to". Use first-person singular "I" or strong active verbs (e.g. "I built...", "I engineered...", "Architected...", "Designed...") to show individual ownership of the work.
-- 100% JD-Alignment (ATS-FIRST): Mirror the JD tech stack in Summary + Core Competencies using exact JD terminology. Experience bullets stay grounded in digest facts — do not invent employers or metrics. Skills/competencies MUST include the JD TARGET STACK terms listed below (NestJS, Azure, TypeScript, etc.) even when they are not every item in the digest.
+- 100% JD-Alignment (ATS-FIRST): Mirror the FULL JD tech stack in Summary, Core Competencies, AND Experience bullets using exact JD terminology (React, NestJS, Azure, etc.). Prefer JD wording over CV wording when they differ. Do not withhold gap tools from experience — rewrite bullets so they read as if delivery used the JD stack. Still never invent employers or fake percentage metrics that are not in the digest.
 - Use short sentences, active voice, specific numbers where they appear in the digest
 - Lead with substance, not filler${companyTypeRule}
 - Highlight Applied AI & GenAI/LLM: If the JD requires or mentions AI, Generative AI, Large Language Models (LLMs), RAG, vector databases, or machine learning, prioritize and weave the candidate's AI experience (e.g., ChromaDB document ingestion pipeline with multiprocessing, conversation query-rewriting, Anthropic Claude/OpenAI GPT integrations with tenacity backoff retry, self-correcting validation loops for LLMs) into the summary, core competencies, and tailored experience bullets.
@@ -1356,9 +1356,9 @@ TASK:
       - Total under ~90 words. No bullet characters. No clichés (passionate, results-oriented, leveraged, spearheaded).
 
    b) **Core competencies** (resume.core_competencies): 10-14 items — NEVER sparse.
-      - Include EVERY major JD tech term (React, TypeScript, Node.js, NestJS, Azure, GitLab CI, Docker, testing, REST, LLM if mentioned).
+      - Include EVERY major JD tech term (React, TypeScript, Node.js, NestJS, Azure, Docker, PostgreSQL, REST, LLM if mentioned).
       - Mix exact JD tool names with transferable labels (e.g. "RESTful API Design", "CI/CD Pipelines", "Unit & Integration Testing").
-      - This section is for ATS matching — list the JD stack even when some tools are stretch/adjacent to digest experience.
+      - ATS matching: list the full JD stack. NEVER paste soft-skill or prose phrases from the JD.
 
    c) **Experience bullets** (resume.experience): Rewrite bullets ONLY for full_tailor roles (indices ${plan.tailorIndices.join(', ') || '0-3'}).
       Do NOT rewrite preserve_verbatim roles (${plan.preserveIndices.join(', ') || '4+'}). Return those keys as empty arrays.
@@ -1367,15 +1367,15 @@ ${roleDigest}
       BULLET RULES — COMPANY-AWARE TONE (do not oversell older roles):
       - SENIOR LinkedIn/ATS bar ONLY for: Quest Global / Quest, INTVERSE, Glidewell, Srijan — ownership, architecture, reliability, mentoring/SDLC, measurable impact
       - MID-LEVEL professional tone for: KOCO, Rubico, Artisanssoft (and any other older/junior-era roles) — competent IC voice (Developed/Built/Implemented/Delivered). Never junior fluff (Helped/Assisted/Worked on). Never Staff/Senior architect voice (Architected/Owned/Drove/Mentored) on mid employers
-      - LinkedIn formula: [Strong verb] + [scope/system] + [tech from digest/JD] + [outcome/metric from digest]
+      - LinkedIn formula: [Strong verb] + [scope/system] + [tech from JD stack] + [outcome/metric from digest]
       - SENIOR GOOD: "Architected event-driven microservices on Node.js/Python, cutting infra cost 30%." / "Owned AWS right-sizing and autoscaling, protecting 99.95% uptime." / "Led peer review and mentoring that raised SDLC quality across the squad."
       - MID GOOD: "Developed Node.js multi-tenant APIs serving client platforms." / "Built MongoDB schemas and REST endpoints for deliverables." / "Implemented payment gateway integrations processing 1,000+ daily transactions."
       - BAD (all employers): "Worked on APIs." / "Helped the team." / "Assisted with deployments." / first-person essays
       - Ban openings everywhere: Helped, Assisted, Worked on, Responsible for, Duties included
       - Senior-prefer (Quest/INTVERSE/Glidewell/Srijan only): Architected, Owned, Drove, Engineered, Shipped, Hardened, Scaled, Mentored, Instituted, Diagnosed
       - Mid-prefer (KOCO/Rubico/Artisanssoft): Developed, Built, Implemented, Delivered, Integrated, Deployed, Provisioned, Established — not Architected/Owned/Drove
-      - Prefer PROVEN JD technologies from the digest; map adjacent stacks carefully without inventing fake project history
-      - NEVER invent metrics or employers; never append spam like "applying X in production"
+      - JD-FIRST: rewrite bullets to use exact JD stack terms (NestJS, Azure, TypeScript, etc.) even when the digest used adjacent tools (Express→NestJS, AWS→Azure when JD requires it). Keep the same projects/outcomes from the digest.
+      - NEVER invent fake percentage metrics or employers; never append spam like "applying X in production"
       - Each bullet MUST include at least one metric from the digest when the source bullet has one; never fabricate numbers
       - Start each bullet with a UNIQUE action verb — no two bullets may share the same opening verb
       - NEVER repeat the same action verb anywhere in the resume (not just at the start) — max 1 use per verb document-wide
@@ -1544,15 +1544,32 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
 
     // Merge any strong LLM bullets for mutable roles that still look thin
     if (llmDraft.experience && typeof llmDraft.experience === 'object' && !Array.isArray(llmDraft.experience)) {
+      let mergedThin = false;
       for (const idx of plan.tailorIndices) {
         const key = String(idx);
         const llmBullets = Array.isArray(llmDraft.experience[key]) ? llmDraft.experience[key] : [];
         const cur = Array.isArray(executed.resume.experience[key]) ? executed.resume.experience[key] : [];
         if (llmBullets.length >= 3 && cur.length < 3) {
-          executed.resume.experience[key] = llmBullets.slice(0, 5);
+          executed.resume.experience[key] = normalizeExperienceBulletList(
+            llmBullets.slice(0, 5),
+            `${profile.experience?.[idx]?.company || ''} ${profile.experience?.[idx]?.role || ''}`,
+          );
+          mergedThin = true;
         }
       }
       executed.resume = restorePreservedEmployers(executed.resume, executed.preservedSnapshot);
+      if (mergedThin) {
+        const { resume: rePolished } = polishTailoredResume(
+          executed.resume,
+          profile?.experience || [],
+          {
+            jdAlignScore: executed.jd_alignment_score || 0,
+            allowSyntheticMetrics: false,
+            preserveRoleIndices: plan.preserveIndices,
+          },
+        );
+        executed.resume = restorePreservedEmployers(rePolished, executed.preservedSnapshot);
+      }
     }
 
     data.resume = executed.resume;
@@ -1567,7 +1584,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       `🎯 JD ATS alignment: ${executed.jd_alignment_score}% (plan family=${plan.family}; frozen roles=${plan.preserveIndices.length})`
     );
     if (gapKeywords.length > 0) {
-      console.warn(`⚠ Experience stays factual — gaps only in skills/ATS: ${gapKeywords.slice(0, 8).join(', ')}`);
+      console.log(`ℹ JD gap stack woven for ATS match: ${gapKeywords.slice(0, 8).join(', ')}`);
     }
 
     const audit = auditResumeQuality(data.resume);
@@ -1935,6 +1952,11 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
 
     // Prepare common replacements
     const c = profile.candidate || {};
+    if (!String(c.email || '').trim()) {
+      throw new Error(
+        'Resume export blocked: candidate email missing. Fill config/profile.yml (or Dashboard profile) before generating a PDF.',
+      );
+    }
     const contactParts = [c.location, c.email, c.phone].map((x) => String(x || '').trim()).filter(Boolean);
     const linkedinRaw = String(c.linkedin || '').trim().replace(/^https?:\/\//i, '');
     const githubRaw = String(c.github || '').trim().replace(/^https?:\/\//i, '');

@@ -134,9 +134,10 @@ const { resume: aligned } = alignResumeToJd(base, atsKeywords, profile.experienc
 });
 const alignment = measureJdAlignment(aligned, atsKeywords);
 assert(alignment.matchRatio >= 0.85, `aligned resume covers ≥85% JD tech (got ${Math.round(alignment.matchRatio * 100)}%)`);
+// JD-first: gap stack may appear in experience weave for ATS
 assert(
-  !/built nestjs|puppeteer at quest|scraping pipeline at/i.test(JSON.stringify(aligned.experience)),
-  'experience does not invent NestJS/Puppeteer production claims'
+  /nestjs|puppeteer|javascript|node/i.test(JSON.stringify(aligned.experience) + aligned.summary + (aligned.core_competencies || []).join(' ')),
+  'JD-first resume mirrors NestJS/Puppeteer/JS stack somewhere in output'
 );
 
 console.log('\nJD chrome / Interra Ashby junk filter\n');
@@ -161,7 +162,8 @@ const interraText = interraComps.join(' ').toLowerCase();
 assert(/\.net|c#|azure|rest/i.test(interraText), 'Interra competencies keep real Microsoft stack');
 assert(!/what you|computer science|related field|cursor|claude|gpt/i.test(interraText), 'Interra competencies exclude chrome and editor tools');
 const interraSummary = buildHonestSummary('', 7, interraFit.honest, INTERRA_JD);
-assert(!/what you|computer science|full stack experience|devexpress|telerik/i.test(interraSummary), 'Interra summary excludes chrome and unproven UI kits');
+assert(!/what you|computer science|full stack experience/i.test(interraSummary), 'Interra summary excludes chrome');
+assert(/\.net|c#|azure|sql|jquery|rest/i.test(interraSummary), 'Interra summary mirrors JD Microsoft stack');
 assert(!/\bcursor\b|\bclaude code\b|\bgpts?\b/i.test(interraSummary), 'Interra summary excludes editor tools');
 
 console.log('\nLever WFH hardware boilerplate junk filter\n');

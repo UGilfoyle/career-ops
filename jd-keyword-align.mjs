@@ -187,9 +187,51 @@ export function extractJdTechKeywords(jdText, limit = 20) {
   return suppressFalsePositiveLanguages(found, text).slice(0, limit);
 }
 
+/** True when phrase is a seeded domain/methodology skill (not free-form JD prose). */
+export function isDomainSkillPhrase(kw) {
+  const lower = normalizeKeyword(kw).toLowerCase().replace(/-/g, ' ');
+  if (!lower || lower.length < 4) return false;
+  return DOMAIN_PHRASES.some((p) => {
+    const pl = String(p).toLowerCase().replace(/-/g, ' ');
+    return lower === pl;
+  });
+}
+
+/** True when phrase is real tech or an approved domain skill — never arbitrary JD prose. */
+export function isApprovedSkillPhrase(kw) {
+  if (isJunkKeyword(kw)) return false;
+  const k = normalizeKeyword(kw);
+  if (!k) return false;
+  if (isDomainSkillPhrase(k)) return true;
+  // Compact tool tokens: C#, .NET, CI/CD, Node.js
+  if (/[.#+/]/.test(k) && k.length <= 24 && k.split(/\s+/).length <= 3) return true;
+
+  const techHits = findKnownTechInText(normalizeJdTechAliases(k));
+  if (techHits.length === 0) return false;
+
+  const lower = k.toLowerCase();
+  // Exact tech token or short alias
+  if (techHits.some((t) => lower === String(t).toLowerCase())) return true;
+  if (k.split(/\s+/).length <= 2 && k.length <= 28) return true;
+
+  // Allow "NestJS Backend Development" / "Azure Cloud Services" — must lead with the tech
+  if (
+    techHits.some((t) => {
+      const tl = String(t).toLowerCase();
+      return lower.startsWith(`${tl} `) || lower.startsWith(`${tl}/`) || lower.startsWith(`${tl} /`);
+    })
+  ) {
+    return k.split(/\s+/).length <= 5 && k.length <= 48;
+  }
+
+  // Reject narrative wrappers that merely embed a tech token
+  // e.g. "Monolith-to-microservices transition"
+  return false;
+}
+
 /**
  * Pull fresh multi-word requirement phrases from any JD (not limited to seed list).
- * Mines must-have / responsibility / bullet lines so tomorrow's vocabulary still lands in the plan.
+ * Only keeps known tech / seeded domain phrases — never free-form JD prose crumbs.
  */
 export function extractDynamicRequirementPhrases(jdText, limit = 14) {
   if (!jdText || String(jdText).length < 30) return [];
@@ -206,39 +248,31 @@ export function extractDynamicRequirementPhrases(jdText, limit = 14) {
 
     const cleanedLine = line.replace(/^[-•*\d.]+\s*/, '');
 
-    // "… in/with/using/including X"
+    // Known tech tokens embedded in the requirement line
+    for (const tech of findKnownTechInText(cleanedLine)) {
+      found.push(normalizeKeyword(tech));
+    }
+
+    // "… in/with/using/including X" — keep only approved skill phrases
     for (const m of cleanedLine.matchAll(
       /\b(?:in|with|using|including|via|across)\s+([A-Za-z][A-Za-z0-9+.#/][A-Za-z0-9+.#/\s-]{2,48}?)(?=[,.;:()]|$)/gi,
     )) {
       let phrase = normalizeKeyword(m[1]);
       phrase = phrase.split(/\band\b/i)[0].trim();
-      if (phrase.split(/\s+/).length < 2 && !/-/.test(phrase)) continue;
-      if (phrase.length < 6 || phrase.length > 48) continue;
+      if (phrase.length < 3 || phrase.length > 48) continue;
       if (isJunkKeyword(phrase)) continue;
-      if (isWeavableKeyword(phrase) || phrase.split(/\s+/).length >= 2) found.push(phrase);
+      if (isApprovedSkillPhrase(phrase)) found.push(phrase);
     }
 
     // Hyphenated compounds: event-driven, auto-scaling, source-to-target
     for (const m of cleanedLine.matchAll(/\b([A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+){1,3})\b/g)) {
       const phrase = normalizeKeyword(m[1]);
       if (phrase.length < 7 || isJunkKeyword(phrase)) continue;
-      found.push(phrase);
-    }
-
-    // Lowercase multi-word skill-ish phrases
-    for (const m of cleanedLine.matchAll(
-      /\b((?:[a-z][a-z0-9+#.]{2,})(?:\s+[a-z][a-z0-9+#.]{2,}){1,3})\b/g,
-    )) {
-      const phrase = normalizeKeyword(m[1]);
-      if (phrase.length < 10 || phrase.length > 48) continue;
-      if (isJunkKeyword(phrase)) continue;
-      const contentWords = phrase.split(/\s+/).filter((w) => !STOPWORDS.has(w) && w.length >= 4);
-      if (contentWords.length < 2) continue;
-      found.push(phrase);
+      if (isApprovedSkillPhrase(phrase)) found.push(phrase);
     }
   }
 
-  return uniqueCasePreserved(found).slice(0, limit);
+  return uniqueCasePreserved(found.filter((p) => isApprovedSkillPhrase(p))).slice(0, limit);
 }
 
 /**
@@ -400,17 +434,13 @@ export function isJunkKeyword(kw) {
   return false;
 }
 
-/** Only real tech / multi-word skills may be woven into bullets or summary leads. */
+/** Only real tech / seeded domain skills may be woven into bullets or summary leads. */
 export function isWeavableKeyword(kw) {
   if (isJunkKeyword(kw)) return false;
   const k = normalizeKeyword(kw);
   if (!k) return false;
-  if (findKnownTechInText(normalizeJdTechAliases(k)).length > 0) return true;
-  if (/[.#+/]/.test(k) || /\d/.test(k)) return true;
-  // Multi-word skill phrases only (e.g. "Design Patterns") — never company/place names
-  if (k.split(/\s+/).length >= 2 && k.length >= 6) return true;
-  // Lone dictionary / proper nouns (Find, Interaslabs, demonstrable…) are not skills
-  return false;
+  // Never treat arbitrary multi-word JD prose as a skill ("not just tickets", etc.)
+  return isApprovedSkillPhrase(k);
 }
 
 /** Evidence stems that justify weaving a JD domain phrase. Family-agnostic — any future JD. */
@@ -779,22 +809,26 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   let text = String(summary || '').trim();
   if (!text) return text;
   const lower = text.toLowerCase();
+  // JD-first: inject missing known-tech terms (up to 4)
   const toAdd = keywords
-    .filter((kw) => isWeavableKeyword(kw) && !lower.includes(String(kw).toLowerCase()))
-    .slice(0, minCount);
+    .filter((kw) => {
+      if (!isWeavableKeyword(kw)) return false;
+      if (findKnownTechInText(normalizeJdTechAliases(String(kw))).length === 0) return false;
+      return !lower.includes(String(kw).toLowerCase());
+    })
+    .slice(0, Math.min(4, Math.max(2, minCount)));
   if (toAdd.length === 0) return text;
 
   const lines = text.split('\n').filter(Boolean);
   if (lines.length === 0) lines.push(text);
 
-  const inject = toAdd.slice(0, 5).join(', ');
-  // Prefer natural weave into line 1 or 2 (comma clause; no em-dash spam)
-  if (lines[0].length < 170) {
-    lines[0] = `${lines[0].replace(/\.$/, '')}, including ${inject}.`;
-  } else if (lines.length >= 2 && lines[1].length < 180) {
+  const inject = toAdd.join(', ');
+  if (lines.length >= 2 && lines[1].length < 180) {
     lines[1] = `${lines[1].replace(/\.$/, '')} (${inject}).`;
+  } else if (lines[0].length < 160) {
+    lines[0] = `${lines[0].replace(/\.$/, '')} (${inject}).`;
   } else if (lines.length < 4) {
-    lines.push(`Day-to-day stack includes ${inject}.`);
+    lines.push(`Core stack: ${inject}.`);
   }
   return lines.slice(0, 4).join('\n');
 }
@@ -824,10 +858,10 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
   let bulletsAligned = 0;
   let summaryPatched = false;
 
-  // Core competencies: JD tech first (ATS match)
+  // Core competencies: real JD tech / domain skills only (never prose crumbs)
   const comps = Array.isArray(copy.core_competencies) ? [...copy.core_competencies] : [];
   const compLower = comps.map((c) => String(c).toLowerCase());
-  const priority = cleanKws.slice(0, 12);
+  const priority = cleanKws.filter((kw) => isApprovedSkillPhrase(kw)).slice(0, 12);
   const newComps = [];
   for (const kw of priority) {
     if (!compLower.some((c) => c.includes(String(kw).toLowerCase()))) {
@@ -835,7 +869,9 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
       competenciesAdded += 1;
     }
   }
-  copy.core_competencies = uniqueCasePreserved([...newComps, ...comps]).slice(0, 16);
+  copy.core_competencies = uniqueCasePreserved(
+    [...newComps, ...comps].filter((c) => isApprovedSkillPhrase(c) || findKnownTechInText(normalizeJdTechAliases(String(c))).length > 0),
+  ).slice(0, 16);
 
   // Summary: weave top missing keywords (prefer opts.summaryKeywords to avoid gap-tool stuffing)
   const summaryKws = (opts.summaryKeywords || cleanKws).filter((kw) => isWeavableKeyword(kw));

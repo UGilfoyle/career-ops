@@ -84,10 +84,12 @@ console.log('resume-quality tests\n');
 }
 
 {
-  const source = ['Optimized SQL query patterns, cutting server CPU load by 30% on Oracle workloads.'];
-  const tailored = 'Tuned database access patterns for high-volume Oracle and PostgreSQL services';
+  const source = [
+    'Optimized SQL query patterns for Oracle and PostgreSQL workloads, cutting server CPU load by 30% on Oracle databases.',
+  ];
+  const tailored = 'Tuned SQL query patterns for high-volume Oracle and PostgreSQL services';
   const { bullet, enriched } = enrichBulletWithSourceMetric(tailored, source);
-  assert(enriched, 'grafts metric from matching source bullet');
+  assert(enriched, 'grafts metric from strongly overlapping source bullet');
   assert(hasQuantifiedImpact(bullet), 'enriched bullet contains a metric');
 }
 
@@ -161,7 +163,7 @@ console.log('resume-quality tests\n');
 }
 
 {
-  // Explicit opt-in still allows synthesis for legacy callers
+  // Synthetic metrics permanently disabled — even with opt-in flag
   const resume = {
     summary: 'Engineer.\nBuilds APIs.\nShips features.',
     core_competencies: ['Node.js'],
@@ -169,7 +171,9 @@ console.log('resume-quality tests\n');
   };
   const { resume: polished } = polishTailoredResume(resume, [], { allowSyntheticMetrics: true, jdAlignScore: 50 });
   const b = polished.experience['0'][0].toLowerCase();
-  assert(hasQuantifiedImpact(b) || b.includes('%') || /\d/.test(b), 'opt-in synthesis can add a metric');
+  assert(!b.includes('10,000+'), 'never invents 10k concurrent even with allowSyntheticMetrics');
+  assert(!b.includes('99.99%'), 'never invents uptime even with allowSyntheticMetrics');
+  assert(!b.includes('by 20%'), 'never invents stock throughput %');
 }
 
 {

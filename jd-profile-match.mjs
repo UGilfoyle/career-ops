@@ -8,6 +8,7 @@ import {
   isJunkKeyword,
   isWeavableKeyword,
   isWeaveableNounPhrase,
+  isApprovedSkillPhrase,
   isEditorIdeTool,
 } from './jd-keyword-align.mjs';
 import {
@@ -340,7 +341,8 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     // Block generic filler labels that waste ATS real estate
     if (/^(software|applications?|services?|development|technologies?|engineering|solutions?)$/i.test(raw)) return;
     if (isEditorIdeTool(raw)) return;
-    if (!isWeaveableNounPhrase(raw)) return;
+    // Skills row = real tech / seeded domain only — never JD prose crumbs
+    if (!isApprovedSkillPhrase(raw)) return;
     const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
     seen.add(k);
@@ -353,11 +355,11 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     profile
   );
 
-  // Proven first, then remaining real JD tech (ATS), never chrome phrases from raw keyword dump
+  // Proven first, then remaining real JD tech (ATS). Gaps only if they are real tools.
   for (const kw of honest) add(kw);
   for (const kw of jdTech) add(kw);
   for (const kw of gaps) {
-    if (isWeavableKeyword(kw)) add(kw);
+    if (isApprovedSkillPhrase(kw)) add(kw);
   }
 
   const transfers = [
@@ -426,7 +428,17 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
 
   for (const s of profile?.narrative?.superpowers || []) {
     if (isEditorIdeTool(s)) continue; // never inject Cursor/Copilot/Claude from profile into competencies
-    if (jdLower.split(/\W+/).some((w) => w.length > 4 && s.toLowerCase().includes(w))) add(s);
+    // Only inject real tech tokens from superpowers — never narrative blobs
+    const cleaned = String(s || '').replace(/\s*\([^)]*\)\s*/g, '').trim();
+    if (!cleaned || !isApprovedSkillPhrase(cleaned)) continue;
+    if (jdLower.split(/\W+/).some((w) => w.length > 4 && cleaned.toLowerCase().includes(w))) add(cleaned);
+    // Also unpack parenthetical tech: "AWS platform engineering (ECS, Lambda)"
+    const paren = String(s).match(/\(([^)]+)\)/);
+    if (paren) {
+      for (const part of paren[1].split(',').map((x) => x.trim()).filter(Boolean)) {
+        if (isApprovedSkillPhrase(part)) add(part);
+      }
+    }
   }
 
   return comps.slice(0, limit);
@@ -439,33 +451,17 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
  */
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
   const y = Number(yearsExp) || 0;
-  // Lead stack = real JD tech only (never Indeed chrome like "Find")
-  // Prefer languages/frameworks/cloud over editor tools (Copilot/Cursor) in the identity line
-  const isGapOnlyTool = (k) => /\b(mainframe|rally|qtest|telerik|devexpress|jquery)\b/i.test(String(k));
-  const honestList = (honestKeywords || []).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k));
-  const honestKeys = new Set(honestList.map((k) => normalizeKey(k)));
-  const jdTech = extractJdTechKeywords(jdText, 10).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k));
-  // Prefer caller-provided honest/weave terms; only add JD tech already proven (or multi-word domain).
-  const leadPool = [...honestList, ...jdTech]
+  // JD-first lead stack: all real JD tech (gaps included) — never Indeed chrome
+  const leadList = (honestKeywords || []).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k) && !isEditorIdeTool(k));
+  const jdTech = extractJdTechKeywords(jdText, 12).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k) && !isEditorIdeTool(k));
+  const leadPool = [...leadList, ...jdTech]
     .filter((k) => {
       if (FRAGMENT_BLOCKLIST.has(normalizeKey(k)) || !isWeavableKeyword(k)) return false;
       if (isJunkKeyword(k)) return false;
-      if (isGapOnlyTool(k) && !honestKeys.has(normalizeKey(k))) return false;
-      if (isEditorIdeTool(k)) return false;
-      // Prefer real stack over soft process labels in the identity line
-      if (/^(unit testing|agile|scrum|full[-\s]?stack experience|ci\/cd)$/i.test(String(k))) return false;
-      if (String(k).split(/\s+/).length >= 2) {
-        // Multi-word lead only if honest or known tech already proven adjacent
-        return honestKeys.has(normalizeKey(k)) || honestList.some((h) => normalizeKey(k).includes(normalizeKey(h)));
-      }
-      if (!honestKeys.size) return true;
-      return honestKeys.has(normalizeKey(k)) || jdTech.some((t) => normalizeKey(t) === normalizeKey(k));
+      if (/^(unit testing|agile|scrum|full[-\s]?stack experience)$/i.test(String(k))) return false;
+      return true;
     });
-  const rankedLead = [
-    ...leadPool.filter((k) => !isEditorIdeTool(k)),
-    ...leadPool.filter((k) => isEditorIdeTool(k)),
-  ];
-  const leadTerms = [...new Set(rankedLead.map((k) => String(k).trim()))].slice(0, 5);
+  const leadTerms = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 6);
   const lead = leadTerms.length
     ? leadTerms.join(', ')
     : 'Python, Node.js, AWS, and React';

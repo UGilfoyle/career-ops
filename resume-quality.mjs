@@ -281,7 +281,8 @@ export function enrichBulletWithSourceMetric(bullet, sourceBullets) {
       best = src;
     }
   }
-  if (!best || bestOverlap < 1) return { bullet, enriched: false };
+  // Require strong same-role overlap — weak matches invent history
+  if (!best || bestOverlap < 4) return { bullet, enriched: false };
   const metric = extractMetricClause(best);
   if (!metric) return { bullet, enriched: false };
   const trimmed = String(bullet).trim().replace(/\.$/, '');
@@ -343,30 +344,10 @@ export function removeSplicedFragments(text) {
   return out;
 }
 
-function synthesizeMetric(bullet) {
-  const text = String(bullet).toLowerCase();
-  if (text.includes('api') || text.includes('endpoint') || text.includes('backend') || text.includes('fastapi') || text.includes('express') || text.includes('node') || text.includes('flask')) {
-    return 'handling 10,000+ concurrent requests while maintaining 99.99% uptime';
-  }
-  if (text.includes('latency') || text.includes('p95') || text.includes('caching') || text.includes('redis') || text.includes('performance') || text.includes('bottleneck')) {
-    return 'reducing response latency by 35% on critical API paths';
-  }
-  if (text.includes('database') || text.includes('sql') || text.includes('postgresql') || text.includes('postgres') || text.includes('mongodb') || text.includes('query') || text.includes('index')) {
-    return 'cutting server CPU utilization by 25% through query tuning';
-  }
-  if (text.includes('react') || text.includes('ui') || text.includes('frontend') || text.includes('dashboard') || text.includes('interface')) {
-    return 'supporting 25,000+ monthly active users and lifting retention';
-  }
-  if (text.includes('ci/cd') || text.includes('github actions') || text.includes('pipeline') || text.includes('deploy') || text.includes('automation') || text.includes('script')) {
-    return 'reducing manual deployment errors by 85%';
-  }
-  if (text.includes('microservice') || text.includes('service') || text.includes('reconcil') || text.includes('kafka') || text.includes('queue') || text.includes('event')) {
-    return 'safely processing 5,000+ daily data events with zero failures';
-  }
-  if (text.includes('mentor') || text.includes('lead') || text.includes('team') || text.includes('review') || text.includes('collaborat')) {
-    return 'raising team sprint delivery velocity by 15%';
-  }
-  return 'improving execution efficiency and system throughput by 20%';
+function synthesizeMetric(_bullet) {
+  // Permanently disabled — fabricating % / throughput fails honesty + Zety quality bar.
+  // Callers must set allowSyntheticMetrics only for legacy experiments; prod paths leave it false.
+  return null;
 }
 
 /** Employers that get Senior / LinkedIn ownership tone (not mid-level IC). */
@@ -567,9 +548,9 @@ export function scrubResumeArtifacts(text) {
   t = t.replace(/\bGraphQL\s+RESTful\s+APIs?\b/gi, 'GraphQL APIs');
   t = t.replace(/\bRESTful\s+GraphQL\s+APIs?\b/gi, 'GraphQL APIs');
 
-  // Incomplete LLM tails
-  t = t.replace(/\bsynthesizing using\.?$/i, 'synthesizing production insights.');
-  t = t.replace(/\bDelivered\s+(\d+(?:\.\d+)?%)\s+through\b/gi, 'Delivered $1 cost reduction through');
+  // Incomplete LLM tails — drop inventing filler; leave for isIncompleteBullet to remove
+  t = t.replace(/\bsynthesizing using\.?\s*$/i, '');
+  t = t.replace(/\bDelivered\s+(\d+(?:\.\d+)?%)\s+through\s*$/gi, '');
 
   // Naked metric subjects missing a verb
   if (/^mean time to recovery\b/i.test(t)) {
@@ -754,21 +735,35 @@ export function sanitizeExperienceEntries(experience) {
 
 /** True when a bullet looks truncated (dangling gerund / connector). */
 export function isIncompleteBullet(bullet) {
-  const t = String(bullet || '').trim().replace(/[.!]+$/, '');
+  const raw = String(bullet || '').trim();
+  const t = raw.replace(/[.!]+$/, '');
   if (!t) return true;
-  if (/\b(synthesizing|preserving|integrating|including|using|building|deploying|writing|maintaining|and|with|to|of|by|from|via|into)\s*$/i.test(t)) {
+  if (/\b(synthesizing|preserving|integrating|including|using|building|deploying|writing|maintaining|and|with|to|of|by|from|via|into|through|for|across)\s*$/i.test(t)) {
     return true;
   }
+  // "reducing database." / "improving performance." without a quantified outcome
+  if (
+    /\b(reducing|improving|optimizing|enhancing|increasing|decreasing|cutting|lowering)\s+[A-Za-z][A-Za-z0-9+/-]{1,24}\s*$/i.test(t)
+    && !/\bby\s+\d/i.test(raw)
+    && !/\d\s*%/.test(raw)
+  ) {
+    return true;
+  }
+  // Orphan crumbs: "Construction, directly." / "not just tickets."
+  if (/^[A-Z][a-z]+,\s+(directly|effectively|successfully|quickly|well)\s*$/i.test(t)) return true;
+  if (/\bnot just\b/i.test(t) && t.split(/\s+/).length <= 6) return true;
   if (/\bfrom\s+\d+(?:\.\d+)?\.?\s*$/i.test(t)) return true;
   if (/\bthat\s+(reduced|cut|decreased|lowered|improved|increased|raised|optimized)\.?\s*$/i.test(t)) return true;
   if (
     /\b(reduced|cut|decreased|lowered|improved|increased|orchestrated|configured|integrated)\.?\s*$/i.test(t)
-    && !/\bby\s+\d/i.test(String(bullet || ''))
+    && !/\bby\s+\d/i.test(raw)
   ) {
     return true;
   }
-  if (/,\s*$/.test(String(bullet || '').trim())) return true;
-  if (/\.\.\.$/.test(String(bullet || '').trim())) return true;
+  if (/,\s*$/.test(raw)) return true;
+  if (/\.\.\.$/.test(raw)) return true;
+  // Very short fragment after scrub (under 3 content words)
+  if (t.split(/\s+/).length < 3 && !hasQuantifiedImpact(raw)) return true;
   return false;
 }
 
@@ -1095,7 +1090,7 @@ function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets, 
           best = src;
         }
       }
-      if (best && bestOverlap >= 2) {
+      if (best && bestOverlap >= 4) {
         const metric = extractMetricClause(best);
         if (metric) {
           const trimmed = String(cleanB).trim().replace(/\.$/, '');
@@ -1106,11 +1101,13 @@ function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets, 
       }
     }
 
-    // Synthetic metrics are OFF by default — Zety quality ≠ fabricated %
+    // Synthetic metrics are OFF — synthesizeMetric always returns null
     if (allowSyntheticMetrics) {
       const synthesized = synthesizeMetric(cleanB);
-      const trimmed = String(cleanB).trim().replace(/\.$/, '');
-      return { bullet: cleanSpellingAndGrammar(`${trimmed}, ${synthesized}.`), enriched: true };
+      if (synthesized) {
+        const trimmed = String(cleanB).trim().replace(/\.$/, '');
+        return { bullet: cleanSpellingAndGrammar(`${trimmed}, ${synthesized}.`), enriched: true };
+      }
     }
     return { bullet: cleanB, enriched: false };
   });

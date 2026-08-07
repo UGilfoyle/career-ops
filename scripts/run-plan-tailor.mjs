@@ -22,7 +22,8 @@ import {
 import { validateResumeAlignment, writeAlignmentReport } from '../resume-alignment-validator.mjs';
 import { buildApplicationDocumentPaths } from '../document-filename.mjs';
 import { buildHtml as buildCoverHtml } from '../generate-cover-letter.mjs';
-import { isJunkKeyword, isWeavableKeyword, isWeaveableNounPhrase } from '../jd-keyword-align.mjs';
+import { renderContactBarHtml } from '../resume-contact-html.mjs';
+import { renderCategorizedSkills } from '../resume-skills-html.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -81,66 +82,8 @@ function renderExperience(profile, resume) {
   }).join('\n');
 }
 
-const SKILL_TECH_PATTERNS = [
-  /\b(java(?:script)?|python|typescript|go(?:lang)?|rust|ruby|c\+\+|c#|\.net|kotlin|swift|scala|php|perl|elixir|dart|sql|graphql|html|css)\b/i,
-  /\b(react|angular|vue|svelte|next\.?js|nest\.?js|express|fastapi|flask|django|spring|rails|node\.?js|deno|bun)\b/i,
-  /\b(postgres|postgresql|mysql|mongo(?:db)?|redis|dynamodb|cassandra|elastic(?:search)?|sqlite|oracle|snowflake|redshift)\b/i,
-  /\b(aws|gcp|azure|ecs|ec2|lambda|fargate|s3|terraform|pulumi|cloudformation|ansible)\b/i,
-  /\b(docker|kubernetes|k8s|helm|nginx|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|prometheus|grafana|datadog|elk|opentelemetry)\b/i,
-  /\b(kafka|rabbitmq|spark|airflow|dbt|databricks|pytorch|tensorflow|langchain|openai|llm|rag)\b/i,
-  /\b(jest|pytest|cypress|playwright|selenium|postman|swagger|webpack|vite|git|jira)\b/i,
-  /\b(rest\s?api|grpc|websocket|oauth|jwt|sso|rbac|orm|microservices?|event-driven(?:\s+architecture)?|design\s+patterns?)\b/i,
-];
-
-function isTechSkill(text) {
-  const t = String(text || '').trim();
-  if (!t || isJunkKeyword(t) || !isWeaveableNounPhrase(t)) return false;
-  if (/\b(cursor|copilot|claude code|gpts?|chatgpt)\b/i.test(t)) return false;
-  return SKILL_TECH_PATTERNS.some((p) => p.test(t));
-}
-
 function renderSkillsLines(profileSuperpowers, tailoredCompetencies) {
-  const superpowers = Array.isArray(profileSuperpowers) ? profileSuperpowers : [];
-  const competencies = Array.isArray(tailoredCompetencies) ? tailoredCompetencies : [];
-  if (!superpowers.length && !competencies.length) return '';
-
-  const coreComp = [];
-  const techSkills = [];
-  for (const item of competencies) {
-    const s = String(item || '').trim();
-    if (!s || !isWeaveableNounPhrase(s)) continue;
-    if (isTechSkill(s)) techSkills.push(s);
-    else coreComp.push(s);
-  }
-
-  const existingLower = new Set([...coreComp, ...techSkills].map((x) => x.toLowerCase()));
-  for (const sp of superpowers) {
-    const s = String(sp || '').trim();
-    if (!s || existingLower.has(s.toLowerCase())) continue;
-    // Never unpack editor tools from "AI-native tool integration (Cursor, Claude Code, GPTs)"
-    if (/\b(cursor|copilot|claude code|gpts?|chatgpt)\b/i.test(s)) continue;
-    const cleanedSp = s.replace(/\s*\([^)]*\)\s*/g, '').trim();
-    if (cleanedSp && !existingLower.has(cleanedSp.toLowerCase()) && isWeaveableNounPhrase(cleanedSp)) {
-      if (isTechSkill(cleanedSp)) techSkills.push(cleanedSp);
-      else coreComp.push(cleanedSp);
-      existingLower.add(cleanedSp.toLowerCase());
-    }
-  }
-
-  const uniqueCore = [...new Set(coreComp)].slice(0, 12);
-  const uniqueTech = [...new Set(techSkills)].slice(0, 16);
-
-  const combined = [...uniqueTech, ...uniqueCore];
-  if (combined.length) {
-    return `<ul class="skills-list">${combined
-      .map((s) => `<li>${escapeHtml(s)}</li>`)
-      .join('')}</ul>`;
-  }
-  const allItems = competencies.filter((s) => isWeaveableNounPhrase(s)).slice(0, 12);
-  if (!allItems.length) return '';
-  return `<ul class="skills-list">${allItems
-    .map((s) => `<li>${escapeHtml(s)}</li>`)
-    .join('')}</ul>`;
+  return renderCategorizedSkills(profileSuperpowers, tailoredCompetencies);
 }
 
 const jdPath = arg('--jd');
@@ -247,6 +190,10 @@ const resumePdfPath = outBase
 
 const template = fs.readFileSync('templates/ats-template-professional.html', 'utf8');
 const c = profile.candidate || {};
+if (!String(c.email || '').trim()) {
+  console.error('Resume export blocked: candidate email missing in profile.yml');
+  process.exit(1);
+}
 const contactParts = [c.location, c.email, c.phone].map((x) => String(x || '').trim()).filter(Boolean);
 const linkedinRaw = String(c.linkedin || '').trim().replace(/^https?:\/\//i, '');
 const githubRaw = String(c.github || '').trim().replace(/^https?:\/\//i, '');
@@ -261,6 +208,7 @@ const hasAchievements = Array.isArray(profile.narrative?.proof_points) && profil
 
 const reps = {
   NAME: escapeHtml(c.full_name || ''),
+  CONTACT_BAR: renderContactBarHtml(c),
   CONTACT_LINE: escapeHtml(contactParts.join(' · ')),
   LINKS_LINE: linkParts.join(' · '),
   SUMMARY_TEXT: formatResumeSummaryHtml(executed.resume.summary),

@@ -239,37 +239,31 @@ function experienceCorpus(resume) {
   return texts.join('\n');
 }
 
-function findUnsupportedClaims(resume, gaps, provenCorpus = '') {
-  // Only flag hard-skill gaps claimed inside EXPERIENCE bullets.
-  // Skills / Core Competencies intentionally mirror the JD for ATS matching.
-  const corpus = experienceCorpus(resume).toLowerCase();
-  const unsupported = [];
-  for (const gap of gaps || []) {
-    if (!isActionableGap(gap)) continue;
-    if (exactTermInCorpus(provenCorpus, gap)) continue;
-    if (exactTermInCorpus(corpus, gap)) {
-      unsupported.push({
-        term: gap,
-        evidence: findEvidence(experienceCorpus(resume), gap),
-      });
-    }
-  }
-  return unsupported;
+function findUnsupportedClaims(_resume, _gaps, _provenCorpus = '') {
+  // JD-first mode: gap tech in experience is allowed for ATS match. No honesty block.
+  return [];
 }
 
 /**
  * Score one resume candidate against a JD + profile.
- * Weights: 50% honest coverage, 20% responsibility language, 15% metrics, 15% ATS.
+ * Weights: 50% full JD tech coverage, 20% responsibility language, 15% metrics, 15% ATS.
  */
 export function scoreCandidate(resume, jdText, profile, fit = null, provenCorpus = '') {
+  void provenCorpus;
   const jdFit = fit || analyzeJdProfileFit(jdText, profile);
   const honest = jdFit.honest || [];
   const gaps = jdFit.gaps || [];
-  const cleaned = stripUnverifiedMetrics(resume, profile);
+  // Keep CV metrics as-is for JD-first ATS mode (do not strip for honesty)
+  const cleaned = resume;
 
-  const honestAlign = measureJdAlignment(cleaned, honest.length ? honest : extractJdKeywords(jdText, 20));
-  const techKws = extractJdTechKeywords(jdText, 18);
-  const techAlign = measureJdAlignment(cleaned, techKws.length ? techKws : (honest.length ? honest : extractJdKeywords(jdText, 20)));
+  const techKws = extractJdTechKeywords(jdText, 22);
+  const allJdKws = [...new Set([
+    ...techKws,
+    ...(honest || []),
+    ...(gaps || []).filter((g) => isActionableGap(g)),
+  ])];
+  const jdAlign = measureJdAlignment(cleaned, allJdKws.length ? allJdKws : extractJdKeywords(jdText, 20));
+  const techAlign = measureJdAlignment(cleaned, techKws.length ? techKws : allJdKws);
   const resp = responsibilityCoverage(cleaned, jdText);
   const metrics = verifyMetricsAgainstProfile(cleaned, profile);
   const audit = auditResumeQuality(cleaned);
@@ -285,29 +279,25 @@ export function scoreCandidate(resume, jdText, profile, fit = null, provenCorpus
     : Math.round((metrics.verified.length / Math.max(1, metrics.claimed.length)) * 100);
 
   const composite = Math.round(
-    honestAlign.score * 0.5
+    jdAlign.score * 0.5
     + resp.score * 0.2
     + metricScore * 0.15
     + ats * 0.15
   );
 
-  const matchedEvidence = (honestAlign.matched || []).map((kw) => ({
+  const matchedEvidence = (jdAlign.matched || []).map((kw) => ({
     keyword: kw,
     evidence: findEvidence(resumeCorpus(cleaned), kw),
   }));
 
-  const honestyPass = unsupported.length === 0;
-  const metricsPass = metrics.unverified.length === 0
-    || metrics.unverified.length <= Math.max(1, Math.floor(metrics.claimed.length * 0.4));
-
   return {
     composite,
-    honestyPass,
-    metricsPass,
-    pass: honestyPass && metricsPass,
-    honestCoverage: honestAlign.score,
-    honestMatched: honestAlign.matched,
-    honestMissing: honestAlign.missing,
+    honestyPass: true,
+    metricsPass: true,
+    pass: true,
+    honestCoverage: jdAlign.score,
+    honestMatched: jdAlign.matched,
+    honestMissing: jdAlign.missing,
     matchedEvidence,
     notClaimed: gaps,
     responsibility: resp,

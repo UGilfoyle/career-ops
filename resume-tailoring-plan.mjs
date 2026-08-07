@@ -17,6 +17,7 @@ import {
   isWeavableKeyword,
   isJunkKeyword,
   isWeaveableNounPhrase,
+  isApprovedSkillPhrase,
   keywordTokens,
   keywordCoveredInText,
   endsWithMetricTail,
@@ -198,6 +199,7 @@ export function buildTailoringPlan(jdText, profile, opts = {}) {
         .filter((k) => isWeavableKeyword(k))
         .slice(0, 6),
     },
+    // Gaps allowed only when they are real tech tools (NestJS/Azure) — prose never lands in skills
     competencies: { min: 10, max: 16, includeGaps: true },
     coverLetter: {
       maxWords: 150,
@@ -260,48 +262,35 @@ function domainPhraseTransferable(phrase, corpus, honest = []) {
 }
 
 /**
- * Keywords safe to weave into mutable-role bullets for ANY JD family / future posting.
- * Proven stack + transferable domain/must-have phrases. No company-specific hardcoding.
+ * Keywords to weave into mutable-role bullets — FULL JD stack (ATS-first).
+ * No honesty / proven-only filter: if the JD names it, it is eligible to weave.
  */
 export function selectWeaveKeywords(plan, profile) {
-  const honest = [...(plan?.keywords?.honest || [])];
-  const domain = [...(plan?.keywords?.domain || [])];
-  const mustHave = [...(plan?.keywords?.mustHave || [])];
-  const corpus = profileCorpusText(profile);
+  void profile;
   const out = [];
   const seen = new Set();
   const push = (kw) => {
     const raw = String(kw || '').trim();
     if (!raw || isJunkKeyword(raw)) return;
-    // Only grammatical noun phrases (skills, tools, capabilities) may be woven
-    if (!isWeaveableNounPhrase(raw)) return;
-    if (/\b(mainframe|rally|qtest)\b/i.test(raw) && !corpus.includes(normalizeKey(raw).slice(0, 6))) return;
-    // Never weave UI frameworks the CV does not prove (Interra Telerik/DevExpress trap)
-    if (/\b(telerik|devexpress|jquery)\b/i.test(raw) && !/\btelerik|devexpress|jquery\b/.test(corpus)) return;
+    if (!isWeaveableNounPhrase(raw) && !isApprovedSkillPhrase(raw)) return;
+    if (!isApprovedSkillPhrase(raw) && !isWeavableKeyword(raw)) return;
     const key = normalizeKey(raw);
     if (!key || seen.has(key)) return;
     seen.add(key);
     out.push(raw);
   };
 
-  for (const h of honest) push(h);
-
-  const candidates = [
-    ...domain,
-    ...mustHave.filter((m) => String(m).split(/\s+/).length >= 2 || /-/.test(m)),
-    ...(plan?.keywords?.atsMirror || []).filter((m) => String(m).split(/\s+/).length >= 2),
-  ];
-  for (const c of candidates) {
-    if (domainPhraseTransferable(c, corpus, honest) || keywordLikelyProven(c, plan?.fit || {})) {
-      push(c);
-    }
+  // JD-first: atsMirror + gaps + mustHave + domain + honest (order = priority)
+  for (const kw of [
+    ...(plan?.keywords?.atsMirror || []),
+    ...(plan?.keywords?.gaps || []),
+    ...(plan?.keywords?.mustHave || []),
+    ...(plan?.keywords?.domain || []),
+    ...(plan?.keywords?.honest || []),
+  ]) {
+    push(kw);
   }
-  if (out.length <= honest.length) {
-    for (const m of mustHave) {
-      if (domainPhraseTransferable(m, corpus, honest)) push(m);
-    }
-  }
-  return out.slice(0, 12);
+  return out.slice(0, 16);
 }
 
 /**
@@ -443,11 +432,15 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     || estimateYears(profile?.experience)
     || 0;
   const atsKeywords = plan.keywords.atsMirror;
-  const honest = plan.keywords.honest?.length
-    ? plan.keywords.honest
-    : atsKeywords.slice(0, 8);
+  // JD-first: weave + summarize against the full JD stack (gaps included)
+  const jdLead = [...new Set([
+    ...(plan.keywords.atsMirror || []),
+    ...(plan.keywords.gaps || []),
+    ...(plan.keywords.mustHave || []),
+    ...(plan.keywords.honest || []),
+  ])].filter((k) => isApprovedSkillPhrase(k) || isWeavableKeyword(k));
   const weave = selectWeaveKeywords(plan, profile);
-  const bulletKeywords = weave.length ? weave : honest;
+  const bulletKeywords = weave.length ? weave : jdLead;
 
   const preserved = snapshotPreservedBullets(profile, plan);
 
@@ -482,7 +475,7 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     summary: buildHonestSummary(
       opts.llmSummary || profile?.narrative?.exit_story || '',
       years,
-      honest,
+      jdLead,
       jdText,
     ),
     core_competencies: buildJdMatchedCompetencies(
@@ -494,10 +487,10 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     experience,
   };
 
-  // Align only mutable roles for bullet weave — summary stays honest-only (no gap UI spam)
+  // Align mutable roles + summary with FULL JD keyword set
   const { resume: aligned } = alignResumeToJd(resume, atsKeywords, profile?.experience || [], {
     bulletKeywords,
-    summaryKeywords: honest.filter((k) => !/\b(telerik|devexpress|jquery|mainframe)\b/i.test(k)),
+    summaryKeywords: jdLead,
     weaveRoleIndices: plan.tailorIndices,
   });
   resume = aligned;
@@ -524,9 +517,9 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     },
   );
 
-  // Final freeze + single domain weave pass
+  // Final freeze + aggressive JD weave (gaps allowed)
   let finalResume = restorePreservedEmployers(polished, preserved);
-  finalResume = injectWeaveIntoMutableRoles(finalResume, plan, bulletKeywords, 2);
+  finalResume = injectWeaveIntoMutableRoles(finalResume, plan, bulletKeywords, 4);
   finalResume = restorePreservedEmployers(finalResume, preserved);
 
   const coverLetter = opts.llmCoverLetter
@@ -570,14 +563,19 @@ export function repairTailoredResume(resume, plan, profile, jdText) {
   const copy = JSON.parse(JSON.stringify(resume));
   const ats = plan.keywords.atsMirror || [];
   const weave = selectWeaveKeywords(plan, profile);
-  const honest = plan.keywords.honest?.length ? plan.keywords.honest : ats.slice(0, 8);
-  const bulletKeywords = weave.length ? weave : honest;
+  const jdLead = [...new Set([
+    ...(plan.keywords.atsMirror || []),
+    ...(plan.keywords.gaps || []),
+    ...(plan.keywords.mustHave || []),
+    ...(plan.keywords.honest || []),
+  ])];
+  const bulletKeywords = weave.length ? weave : jdLead;
   const preserved = snapshotPreservedBullets(profile, plan);
 
-  // Patch summary / competencies with missing ATS terms
+  // Patch summary / competencies with full JD stack
   const { resume: aligned } = alignResumeToJd(copy, ats, profile?.experience || [], {
     bulletKeywords,
-    summaryKeywords: [...honest, ...bulletKeywords].filter((k) => !/\b(mainframe|rally|qtest)\b/i.test(k)),
+    summaryKeywords: jdLead,
     weaveRoleIndices: plan.tailorIndices,
     weaveEveryBullet: false,
   });
@@ -597,8 +595,8 @@ export function repairTailoredResume(resume, plan, profile, jdText) {
     }
   }
 
-  const repaired = injectWeaveIntoMutableRoles(aligned, plan, bulletKeywords, 3);
-  // Rebuild summary when top transferable weave phrases are absent (any family / any future JD)
+  const repaired = injectWeaveIntoMutableRoles(aligned, plan, bulletKeywords, 4);
+  // Rebuild summary when top JD weave phrases are absent
   const topDomain = bulletKeywords
     .filter((k) => String(k).split(/\s+/).length >= 2 || /-/.test(k))
     .slice(0, 3);
@@ -608,7 +606,7 @@ export function repairTailoredResume(resume, plan, profile, jdText) {
     repaired.summary = buildHonestSummary(
       repaired.summary || '',
       estimateYears(profile?.experience),
-      [...honest, ...bulletKeywords],
+      [...jdLead, ...bulletKeywords],
       jdText,
     );
   }

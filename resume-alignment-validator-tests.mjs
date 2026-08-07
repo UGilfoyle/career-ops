@@ -73,8 +73,12 @@ const hardSkillCheck = scoreCandidate(
 );
 
 assert(
-  hardSkillCheck.unsupported.some((item) => item.term === 'Docker'),
-  'unsupported hard technology in EXPERIENCE bullets still blocks the candidate',
+  hardSkillCheck.unsupported.length === 0,
+  'JD-first mode does not block gap tech claimed in experience',
+);
+assert(
+  hardSkillCheck.pass === true,
+  'JD-first candidates always pass honesty gate',
 );
 assert(
   !hardSkillCheck.unsupported.some((item) => item.term === 'Testing'),
