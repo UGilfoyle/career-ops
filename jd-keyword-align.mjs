@@ -18,10 +18,11 @@ const KNOWN_TECH = [
   'Machine Learning', 'ML', 'LLM', 'RAG', 'LangChain', 'PyTorch', 'TensorFlow',
   // NOTE: never list Cursor / Copilot / ChatGPT / Claude Code here — IDE assistants are not tech-stack skills
   '.NET Core', '.NET', 'C#',
-  'Snowflake', 'Spark', 'Airflow', 'dbt', 'Databricks',
+  'Snowflake', 'Spark', 'Apache Spark', 'PySpark', 'Airflow', 'dbt', 'Databricks', 'Azure Databricks',
+  'Azure Data Factory', 'ADF', 'ELT', 'SQL', 'Redshift', 'BigQuery', 'Synapse', 'Delta Lake',
   // ETL / data-validation stack
   'pandas', 'pyodbc', 'ETL', 'Oracle', 'Unix', 'Linux', 'JIRA', 'Rally', 'Qtest',
-  'SCD', 'Mainframe',
+  'SCD', 'Mainframe', 'Data Modeling',
   // Microsoft / Azure full-stack (Interra-style JDs)
   'SQL Server', 'Microsoft SQL Server', 'Telerik', 'DevExpress', 'jQuery', 'MVC',
 ];
@@ -49,6 +50,9 @@ const DOMAIN_PHRASES = [
   'ETL testing',
   'ETL validation',
   'data warehouse',
+  'data modeling',
+  'ETL/ELT',
+  'ELT',
   'staging',
   'fact and dimension',
   'fact/dimension',
@@ -118,6 +122,16 @@ export function normalizeJdTechAliases(text) {
     [/\bobject\s*[- ]?relational\s*mapping\b/gi, 'ORM'],
     [/\bmessage\s*brokers?\b/gi, 'Message Brokers'],
     [/\bweb\s*scraping\b/gi, 'Web Scraping'],
+    [/\bpy\s*spark\b/gi, 'PySpark'],
+    [/\bapache\s*spark\b/gi, 'Apache Spark'],
+    [/\bazure\s*data\s*factory\b/gi, 'Azure Data Factory'],
+    [/\b\(\s*adf\s*\)/gi, ' ADF '],
+    [/\badf\b/gi, 'ADF'],
+    [/\bazure\s*databricks\b/gi, 'Azure Databricks'],
+    [/\bbig\s*query\b/gi, 'BigQuery'],
+    [/\bdata\s*modeling\b/gi, 'Data Modeling'],
+    [/\betl\s*\/\s*elt\b/gi, 'ETL ELT'],
+    [/\belt\b/gi, 'ELT'],
   ];
   for (const [re, rep] of rules) t = t.replace(re, rep);
   return t;
@@ -173,7 +187,7 @@ const JUNK_KEYWORD_RE =
 
 /** Soft JD prose that looks like a "skill" but is education/section chrome. */
 const JD_CHROME_PHRASE_RE =
-  /\b(what you|what you.?ll|you.?ll (do|bring)|who we are|the role|computer science|technology-related|related field|bachelor.?s?( degree)?|equivalent experience|full[-\s]?stack experience|hands-?on experience|years of (full[-\s]?stack )?experience|degree in|components and implement|user-friendly|providing technical guidance|cross-functional teams to gather|and ensure best practices|frameworks like|manage time|responsive and user|cloud migration and modernization)\b/i;
+  /\b(what you|what you.?ll|you.?ll (do|bring)|who we are|the role|key skills|computer science|technology-related|related field|bachelor.?s?( degree)?|equivalent experience|full[-\s]?stack experience|hands-?on experience|years of (full[-\s]?stack )?experience|degree in|components and implement|user-friendly|providing technical guidance|cross-functional teams to gather|and ensure best practices|frameworks like|manage time|responsive and user|cloud migration and modernization)\b/i;
 
 /** Equipment / WFH hardware boilerplate — not a candidate skill. */
 const JD_EQUIPMENT_PHRASE_RE =

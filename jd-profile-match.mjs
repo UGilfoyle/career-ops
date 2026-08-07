@@ -257,8 +257,15 @@ export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   if (/\bstaff\s+(software\s+)?engineer\b|\bprincipal\s+(software\s+)?engineer\b/.test(t)) {
     return y >= 8 ? 'Staff Software Engineer' : 'Senior Software Engineer';
   }
-  if (/\b(etl testing|senior consultant|data warehouse)\b/.test(t)) {
+  if (/\b(etl testing|senior consultant.*etl|data warehouse testing)\b/.test(t)) {
     return 'Senior Consultant - ETL Testing';
+  }
+  if (
+    /\bdata engineer\b|\bsenior data engineer\b/.test(t)
+    || (/\b(databricks|pyspark|azure data factory|\badf\b|snowflake|data modeling)\b/.test(t)
+      && /\b(data|etl|elt|spark)\b/.test(t))
+  ) {
+    return 'Senior Data Engineer';
   }
   if (/\b(web scrap|scraping)\b/.test(t) && /\bjavascript|js\b|node/.test(t)) {
     return 'Senior JavaScript Developer';
@@ -373,7 +380,17 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     ['web scraping', 'Web Scraping'],
     ['scraping', 'Web Scraping'],
     ['etl testing', 'ETL Testing'],
-    ['etl', 'ETL Testing'],
+    ['elt', 'ELT'],
+    ['etl', 'ETL'],
+    ['pyspark', 'PySpark'],
+    ['databricks', 'Azure Databricks'],
+    ['azure data factory', 'Azure Data Factory'],
+    ['adf', 'Azure Data Factory'],
+    ['snowflake', 'Snowflake'],
+    ['redshift', 'Redshift'],
+    ['bigquery', 'BigQuery'],
+    ['data modeling', 'Data Modeling'],
+    ['terraform', 'Terraform'],
     ['source-to-target', 'Source-to-Target Validation'],
     ['reconcil', 'Data Reconciliation'],
     ['pandas', 'pandas'],
@@ -461,7 +478,7 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
       if (/^(unit testing|agile|scrum|full[-\s]?stack experience)$/i.test(String(k))) return false;
       return true;
     });
-  const leadTerms = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 6);
+  const leadTerms = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 8);
   const lead = leadTerms.length
     ? leadTerms.join(', ')
     : 'Python, Node.js, AWS, and React';
@@ -472,11 +489,19 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
 
   // Line 1 — senior identity + ownership scope + named stack
   lines.push(
-    `${title} with ${yearsLabel} owning production backends, cloud platforms, and API systems in ${lead}.`,
+    `${title} with ${yearsLabel} owning production ${
+      /\bdata engineer|databricks|pyspark|data factory|snowflake\b/i.test(jdLower)
+        ? 'data platforms, pipelines, and cloud analytics systems'
+        : 'backends, cloud platforms, and API systems'
+    } in ${lead}.`,
   );
 
-  // Line 2 — architecture / depth matched to JD (hard outcomes, not soft skills)
-  if (/\betl\b|\bdata warehouse\b|\bdata reconcil|\bsource-to-target\b|\bscd\b/i.test(jdLower)) {
+  // Line 2 — JD-family framing (prefer Azure Data / ETL when present)
+  if (/\b(databricks|pyspark|azure data factory|\badf\b|snowflake|redshift|bigquery|data modeling)\b/i.test(jdLower)) {
+    lines.push(
+      'Own Azure data platforms end-to-end: Databricks/PySpark transforms, ADF pipelines, SQL-backed models, and warehouse loads (Snowflake/Redshift/BigQuery) with reliable ETL/ELT.',
+    );
+  } else if (/\b(etl testing|source-to-target|data reconcil|data warehouse|scd)\b/i.test(jdLower)) {
     lines.push('Own Python-based ETL validation, source-to-target checks, and SQL-backed data reconciliation across warehouse layers.');
   } else if (/\b(web scrap|scraping|puppeteer|playwright|cheerio|selenium)\b/i.test(jdLower)) {
     lines.push('Ship JavaScript services for data extraction and browser automation with solid REST APIs, Postgres, and cloud delivery.');
@@ -502,6 +527,8 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
     lines.push('Hold the line on reliability: observability, incident response, latency tuning, and production hardening.');
   } else if (/\bmentor|tech lead|staff|principal|cross-functional\b/i.test(jdLower)) {
     lines.push('Set engineering bar through design ownership, peer review, and mentoring: from architecture decisions through launch.');
+  } else if (/\bdata engineer|databricks|pyspark|etl|adf\b/i.test(jdLower)) {
+    lines.push('Own pipeline reliability, data quality checks, CI/CD for data jobs, and clear handoffs from raw ingest through curated models.');
   } else {
     lines.push('Own architecture decisions, SDLC quality (reviews, tests, CI), and mentoring so teams ship reliable software faster.');
   }

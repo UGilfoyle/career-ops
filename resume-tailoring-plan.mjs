@@ -95,7 +95,10 @@ export function resolveEmployerPolicy(profile) {
  */
 export function classifyRoleFamily(jdText) {
   const t = String(jdText || '').toLowerCase();
-  if (/\betl\b|\bdata warehouse\b|\bdata reconcil|\bsource-to-target\b|\bscd\b/.test(t)) {
+  if (
+    /\betl\b|\belt\b|\bdata warehouse\b|\bdata reconcil|\bsource-to-target\b|\bscd\b|\bdatabricks\b|\bpyspark\b|\bdata factory\b|\badf\b|\bsnowflake\b|\bdata engineer\b|\bdata modeling\b/
+      .test(t)
+  ) {
     return 'data_etl';
   }
   if (/\b(web scrap|scraping|puppeteer|playwright|cheerio)\b/.test(t)) return 'scraping_js';
@@ -117,7 +120,7 @@ export function classifyRoleFamily(jdText) {
 export function buildTailoringPlan(jdText, profile, opts = {}) {
   const policy = resolveEmployerPolicy(profile);
   const fit = analyzeJdProfileFit(jdText, profile);
-  const jdTech = extractJdTechKeywords(jdText, 22);
+  const jdTech = extractJdTechKeywords(jdText, 28);
   const domain = extractJdDomainPhrases(jdText, 16);
   const tiers = extractMustHavePreferred(jdText);
   const family = classifyRoleFamily(jdText);
@@ -290,7 +293,7 @@ export function selectWeaveKeywords(plan, profile) {
   ]) {
     push(kw);
   }
-  return out.slice(0, 16);
+  return out.slice(0, 20);
 }
 
 /**
