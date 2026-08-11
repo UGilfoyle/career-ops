@@ -524,6 +524,16 @@ console.log('resume-quality tests\n');
   assert(!kocoJob.bullets.some((b) => /MongoDB schema design/i.test(b)), 'KOCO has no Rubico MongoDB bullet');
   assert(rubicoJob.bullets.some((b) => /MongoDB/i.test(b)), 'Rubico keeps MongoDB bullet');
   assert(!/services Integrity through/i.test(kocoJob.bullets.join(' ')), 'Integrity mid-sentence repaired');
+
+  const amexScreenshot = normalizeExperienceBulletList([
+    'Authored the complete backend architecture for a multi-tenant platform serving 25,000+ active users, synthesizing complex business logic into scalable, highly available Node.js services.',
+    'Integrity through rigorous algorithmic validation with zero data loss.',
+    'Developed comprehensive backend web systems spanning from MongoDB schema design to RESTful API.',
+    'Construction, directly Owning the core infrastructure for 3 major client deliverables.',
+  ]);
+  assert(!amexScreenshot.some((b) => /Integrity through/i.test(b)), 'drops Integrity orphan fragment');
+  assert(!amexScreenshot.some((b) => /Construction,\s+directly/i.test(b)), 'drops Construction, directly garbled bullet');
+  assert(amexScreenshot.some((b) => /multi-tenant platform/i.test(b)), 'keeps clean KOCO architecture bullet');
 }
 
 

@@ -17,6 +17,7 @@ import {
   buildJdMatchedCompetencies,
   buildHonestSummary,
 } from './jd-profile-match.mjs';
+import { renderCategorizedSkills } from './resume-skills-html.mjs';
 
 let passed = 0;
 let failed = 0;
@@ -165,6 +166,36 @@ const interraSummary = buildHonestSummary('', 7, interraFit.honest, INTERRA_JD);
 assert(!/what you|computer science|full stack experience/i.test(interraSummary), 'Interra summary excludes chrome');
 assert(/\.net|c#|azure|sql|jquery|rest/i.test(interraSummary), 'Interra summary mirrors JD Microsoft stack');
 assert(!/\bcursor\b|\bclaude code\b|\bgpts?\b/i.test(interraSummary), 'Interra summary excludes editor tools');
+
+console.log('\nAmerican Express brand must never become Express skill\n');
+const AMEX_JD = `
+Software Engineer I - Oracle Cloud HCM - CET Services @ American Express
+As part of Team Amex, you'll help define the future of American Express.
+Joining Amex Tech means shaping contribution with the Powerful Backing of American Express.
+Prior experience of Oracle HCM Configuration. Agile methodology. BIP. Alert Composer.
+`;
+const amexTech = extractJdTechKeywords(AMEX_JD, 20).map((t) => t.toLowerCase());
+const amexKw = extractJdKeywords(AMEX_JD, 25).map((t) => t.toLowerCase());
+assert(!amexTech.includes('express'), 'Amex JD tech extractor does not emit Express');
+assert(!amexKw.includes('express'), 'Amex JD keywords do not emit Express');
+assert(!amexKw.includes('american express') && !amexKw.includes('amex') && !amexKw.includes('american'), 'Amex brand names are junk');
+assert(isJunkKeyword('American Express'), 'American Express is junk');
+assert(isJunkKeyword('Amex'), 'Amex is junk');
+const nodeExpressJd = 'Backend Engineer. Strong Node.js and Express middleware experience. REST APIs.';
+assert(
+  extractJdTechKeywords(nodeExpressJd, 10).some((t) => /^express$/i.test(t)),
+  'Real Node Express still extracts'
+);
+assert(
+  !/express|american express|amex/i.test(
+    renderCategorizedSkills(
+      ['Monolith-to-microservices transition'],
+      ['American Express', 'Express', 'Oracle'],
+      AMEX_JD,
+    ),
+  ),
+  'skills HTML never emits Amex Express brand'
+);
 
 console.log('\nLever WFH hardware boilerplate junk filter\n');
 const SPREETAIL_HARDWARE = `

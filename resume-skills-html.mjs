@@ -5,6 +5,7 @@
 
 import {
   isEditorIdeTool,
+  isEmployerBrandKeyword,
   isJunkKeyword,
   isWeavableKeyword,
 } from './jd-keyword-align.mjs';
@@ -108,7 +109,11 @@ export function normalizeSkillLabel(text) {
 export function isTechStackSkill(text) {
   const t = String(text || '').trim();
   if (!t || isEditorIdeTool(t) || isJunkKeyword(t) || !isWeavableKeyword(t)) return false;
+  if (isEmployerBrandKeyword(t)) return false;
   if (isNarrativeSuperpower(t)) return false;
+  // Company chrome falsely matching Express inside "American Express"
+  if (/\bamerican\s+express\b/i.test(t)) return false;
+  if (/^express$/i.test(t) === false && /\bexpress\b/i.test(t) && /\bamerican\b/i.test(t)) return false;
   // .NET / C# — leading punctuation breaks \b in TECH_PATTERNS
   if (/^\.?net(?:\s*core)?$/i.test(t) || /^c#$/i.test(t)) return true;
   if (t.length > 42 && /\b(transition|optimization|optimisation|integration|ownership|design)\b/i.test(t)) {
@@ -149,29 +154,44 @@ function skillsBulletList(items) {
  * Build Technical Skills as a bullet list (no "Core Competencies:" label —
  * the section heading already says Technical Skills).
  * Never unpacks IDE assistants from parentheticals like "(Cursor, Claude Code, GPTs)".
+ * Never emits employer brands (American Express → Express).
  */
-export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies) {
+export function sanitizeCompetencyList(items, jdText = '') {
+  const out = [];
+  const seen = new Set();
+  for (const raw of expandSkillTokens(Array.isArray(items) ? items : [])) {
+    const s = String(raw || '').trim();
+    if (!s) continue;
+    if (isEditorIdeTool(s) || isJunkKeyword(s) || isEmployerBrandKeyword(s, jdText)) continue;
+    if (isNarrativeSuperpower(s) || !isTechStackSkill(s)) continue;
+    const label = normalizeSkillLabel(s);
+    const key = label.toLowerCase();
+    if (!label || seen.has(key)) continue;
+    seen.add(key);
+    out.push(label);
+  }
+  return out;
+}
+
+export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies, jdText = '') {
   const superpowers = expandSkillTokens(Array.isArray(profileSuperpowers) ? profileSuperpowers : []);
-  const competencies = expandSkillTokens(Array.isArray(tailoredCompetencies) ? tailoredCompetencies : []);
+  const competencies = sanitizeCompetencyList(
+    Array.isArray(tailoredCompetencies) ? tailoredCompetencies : [],
+    jdText,
+  );
   if (superpowers.length === 0 && competencies.length === 0) return '';
 
-  const techSkills = [];
-
-  for (const item of competencies) {
-    const s = String(item || '').trim();
-    if (!s || isEditorIdeTool(s) || isJunkKeyword(s) || isNarrativeSuperpower(s)) continue;
-    if (isTechStackSkill(s)) techSkills.push(s);
-  }
+  const techSkills = [...competencies];
 
   const existingLower = new Set(techSkills.map((x) => x.toLowerCase()));
   for (const sp of superpowers) {
     const s = String(sp || '').trim();
     if (!s || existingLower.has(s.toLowerCase()) || isNarrativeSuperpower(s)) continue;
-    if (isEditorIdeTool(s)) continue;
+    if (isEditorIdeTool(s) || isEmployerBrandKeyword(s, jdText)) continue;
     const parenMatch = s.match(/\(([^)]+)\)/);
     if (parenMatch) {
       for (const tech of parenMatch[1].split(',').map((t) => t.trim()).filter(Boolean)) {
-        if (isEditorIdeTool(tech) || isJunkKeyword(tech)) continue;
+        if (isEditorIdeTool(tech) || isJunkKeyword(tech) || isEmployerBrandKeyword(tech, jdText)) continue;
         if (!existingLower.has(tech.toLowerCase()) && isTechStackSkill(tech)) {
           techSkills.push(tech);
           existingLower.add(tech.toLowerCase());
@@ -182,6 +202,7 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
     if (
       cleanedSp
       && !isEditorIdeTool(cleanedSp)
+      && !isEmployerBrandKeyword(cleanedSp, jdText)
       && !existingLower.has(cleanedSp.toLowerCase())
       && !/^ai-?native tool integration$/i.test(cleanedSp)
       && isTechStackSkill(cleanedSp)
@@ -191,23 +212,10 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
     }
   }
 
-  const uniqueTech = [...new Set(techSkills)]
-    .filter((x) => !isEditorIdeTool(x) && isTechStackSkill(x))
-    .slice(0, 16);
+  const uniqueTech = sanitizeCompetencyList(techSkills, jdText).slice(0, 16);
   if (uniqueTech.length) return skillsBulletList(uniqueTech);
 
-  // Last resort: only real tech-stack tokens — never dump JD prose
-  const fallback = [...competencies, ...superpowers]
-    .map((x) => String(x || '').replace(/\s*\([^)]*\)\s*/g, '').trim())
-    .filter(
-      (x) =>
-        x
-        && !isEditorIdeTool(x)
-        && !isJunkKeyword(x)
-        && !isNarrativeSuperpower(x)
-        && isTechStackSkill(x)
-        && !/^ai-?native tool integration$/i.test(x)
-    )
-    .slice(0, 16);
+  // Last resort: only real tech-stack tokens — never dump JD prose / employer brands
+  const fallback = sanitizeCompetencyList([...competencies, ...superpowers], jdText).slice(0, 16);
   return skillsBulletList(fallback);
 }

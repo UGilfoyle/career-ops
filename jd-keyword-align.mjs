@@ -407,11 +407,75 @@ function isProseLikePhrase(kw) {
 /** Mid-phrase cut: "X and Y" / "X or Y" where Y continues a clause → fragment. */
 const MID_CLAUSE_RE = /\b(?:and|or|but|so|yet)\s+(?:the|a|an|that|this|these|those|your|you|we|they|their|it|its|staff|senior|new|more|other|technical|design|docs?|engineers?|team|workstream|components?|clients?|areas?)\b/i;
 
+/** Employer / brand names that appear in JD chrome — never skills. */
+const EMPLOYER_BRAND_RE =
+  /^(american express|amex|american|oracle cloud|oracle hcm|google|microsoft|amazon|meta|facebook|apple|netflix|salesforce|ibm|uber|airbnb|spotify|twitter|linkedin|indeed|naukri|glassdoor|quest global|intverse|glidewell|srijan|nec|nec india|supersourcing)$/i;
+
+/**
+ * Pull employer-looking names from JD chrome ("@ Acme", "at Acme Corp", "Job at Acme").
+ * Used so random company brands never become Technical Skills.
+ */
+export function extractEmployerNamesFromJd(jdText) {
+  const text = String(jdText || '');
+  const names = [];
+  const patterns = [
+    // "@ Acme" / "at Acme Corp" — do not require \b before @ (punctuation is non-word)
+    /(?:^|[\s(|])(?:at|@)\s+([A-Z][A-Za-z0-9&.,'’\-]+(?:\s+[A-Z][A-Za-z0-9&.,'’\-]+){0,4})/g,
+    /\bJob(?:s)?\s+(?:Opening\s+)?at\s+([A-Z][A-Za-z0-9&.,'’\-]+(?:\s+[A-Z][A-Za-z0-9&.,'’\-]+){0,4})/gi,
+    /\bTeam\s+(Amex|Amazon|Google|Microsoft|Meta|Apple)\b/g,
+    /\b(?:future of|backing of|powered by)\s+([A-Z][A-Za-z0-9&.,'’\-]+(?:\s+[A-Z][A-Za-z0-9&.,'’\-]+){0,3})/gi,
+  ];
+  for (const re of patterns) {
+    for (const m of text.matchAll(re)) {
+      let name = String(m[1] || '').trim();
+      // Stop at sentence / clause boundaries so we don't swallow "American Express. Future…"
+      name = name.split(/[.\n:;|]/)[0].trim().replace(/[.,;:]+$/g, '');
+      if (name.length >= 2 && name.length <= 60) names.push(name);
+    }
+  }
+  return uniqueCasePreserved(names);
+}
+
+export function isEmployerBrandKeyword(kw, jdText = '') {
+  const k = normalizeKeyword(kw);
+  if (!k) return false;
+  if (EMPLOYER_BRAND_RE.test(k)) return true;
+  // Multi-word brands containing "Express" that are not the Node framework
+  if (/\bamerican\s+express\b/i.test(k)) return true;
+  if (jdText) {
+    const employers = extractEmployerNamesFromJd(jdText);
+    const lower = k.toLowerCase();
+    const jdLower = String(jdText).toLowerCase();
+    // Standalone framework token that only appears inside an employer brand in the JD
+    if (
+      /^express$/i.test(k)
+      && /\bamerican\s+express\b/i.test(jdLower)
+      && !jdMeansNodeExpress(jdText)
+    ) {
+      return true;
+    }
+    for (const emp of employers) {
+      const e = emp.toLowerCase();
+      if (lower === e) return true;
+      // Token of employer name alone ("American", "Express" from American Express)
+      if (e.includes(lower) && lower.length >= 4 && e.split(/\s+/).length >= 2) {
+        const techHit = findKnownTechInText(normalizeJdTechAliases(k));
+        if (techHit.length === 1 && /^express$/i.test(techHit[0]) && /\bamerican\s+express\b/i.test(e)) {
+          return true;
+        }
+        if (techHit.length === 0 && e.split(/\s+/).includes(lower)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function isJunkKeyword(kw) {
   const k = normalizeKeyword(kw).toLowerCase();
   if (!k || k.length < 2) return true;
   // IDE assistants are never skills / ATS keywords
   if (isEditorIdeTool(k)) return true;
+  if (isEmployerBrandKeyword(k)) return true;
   // Bare version fragments split from model names ("3-large" from text-embedding-3-large)
   if (/^\d+-[a-z0-9-]+$/.test(k)) return true;
   if (STOPWORDS.has(k)) return true;
@@ -611,16 +675,45 @@ function jdMeansGoLanguage(text) {
     || /\bgo\s+(?:services|microservices|development|programming|backend|engineer)/i.test(t);
 }
 
+/**
+ * True when "Express" in the JD is American Express (or DevExpress already occupied),
+ * not the Node.js Express framework.
+ */
+function jdMeansNodeExpress(text) {
+  const t = String(text || '');
+  const lower = t.toLowerCase();
+  // Explicit Node/Express stack signal
+  if (/\b(?:node\.?js|nodejs).{0,40}\bexpress\b|\bexpress(?:\.js)?\b.{0,40}\b(?:node\.?js|nodejs|middleware|router)\b/i.test(t)) {
+    return true;
+  }
+  if (/\bexpress\.js\b/i.test(t)) return true;
+  // "Express" only appears as American Express / company chrome
+  const expressHits = [...lower.matchAll(/\bexpress\b/g)];
+  if (expressHits.length === 0) return false;
+  let realHits = 0;
+  for (const m of expressHits) {
+    const start = m.index ?? 0;
+    const before = lower.slice(Math.max(0, start - 12), start);
+    if (/american\s*$/.test(before)) continue;
+    if (/dev$/.test(before)) continue;
+    realHits += 1;
+  }
+  return realHits > 0;
+}
+
 /** Drop weak single tokens: bare "Java" from "Java script", "go" from "go-to", "ML"/"AI"/"IT". */
 function suppressFalsePositiveLanguages(found, text) {
   const lower = String(text || '').toLowerCase();
   const hasJavaScript = lower.includes('javascript');
   const bareJava = /\bjava\b/.test(lower.replace(/javascript/g, ''));
   const goIsLanguage = jdMeansGoLanguage(text);
+  const nodeExpress = jdMeansNodeExpress(text);
   const out = [];
   for (const kw of found) {
     const k = String(kw).toLowerCase();
     if (k === 'java' && hasJavaScript && !bareJava) continue;
+    if (k === 'express' && !nodeExpress) continue;
+    if (isEmployerBrandKeyword(kw)) continue;
     if (k === 'go' || k === 'golang') {
       if (!goIsLanguage) continue;
       if (!out.some((x) => /^go \(golang\)$/i.test(x))) out.push('Go (Golang)');
@@ -658,10 +751,15 @@ function findKnownTechInText(text) {
       const start = m.index;
       const end = start + m[0].length;
       const overlaps = occupied.some(([s, e]) => start < e && end > s);
-      if (!overlaps) {
-        found.push(m[0]);
-        occupied.push([start, end]);
+      if (overlaps) continue;
+      // Never treat "Express" inside "American Express" as Node Express
+      if (/^express$/i.test(tech)) {
+        const before = text.slice(Math.max(0, start - 12), start);
+        if (/american\s*$/i.test(before)) continue;
+        if (/dev$/i.test(before)) continue;
       }
+      found.push(m[0]);
+      occupied.push([start, end]);
     }
   }
   return found;
@@ -735,16 +833,20 @@ export function extractJdKeywords(jdText, limit = 20) {
       return match ? match[0] : w;
     });
 
-  found.push(...frequent);
+  found.push(...suppressFalsePositiveLanguages(frequent, text));
 
   const deduped = uniqueCasePreserved(
-    found.map(normalizeKeyword).filter((kw) => kw && !isJunkKeyword(kw))
+    found
+      .map(normalizeKeyword)
+      .filter((kw) => kw && !isJunkKeyword(kw) && !isEmployerBrandKeyword(kw, text))
   );
   // Drop partial tokens subsumed by a longer keyword (e.g. "PostgreS" when "PostgreSQL" exists)
-  return deduped.filter((kw, i, arr) => {
+  const ranked = deduped.filter((kw, i, arr) => {
     const lower = kw.toLowerCase();
     return !arr.some((other, j) => j !== i && other.toLowerCase().includes(lower) && other.length > kw.length);
-  }).slice(0, limit);
+  });
+  // Final pass: Express / Go / Java false-positives against full JD context
+  return suppressFalsePositiveLanguages(ranked, text).slice(0, limit);
 }
 
 function resumeTexts(resume) {
@@ -884,7 +986,15 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
     }
   }
   copy.core_competencies = uniqueCasePreserved(
-    [...newComps, ...comps].filter((c) => isApprovedSkillPhrase(c) || findKnownTechInText(normalizeJdTechAliases(String(c))).length > 0),
+    [...newComps, ...comps].filter((c) => {
+      if (isEmployerBrandKeyword(c) || isJunkKeyword(c)) return false;
+      if (isApprovedSkillPhrase(c)) return true;
+      const hits = suppressFalsePositiveLanguages(
+        findKnownTechInText(normalizeJdTechAliases(String(c))),
+        String(c),
+      );
+      return hits.length > 0;
+    }),
   ).slice(0, 16);
 
   // Summary: weave top missing keywords (prefer opts.summaryKeywords to avoid gap-tool stuffing)

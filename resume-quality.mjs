@@ -762,9 +762,48 @@ export function isIncompleteBullet(bullet) {
   }
   if (/,\s*$/.test(raw)) return true;
   if (/\.\.\.$/.test(raw)) return true;
+  // Truncated "…to RESTful API." without finishing the clause
+  if (/\bto\s+RESTful API\.?$/i.test(t) && !/\b(construction|delivery|endpoints|layers)\b/i.test(t)) return true;
   // Very short fragment after scrub (under 3 content words)
   if (t.split(/\s+/).length < 3 && !hasQuantifiedImpact(raw)) return true;
   return false;
+}
+
+/**
+ * True when merge/LLM left mid-sentence garbage that must never print on a resume.
+ * Prefer drop over inventing a repair.
+ */
+export function isGarbledBullet(bullet) {
+  const t = String(bullet || '').trim();
+  if (!t) return true;
+  if (/\bservices\s+Integrity\b/i.test(t)) return true;
+  if (/\.\s+(Integrity|Logic|Construction|Authentication)\b/.test(t)) return true;
+  if (/Construction,\s+directly\s+Owning/i.test(t)) return true;
+  if (/Delivered handling\b/i.test(t)) return true;
+  if (/\bAPI\.\s*Construction\b/i.test(t)) return true;
+  // Mid-bullet capital noun + through/into after a complete clause (no action verb)
+  if (
+    /\bNode\.js services\.?\s+Integrity through\b/i.test(t)
+    || /\bservices\.?\s+Integrity through\b/i.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Drop Integrity/Construction merge leaks; keep leading clause when salvageable. */
+export function repairGarbledBullet(bullet) {
+  const t = String(bullet || '').trim();
+  if (!t) return '';
+  if (/\bIntegrity through\b/i.test(t)) {
+    const before = t.split(/\bIntegrity through\b/i)[0].replace(/[.!?,;:\s]+$/g, '').trim();
+    if (before.length >= 40 && !isGarbledBullet(before) && !isIncompleteBullet(before)) {
+      return /[.!]$/.test(before) ? before : `${before}.`;
+    }
+    return '';
+  }
+  if (/Construction,\s+directly/i.test(t) || /Delivered handling\b/i.test(t)) return '';
+  return t;
 }
 
 /** True when a "bullet" is clearly a broken continuation of the previous line. */
@@ -1024,7 +1063,17 @@ export function normalizeExperienceBulletList(bullets, companyOrRoleText = '') {
   const merged = [];
   for (const bullet of raw) {
     const prevIncomplete = merged.length > 0 && isIncompleteBullet(merged[merged.length - 1]);
-    if (merged.length > 0 && (isBulletContinuationFragment(bullet) || prevIncomplete)) {
+    const isCont = isBulletContinuationFragment(bullet);
+    // Orphan noun crumbs after a complete sentence — drop, do not glue into garbage
+    if (
+      merged.length > 0
+      && isCont
+      && !prevIncomplete
+      && /^(Logic|Integrity|Construction|Authentication|Authorization|Availability|Scalability)\b/i.test(bullet)
+    ) {
+      continue;
+    }
+    if (merged.length > 0 && (isCont || prevIncomplete)) {
       const prev = merged[merged.length - 1].replace(/[.!?,;:\s]+$/g, '');
       let cont = bullet.trim();
       // Avoid "by by 22%" when previous already ends with the same preposition
@@ -1042,8 +1091,8 @@ export function normalizeExperienceBulletList(bullets, companyOrRoleText = '') {
     merged.push(bullet);
   }
   return merged
-    .map((b) => normalizeBulletText(b, company || b))
-    .filter((b) => b.length >= 20 && !isIncompleteBullet(b));
+    .map((b) => repairGarbledBullet(normalizeBulletText(b, company || b)))
+    .filter((b) => b.length >= 20 && !isIncompleteBullet(b) && !isGarbledBullet(b));
 }
 
 /**

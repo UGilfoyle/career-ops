@@ -15,6 +15,7 @@ import {
   sanitizeExperienceEntries,
   isEmbeddedJobHeader,
   isIncompleteBullet,
+  isGarbledBullet,
   normalizeExperienceBulletList,
   bulletsBudgetForRole as roleBulletBudget,
   elevateBulletToSenior,
@@ -31,9 +32,10 @@ import {
   ensureAllRolesTailored,
   isJunkKeyword,
   isWeavableKeyword,
+  isEmployerBrandKeyword,
 } from './jd-keyword-align.mjs';
 import { callFirstAvailableFallback } from './llm-fallback.mjs';
-import { renderCategorizedSkills } from './resume-skills-html.mjs';
+import { renderCategorizedSkills, sanitizeCompetencyList } from './resume-skills-html.mjs';
 import { renderContactBarHtml } from './resume-contact-html.mjs';
 import { gateResumeOnPostingAge, argvHasYes } from './job-posting-gate.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
@@ -2002,19 +2004,29 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
 
     const yearsInline = yearsExp > 0 ? ` • ${yearsExp}+ years` : '';
 
-    const skillsLines = renderCategorizedSkills(profile.narrative?.superpowers || [], tailoring?.core_competencies || []);
+    const skillsLines = renderCategorizedSkills(
+      profile.narrative?.superpowers || [],
+      sanitizeCompetencyList(tailoring?.core_competencies || [], jdText),
+      jdText,
+    );
     const hasSkills = Boolean(skillsLines && String(skillsLines).trim().length > 0);
 
-    // Final catch-all: strip LLM splice artifacts from bullets right before render
+    // Final catch-all: strip LLM splice artifacts + garbled merges right before render
     if (tailoring?.experience && typeof tailoring.experience === 'object') {
       for (const key of Object.keys(tailoring.experience)) {
         const bullets = tailoring.experience[key];
         if (Array.isArray(bullets)) {
-          tailoring.experience[key] = bullets
-            .filter((b) => !isEmbeddedJobHeader(b))
-            .map((b) => removeSplicedFragments(b));
+          tailoring.experience[key] = normalizeExperienceBulletList(
+            bullets
+              .filter((b) => !isEmbeddedJobHeader(b) && !isGarbledBullet(b))
+              .map((b) => removeSplicedFragments(b)),
+          ).filter((b) => !isIncompleteBullet(b) && !isGarbledBullet(b));
         }
       }
+    }
+    if (Array.isArray(tailoring?.core_competencies)) {
+      tailoring.core_competencies = sanitizeCompetencyList(tailoring.core_competencies, jdText)
+        .filter((c) => !isEmployerBrandKeyword(c, jdText));
     }
 
     const resumeReps = {

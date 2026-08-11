@@ -7,6 +7,7 @@ export {
   sanitizeExperienceEntries,
   isEmbeddedJobHeader,
   isIncompleteBullet,
+  isGarbledBullet,
   isBulletContinuationFragment,
   preferSourceIfThin,
   parseTenureMonths,

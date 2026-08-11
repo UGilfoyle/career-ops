@@ -194,10 +194,15 @@ export function renderAchievementsHtml(
     .join('')}</ul>`;
 }
 
-/** Technical Skills bullet list — tech stacks only, no narrative superpowers. */
-export function renderSkillsLines(superpowers: string[] | undefined, limit = 16): string {
+/** Technical Skills bullet list — tech stacks only, no narrative / employer brands. */
+export function renderSkillsLines(
+  superpowers: string[] | undefined,
+  limit = 16,
+  tailoredCompetencies: string[] | undefined = [],
+  jdText = '',
+): string {
   void limit;
-  return renderCategorizedSkills(superpowers, []);
+  return renderCategorizedSkills(superpowers, tailoredCompetencies || [], jdText);
 }
 
 /** Soft-wrap long lines on word boundaries — never mid-word ellipsis. */
