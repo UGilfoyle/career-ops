@@ -110,6 +110,12 @@ export const DASHBOARD_TOUR_STEPS: DashboardTourStep[] = [
       'Chat with AI that knows your profile. Draft LinkedIn outreach, prep interviews, analyze skill gaps, or ask what to run next in the terminal.',
   },
   {
+    target: 'nav-practice',
+    title: 'Interview Practice',
+    content:
+      'Generate a JD-linked practice pack (coding, system design, behavioral). Free: 1 pack / week. Pro unlocks unlimited.',
+  },
+  {
     target: null,
     title: "You're ready",
     content:

@@ -3,7 +3,11 @@ import { resolvePlanForCountry, planSubtitle, COPILOT_FREE_LIMIT, COPILOT_FREE_W
 import { buildUpiPayUri, upiTransactionRef, qrCodeImageUrl, maskVpa } from './upi';
 import { createProApproveToken, verifyProApproveToken } from './upi-approve-token';
 import { blocksNewPayment, decideClaimSubmission, normalizeUtr } from './claims';
-import { isLifetimeProEmail, isLifetimeProGithub } from '@/lib/lifetime-access';
+import {
+  canAccessPracticeBeta,
+  isLifetimeProEmail,
+  isLifetimeProGithub,
+} from '@/lib/lifetime-access';
 
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'unit-test-auth-secret';
 
@@ -24,6 +28,9 @@ function run() {
   assert.equal(resolvePlanForCountry('AE').display, 'AED 3.69');
   assert.equal(COPILOT_FREE_LIMIT, 10);
   assert.equal(COPILOT_FREE_WINDOW_MS, 2 * 60 * 60 * 1000);
+  assert.ok(planSubtitle(inPlan).includes('Interview Practice'));
+  assert.ok(planSubtitle(us).includes('Resume Studio'));
+
 
   const uri = buildUpiPayUri(
     { vpa: 'testpayee@examplebank', payeeName: 'Test', amountInr: 99, note: 'Pro' },
@@ -99,7 +106,17 @@ function run() {
   assert.equal(isLifetimeProGithub('random'), false);
   assert.equal(isLifetimeProEmail('akashkaintura.ak@gmail.com'), true);
   assert.equal(isLifetimeProEmail('AKASHKAINTURA.AK@GMAIL.COM'), true);
+  assert.equal(isLifetimeProEmail('akash.k96.official@gmail.com'), true);
+  assert.equal(isLifetimeProEmail('AKASH.K96.OFFICIAL@GMAIL.COM'), true);
+  assert.equal(isLifetimeProEmail('akash.k96.official+dev@gmail.com'), true);
+  assert.equal(isLifetimeProEmail('akashk96official@gmail.com'), true); // Gmail dots ignored
   assert.equal(isLifetimeProEmail('someone@else.com'), false);
+
+  // Interview Practice beta: Akash-only by default (narrower than lifetime Pro).
+  assert.equal(canAccessPracticeBeta('akash.k96.official@gmail.com'), true);
+  assert.equal(canAccessPracticeBeta('akash.k96.official+dev@gmail.com'), true);
+  assert.equal(canAccessPracticeBeta('akashkaintura.ak@gmail.com'), false);
+  assert.equal(canAccessPracticeBeta('someone@else.com'), false);
 
   console.log('billing TS unit tests passed');
 }

@@ -1,4 +1,4 @@
-/** Geo-priced Pro plan — Resume Studio + unlimited Copilot. */
+/** Geo-priced Pro plan — Resume Studio + unlimited Copilot + Interview Practice. */
 
 export type ProPlanRegion = {
   country: string;
@@ -14,6 +14,10 @@ const INR = process.env.STRIPE_PRICE_INR || process.env.NEXT_PUBLIC_STRIPE_PRICE
 
 export const COPILOT_FREE_LIMIT = 10;
 export const COPILOT_FREE_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+/** Free Interview Practice: 1 JD pack per rolling 7 days. Pro = unlimited. */
+export const PRACTICE_FREE_LIMIT = 1;
+export const PRACTICE_FREE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const PRO_FEATURE = 'pro' as const;
 
@@ -119,5 +123,5 @@ export function resolvePlanForCountry(countryCode?: string | null): ProPlanRegio
 }
 
 export function planSubtitle(plan: ProPlanRegion): string {
-  return `${plan.display}/month · Resume Studio + unlimited Copilot`;
+  return `${plan.display}/month · Resume Studio + unlimited Copilot + Interview Practice`;
 }

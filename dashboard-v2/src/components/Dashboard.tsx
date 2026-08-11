@@ -44,7 +44,8 @@ import {
   Target,
   Mail,
   Loader2,
-  Menu
+  Menu,
+  GraduationCap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -52,6 +53,7 @@ import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHea
 import ResumeStudio from './resume-studio/ResumeStudio';
 import ProPaywall, { type PendingPayment } from './ProPaywall';
 import GeneratedDocsPanel from './GeneratedDocsPanel';
+import PracticePanel from './practice/PracticePanel';
 import AdminUsersPanel from './AdminUsersPanel';
 import AdminPaymentsPanel from './AdminPaymentsPanel';
 import { GccCampaignPanel, defaultGccCampaign, type GccCampaign } from './GccCampaignPanel';
@@ -427,7 +429,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
     if (typeof window !== 'undefined') {
       const tab = new URLSearchParams(window.location.search).get('tab');
-      if (tab === 'resume-studio' || tab === 'chat') setActiveTab(tab);
+      if (tab === 'resume-studio' || tab === 'chat' || tab === 'practice') setActiveTab(tab);
     }
   }, []);
 
@@ -1723,6 +1725,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('generated-docs'); setMobileNavOpen(false); }} />
             <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('terminal'); setMobileNavOpen(false); }} />
             <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('chat'); setMobileNavOpen(false); }} />
+            <NavItem id="nav-practice" icon={<GraduationCap size={18}/>} label="Interview Practice" active={activeTab === 'practice'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('practice'); setMobileNavOpen(false); }} />
             {SHOW_RESUME_MANAGER_NAV && (
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
             )}
@@ -4172,6 +4175,34 @@ System Initialized — v2.0`}
                 </form>
               </div>
             </motion.div>
+          )}
+
+          {activeTab === 'practice' && billing && (
+            <motion.div
+              key="practice"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 15 }}
+              transition={{ duration: 0.25 }}
+              className="w-full max-w-5xl"
+            >
+              <PracticePanel
+                pipeline={data?.pipeline || []}
+                planDisplay={billing.plan.display}
+                planSubtitle={billing.plan.subtitle}
+                pendingPayment={billing.payment}
+                onUpgrade={() => {
+                  void fetch('/api/billing/status').then(async (r) => {
+                    if (r.ok) setBilling(await r.json());
+                  });
+                }}
+              />
+            </motion.div>
+          )}
+          {activeTab === 'practice' && !billing && (
+            <div className="flex items-center gap-2 text-sm text-[#6B6B6B]">
+              <Loader2 className="animate-spin" size={16} /> Loading billing…
+            </div>
           )}
         </AnimatePresence>
         </div>

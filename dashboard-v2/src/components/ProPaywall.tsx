@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Lock, Sparkles, Bot, Loader2, Clock, RefreshCw } from 'lucide-react';
+import { Lock, Sparkles, Bot, Loader2, Clock, RefreshCw, GraduationCap } from 'lucide-react';
 
 export type PendingPayment = {
   provider?: string;
@@ -13,7 +13,7 @@ export type PendingPayment = {
 };
 
 type ProPaywallProps = {
-  feature: 'resume-studio' | 'copilot';
+  feature: 'resume-studio' | 'copilot' | 'practice';
   planDisplay: string;
   planSubtitle: string;
   copilotRemaining?: number;
@@ -38,12 +38,19 @@ export default function ProPaywall({
   const title =
     feature === 'resume-studio'
       ? 'Resume Studio is Pro'
-      : 'Copilot limit reached';
+      : feature === 'practice'
+        ? 'Interview Practice limit reached'
+        : 'Copilot limit reached';
 
   const desc =
     feature === 'resume-studio'
       ? 'Edit your master resume, live ATS preview, PDF export, and JD match — included with Pro.'
-      : `Free plan: 10 Copilot messages every 2 hours${copilotRemaining != null ? ` (${copilotRemaining} left)` : ''}. Upgrade for unlimited coaching synced to your profile.`;
+      : feature === 'practice'
+        ? 'Free plan: 1 JD practice pack every 7 days. Upgrade for unlimited coding, system design, and STAR packs tailored to each role.'
+        : `Free plan: 10 Copilot messages every 2 hours${copilotRemaining != null ? ` (${copilotRemaining} left)` : ''}. Upgrade for unlimited coaching synced to your profile.`;
+
+  const Icon =
+    feature === 'resume-studio' ? Sparkles : feature === 'practice' ? GraduationCap : Bot;
 
   async function startCheckout() {
     setLoading(true);
@@ -89,7 +96,7 @@ export default function ProPaywall({
   return (
     <div className="flex flex-col items-center justify-center min-h-[420px] px-6 py-12 text-center">
       <div className="w-14 h-14 rounded-2xl bg-[#1C1C1E] text-white flex items-center justify-center mb-5 shadow-sm">
-        {feature === 'resume-studio' ? <Sparkles size={26} /> : <Bot size={26} />}
+        <Icon size={26} />
       </div>
       <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B] mb-2">
         <Lock size={12} /> Pro
