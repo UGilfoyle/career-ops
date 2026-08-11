@@ -233,7 +233,7 @@ export default function PracticePanel({
         <div>
           <h2 className="text-lg font-bold text-[#1C1C1E]">Interview Practice</h2>
           <p className="mt-0.5 text-xs font-medium text-[#6B6B6B]">
-            JD-linked coding, system design, and behavioral packs — no live runner.
+            JD-linked coding, system design, and behavioral packs — Run button uses OnlineCompiler free SaaS.
           </p>
         </div>
         {quota && (

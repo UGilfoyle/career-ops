@@ -10,3 +10,20 @@ export {
   canAccessPracticeBeta,
   practiceComingSoonResponse,
 } from './beta';
+export {
+  executePracticeRun,
+  validatePracticeRunInput,
+  resolvePracticeRunnerProvider,
+  PRACTICE_RUN_LANGUAGES,
+  PRACTICE_RUN_MAX_CODE_BYTES,
+  PRACTICE_RUN_MAX_STDIN_BYTES,
+  isPracticeRunLanguage,
+  ONLINECOMPILER_COMPILER,
+  PISTON_LANGUAGE,
+} from './runner';
+export type {
+  PracticeRunLanguage,
+  PracticeRunRequest,
+  PracticeRunResult,
+  PracticeRunnerProvider,
+} from './runner';

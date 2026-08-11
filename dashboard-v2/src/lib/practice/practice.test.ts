@@ -10,8 +10,13 @@ import { buildOfflinePracticePack, hashJdText } from './generate-pack';
 import { assessJdPracticeFit } from './jd-keywords';
 import { validatePracticePackJson } from './schema';
 import { coercePracticePack, isLowFitFunctionalJd } from './validate-pack';
+import { ONLINECOMPILER_COMPILER, runWithOnlineCompiler } from './runner/onlinecompiler';
+import {
+  resolvePracticeRunnerProvider,
+  validatePracticeRunInput,
+} from './runner';
 
-function run() {
+async function run() {
   assert.equal(PRACTICE_FREE_LIMIT, 1);
   assert.equal(PRACTICE_FREE_WINDOW_MS, 7 * 24 * 60 * 60 * 1000);
   assert.ok(planSubtitle(resolvePlanForCountry('US')).includes('Interview Practice'));
@@ -102,7 +107,56 @@ function run() {
   assert.equal(hashJdText('abc'), hashJdText('abc'));
   assert.notEqual(hashJdText('abc'), hashJdText('abcd'));
 
+  assert.equal(resolvePracticeRunnerProvider('onlinecompiler'), 'onlinecompiler');
+  assert.equal(resolvePracticeRunnerProvider('piston'), 'piston');
+  assert.equal(resolvePracticeRunnerProvider(''), 'onlinecompiler');
+  assert.equal(ONLINECOMPILER_COMPILER.python, 'python-3.14');
+  assert.equal(ONLINECOMPILER_COMPILER.javascript, 'typescript-deno');
+
+  const badLang = validatePracticeRunInput({ language: 'nodejs', code: 'x' });
+  assert.equal(badLang.ok, false);
+  const emptyCode = validatePracticeRunInput({ language: 'python', code: '  ' });
+  assert.equal(emptyCode.ok, false);
+  const goodRun = validatePracticeRunInput({
+    language: 'python',
+    code: 'print(1)',
+    stdin: 'a',
+  });
+  assert.equal(goodRun.ok, true);
+
+  // unit-test OnlineCompiler client without network
+  const mis = await runWithOnlineCompiler(
+    { language: 'python', code: 'print(1)' },
+    { apiKey: '', fetchImpl: async () => new Response('nope') },
+  );
+  assert.equal(mis.status, 'misconfigured');
+
+  const ok = await runWithOnlineCompiler(
+    { language: 'python', code: 'print(1)' },
+    {
+      apiKey: 'test-key',
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            output: '1\n',
+            error: '',
+            status: 'success',
+            exit_code: 0,
+            time: '0.01',
+            memory: '1000',
+          }),
+          { status: 200 },
+        ),
+    },
+  );
+  assert.equal(ok.ok, true);
+  assert.equal(ok.stdout, '1\n');
+  assert.equal(ok.provider, 'onlinecompiler');
+
   console.log('practice tests passed');
 }
 
-run();
+run().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
