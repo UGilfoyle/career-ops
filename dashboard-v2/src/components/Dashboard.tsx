@@ -1674,7 +1674,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   );
 
   return (
-    <div className="flex h-[100dvh] min-h-[100dvh] bg-[#FAFAF8] text-[#1C1C1E] font-[family-name:var(--font-inter)] selection:bg-[#1C1C1E]/10">
+    <div className="flex h-[100dvh] min-h-[100dvh] max-w-[100vw] overflow-x-hidden bg-[#FAFAF8] text-[#1C1C1E] font-[family-name:var(--font-inter)] selection:bg-[#1C1C1E]/10">
       {mobileNavOpen ? (
         <button
           type="button"
@@ -1770,7 +1770,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           </div>
           <div className="w-10" aria-hidden />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8">
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8">
         <AnimatePresence>
           {isSearchOpen && (
             <motion.div
@@ -4184,7 +4184,7 @@ System Initialized — v2.0`}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 15 }}
               transition={{ duration: 0.25 }}
-              className="w-full max-w-5xl"
+              className="w-full min-w-0 max-w-5xl overflow-x-hidden"
             >
               <PracticePanel
                 pipeline={data?.pipeline || []}

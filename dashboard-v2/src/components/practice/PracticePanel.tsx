@@ -40,6 +40,9 @@ type Props = {
   onUpgrade?: () => void;
 };
 
+const fieldClass =
+  'mt-1.5 w-full min-w-0 rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-3 text-base text-[#1C1C1E] sm:py-2.5 sm:text-sm';
+
 export default function PracticePanel({
   pipeline = [],
   planDisplay,
@@ -71,11 +74,14 @@ export default function PracticePanel({
   const clientBetaAllowed =
     sessionStatus === 'authenticated' && canAccessPracticeBeta(sessionEmail);
 
-  const jobs = pipeline.slice(0, 80).map((j) => ({
-    id: String(j.pipeline_id ?? j.id ?? ''),
-    company: j.company || 'Company',
-    title: j.title || j.role || 'Role',
-  })).filter((j) => j.id);
+  const jobs = pipeline
+    .slice(0, 80)
+    .map((j) => ({
+      id: String(j.pipeline_id ?? j.id ?? ''),
+      company: j.company || 'Company',
+      title: j.title || j.role || 'Role',
+    }))
+    .filter((j) => j.id);
 
   const refreshMeta = useCallback(async () => {
     const [qRes, pRes] = await Promise.all([
@@ -161,10 +167,7 @@ export default function PracticePanel({
     setError('');
     setShowPaywall(false);
     try {
-      const body =
-        mode === 'job'
-          ? { jobId: Number(jobId) }
-          : { jdText, company, role };
+      const body = mode === 'job' ? { jobId: Number(jobId) } : { jdText, company, role };
 
       if (mode === 'job' && !jobId) {
         throw new Error('Pick a pipeline job first');
@@ -228,16 +231,16 @@ export default function PracticePanel({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+    <div className="w-full min-w-0 max-w-full space-y-4 overflow-x-hidden sm:space-y-6">
+      <div className="flex flex-col gap-3">
+        <div className="min-w-0">
           <h2 className="text-lg font-bold text-[#1C1C1E]">Interview Practice</h2>
-          <p className="mt-0.5 text-xs font-medium text-[#6B6B6B]">
-            JD-linked coding, system design, and behavioral packs — Run button uses OnlineCompiler free SaaS.
+          <p className="mt-0.5 text-xs font-medium leading-relaxed text-[#6B6B6B]">
+            JD-linked coding, system design &amp; behavioral packs. Run code in the editor.
           </p>
         </div>
         {quota && (
-          <div className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 text-xs font-semibold text-[#475569]">
+          <div className="w-full break-words rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-xs font-semibold leading-snug text-[#475569] [overflow-wrap:anywhere]">
             {quota.banner}
             {!quota.pro && quota.resetAt && quota.remaining === 0 && (
               <span className="mt-0.5 block text-[10px] font-medium text-[#9CA3AF]">
@@ -258,12 +261,12 @@ export default function PracticePanel({
         />
       )}
 
-      <div className="rounded-[1.5rem] border border-[#E5E5E0] bg-white p-5 shadow-sm">
-        <div className="mb-4 flex gap-2">
+      <div className="min-w-0 rounded-2xl border border-[#E5E5E0] bg-white p-3 shadow-sm sm:rounded-[1.5rem] sm:p-5">
+        <div className="mb-4 grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setMode('job')}
-            className={`rounded-xl px-3 py-1.5 text-xs font-bold ${
+            className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-bold sm:px-3 ${
               mode === 'job' ? 'bg-[#1C1C1E] text-white' : 'bg-[#F4F4F0] text-[#6B6B6B]'
             }`}
           >
@@ -272,7 +275,7 @@ export default function PracticePanel({
           <button
             type="button"
             onClick={() => setMode('paste')}
-            className={`rounded-xl px-3 py-1.5 text-xs font-bold ${
+            className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-bold sm:px-3 ${
               mode === 'paste' ? 'bg-[#1C1C1E] text-white' : 'bg-[#F4F4F0] text-[#6B6B6B]'
             }`}
           >
@@ -283,11 +286,7 @@ export default function PracticePanel({
         {mode === 'job' ? (
           <label className="block text-xs font-bold text-[#6B6B6B]">
             Select job
-            <select
-              value={jobId}
-              onChange={(e) => setJobId(e.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm text-[#1C1C1E]"
-            >
+            <select value={jobId} onChange={(e) => setJobId(e.target.value)} className={fieldClass}>
               <option value="">Choose…</option>
               {jobs.map((j) => (
                 <option key={j.id} value={j.id}>
@@ -296,7 +295,7 @@ export default function PracticePanel({
               ))}
             </select>
             {jobs.length === 0 && (
-              <span className="mt-1 block text-[11px] font-medium text-[#9CA3AF]">
+              <span className="mt-1 block text-[11px] font-medium leading-snug text-[#9CA3AF]">
                 No pipeline jobs yet — paste a JD instead, or run a scan.
               </span>
             )}
@@ -309,7 +308,7 @@ export default function PracticePanel({
                 <input
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm"
+                  className={fieldClass}
                   placeholder="Acme"
                 />
               </label>
@@ -318,7 +317,7 @@ export default function PracticePanel({
                 <input
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm"
+                  className={fieldClass}
                   placeholder="Senior Backend Engineer"
                 />
               </label>
@@ -328,8 +327,8 @@ export default function PracticePanel({
               <textarea
                 value={jdText}
                 onChange={(e) => setJdText(e.target.value)}
-                rows={8}
-                className="mt-1.5 w-full rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm"
+                rows={6}
+                className={fieldClass}
                 placeholder="Paste the full JD here…"
               />
             </label>
@@ -337,15 +336,17 @@ export default function PracticePanel({
         )}
 
         {error && !showPaywall && (
-          <p className="mt-3 text-xs font-semibold text-rose-600">{error}</p>
+          <p className="mt-3 break-words text-xs font-semibold text-rose-600 [overflow-wrap:anywhere]">
+            {error}
+          </p>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <button
             type="button"
             disabled={loading}
             onClick={() => void generate()}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60 sm:w-auto"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
             Generate practice pack
@@ -353,7 +354,7 @@ export default function PracticePanel({
           <button
             type="button"
             onClick={() => void refreshMeta()}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[#E5E5E0] px-3 py-2.5 text-xs font-bold text-[#6B6B6B]"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E0] px-3 py-2.5 text-xs font-bold text-[#6B6B6B] sm:w-auto"
           >
             <RefreshCw size={14} /> Refresh
           </button>
@@ -361,7 +362,7 @@ export default function PracticePanel({
       </div>
 
       {activePack && (
-        <div className="rounded-[1.5rem] border border-[#E5E5E0] bg-white p-5 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-[#E5E5E0] bg-white p-3 shadow-sm sm:rounded-[1.5rem] sm:p-5">
           <PracticePackView
             content={activePack.content}
             company={activePack.company}
@@ -371,13 +372,16 @@ export default function PracticePanel({
       )}
 
       {packs.length > 0 && (
-        <div className="rounded-[1.5rem] border border-[#E5E5E0] bg-white p-5 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-[#E5E5E0] bg-white p-3 shadow-sm sm:rounded-[1.5rem] sm:p-5">
           <h3 className="text-sm font-bold text-[#1C1C1E]">Recent packs</h3>
           <ul className="mt-3 divide-y divide-[#E5E5E0]">
             {packs.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+              <li
+                key={p.id}
+                className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:py-2.5"
+              >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[#1C1C1E]">
+                  <p className="break-words text-sm font-semibold text-[#1C1C1E] [overflow-wrap:anywhere]">
                     {(p.company || 'Company') + ' · ' + (p.role || 'Role')}
                   </p>
                   <p className="text-[11px] text-[#9CA3AF]">
@@ -388,7 +392,7 @@ export default function PracticePanel({
                 <button
                   type="button"
                   onClick={() => void loadPack(p.id)}
-                  className="shrink-0 rounded-lg border border-[#E5E5E0] px-2.5 py-1 text-[11px] font-bold text-[#475569] hover:bg-[#FAFAF8]"
+                  className="min-h-10 w-full shrink-0 rounded-xl border border-[#E5E5E0] px-3 py-2 text-xs font-bold text-[#475569] active:bg-[#FAFAF8] sm:w-auto sm:rounded-lg sm:px-2.5 sm:py-1 sm:text-[11px]"
                 >
                   Open
                 </button>

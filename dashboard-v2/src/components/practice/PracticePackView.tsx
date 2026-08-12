@@ -76,9 +76,9 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
   }
 
   return (
-    <div className="space-y-2 rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
+    <div className="min-w-0 space-y-3 rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-2.5 sm:p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
           Language
           <select
             value={language}
@@ -87,7 +87,7 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
               setResult(null);
               setError(null);
             }}
-            className="ml-2 rounded-lg border border-[#E5E5E0] bg-white px-2 py-1 text-xs font-semibold text-[#1C1C1E]"
+            className="w-full rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-base font-semibold text-[#1C1C1E] sm:text-sm"
           >
             {PRACTICE_RUN_LANGUAGES.map((l) => (
               <option key={l.id} value={l.id}>
@@ -100,9 +100,9 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
           type="button"
           onClick={() => void onRun()}
           disabled={running || !code.trim()}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-[#1C1C1E] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 sm:mt-5 sm:w-auto sm:min-w-[6.5rem]"
         >
-          {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+          {running ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
           {running ? 'Running…' : 'Run'}
         </button>
       </div>
@@ -110,9 +110,12 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
         key={`${promptKey}-${language}`}
         value={code}
         onChange={(e) => setCodeByLang((prev) => ({ ...prev, [language]: e.target.value }))}
-        rows={10}
+        rows={8}
         spellCheck={false}
-        className="w-full resize-y rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 font-mono text-xs leading-relaxed text-[#1C1C1E]"
+        inputMode="text"
+        autoCapitalize="off"
+        autoCorrect="off"
+        className="max-h-[50vh] w-full min-w-0 resize-y overflow-x-auto rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 font-mono text-[13px] leading-relaxed text-[#1C1C1E] [overflow-wrap:anywhere] sm:text-xs"
         placeholder="Write code here…"
       />
       <label className="block text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
@@ -122,27 +125,31 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
           onChange={(e) => setStdin(e.target.value)}
           rows={2}
           spellCheck={false}
-          className="mt-1 w-full resize-y rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 font-mono text-xs text-[#1C1C1E]"
+          className="mt-1 w-full min-w-0 resize-y rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 font-mono text-[13px] text-[#1C1C1E] sm:text-xs"
           placeholder="Input fed to your program"
         />
       </label>
-      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+      {error && (
+        <p className="break-words text-xs font-medium text-red-600 [overflow-wrap:anywhere]">
+          {error}
+        </p>
+      )}
       {result && (
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
+        <div className="min-w-0 space-y-1.5">
+          <p className="break-words text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] [overflow-wrap:anywhere]">
             Output · {result.provider}
             {result.compiler ? ` · ${result.compiler}` : ''}
             {result.timeSec != null ? ` · ${result.timeSec}s` : ''}
             {result.exitCode != null ? ` · exit ${result.exitCode}` : ''}
           </p>
-          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl border border-[#E5E5E0] bg-[#1C1C1E] px-3 py-2 font-mono text-[11px] text-[#E5E5E0]">
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-[#E5E5E0] bg-[#1C1C1E] px-3 py-2 font-mono text-[11px] leading-relaxed text-[#E5E5E0] [overflow-wrap:anywhere]">
             {[result.stdout, result.stderr].filter(Boolean).join('\n') || '(no output)'}
           </pre>
         </div>
       )}
       {(language === 'javascript' || language === 'typescript') && (
-        <p className="text-[10px] text-[#9CA3AF]">
-          JS/TS runs on Deno via OnlineCompiler (no Node.js runtime on free SaaS).
+        <p className="text-[10px] leading-snug text-[#9CA3AF]">
+          JS/TS runs on Deno (no Node on free SaaS).
         </p>
       )}
     </div>
@@ -167,27 +174,39 @@ export default function PracticePackView({
     return content.behavioral || [];
   }, [tab, content]);
 
-  const tabs: { id: TabId; label: string; count: number }[] = [
-    { id: 'coding', label: 'Coding', count: content.coding?.length || 0 },
-    { id: 'systemDesign', label: 'System Design', count: content.systemDesign?.length || 0 },
-    { id: 'behavioral', label: 'Behavioral', count: content.behavioral?.length || 0 },
+  const tabs: { id: TabId; label: string; short: string; count: number }[] = [
+    { id: 'coding', label: 'Coding', short: 'Code', count: content.coding?.length || 0 },
+    {
+      id: 'systemDesign',
+      label: 'System Design',
+      short: 'Design',
+      count: content.systemDesign?.length || 0,
+    },
+    {
+      id: 'behavioral',
+      label: 'Behavioral',
+      short: 'Behav',
+      count: content.behavioral?.length || 0,
+    },
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3">
-        <p className="text-sm font-bold text-[#1C1C1E]">
+    <div className="min-w-0 space-y-4 overflow-x-hidden">
+      <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-3 sm:px-4">
+        <p className="break-words text-sm font-bold leading-snug text-[#1C1C1E] [overflow-wrap:anywhere]">
           {(company || content.company || 'Company') + ' · ' + (role || content.role || 'Role')}
         </p>
         {content.fit?.note && (
-          <p className="mt-1 text-xs text-[#6B6B6B]">{content.fit.note}</p>
+          <p className="mt-1 break-words text-xs leading-relaxed text-[#6B6B6B] [overflow-wrap:anywhere]">
+            {content.fit.note}
+          </p>
         )}
         {!!content.keywords?.length && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex max-w-full flex-wrap gap-1.5">
             {content.keywords.slice(0, 12).map((k) => (
               <span
                 key={k}
-                className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-[#475569] ring-1 ring-[#E5E5E0]"
+                className="max-w-full break-all rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-[#475569] ring-1 ring-[#E5E5E0]"
               >
                 {k}
               </span>
@@ -196,7 +215,7 @@ export default function PracticePackView({
         )}
       </div>
 
-      <div className="flex gap-2 border-b border-[#E5E5E0] pb-2">
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -205,27 +224,35 @@ export default function PracticePackView({
               setTab(t.id);
               setOpenId(null);
             }}
-            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-colors ${
+            className={`shrink-0 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
               tab === t.id
                 ? 'bg-[#1C1C1E] text-white'
-                : 'bg-[#F4F4F0] text-[#6B6B6B] hover:bg-[#EBEBE6]'
+                : 'bg-[#F4F4F0] text-[#6B6B6B] active:bg-[#EBEBE6]'
             }`}
           >
-            {t.label} ({t.count})
+            <span className="sm:hidden">
+              {t.short} ({t.count})
+            </span>
+            <span className="hidden sm:inline">
+              {t.label} ({t.count})
+            </span>
           </button>
         ))}
       </div>
 
-      <ul className="space-y-2">
+      <ul className="min-w-0 space-y-2">
         {items.map((item, idx) => {
           const key = item.id || `${tab}-${idx}`;
           const open = openId === key;
           return (
-            <li key={key} className="overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white">
+            <li
+              key={key}
+              className="min-w-0 overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white"
+            >
               <button
                 type="button"
                 onClick={() => setOpenId(open ? null : key)}
-                className="flex w-full items-start gap-2 px-4 py-3 text-left"
+                className="flex w-full min-w-0 items-start gap-2 px-3 py-3 text-left sm:px-4"
               >
                 {open ? (
                   <ChevronDown size={16} className="mt-0.5 shrink-0 text-[#9CA3AF]" />
@@ -233,33 +260,45 @@ export default function PracticePackView({
                   <ChevronRight size={16} className="mt-0.5 shrink-0 text-[#9CA3AF]" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-[#1C1C1E]">{item.title}</p>
+                  <div className="flex flex-wrap items-start gap-2">
+                    <p className="min-w-0 flex-1 break-words text-sm font-bold leading-snug text-[#1C1C1E] [overflow-wrap:anywhere]">
+                      {item.title}
+                    </p>
+                    {item.difficulty && (
+                      <span className="shrink-0 rounded-full bg-[#F4F4F0] px-2 py-0.5 text-[10px] font-bold uppercase text-[#6B6B6B]">
+                        {item.difficulty}
+                      </span>
+                    )}
+                  </div>
                   {!open && (
-                    <p className="mt-0.5 line-clamp-2 text-xs text-[#6B6B6B]">{item.prompt}</p>
+                    <p className="mt-0.5 line-clamp-2 break-words text-xs text-[#6B6B6B] [overflow-wrap:anywhere]">
+                      {item.prompt}
+                    </p>
                   )}
                 </div>
-                {item.difficulty && (
-                  <span className="shrink-0 rounded-full bg-[#F4F4F0] px-2 py-0.5 text-[10px] font-bold uppercase text-[#6B6B6B]">
-                    {item.difficulty}
-                  </span>
-                )}
               </button>
               {open && (
-                <div className="space-y-3 border-t border-[#E5E5E0] px-4 py-3">
-                  <div>
+                <div className="min-w-0 space-y-3 border-t border-[#E5E5E0] px-3 py-3 sm:px-4">
+                  <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
                       Prompt
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-[#1C1C1E]">{item.prompt}</p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-[#1C1C1E] [overflow-wrap:anywhere]">
+                      {item.prompt}
+                    </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
                       Outline / hints
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-[#475569]">{item.outline}</p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-[#475569] [overflow-wrap:anywhere]">
+                      {item.outline}
+                    </p>
                   </div>
                   {item.starHint && (
-                    <p className="text-xs italic text-[#6B6B6B]">STAR tip: {item.starHint}</p>
+                    <p className="break-words text-xs italic leading-relaxed text-[#6B6B6B] [overflow-wrap:anywhere]">
+                      STAR tip: {item.starHint}
+                    </p>
                   )}
                   {tab === 'coding' && <CodingRunner promptKey={key} />}
                 </div>
