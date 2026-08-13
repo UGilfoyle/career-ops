@@ -10,7 +10,9 @@ import {
   isWeaveableNounPhrase,
   isApprovedSkillPhrase,
   isEditorIdeTool,
+  cleanSkillToken,
 } from './jd-keyword-align.mjs';
+import { isAwsServiceCrumb, isUnprovenLanguageSkill } from './resume-skills-html.mjs';
 import {
   explodeWallOfTextBullets,
   parseTenureMonths,
@@ -25,6 +27,7 @@ const PROFILE_TECH_PATTERNS = [
   /\bTypeScript\b/gi,
   /\bJavaScript\b/gi,
   /\bNode\.?js\b/gi,
+  /\bBun\b/gi,
   /\bPython\b/gi,
   /\bFastAPI\b/gi,
   /\b\.NET(?:\s+Core)?\b/gi,
@@ -343,29 +346,43 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     !/\bwe may use artificial intelligence\b/.test(jdLower);
 
   const add = (item) => {
-    const raw = String(item || '').trim();
+    const raw = cleanSkillToken(item);
     if (!raw || isJunkKeyword(raw)) return;
     // Block generic filler labels that waste ATS real estate
     if (/^(software|applications?|services?|development|technologies?|engineering|solutions?)$/i.test(raw)) return;
     if (isEditorIdeTool(raw)) return;
     // Skills row = real tech / seeded domain only — never JD prose crumbs
     if (!isApprovedSkillPhrase(raw)) return;
+    if (isAwsServiceCrumb(raw) && comps.some((c) => /^aws\b/i.test(c))) return;
     const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
     seen.add(k);
     comps.push(raw);
   };
 
-  const jdTech = extractJdTechKeywords(jdText, 22);
-  const { honest, gaps } = partitionJdKeywords(
+  const jdTech = extractJdTechKeywords(jdText, 22).map(cleanSkillToken);
+  const { honest, gaps, profileTech } = partitionJdKeywords(
     [...(jdKeywords || []), ...jdTech].filter((kw) => !isJunkKeyword(kw)),
     profile
   );
+  const honestKeys = new Set(honest.map((k) => normalizeKey(cleanSkillToken(k))));
 
-  // Proven first, then remaining real JD tech (ATS). Gaps only if they are real tools.
+  const isProvenLanguage = (kw) => {
+    if (!isUnprovenLanguageSkill(kw)) return true;
+    const k = normalizeKey(cleanSkillToken(kw));
+    if (honestKeys.has(k)) return true;
+    return (profileTech || []).some((t) => normalizeKey(t) === k);
+  };
+
+  // Proven stack first so Node/TS/Redis/Postgres lead — not JD-only Ruby/LLM crumbs.
+  for (const t of profileTech || []) add(t);
   for (const kw of honest) add(kw);
-  for (const kw of jdTech) add(kw);
+  for (const kw of jdTech) {
+    if (!isProvenLanguage(kw)) continue;
+    add(kw);
+  }
   for (const kw of gaps) {
+    if (!isProvenLanguage(kw)) continue;
     if (isApprovedSkillPhrase(kw)) add(kw);
   }
 

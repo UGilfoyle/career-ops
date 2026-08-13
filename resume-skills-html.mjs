@@ -4,11 +4,34 @@
  */
 
 import {
+  cleanSkillToken,
+  extractJdTechKeywords,
   isEditorIdeTool,
   isEmployerBrandKeyword,
   isJunkKeyword,
   isWeavableKeyword,
 } from './jd-keyword-align.mjs';
+
+export { cleanSkillToken };
+
+/** AWS product crumbs — never list beside a top-level AWS skill. */
+const AWS_SERVICE_CRUMBS = new Set([
+  'iam', 'lambda', 'aurora', 'vpc', 'sqs', 'sns', 's3', 'ec2', 'ecs', 'fargate',
+  'cloudfront', 'cloudformation', 'route 53', 'route53', 'api gateway',
+]);
+
+/** Languages we only list when the profile actually proves them. */
+const UNPROVEN_LANGUAGE_RE =
+  /^(ruby|java|php|go|golang|go \(golang\)|c#|c\+\+|swift|kotlin|scala|perl|elixir|haskell)$/i;
+
+export function isAwsServiceCrumb(text) {
+  const k = cleanSkillToken(text).toLowerCase();
+  return AWS_SERVICE_CRUMBS.has(k);
+}
+
+export function isUnprovenLanguageSkill(text) {
+  return UNPROVEN_LANGUAGE_RE.test(cleanSkillToken(text));
+}
 
 const TECH_PATTERNS = [
   /\b(java(?:script)?|python|typescript|go(?:lang)?|rust|ruby|c\+\+|c#|\.net|kotlin|swift|scala|php|perl|elixir|haskell|dart|r\b|sql|graphql|html|css|sass|less)\b/i,
@@ -60,6 +83,7 @@ const SKILL_CANONICAL = new Map([
   ['typescript', 'TypeScript'],
   ['nodejs', 'Node.js'],
   ['node.js', 'Node.js'],
+  ['bun', 'Bun'],
   ['mongodb', 'MongoDB'],
   ['graphql', 'GraphQL'],
   ['kubernetes', 'Kubernetes'],
@@ -87,7 +111,7 @@ const SKILL_CANONICAL = new Map([
 ]);
 
 export function normalizeSkillLabel(text) {
-  const s = String(text || '').trim();
+  const s = cleanSkillToken(text);
   if (!s) return '';
   const lower = s.toLowerCase();
   if (SKILL_CANONICAL.has(lower)) return SKILL_CANONICAL.get(lower);
@@ -107,7 +131,7 @@ export function normalizeSkillLabel(text) {
 }
 
 export function isTechStackSkill(text) {
-  const t = String(text || '').trim();
+  const t = cleanSkillToken(text);
   if (!t || isEditorIdeTool(t) || isJunkKeyword(t) || !isWeavableKeyword(t)) return false;
   if (isEmployerBrandKeyword(t)) return false;
   if (isNarrativeSuperpower(t)) return false;
@@ -133,12 +157,21 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+function collapseAwsCrumbs(items) {
+  const hasAws = items.some((s) => /^aws\b/i.test(String(s)));
+  if (!hasAws) return items;
+  return items.filter((s) => !isAwsServiceCrumb(s));
+}
+
 function skillsBulletList(items) {
   const seen = new Set();
   const unique = [];
-  for (const raw of items) {
-    const label = normalizeSkillLabel(String(raw || '').trim());
+  for (const raw of collapseAwsCrumbs(items)) {
+    const label = normalizeSkillLabel(raw);
     if (!label || isNarrativeSuperpower(label)) continue;
+    if (/[()[\]{}]/.test(label) && ((label.match(/[([{]/g) || []).length !== (label.match(/[)\]}]/g) || []).length)) {
+      continue;
+    }
     const key = label.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
@@ -160,7 +193,7 @@ export function sanitizeCompetencyList(items, jdText = '') {
   const out = [];
   const seen = new Set();
   for (const raw of expandSkillTokens(Array.isArray(items) ? items : [])) {
-    const s = String(raw || '').trim();
+    const s = cleanSkillToken(raw);
     if (!s) continue;
     if (isEditorIdeTool(s) || isJunkKeyword(s) || isEmployerBrandKeyword(s, jdText)) continue;
     if (isNarrativeSuperpower(s) || !isTechStackSkill(s)) continue;
@@ -171,6 +204,16 @@ export function sanitizeCompetencyList(items, jdText = '') {
     out.push(label);
   }
   return out;
+}
+
+/** Pull real tech tokens from CV/profile text so master resumes aren't empty or JD-junk. */
+export function extractTechFromTexts(texts, limit = 16) {
+  const blob = (Array.isArray(texts) ? texts : [texts])
+    .map((t) => String(t || '').trim())
+    .filter(Boolean)
+    .join('\n');
+  if (blob.length < 30) return [];
+  return sanitizeCompetencyList(extractJdTechKeywords(blob, limit), blob);
 }
 
 export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies, jdText = '') {

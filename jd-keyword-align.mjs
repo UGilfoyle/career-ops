@@ -4,7 +4,7 @@
 
 const KNOWN_TECH = [
   'JavaScript', 'TypeScript', 'Python', 'Java', 'Go', 'Golang', 'Rust', 'C#', '.NET', 'Ruby', 'PHP', 'Kotlin', 'Swift', 'Scala',
-  'React', 'React.js', 'Redux', 'Angular', 'Vue.js', 'Next.js', 'NestJS', 'Express', 'FastAPI', 'Django', 'Spring Boot', 'Node.js',
+  'React', 'React.js', 'Redux', 'Angular', 'Vue.js', 'Next.js', 'NestJS', 'Express', 'FastAPI', 'Django', 'Spring Boot', 'Node.js', 'Bun',
   'PostgreSQL', 'Postgres', 'MySQL', 'MongoDB', 'Redis', 'DynamoDB', 'Elasticsearch', 'Aurora',
   'AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD',
   'ECS', 'Lambda', 'S3', 'EC2', 'CloudFormation', 'IAM', 'VPC', 'SQS', 'SNS',
@@ -216,6 +216,9 @@ export function isApprovedSkillPhrase(kw) {
   if (isJunkKeyword(kw)) return false;
   const k = normalizeKeyword(kw);
   if (!k) return false;
+  if (/[()[\]{}]/.test(k) && ((k.match(/[([{]/g) || []).length !== (k.match(/[)\]}]/g) || []).length)) {
+    return false;
+  }
   if (isDomainSkillPhrase(k)) return true;
   // Compact tool tokens: C#, .NET, CI/CD, Node.js
   if (/[.#+/]/.test(k) && k.length <= 24 && k.split(/\s+/).length <= 3) return true;
@@ -725,8 +728,26 @@ function suppressFalsePositiveLanguages(found, text) {
   return out;
 }
 
+/**
+ * Strip unmatched / trailing punctuation so "TypeScript)" and "IAM)" never land on the resume.
+ * Keeps balanced forms like "Go (Golang)" and tokens like Node.js / C# / CI/CD.
+ */
+export function cleanSkillToken(text) {
+  let s = String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+  if (!s) return '';
+  s = s.replace(/^[\s<"']+/u, '').replace(/[\s"'.,;:]+$/u, '').trim();
+  const count = (str, re) => (str.match(re) || []).length;
+  while (/[)\]}>]$/.test(s) && count(s, /[)\]}]/g) > count(s, /[([{]/g)) {
+    s = s.slice(0, -1).trim();
+  }
+  while (/^[([{<]/.test(s) && count(s, /[([{]/g) > count(s, /[)\]}]/g)) {
+    s = s.slice(1).trim();
+  }
+  return s;
+}
+
 function normalizeKeyword(kw) {
-  return String(kw || '').trim().replace(/\s+/g, ' ');
+  return cleanSkillToken(kw);
 }
 
 function escapeRe(s) {

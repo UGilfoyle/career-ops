@@ -39,4 +39,16 @@ assert(/<li>Microservices<\/li>/i.test(narrative), 'microservices title-cased');
 assert(/<li>System Design<\/li>/i.test(narrative), 'system design title-cased');
 assert(/<li>\.NET<\/li>/i.test(narrative), '.Net normalized to .NET');
 
+const broken = renderCategorizedSkills(
+  ['AWS platform engineering (ECS, Lambda, Aurora)'],
+  ['TypeScript)', 'IAM)', 'Ruby', 'AWS', 'Node.js', 'PostgreSQL', 'Redis'],
+);
+assert(!/TypeScript\)/i.test(broken), 'no trailing paren on TypeScript');
+assert(!/IAM\)/i.test(broken), 'no trailing paren on IAM');
+assert(/<li>TypeScript<\/li>/i.test(broken), 'TypeScript cleaned');
+assert(/<li>AWS<\/li>/i.test(broken), 'AWS kept');
+assert(!/<li>IAM<\/li>/i.test(broken), 'IAM crumb dropped when AWS present');
+assert(!/<li>Lambda<\/li>/i.test(broken), 'Lambda crumb dropped when AWS present');
+assert(!/<li>Aurora<\/li>/i.test(broken), 'Aurora crumb dropped when AWS present');
+
 console.log('resume-skills-editor-block-tests: ok');

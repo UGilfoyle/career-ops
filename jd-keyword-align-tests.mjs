@@ -11,6 +11,7 @@ import {
   isWeavableKeyword,
   alignResumeToJd,
   measureJdAlignment,
+  cleanSkillToken,
 } from './jd-keyword-align.mjs';
 import {
   analyzeJdProfileFit,
@@ -110,6 +111,21 @@ assert(!fit.honest.some((h) => /^orm$/i.test(h)), 'do not claim ORM via substrin
 
 const comps = buildJdMatchedCompetencies([...fit.honest, ...fit.gaps], profile, INTERASLABS_JD, 16);
 const compText = comps.join(' ').toLowerCase();
+assert(cleanSkillToken('TypeScript)') === 'TypeScript', 'strips trailing paren');
+assert(cleanSkillToken('IAM)') === 'IAM', 'strips trailing paren on IAM');
+assert(cleanSkillToken('Go (Golang)') === 'Go (Golang)', 'keeps balanced Go (Golang)');
+
+const rubyJd = `
+Senior Backend Engineer
+Requirements: Ruby, TypeScript), IAM), AWS Lambda, Aurora, GCP, LLM, Node.js, Redis, PostgreSQL
+`;
+const rubyComps = buildJdMatchedCompetencies(extractJdKeywords(rubyJd, 20), profile, rubyJd, 16);
+const rubyText = rubyComps.join(' | ');
+assert(!/ruby/i.test(rubyText), `do not list unproven Ruby (got ${rubyText})`);
+assert(!/TypeScript\)/i.test(rubyText), 'no TypeScript) fragment');
+assert(!/IAM\)/i.test(rubyText), 'no IAM) fragment');
+assert(/node|typescript|postgres|redis|aws/i.test(rubyText), 'keeps proven backend stack');
+
 assert(/nestjs/.test(compText), 'competencies include NestJS for ATS');
 assert(/puppeteer/.test(compText), 'competencies include Puppeteer for ATS');
 assert(/azure/.test(compText), 'competencies include Azure');

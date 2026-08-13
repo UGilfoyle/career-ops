@@ -4,4 +4,6 @@ export {
   normalizeSkillLabel,
   isNarrativeSuperpower,
   sanitizeCompetencyList,
+  extractTechFromTexts,
+  cleanSkillToken,
 } from '../../../../resume-skills-html.mjs';

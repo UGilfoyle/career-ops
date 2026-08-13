@@ -3,7 +3,7 @@ import {
   normalizeExperienceBulletList,
   sanitizeExperienceEntries,
 } from '@/lib/resume/bullet-pipeline';
-import { renderCategorizedSkills } from '@/lib/resume/skills-html-bridge';
+import { extractTechFromTexts, renderCategorizedSkills } from '@/lib/resume/skills-html-bridge';
 import { renderContactBarHtml } from '@/lib/resume/contact-bar';
 import { getTemplateHtml } from './ats-professional-template';
 import type { ExperienceEntry, ResumeContext } from './types';
@@ -304,9 +304,17 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   }
   const linksLine = linkParts.join(' · ');
 
+  const profileTech = extractTechFromTexts([
+    profile.narrative?.headline,
+    profile.narrative?.exit_story,
+    ...(Array.isArray(profile.experience)
+      ? profile.experience.flatMap((e) => [e?.role, ...(e?.bullets || [])])
+      : []),
+  ], yearsExp >= 7 ? 18 : 14);
   const skillsLines = renderSkillsLines(
     profile.narrative?.superpowers,
-    yearsExp >= 7 ? 22 : 16
+    yearsExp >= 7 ? 22 : 16,
+    profileTech,
   );
   const hasSkills = Boolean(skillsLines.trim());
   const hasExperience = experience.length > 0;
