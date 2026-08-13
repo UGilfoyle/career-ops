@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
+import { ensureBackgroundSchema } from '@/lib/ops-schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,34 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
-  // Ensure runs table exists
-  await sql`
-    CREATE TABLE IF NOT EXISTS background_runs (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      action_script TEXT NOT NULL,
-      action_args TEXT,
-      status TEXT NOT NULL DEFAULT 'queued',
-      run_url TEXT,
-      queued_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      completed_at TIMESTAMP
-    );
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS background_runs_user_id_queued_at_idx ON background_runs (user_id, queued_at DESC);`;
-
-  // Ensure table exists (keeps deploys simple across DBs)
-  await sql`
-    CREATE TABLE IF NOT EXISTS background_events (
-      id SERIAL PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      action_script TEXT NOT NULL,
-      action_args TEXT,
-      status TEXT NOT NULL,
-      run_url TEXT,
-      created_at TIMESTAMP NOT NULL DEFAULT NOW()
-    );
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS background_events_user_id_created_at_idx ON background_events (user_id, created_at DESC);`;
+  await ensureBackgroundSchema(sql);
 
   if (runId) {
     // Upsert run status

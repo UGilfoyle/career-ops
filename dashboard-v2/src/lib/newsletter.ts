@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import type postgres from 'postgres';
+import { onceSchema } from './schema-once';
 
 const REF_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -70,27 +71,29 @@ export function unsubscribeUrl(userId: string | number): string {
   return `${appBaseUrl()}/api/newsletter/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
-/** Idempotent DDL for newsletter + referral columns. */
+/** Idempotent DDL for newsletter + referral columns. Runs at most once per isolate. */
 export async function ensureNewsletterSchema(sql: postgres.Sql): Promise<void> {
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS newsletter_opt_in BOOLEAN DEFAULT true`;
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`;
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by TEXT`;
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS newsletter_unsubscribed_at TIMESTAMPTZ`;
-  await sql`
-    CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_uidx
-    ON users (referral_code)
-    WHERE referral_code IS NOT NULL
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS newsletter_sends (
-      id SERIAL PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      kind TEXT NOT NULL DEFAULT 'monthly',
-      month_key TEXT NOT NULL,
-      UNIQUE (user_id, month_key, kind)
-    )
-  `;
+  await onceSchema('newsletter', async () => {
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS newsletter_opt_in BOOLEAN DEFAULT true`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by TEXT`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS newsletter_unsubscribed_at TIMESTAMPTZ`;
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_uidx
+      ON users (referral_code)
+      WHERE referral_code IS NOT NULL
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS newsletter_sends (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        kind TEXT NOT NULL DEFAULT 'monthly',
+        month_key TEXT NOT NULL,
+        UNIQUE (user_id, month_key, kind)
+      )
+    `;
+  });
 }
 
 /** Ensure user has a unique referral_code; returns the code. */

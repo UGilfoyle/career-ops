@@ -1,7 +1,5 @@
 import { auth } from "@/auth";
-import Dashboard from "@/components/Dashboard";
 import LandingPage from "@/components/LandingPage";
-import { getDashboardData } from "@/lib/data-fetcher";
 
 export default async function Page() {
   const session = await auth();
@@ -9,6 +7,11 @@ export default async function Page() {
   if (!session?.user?.id) {
     return <LandingPage />;
   }
+
+  const [{ default: Dashboard }, { getDashboardData }] = await Promise.all([
+    import("@/components/Dashboard"),
+    import("@/lib/data-fetcher"),
+  ]);
 
   const initialData = await getDashboardData(session.user.id);
 

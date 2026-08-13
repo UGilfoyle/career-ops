@@ -63,12 +63,9 @@ export const authConfig = {
           );
         }
 
-        const pg = require("pg");
-        const pool = new pg.Pool({
-          connectionString: process.env.DATABASE_URL,
-          ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
-        });
         const bcrypt = require("bcryptjs");
+        const { getPgPool } = await import("@/lib/pg-pool");
+        const pool = getPgPool();
 
         try {
           const res = await pool.query("SELECT * FROM users WHERE email = $1 LIMIT 1", [email]);
@@ -108,8 +105,6 @@ export const authConfig = {
           }
           console.error("Auth Error:", error);
           return null;
-        } finally {
-          await pool.end();
         }
       },
     }),
@@ -145,4 +140,6 @@ export const authConfig = {
     signIn: "/login",
   },
   secret: process.env.AUTH_SECRET,
+  // Localhost + Vercel both send a Host that may not match AUTH_URL (prod domain).
+  trustHost: true,
 } satisfies NextAuthConfig;

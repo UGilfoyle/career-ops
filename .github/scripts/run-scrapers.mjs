@@ -98,7 +98,14 @@ function runScraper(userId) {
     const scriptArgs =
       script === 'add-job.mjs' && rawArgs ? [rawArgs] : rawArgs ? rawArgs.split(/\s+/) : [];
 
-    const child = spawn('node', [script, ...scriptArgs], {
+    const dashCopy = path.join(ROOT, 'dashboard-v2', 'scripts', script);
+    const preferDashboard = new Set(['scratch-scan.mjs', 'gcc-scan.mjs', 'rank-pipeline.mjs']);
+    const scriptPath =
+      preferDashboard.has(script) && fs.existsSync(dashCopy)
+        ? dashCopy
+        : path.join(ROOT, script);
+
+    const child = spawn('node', [scriptPath, ...scriptArgs], {
       cwd: ROOT,
       env: { ...process.env, SCAN_USER_ID: userId.toString(), RUN_ID: process.env.RUN_ID || '' },
       stdio: 'inherit',

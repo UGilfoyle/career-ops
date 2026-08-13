@@ -37,6 +37,11 @@ const sql = postgres(cleanDbUrl, {
   connect_timeout: 20,
 });
 
+function r2ForcePathStyle() {
+  const forceFlag = String(process.env.R2_FORCE_PATH_STYLE || '').trim();
+  return forceFlag === '' || forceFlag === '1' || forceFlag.toLowerCase() === 'true';
+}
+
 function getR2Client() {
   const accountId = process.env.R2_ACCOUNT_ID || '';
   const accessKeyId = process.env.R2_ACCESS_KEY_ID || '';
@@ -48,7 +53,7 @@ function getR2Client() {
   return new S3Client({
     region: 'auto',
     endpoint,
-    forcePathStyle: process.env.R2_FORCE_PATH_STYLE === '1',
+    forcePathStyle: r2ForcePathStyle(),
     credentials: { accessKeyId, secretAccessKey },
   });
 }

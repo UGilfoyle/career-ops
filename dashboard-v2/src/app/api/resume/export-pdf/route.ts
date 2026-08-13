@@ -9,6 +9,7 @@ import { readR2Object, uploadToR2 } from '@/lib/r2-client';
 import { rateLimit, rateLimitResponse, formatRetryHint } from '@/lib/rate-limit';
 import { assertProAccess } from '@/lib/billing/entitlements';
 import { countryFromRequest } from '@/lib/billing/geo';
+import { ensureMasterPdfSchema } from '@/lib/ops-schema';
 import { writeFile, unlink, mkdir, readFile, access } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -241,21 +242,8 @@ async function pollR2Pdf(pdfKey: string, attempts = 28, intervalMs = 3000): Prom
   return null;
 }
 
-async function ensureMasterPdfTable(): Promise<void> {
-  await sql`
-    CREATE TABLE IF NOT EXISTS master_pdf_exports (
-      user_id TEXT NOT NULL,
-      content_hash TEXT NOT NULL,
-      html TEXT,
-      pdf BYTEA,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (user_id, content_hash)
-    )
-  `;
-}
-
 async function persistPendingHtml(userId: string, hash: string, html: string): Promise<void> {
-  await ensureMasterPdfTable();
+  await ensureMasterPdfSchema(sql);
   await sql`
     INSERT INTO master_pdf_exports (user_id, content_hash, html, updated_at)
     VALUES (${userId}, ${hash}, ${html}, NOW())
@@ -266,7 +254,7 @@ async function persistPendingHtml(userId: string, hash: string, html: string): P
 }
 
 async function persistMasterPdfBytes(userId: string, hash: string, pdf: Buffer): Promise<void> {
-  await ensureMasterPdfTable();
+  await ensureMasterPdfSchema(sql);
   await sql`
     INSERT INTO master_pdf_exports (user_id, content_hash, pdf, updated_at)
     VALUES (${userId}, ${hash}, ${pdf}, NOW())
@@ -278,7 +266,7 @@ async function persistMasterPdfBytes(userId: string, hash: string, pdf: Buffer):
 
 async function loadPdfFromDb(userId: string, hash: string): Promise<Buffer | null> {
   try {
-    await ensureMasterPdfTable();
+    await ensureMasterPdfSchema(sql);
     const [row] = await sql`
       SELECT pdf FROM master_pdf_exports
       WHERE user_id = ${userId} AND content_hash = ${hash} AND pdf IS NOT NULL

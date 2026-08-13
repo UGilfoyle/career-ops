@@ -11,6 +11,7 @@ import {
   ensureUserReferralCode,
   generateReferralCode,
 } from '@/lib/newsletter';
+import { ensureUserProfilesSchema } from '@/lib/ops-schema';
 
 // Lead Engineer Note: Enforcing a strict schema for the registration payload
 const RegistrationSchema = z.object({
@@ -61,15 +62,7 @@ export async function POST(req: Request) {
     // 2. Lead Engineer Schema Guard: Ensure tables exist
     // This prevents 500 errors if the DB is fresh
     try {
-      await sql`
-        CREATE TABLE IF NOT EXISTS user_profiles (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER UNIQUE,
-          resume_context JSONB DEFAULT '{}',
-          targeting_keywords JSONB DEFAULT '{"positive": [], "negative": []}',
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        )
-      `;
+      await ensureUserProfilesSchema(sql);
       await ensureNewsletterSchema(sql);
     } catch (schemaError) {
        console.error('Schema Sync Warning:', schemaError);

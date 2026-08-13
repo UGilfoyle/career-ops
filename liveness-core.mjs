@@ -25,8 +25,8 @@ const LISTING_PAGE_PATTERNS = [
 // render a tiny challenge page instead of the posting. Headless Playwright trips
 // these on portals like pracuj.pl. They must NOT be read as expired: the body is
 // short and lacks an apply control, so without this guard they fall through to
-// `insufficient_content` → expired, and scan --verify would write live jobs to
-// scan-history and permanently filter them out. Treat as uncertain instead.
+// `insufficient_content` → uncertain, so scan --verify does not write live jobs
+// to scan-history and permanently filter them out.
 const BOT_CHALLENGE_PATTERNS = [
   /just a moment/i,
   /performing security verification/i,
@@ -107,7 +107,11 @@ export function classifyLiveness({ status = 0, finalUrl = '', bodyText = '', app
   }
 
   if (bodyText.trim().length < MIN_CONTENT_CHARS) {
-    return { result: 'expired', code: 'insufficient_content', reason: 'insufficient content — likely nav/footer only' };
+    return {
+      result: 'uncertain',
+      code: 'insufficient_content',
+      reason: 'insufficient content — likely nav/footer, challenge, or slow load',
+    };
   }
 
   return { result: 'uncertain', code: 'no_apply_control', reason: 'content present but no visible apply control found' };

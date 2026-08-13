@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import dynamic from 'next/dynamic';
 import { 
   MessageSquare,
   Send,
@@ -50,13 +51,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHeader';
-import ResumeStudio from './resume-studio/ResumeStudio';
 import ProPaywall, { type PendingPayment } from './ProPaywall';
-import GeneratedDocsPanel from './GeneratedDocsPanel';
-import PracticePanel from './practice/PracticePanel';
-import AdminUsersPanel from './AdminUsersPanel';
-import AdminPaymentsPanel from './AdminPaymentsPanel';
-import { GccCampaignPanel, defaultGccCampaign, type GccCampaign } from './GccCampaignPanel';
+import { defaultGccCampaign, type GccCampaign } from './gcc-campaign';
 import { ONBOARDING_STORAGE_KEY, DASHBOARD_TOUR_STEPS } from '@/lib/onboarding-flow';
 import {
   STALE_POSTING_DAYS,
@@ -67,6 +63,39 @@ import {
 
 /** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
 const SHOW_RESUME_MANAGER_NAV = false;
+
+function TabLoading() {
+  return (
+    <div className="flex items-center justify-center py-24 text-[#9CA3AF]">
+      <Loader2 className="animate-spin" size={24} />
+    </div>
+  );
+}
+
+const ResumeStudio = dynamic(() => import('./resume-studio/ResumeStudio'), {
+  ssr: false,
+  loading: TabLoading,
+});
+const PracticePanel = dynamic(() => import('./practice/PracticePanel'), {
+  ssr: false,
+  loading: TabLoading,
+});
+const GeneratedDocsPanel = dynamic(() => import('./GeneratedDocsPanel'), {
+  ssr: false,
+  loading: TabLoading,
+});
+const AdminUsersPanel = dynamic(() => import('./AdminUsersPanel'), {
+  ssr: false,
+  loading: TabLoading,
+});
+const AdminPaymentsPanel = dynamic(() => import('./AdminPaymentsPanel'), {
+  ssr: false,
+  loading: TabLoading,
+});
+const GccCampaignPanel = dynamic(
+  () => import('./GccCampaignPanel').then((m) => ({ default: m.GccCampaignPanel })),
+  { ssr: false, loading: TabLoading }
+);
 
 function formatRelativeTime(dateStr?: string | null) {
   if (!dateStr) return '—';
@@ -193,6 +222,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [jobDetailsError, setJobDetailsError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [lgUp, setLgUp] = useState(false);
 
   // Visitor analytics state
   const [visitorStats, setVisitorStats] = useState<any>(null);
@@ -353,7 +383,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     (data?.targeting_keywords?.positive?.length ?? 0) > 0;
   const githubDone = Boolean(
     profileFormData.github_settings?.pat?.trim() ||
-    data?.resume_context?.github_settings?.pat?.trim()
+    profileFormData.github_settings?.has_pat ||
+    data?.profile?.github_settings?.has_pat ||
+    data?.resume_context?.github_settings?.has_pat
   );
   const scanDone = pipelineCount > 0;
   const tailorDone = (data?.pdfs?.length ?? 0) > 0;
@@ -464,6 +496,27 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       }
       return next;
     });
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const sync = () => {
+      setLgUp(mq.matches);
+      if (!mq.matches) setMobileNavOpen(false);
+    };
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  /** Icon rail only on desktop; phone drawer always shows full labels. */
+  const navCollapsed = lgUp && sidebarCollapsed;
+
+  const goTab = (tab: string, extra?: () => void) => {
+    setActiveTab(tab);
+    setMobileNavOpen(false);
+    extra?.();
   };
 
   useEffect(() => {
@@ -890,6 +943,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   };
 
   useEffect(() => {
+    const pollFingerprint = (meta: Record<string, unknown> | undefined) =>
+      [
+        meta?.lastBackgroundEventId,
+        meta?.jobsTotal,
+        meta?.jobsRanked,
+        meta?.lastJobUpdatedAt,
+        meta?.lastBackgroundStatus,
+        meta?.gccPipelineCount,
+      ].join('|');
+
+    let lastFp = pollFingerprint(initialData?.meta);
+
     const fetchData = () => {
       fetch('/api/data?t=' + Date.now(), { cache: 'no-store' })
         .then(res => res.json())
@@ -985,17 +1050,60 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             }
             return d;
           });
+          lastFp = pollFingerprint(d?.meta);
           setLoading(false);
         });
     };
-    if (!initialData) {
-      fetchData();
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (!initialData) fetchData();
+
+    const schedule = (ms: number) => {
+      if (cancelled) return;
+      timer = setTimeout(tick, ms);
+    };
+
+    const tick = () => {
+      if (cancelled) return;
+      if (typeof document !== 'undefined' && document.hidden) {
+        schedule(20_000);
+        return;
+      }
+      fetch('/api/data?poll=1&t=' + Date.now(), { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((lite) => {
+          if (cancelled) return;
+          const nextFp = pollFingerprint(lite?.meta);
+          const running = String(lite?.meta?.lastBackgroundStatus || '').toLowerCase();
+          if (nextFp !== lastFp) {
+            lastFp = nextFp;
+            fetchData();
+          }
+          schedule(running === 'running' || running === 'pending' ? 8_000 : 20_000);
+        })
+        .catch(() => schedule(20_000));
+    };
+
+    const onVisibility = () => {
+      if (typeof document === 'undefined' || document.hidden) return;
+      if (timer) clearTimeout(timer);
+      tick();
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibility);
     }
-    // Poll every 5 seconds to ensure near-instant updates when GitHub Actions finish
-    const interval = setInterval(fetchData, 5000); 
+    schedule(20_000);
+
     // Also fetch visitor stats for the stat card
     fetch('/api/view').then(r => r.json()).then(setVisitorStats).catch(() => {});
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibility);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -1010,7 +1118,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             education: d.resume_context?.education || [],
             targeting_keywords: d.targeting_keywords || { positive: [], negative: [] },
             search: d.resume_context?.search || { portals: ['linkedin', 'naukri', 'indeed', 'instahyre', 'flexiple', 'greenhouse', 'lever', 'japan-dev'] },
-            github_settings: d.resume_context?.github_settings || { pat: '', repo: 'UGilfoyle/career-ops' },
+            github_settings: {
+              pat: '',
+              repo: d.resume_context?.github_settings?.repo || 'UGilfoyle/career-ops',
+              has_pat: Boolean(d.resume_context?.github_settings?.has_pat),
+            },
             studio: d.resume_context?.studio || { template_id: 'ats-professional' },
           });
           setGccCampaign(d.resume_context?.gcc_campaign || defaultGccCampaign());
@@ -1685,9 +1797,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       ) : null}
       {/* Sidebar: drawer on mobile, fixed rail on desktop */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-[width,transform] duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[min(16rem,88vw)] flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-[width,transform] duration-300 ease-in-out lg:static lg:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } ${sidebarCollapsed ? 'w-[4.5rem] lg:w-[4.5rem]' : 'w-60'}`}
+        } ${navCollapsed ? 'lg:w-[4.5rem]' : 'lg:w-60'}`}
       >
         <button
           type="button"
@@ -1699,54 +1811,64 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         >
           {sidebarCollapsed ? <ChevronRight size={14} strokeWidth={2.5} /> : <ChevronLeft size={14} strokeWidth={2.5} />}
         </button>
-        <div className={`flex-1 overflow-y-auto overflow-x-hidden ${sidebarCollapsed ? 'px-2 py-4' : 'px-4 py-6'}`}>
+        <div className={`flex-1 overflow-y-auto overflow-x-hidden ${navCollapsed ? 'px-2 py-4' : 'px-4 py-6'}`}>
           <div
             className={`mb-6 flex items-center ${
-              sidebarCollapsed ? 'justify-center' : 'gap-2.5 px-1'
+              navCollapsed ? 'justify-center' : 'gap-2.5 px-1'
             }`}
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1c1c1e]">
               <Zap size={14} className="text-white" strokeWidth={2} />
             </div>
-            {!sidebarCollapsed && (
-              <div className="flex min-w-0 items-baseline gap-1.5 overflow-hidden">
+            {!navCollapsed && (
+              <div className="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden">
                 <span className="truncate text-[16px] font-semibold text-[#1a1a1a]">Career-Ops</span>
                 <span className="shrink-0 text-[11px] font-medium text-[#9ca3af]">v2.0</span>
               </div>
             )}
+            {!lgUp && (
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(false)}
+                className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E5E0] bg-white text-[#6B6B6B]"
+                aria-label="Close navigation"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
 
           <nav className="space-y-0.5">
-            <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); }} />
-            <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('pipeline'); setMobileNavOpen(false); }} />
-            <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('apps'); setMobileNavOpen(false); }} />
-            <NavItem id="nav-gcc" icon={<Target size={18}/>} label="GCC Campaign" active={activeTab === 'gcc'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('gcc'); setMobileNavOpen(false); }} />
-            <NavItem id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('resume-studio'); setMobileNavOpen(false); }} badge={showBetaBanner || process.env.NEXT_PUBLIC_BETA_MODE === '1' ? 'Beta' : undefined} />
-            <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('generated-docs'); setMobileNavOpen(false); }} />
-            <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('terminal'); setMobileNavOpen(false); }} />
-            <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('chat'); setMobileNavOpen(false); }} />
-            <NavItem id="nav-practice" icon={<GraduationCap size={18}/>} label="Interview Practice" active={activeTab === 'practice'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('practice'); setMobileNavOpen(false); }} />
+            <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={navCollapsed} onClick={() => goTab('dashboard')} />
+            <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={navCollapsed} onClick={() => goTab('pipeline')} />
+            <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={navCollapsed} onClick={() => goTab('apps')} />
+            <NavItem id="nav-gcc" icon={<Target size={18}/>} label="GCC Campaign" active={activeTab === 'gcc'} collapsed={navCollapsed} onClick={() => goTab('gcc')} />
+            <NavItem id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={navCollapsed} onClick={() => goTab('resume-studio')} badge={showBetaBanner || process.env.NEXT_PUBLIC_BETA_MODE === '1' ? 'Beta' : undefined} />
+            <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={navCollapsed} onClick={() => goTab('generated-docs')} />
+            <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={navCollapsed} onClick={() => goTab('terminal')} />
+            <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={navCollapsed} onClick={() => goTab('chat')} />
+            <NavItem id="nav-practice" icon={<GraduationCap size={18}/>} label="Interview Practice" active={activeTab === 'practice'} collapsed={navCollapsed} onClick={() => goTab('practice')} />
             {SHOW_RESUME_MANAGER_NAV && (
-            <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('cv')} />
+            <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={navCollapsed} onClick={() => goTab('cv')} />
             )}
             {isAdmin && (
-              <NavItem id="nav-analytics" icon={<Shield size={18}/>} label="Admin" active={activeTab === 'analytics'} collapsed={sidebarCollapsed} onClick={() => { setActiveTab('analytics'); if (!adminOverview) { void loadAdminData(); } }} />
+              <NavItem id="nav-analytics" icon={<Shield size={18}/>} label="Admin" active={activeTab === 'analytics'} collapsed={navCollapsed} onClick={() => goTab('analytics', () => { if (!adminOverview) { void loadAdminData(); } })} />
             )}
-            <NavItem id="nav-docs" icon={<BookOpen size={18}/>} label="Tutorial & Docs" active={activeTab === 'docs'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('docs')} />
+            <NavItem id="nav-docs" icon={<BookOpen size={18}/>} label="Tutorial & Docs" active={activeTab === 'docs'} collapsed={navCollapsed} onClick={() => goTab('docs')} />
           </nav>
         </div>
 
-        <div className={`mt-auto border-t border-[#E5E5E0] ${sidebarCollapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
-          <NavItem id="nav-settings" icon={<Settings size={18}/>} label="Settings" active={activeTab === 'settings'} collapsed={sidebarCollapsed} onClick={() => setActiveTab('settings')} />
+        <div className={`mt-auto border-t border-[#E5E5E0] ${navCollapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
+          <NavItem id="nav-settings" icon={<Settings size={18}/>} label="Settings" active={activeTab === 'settings'} collapsed={navCollapsed} onClick={() => goTab('settings')} />
           <button
             onClick={() => signOut({ callbackUrl: '/' })}
-            title={sidebarCollapsed ? 'Sign Out' : undefined}
+            title={navCollapsed ? 'Sign Out' : undefined}
             className={`group mt-2 flex w-full items-center rounded-xl text-[#6B6B6B] transition-all hover:bg-white/50 hover:text-[#1C1C1E] ${
-              sidebarCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
+              navCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
             }`}
           >
             <LogOut size={18} className="opacity-70 transition-opacity group-hover:opacity-100" />
-            {!sidebarCollapsed && <span className="text-sm font-bold">Sign Out</span>}
+            {!navCollapsed && <span className="text-sm font-bold">Sign Out</span>}
           </button>
         </div>
       </aside>
@@ -4021,7 +4143,7 @@ System Initialized — v2.0`}
                           github_settings: { ...(profileFormData.github_settings || {}), pat: v }
                         })}
                         placeholder="ghp_..."
-                        hint="Create a classic PAT with workflow scope, paste it here, then retry scan/tailor --deep. Missing PAT shows a clear toast — not a raw stderr dump."
+                        hint="Classic PAT with workflow scope. Leave blank to keep the saved token. Missing PAT shows a toast — not a raw stderr dump."
                       />
                       <Input
                         label="GitHub Repository Name"
@@ -4805,10 +4927,10 @@ function Input({
       </div>
       <input
         type={type}
-        value={value}
+        value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
         className={`w-full bg-[#FAFAF8]/50 border rounded-2xl p-4 outline-none focus:border-[#1C1C1E] transition-all text-sm font-bold text-[#1C1C1E] ${
-          value?.trim() ? 'border-[#E5E5E0]' : required ? 'border-rose-200 focus:border-rose-400' : 'border-[#E5E5E0]'
+          (value ?? '').trim() ? 'border-[#E5E5E0]' : required ? 'border-rose-200 focus:border-rose-400' : 'border-[#E5E5E0]'
         }`}
         placeholder={placeholder}
         required={required}
@@ -4880,7 +5002,7 @@ function TagInput({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
         <input
           ref={inputRef}
           type="text"
-          value={inputValue}
+          value={inputValue ?? ''}
           onChange={(e) => {
             // Support pasting comma-separated values
             const val = e.target.value;

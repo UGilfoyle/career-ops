@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { resolvePlanForCountry, planSubtitle, COPILOT_FREE_LIMIT, COPILOT_FREE_WINDOW_MS } from './plans';
 import { buildUpiPayUri, upiTransactionRef, qrCodeImageUrl, maskVpa } from './upi';
-import { createProApproveToken, verifyProApproveToken } from './upi-approve-token';
+import { createProApproveToken, UPI_APPROVE_TTL_MS, verifyProApproveToken } from './upi-approve-token';
 import { blocksNewPayment, decideClaimSubmission, normalizeUtr } from './claims';
 import {
   canAccessPracticeBeta,
@@ -48,9 +48,14 @@ function run() {
   assert.ok(masked.endsWith('@examplebank'));
   assert.equal(maskVpa(''), '••••');
 
-  const tok = createProApproveToken('12');
-  assert.equal(verifyProApproveToken('12', tok), true);
-  assert.equal(verifyProApproveToken('13', tok), false);
+  const now = 1_700_000_000_000;
+  const tok = createProApproveToken('12', now);
+  assert.equal(verifyProApproveToken('12', tok, now), true);
+  assert.equal(verifyProApproveToken('13', tok, now), false);
+  assert.equal(verifyProApproveToken('12', tok, now + UPI_APPROVE_TTL_MS + 1), false);
+  assert.equal(verifyProApproveToken('12', 'deadbeefdeadbeefdeadbeef', now), false);
+  const tampered = tok.replace(/^\d+/, String(now + UPI_APPROVE_TTL_MS * 10));
+  assert.equal(verifyProApproveToken('12', tampered, now), false);
 
   assert.equal(normalizeUtr(' ab cd 1234 '), 'ABCD1234');
   assert.equal(

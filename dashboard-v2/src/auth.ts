@@ -1,19 +1,22 @@
 import NextAuth from "next-auth"
 import { authConfig, sessionConfig } from "./auth.config"
-import pg from "pg"
+import { getPgPool } from "@/lib/pg-pool"
 import { generateVerificationToken } from "@/lib/tokens"
 import { sendVerificationEmail } from "@/lib/mail"
 
-// Strip channel_binding which is unsupported by the pg Node.js library
-const cleanDbUrl = (process.env.DATABASE_URL || '')
-  .replace('&channel_binding=require', '')
-  .replace('?channel_binding=require&', '?')
-  .replace('?channel_binding=require', '')
+const pool = getPgPool()
+let githubLoginColumnReady: boolean | null = null
 
-const pool = new pg.Pool({
-  connectionString: cleanDbUrl,
-  ssl: { rejectUnauthorized: false },
-})
+async function usersHaveGithubLogin(client: { query: (sql: string) => Promise<unknown> }): Promise<boolean> {
+  if (githubLoginColumnReady !== null) return githubLoginColumnReady
+  try {
+    await client.query('SELECT github_login FROM users LIMIT 0')
+    githubLoginColumnReady = true
+  } catch {
+    githubLoginColumnReady = false
+  }
+  return githubLoginColumnReady
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -39,17 +42,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const client = await pool.connect();
           try {
-            // Best-effort: lifetime Pro needs github_login, but login must never
-            // fail if the column is missing on an older DB (pre-migrate).
-            let hasGithubLoginCol = false;
-            try {
-              await client.query(
-                'ALTER TABLE users ADD COLUMN IF NOT EXISTS github_login TEXT'
-              );
-              hasGithubLoginCol = true;
-            } catch (colErr) {
-              console.warn('github_login column ensure skipped:', colErr);
-            }
+            const hasGithubLoginCol = await usersHaveGithubLogin(client);
 
             // Check if user exists and whether email verification is complete.
             const existing = await client.query(

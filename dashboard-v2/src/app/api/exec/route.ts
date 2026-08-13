@@ -6,6 +6,7 @@ import yaml from 'js-yaml';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
 import { rateLimit, formatRetryHint } from '@/lib/rate-limit';
+import { ensureBackgroundSchema } from '@/lib/ops-schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -428,18 +429,7 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
   try {
     // Create a run record (for lifecycle + traceability)
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    await sql`
-      CREATE TABLE IF NOT EXISTS background_runs (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        action_script TEXT NOT NULL,
-        action_args TEXT,
-        status TEXT NOT NULL DEFAULT 'queued',
-        run_url TEXT,
-        queued_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        completed_at TIMESTAMP
-      );
-    `;
+    await ensureBackgroundSchema(sql);
     await sql`
       INSERT INTO background_runs (id, user_id, action_script, action_args, status)
       VALUES (${runId}, ${String(userId)}, ${script}, ${args || null}, 'queued')
@@ -692,18 +682,7 @@ export async function POST(req: NextRequest) {
       }
 
       const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      await sql`
-        CREATE TABLE IF NOT EXISTS background_runs (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          action_script TEXT NOT NULL,
-          action_args TEXT,
-          status TEXT NOT NULL DEFAULT 'queued',
-          run_url TEXT,
-          queued_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          completed_at TIMESTAMP
-        );
-      `;
+      await ensureBackgroundSchema(sql);
       await sql`
         INSERT INTO background_runs (id, user_id, action_script, action_args, status)
         VALUES (${runId}, ${String(userId)}, ${script}, ${scriptArgs || null}, 'queued')

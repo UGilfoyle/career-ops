@@ -2,61 +2,24 @@
 
 import { chromium } from 'playwright';
 import sql from './db/client.mjs';
+import {
+  checkUrlLiveness,
+  jitteredDelayMs,
+  newLivenessPage,
+  sleep,
+} from './liveness-browser.mjs';
 
-// things that mean the job is probably closed
-const EXPIRED_PATTERNS = [
-  /job (is )?no longer available/i,
-  /job.*no longer open/i,
-  /position has been filled/i,
-  /this job has expired/i,
-  /job posting has expired/i,
-  /no longer accepting applications/i,
-  /this (position|role|job) (is )?no longer/i,
-  /this job (listing )?is closed/i,
-  /job (listing )?not found/i,
-  /the page you are looking for doesn.t exist/i,
-  /\d+\s+jobs?\s+found/i,
-  /search for jobs page is loaded/i,
-];
-
-const APPLY_PATTERNS = [
-  /\bapply\b/i,
-  /submit application/i,
-  /easy apply/i,
-  /start application/i,
-];
-
-async function checkUrl(page, url) {
-  try {
-    const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    const status = response?.status() ?? 0;
-    if (status === 404 || status === 410) return { result: 'expired', reason: `HTTP ${status}` };
-
-    // Wait for the page to actually load properly
-    const bodyText = await page.evaluate(() => document.body?.innerText ?? '');
-
-    // If we see an apply button, it's definitely alive
-
-    for (const pattern of EXPIRED_PATTERNS) {
-      if (pattern.test(bodyText)) return { result: 'expired', reason: `pattern matched: ${pattern.source}` };
-    }
-
-    if (bodyText.trim().length < 300) return { result: 'expired', reason: 'insufficient content' };
-
-    return { result: 'uncertain', reason: 'content present but no apply button' };
-  } catch (err) {
-    return { result: 'expired', reason: `navigation error: ${err.message.split('\n')[0]}` };
-  }
-}
+/** Only hard-expired postings are removed. Uncertain / bot-wall / short pages stay. */
+const HARD_DELETE_CODES = new Set(['http_gone', 'expired_url', 'expired_body']);
 
 async function main() {
-  console.log('🔍 Checking top pending jobs to see if they still exist...');
+  console.log('Checking pending jobs against liveness-core (hard-expired only)...');
 
   const jobs = await sql`
-    SELECT id, url, company 
-    FROM jobs 
+    SELECT id, url, company
+    FROM jobs
     WHERE id NOT IN (SELECT job_id FROM applications)
-    ORDER BY score DESC 
+    ORDER BY score DESC
     LIMIT 20
   `;
 
@@ -66,24 +29,35 @@ async function main() {
   }
 
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  const page = await newLivenessPage(browser);
+  let deleted = 0;
+  let skipped = 0;
 
-  for (const job of jobs) {
-    const { result, reason } = await checkUrl(page, job.url);
-    const icon = { active: '✅', expired: '❌', uncertain: '⚠️' }[result];
-    console.log(`${icon} ${result.padEnd(10)} ${job.company.padEnd(15)} | ${job.url}`);
-    
-    if (result === 'expired') {
-      console.log(`           ↳ Deleting ${job.id} from DB: ${reason}`);
-      await sql`DELETE FROM jobs WHERE id = ${job.id}`;
+  try {
+    for (const [i, job] of jobs.entries()) {
+      if (i > 0) await sleep(jitteredDelayMs(800));
+      const { result, reason, code } = await checkUrlLiveness(page, job.url);
+      const icon = { active: 'ok', expired: 'expired', uncertain: 'skip' }[result] || result;
+      console.log(`${icon.padEnd(8)} ${String(job.company || '').padEnd(18)} ${code || ''} | ${job.url}`);
+
+      if (result === 'expired' && HARD_DELETE_CODES.has(code)) {
+        console.log(`         delete ${job.id}: ${reason}`);
+        await sql`DELETE FROM jobs WHERE id = ${job.id}`;
+        deleted += 1;
+      } else if (result === 'expired') {
+        console.log(`         keep ${job.id} (weak expire ${code}): ${reason}`);
+        skipped += 1;
+      }
     }
+  } finally {
+    await browser.close();
   }
 
-  await browser.close();
+  console.log(`Done. deleted=${deleted} weak-expire-kept=${skipped}`);
   process.exit(0);
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message);
   process.exit(1);
 });

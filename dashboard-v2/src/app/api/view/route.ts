@@ -3,30 +3,9 @@ import sql from '@/lib/db';
 import { headers } from 'next/headers';
 import crypto from 'crypto';
 import { isAdminEmail } from '@/lib/admin';
+import { ensurePageViewsSchema } from '@/lib/ops-schema';
 
 export const dynamic = 'force-dynamic';
-
-// Ensure the page_views table exists
-async function ensureTable() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS page_views (
-      id SERIAL PRIMARY KEY,
-      visitor_hash TEXT NOT NULL,
-      path TEXT NOT NULL DEFAULT '/',
-      referrer TEXT,
-      user_agent TEXT,
-      country TEXT,
-      created_at TIMESTAMP NOT NULL DEFAULT NOW()
-    );
-  `;
-  // Index for fast unique visitor queries
-  await sql`
-    CREATE INDEX IF NOT EXISTS idx_page_views_visitor_hash ON page_views (visitor_hash);
-  `;
-  await sql`
-    CREATE INDEX IF NOT EXISTS idx_page_views_created_at ON page_views (created_at);
-  `;
-}
 
 // Generate a privacy-safe visitor hash from IP + User-Agent (no raw IP stored)
 function getVisitorHash(ip: string, ua: string): string {
@@ -41,7 +20,7 @@ function getVisitorHash(ip: string, ua: string): string {
 // POST: Record a page view
 export async function POST(request: Request) {
   try {
-    await ensureTable();
+    await ensurePageViewsSchema(sql);
 
     const headersList = await headers();
     const ip =
@@ -77,7 +56,7 @@ export async function GET() {
     const session = await auth();
     const isAdmin = isAdminEmail(session?.user?.email);
 
-    await ensureTable();
+    await ensurePageViewsSchema(sql);
 
     // Today's stats (Publicly accessible)
     const todayRows = await sql`

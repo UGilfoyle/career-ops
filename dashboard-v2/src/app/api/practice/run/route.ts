@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { formatRetryHint, rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import {
   assertPracticeBetaAccess,
   executePracticeRun,
@@ -18,6 +19,16 @@ export async function POST(req: NextRequest) {
     }
     const betaBlock = assertPracticeBetaAccess(session.user.email);
     if (betaBlock) return betaBlock;
+
+    const userId = String(session.user.id);
+    const burst = await rateLimit(`practice-run-burst:${userId}`, { windowMs: 60_000, max: 8 });
+    if (!burst.ok) {
+      return rateLimitResponse(burst, `Practice runner limit reached. ${formatRetryHint(burst.retryAfterSec)}`);
+    }
+    const hourly = await rateLimit(`practice-run:${userId}`, { windowMs: 60 * 60_000, max: 40 });
+    if (!hourly.ok) {
+      return rateLimitResponse(hourly, `Practice runner hourly limit reached. ${formatRetryHint(hourly.retryAfterSec)}`);
+    }
 
     const body = await req.json().catch(() => ({}));
     const validated = validatePracticeRunInput(body);

@@ -2,48 +2,10 @@ import { NextResponse } from 'next/server';
 import { buildDownloadFilename } from '@/lib/document-filename';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { Readable } from 'node:stream';
+import { r2ConfigDebug, streamR2Object } from '@/lib/r2-client';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-function getR2Client() {
-  const accountId = process.env.R2_ACCOUNT_ID || '';
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID || '';
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || '';
-  if (!accountId || !accessKeyId || !secretAccessKey) return null;
-  const endpoint =
-    process.env.R2_ENDPOINT?.trim() ||
-    `https://${accountId}.r2.cloudflarestorage.com`;
-  const forcePathStyle = process.env.R2_FORCE_PATH_STYLE === '1';
-  return new S3Client({
-    region: 'auto',
-    endpoint,
-    forcePathStyle,
-    credentials: { accessKeyId, secretAccessKey },
-  });
-}
-
-async function streamR2Object(key: string) {
-  const bucket = process.env.R2_BUCKET || '';
-  const client = getR2Client();
-  if (!bucket || !client) return null;
-
-  let out: any;
-  try {
-    out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-  } catch (e: any) {
-    // Common cases: NoSuchKey, AccessDenied, SignatureDoesNotMatch.
-    throw new Error(e?.name || e?.message || 'R2GetObjectFailed');
-  }
-  const body = out.Body as any;
-  if (!body) return null;
-
-  // Convert Node stream to Web ReadableStream for NextResponse.
-  const nodeStream = body instanceof Readable ? body : Readable.fromWeb(body);
-  return Readable.toWeb(nodeStream) as unknown as ReadableStream;
-}
 
 export async function GET(
   request: Request,
@@ -99,16 +61,12 @@ export async function GET(
       const filename = downloadFilename;
       const key = type === 'cl' ? job.cover_letter_pdf_key : job.resume_pdf_key;
       if (key) {
-        const r2Endpoint =
-          process.env.R2_ENDPOINT?.trim() ||
-          `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-        const r2ForcePathStyle = process.env.R2_FORCE_PATH_STYLE === '1';
-        const r2Bucket = process.env.R2_BUCKET || '';
+        const dbg = r2ConfigDebug();
         let stream: ReadableStream | null = null;
         try {
           stream = await streamR2Object(String(key));
-        } catch (e: any) {
-          const msg = String(e?.message || '');
+        } catch (e: unknown) {
+          const msg = String((e as { message?: string })?.message || '');
           // Resilience: if R2 key missing or auth broken, fall back to DB BYTEA (older runs)
           // so the user can still download a PDF when it exists.
           if (msg.includes('NoSuchKey') || msg.includes('AccessDenied') || msg.includes('SignatureDoesNotMatch') || msg.includes('InvalidAccessKeyId')) {
@@ -141,14 +99,14 @@ export async function GET(
                 `- R2_SECRET_ACCESS_KEY = (Secret Access Key from Cloudflare R2 "S3 clients")`,
                 `- R2_ACCOUNT_ID, R2_BUCKET`,
                 ``,
-                `Debug: endpoint=${r2Endpoint}, forcePathStyle=${r2ForcePathStyle}, bucket=${r2Bucket}, key=${String(key)}`,
+                `Debug: endpoint=${dbg.endpoint}, forcePathStyle=${dbg.forcePathStyle}, bucket=${dbg.bucket}, key=${String(key)}`,
               ].join('\n'),
               {
                 status: 500,
                 headers: {
-                  'X-CareerOps-R2-Endpoint': r2Endpoint,
-                  'X-CareerOps-R2-Force-Path-Style': String(r2ForcePathStyle),
-                  'X-CareerOps-R2-Bucket': r2Bucket,
+                  'X-CareerOps-R2-Endpoint': String(dbg.endpoint),
+                  'X-CareerOps-R2-Force-Path-Style': String(dbg.forcePathStyle),
+                  'X-CareerOps-R2-Bucket': String(dbg.bucket),
                   'X-CareerOps-R2-Key': String(key),
                 },
               }
@@ -157,9 +115,9 @@ export async function GET(
           return new NextResponse(`R2 error: ${msg}`, {
             status: 500,
             headers: {
-              'X-CareerOps-R2-Endpoint': r2Endpoint,
-              'X-CareerOps-R2-Force-Path-Style': String(r2ForcePathStyle),
-              'X-CareerOps-R2-Bucket': r2Bucket,
+              'X-CareerOps-R2-Endpoint': String(dbg.endpoint),
+              'X-CareerOps-R2-Force-Path-Style': String(dbg.forcePathStyle),
+              'X-CareerOps-R2-Bucket': String(dbg.bucket),
               'X-CareerOps-R2-Key': String(key),
             },
           });

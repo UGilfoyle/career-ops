@@ -200,6 +200,11 @@ async function getChromium() {
   }
 }
 
+function r2ForcePathStyle() {
+  const forceFlag = String(process.env.R2_FORCE_PATH_STYLE || '').trim();
+  return forceFlag === '' || forceFlag === '1' || forceFlag.toLowerCase() === 'true';
+}
+
 function getR2Client() {
   const accountId = process.env.R2_ACCOUNT_ID || '';
   const accessKeyId = process.env.R2_ACCESS_KEY_ID || '';
@@ -209,14 +214,12 @@ function getR2Client() {
   const endpoint =
     process.env.R2_ENDPOINT?.trim() ||
     `https://${accountId}.r2.cloudflarestorage.com`;
-  // Cloudflare R2 supports virtual-hosted style; path-style can cause signature mismatch
-  // depending on endpoint/account routing. Default to virtual-hosted style.
-  const forcePathStyle = process.env.R2_FORCE_PATH_STYLE === '1';
+  // Path-style is ON unless R2_FORCE_PATH_STYLE=0 (matches dashboard-v2/src/lib/r2-client.ts).
 
   return new S3Client({
     region: 'auto',
     endpoint,
-    forcePathStyle,
+    forcePathStyle: r2ForcePathStyle(),
     credentials: { accessKeyId, secretAccessKey },
   });
 }
@@ -230,7 +233,7 @@ async function uploadToR2({ key, body, contentType }) {
     return false;
   }
   try {
-    console.log(`[R2] Config: endpoint="${process.env.R2_ENDPOINT?.trim() || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`}", forcePathStyle=${process.env.R2_FORCE_PATH_STYLE === '1'}`);
+    console.log(`[R2] Config: endpoint="${process.env.R2_ENDPOINT?.trim() || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`}", forcePathStyle=${r2ForcePathStyle()}`);
     console.log(`[R2] Uploading ${key} (${body.length} bytes) to bucket ${bucket}...`);
     await client.send(
       new PutObjectCommand({

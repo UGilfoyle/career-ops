@@ -1,6 +1,10 @@
 import sql from '@/lib/db';
 
-export async function getDashboardData(userId: string) {
+const PIPELINE_PAGE_SIZE = 200;
+const APPLICATIONS_PAGE_SIZE = 100;
+const PDFS_PAGE_SIZE = 80;
+
+export async function getDashboardData(userId: string, opts?: { pollOnly?: boolean }) {
   // Parallel fetchers definition
   const fetchJobMeta = async () => {
     try {
@@ -60,6 +64,7 @@ export async function getDashboardData(userId: string) {
         JOIN jobs j ON a.job_id = j.id
         WHERE a.user_id = ${userId}
         ORDER BY a.applied_at DESC
+        LIMIT ${APPLICATIONS_PAGE_SIZE}
       `;
     } catch {
       return [];
@@ -154,6 +159,7 @@ export async function getDashboardData(userId: string) {
         WHERE j.user_id = ${userId}
         ${scoreFilter}
         ${orderBy}
+        LIMIT ${PIPELINE_PAGE_SIZE}
       `;
       return rows.map((p: Record<string, unknown>) =>
         mapRow(p, {
@@ -195,6 +201,7 @@ export async function getDashboardData(userId: string) {
         WHERE j.user_id = ${userId}
         ${scoreFilter}
         ${orderBy}
+        LIMIT ${PIPELINE_PAGE_SIZE}
       `;
       return rows.map((p: Record<string, unknown>) => mapRow(p));
     } catch (errMid) {
@@ -226,6 +233,7 @@ export async function getDashboardData(userId: string) {
         WHERE j.user_id = ${userId}
         ${scoreFilter}
         ${orderBy}
+        LIMIT ${PIPELINE_PAGE_SIZE}
       `;
       return rows.map((p: Record<string, unknown>) => mapRow(p));
     } catch (errMin) {
@@ -242,7 +250,16 @@ export async function getDashboardData(userId: string) {
         WHERE user_id = ${userId}
         LIMIT 1
       `;
-      return rows.length > 0 ? rows[0].resume_context : null;
+      if (rows.length === 0) return null;
+      const ctx = rows[0].resume_context;
+      if (!ctx || typeof ctx !== 'object') return ctx;
+      const gh = (ctx as { github_settings?: { pat?: string; repo?: string } }).github_settings;
+      if (!gh || typeof gh !== 'object') return ctx;
+      const hasPat = Boolean(String(gh.pat || '').trim());
+      return {
+        ...ctx,
+        github_settings: { ...gh, pat: '', has_pat: hasPat },
+      };
     } catch {
       return null;
     }
@@ -272,6 +289,7 @@ export async function getDashboardData(userId: string) {
               OR resume_html IS NOT NULL OR cover_letter_html IS NOT NULL
             )
           ORDER BY updated_at DESC
+          LIMIT ${PDFS_PAGE_SIZE}
         `;
         return docs.map(d => ({
           id: d.id,
@@ -307,6 +325,7 @@ export async function getDashboardData(userId: string) {
               OR resume_html IS NOT NULL OR cover_letter_html IS NOT NULL
             )
           ORDER BY created_at DESC
+          LIMIT ${PDFS_PAGE_SIZE}
         `;
         return docs.map((d: any) => ({
           id: d.id,
@@ -370,6 +389,39 @@ export async function getDashboardData(userId: string) {
     }
   };
 
+  const buildMeta = (
+    jobMeta: Awaited<ReturnType<typeof fetchJobMeta>>,
+    latestEvent: Awaited<ReturnType<typeof fetchLatestEvent>>,
+    lastGccScan: Awaited<ReturnType<typeof fetchLastGccScan>>,
+    gccPipelineCount: number,
+  ) => ({
+    jobsTotal: jobMeta.jobs_total ?? 0,
+    jobsRanked: jobMeta.jobs_ranked ?? 0,
+    lastJobCreatedAt: jobMeta.last_job_created_at ?? null,
+    lastJobUpdatedAt: jobMeta.last_job_updated_at ?? null,
+    lastBackgroundEventId: latestEvent?.id ?? null,
+    lastBackgroundActionScript: latestEvent?.action_script ?? null,
+    lastBackgroundStatus: latestEvent?.status ?? null,
+    lastBackgroundCompletedAt: latestEvent?.created_at ?? null,
+    lastGccScanAdded: lastGccScan?.jobs_found != null ? Number(lastGccScan.jobs_found) : null,
+    lastGccScanAt: lastGccScan?.created_at ?? null,
+    gccPipelineCount,
+    pipelinePageSize: PIPELINE_PAGE_SIZE,
+  });
+
+  if (opts?.pollOnly) {
+    const [jobMeta, latestEvent, lastGccScan, gccPipelineCount] = await Promise.all([
+      fetchJobMeta(),
+      fetchLatestEvent(),
+      fetchLastGccScan(),
+      fetchGccPipelineCount(),
+    ]);
+    return {
+      meta: buildMeta(jobMeta, latestEvent, lastGccScan, gccPipelineCount),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   // Execute all queries concurrently in parallel
   const [
     jobMeta,
@@ -399,19 +451,7 @@ export async function getDashboardData(userId: string) {
     pdfs,
     stats: stats || { total: 0, applied: 0, interviews: 0, offers: 0 },
     profile,
-    meta: {
-      jobsTotal: jobMeta.jobs_total ?? 0,
-      jobsRanked: jobMeta.jobs_ranked ?? 0,
-      lastJobCreatedAt: jobMeta.last_job_created_at ?? null,
-      lastJobUpdatedAt: jobMeta.last_job_updated_at ?? null,
-      lastBackgroundEventId: latestEvent?.id ?? null,
-      lastBackgroundActionScript: latestEvent?.action_script ?? null,
-      lastBackgroundStatus: latestEvent?.status ?? null,
-      lastBackgroundCompletedAt: latestEvent?.created_at ?? null,
-      lastGccScanAdded: lastGccScan?.jobs_found != null ? Number(lastGccScan.jobs_found) : null,
-      lastGccScanAt: lastGccScan?.created_at ?? null,
-      gccPipelineCount,
-    },
+    meta: buildMeta(jobMeta, latestEvent, lastGccScan, gccPipelineCount),
     timestamp: new Date().toISOString()
   };
 }

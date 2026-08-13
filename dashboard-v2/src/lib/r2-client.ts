@@ -5,10 +5,15 @@ function envTrim(key: string): string {
   return String(process.env[key] || '').trim();
 }
 
+/** Path-style is ON for R2 unless R2_FORCE_PATH_STYLE=0. */
+export function r2ForcePathStyle(): boolean {
+  const forceFlag = envTrim('R2_FORCE_PATH_STYLE');
+  return forceFlag === '' || forceFlag === '1' || forceFlag.toLowerCase() === 'true';
+}
+
 /**
  * Cloudflare R2 via S3 API.
  * Secrets are trimmed (Vercel/GitHub often store trailing newlines → SignatureDoesNotMatch).
- * Path-style is ON by default for R2 unless R2_FORCE_PATH_STYLE=0.
  */
 export function getR2Client(): S3Client | null {
   const accountId = envTrim('R2_ACCOUNT_ID');
@@ -20,14 +25,10 @@ export function getR2Client(): S3Client | null {
     envTrim('R2_ENDPOINT')
     || `https://${accountId}.r2.cloudflarestorage.com`;
 
-  // Default true for R2; set R2_FORCE_PATH_STYLE=0 to disable.
-  const forceFlag = envTrim('R2_FORCE_PATH_STYLE');
-  const forcePathStyle = forceFlag === '' || forceFlag === '1' || forceFlag.toLowerCase() === 'true';
-
   return new S3Client({
     region: 'auto',
     endpoint,
-    forcePathStyle,
+    forcePathStyle: r2ForcePathStyle(),
     credentials: { accessKeyId, secretAccessKey },
   });
 }
@@ -45,7 +46,7 @@ export function r2ConfigDebug(): Record<string, string | boolean> {
     hasSecret: Boolean(envTrim('R2_SECRET_ACCESS_KEY')),
     bucket: getR2Bucket() || '(empty)',
     endpoint: envTrim('R2_ENDPOINT') || (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : '(none)'),
-    forcePathStyle: envTrim('R2_FORCE_PATH_STYLE') !== '0',
+    forcePathStyle: r2ForcePathStyle(),
   };
 }
 

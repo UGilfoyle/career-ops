@@ -64,13 +64,27 @@ function mergeResumeContext(existing: Record<string, unknown>, incoming: Record<
   const base = normalizeContext(existing);
   const next = normalizeContext(incoming);
 
+  const mergedGh = {
+    ...(base.github_settings as object || {}),
+    ...(next.github_settings as object || {}),
+  } as Record<string, unknown>;
+  const incomingPat = typeof (next.github_settings as { pat?: unknown } | undefined)?.pat === 'string'
+    ? String((next.github_settings as { pat: string }).pat).trim()
+    : '';
+  if (!incomingPat && base.github_settings && typeof base.github_settings === 'object') {
+    const existingPat = (base.github_settings as { pat?: unknown }).pat;
+    if (typeof existingPat === 'string' && existingPat.trim()) {
+      mergedGh.pat = existingPat;
+    }
+  }
+
   const merged: Record<string, unknown> = {
     ...base,
     ...next,
     candidate: mergeCandidate(base.candidate, next.candidate),
     narrative: { ...(base.narrative as object || {}), ...(next.narrative as object || {}) },
     search: { ...(base.search as object || {}), ...(next.search as object || {}) },
-    github_settings: { ...(base.github_settings as object || {}), ...(next.github_settings as object || {}) },
+    github_settings: mergedGh,
     studio: { ...(base.studio as object || {}), ...(next.studio as object || {}) },
     gcc_campaign: next.gcc_campaign ?? base.gcc_campaign,
   };
@@ -86,6 +100,17 @@ function mergeResumeContext(existing: Record<string, unknown>, incoming: Record<
   return merged;
 }
 
+function redactResumeContext(ctx: Record<string, unknown>): Record<string, unknown> {
+  const github = ctx.github_settings;
+  if (!github || typeof github !== 'object' || Array.isArray(github)) return ctx;
+  const gh = github as Record<string, unknown>;
+  const hasPat = typeof gh.pat === 'string' && gh.pat.trim().length > 0;
+  return {
+    ...ctx,
+    github_settings: { ...gh, pat: '', has_pat: hasPat },
+  };
+}
+
 const DEFAULT_PORTALS = ['linkedin', 'naukri', 'indeed', 'instahyre', 'flexiple', 'greenhouse', 'lever', 'japan-dev'];
 
 export async function GET() {
@@ -96,7 +121,7 @@ export async function GET() {
     }
     const userId = session.user.id;
 
-    // Get profile data
+    // Get profile data — keys stay server-side; GET only reports whether they exist.
     const profileRow = await sql`
       SELECT resume_context, targeting_keywords, openai_key, hf_token 
       FROM user_profiles 
@@ -165,11 +190,14 @@ export async function GET() {
       positive: Array.isArray(targetingKeywords.positive) ? targetingKeywords.positive : [],
       negative: Array.isArray(targetingKeywords.negative) ? targetingKeywords.negative : [],
     };
+    const storedOpenai = (baseProfile as { openai_key?: string | null }).openai_key;
+    const storedHf = (baseProfile as { hf_token?: string | null }).hf_token;
 
     return NextResponse.json({
-      ...baseProfile,
       targeting_keywords: normalizedTargeting,
-      resume_context: resumeContext,
+      resume_context: redactResumeContext(resumeContext),
+      has_openai_key: Boolean(storedOpenai && String(storedOpenai).trim()),
+      has_hf_token: Boolean(storedHf && String(storedHf).trim()),
       email: userEmail,
       newsletter_opt_in: newsletterOptIn,
       referral_code: referralCode,

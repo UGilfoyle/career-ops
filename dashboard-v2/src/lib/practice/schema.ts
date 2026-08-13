@@ -1,28 +1,31 @@
 import type postgres from 'postgres';
 import { z } from 'zod';
+import { onceSchema } from '../schema-once';
 
-/** Idempotent Interview Practice tables. */
+/** Idempotent Interview Practice tables. Runs at most once per isolate. */
 export async function ensurePracticeSchema(sql: postgres.Sql): Promise<void> {
-  await sql`
-    CREATE TABLE IF NOT EXISTS practice_packs (
-      id SERIAL PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      job_id INT,
-      company TEXT,
-      role TEXT,
-      jd_hash TEXT NOT NULL,
-      pack_json JSONB NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-  await sql`
-    CREATE INDEX IF NOT EXISTS practice_packs_user_created_idx
-    ON practice_packs (user_id, created_at DESC)
-  `;
-  await sql`
-    CREATE INDEX IF NOT EXISTS practice_packs_user_job_idx
-    ON practice_packs (user_id, job_id)
-  `;
+  await onceSchema('practice', async () => {
+    await sql`
+      CREATE TABLE IF NOT EXISTS practice_packs (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        job_id INT,
+        company TEXT,
+        role TEXT,
+        jd_hash TEXT NOT NULL,
+        pack_json JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS practice_packs_user_created_idx
+      ON practice_packs (user_id, created_at DESC)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS practice_packs_user_job_idx
+      ON practice_packs (user_id, job_id)
+    `;
+  });
 }
 
 const promptItemSchema = z.object({
