@@ -25,7 +25,11 @@ function stripBulletMarkdown(text: string): string {
 }
 
 function formatBulletHtml(text: string): string {
-  return escapeHtml(stripBulletMarkdown(text));
+  return escapeHtml(
+    stripBulletMarkdown(text)
+      .replace(/[\u00ad\u200b-\u200d\uFEFF\uFFFD]/g, '')
+      .replace(/â€"|â€“|â€”/g, '-'),
+  );
 }
 
 function normalizeHref(raw: string): string {

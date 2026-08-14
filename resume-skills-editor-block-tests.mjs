@@ -21,8 +21,8 @@ assert(!/\bGPTs?\b/i.test(html), 'HTML must not contain GPTs');
 assert(!/\bChatGPT\b/i.test(html), 'HTML must not contain ChatGPT');
 assert(!/\bCopilot\b/i.test(html), 'HTML must not contain Copilot');
 assert(!/AI-native tool integration/i.test(html), 'HTML must not contain AI-native tool integration filler');
-assert(/skills-list/i.test(html), 'renders skills as bullet list');
-assert(/<li>[^<]*Node\.js/i.test(html) || /<li>Node\.js<\/li>/i.test(html), 'keeps real tech stacks as bullets');
+assert(/skill-label/i.test(html), 'renders skills as categorized rows');
+assert(/Node\.js/i.test(html), 'keeps real tech stacks');
 assert(!/Core Competencies/i.test(html), 'no Core Competencies label');
 assert(!/Technical Skills:/i.test(html), 'no nested Technical Skills label under section');
 assert(!/Technical Skills:[^<]*Cursor/i.test(html), 'Technical Skills must not list Cursor');
@@ -33,11 +33,13 @@ const narrative = renderCategorizedSkills(
 );
 assert(!/Monolith-to-microservices/i.test(narrative), 'narrative superpower blob excluded');
 assert(!/cost optimization/i.test(narrative), 'optimization phrase excluded');
-assert(/<li>Java<\/li>/i.test(narrative), 'Java kept');
-assert(/<li>PostgreSQL<\/li>/i.test(narrative), 'PostgreSQL canonical casing');
-assert(/<li>Microservices<\/li>/i.test(narrative), 'microservices title-cased');
-assert(/<li>System Design<\/li>/i.test(narrative), 'system design title-cased');
-assert(/<li>\.NET<\/li>/i.test(narrative), '.Net normalized to .NET');
+assert(/\bJava\b/.test(narrative), 'Java kept');
+assert(/\bPostgreSQL\b/.test(narrative), 'PostgreSQL canonical casing');
+assert(/\bMicroservices\b/.test(narrative), 'microservices title-cased');
+assert(/System Design/.test(narrative), 'system design title-cased');
+assert(/\.NET/.test(narrative), '.Net normalized to .NET');
+assert(/Languages:/.test(narrative), 'Java lands in Languages');
+assert(/Databases:/.test(narrative), 'PostgreSQL lands in Databases');
 
 const broken = renderCategorizedSkills(
   ['AWS platform engineering (ECS, Lambda, Aurora)'],
@@ -45,10 +47,10 @@ const broken = renderCategorizedSkills(
 );
 assert(!/TypeScript\)/i.test(broken), 'no trailing paren on TypeScript');
 assert(!/IAM\)/i.test(broken), 'no trailing paren on IAM');
-assert(/<li>TypeScript<\/li>/i.test(broken), 'TypeScript cleaned');
-assert(/<li>AWS<\/li>/i.test(broken), 'AWS kept');
-assert(!/<li>IAM<\/li>/i.test(broken), 'IAM crumb dropped when AWS present');
-assert(!/<li>Lambda<\/li>/i.test(broken), 'Lambda crumb dropped when AWS present');
-assert(!/<li>Aurora<\/li>/i.test(broken), 'Aurora crumb dropped when AWS present');
+assert(/\bTypeScript\b/.test(broken), 'TypeScript cleaned');
+assert(/\bAWS\b/.test(broken), 'AWS kept');
+assert(!/\bIAM\b/.test(broken), 'IAM crumb dropped when AWS present');
+assert(!/\bLambda\b/.test(broken), 'Lambda crumb dropped when AWS present');
+assert(!/\bAurora\b/.test(broken), 'Aurora crumb dropped when AWS present');
 
 console.log('resume-skills-editor-block-tests: ok');

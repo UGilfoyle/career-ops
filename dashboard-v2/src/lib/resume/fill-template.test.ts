@@ -48,6 +48,7 @@ function run() {
   assert.ok(!html.includes(' ·  · '), 'no empty contact separators');
   assert.ok(html.includes('Example Corp'), 'company rendered');
   assert.ok(html.includes('TypeScript'), 'skills rendered');
+  assert.ok(html.includes('skill-label'), 'skills use category labels');
   assert.ok(html.includes('Professional Summary'), 'summary section');
   assert.ok(!html.includes('{{NAME}}'), 'no leftover NAME placeholder');
   assert.ok(!html.includes('{{EXPERIENCE}}'), 'no leftover EXPERIENCE placeholder');
@@ -99,6 +100,8 @@ function run() {
     'Java',
   ]);
   assert.ok(skills.includes('PostgreSQL'), 'PostgreSQL in skills');
+  assert.ok(skills.includes('skill-label'), 'skills are categorized rows');
+  assert.ok(skills.includes('Languages:') || skills.includes('Databases:'), 'category headings present');
   assert.ok(!skills.includes('Monolith-to-microservices'), 'narrative superpower excluded');
   assert.ok(!skills.includes('monolith'), 'no raw monolith phrase');
   assert.ok(skills.includes('Microservices') || skills.includes('microservices'), 'microservices present');
@@ -108,7 +111,7 @@ function run() {
   const expIdx = htmlOrder.indexOf('Professional Experience');
   const eduIdx = htmlOrder.indexOf('Education');
   const skillsIdx = htmlOrder.indexOf('Technical Skills');
-  assert.ok(summaryIdx < expIdx && expIdx < eduIdx && eduIdx < skillsIdx, 'Technical Skills section is last');
+  assert.ok(summaryIdx < skillsIdx && skillsIdx < expIdx && expIdx < eduIdx, 'Technical Skills sit directly under Summary');
 
   assert.equal(calculateYearsOfExperience(sample.experience) >= 1, true);
   assert.ok(masterSummaryText(sample).includes('Senior engineer'));

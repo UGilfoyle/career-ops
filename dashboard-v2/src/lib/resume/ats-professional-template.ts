@@ -17,6 +17,11 @@ const BODY = `
             <div class="rule"></div>
             <p class="summary-block">{{SUMMARY_TEXT}}</p>
         </section>
+        <section style="display: {{SKILLS_DISPLAY}};">
+            <h2>Technical Skills</h2>
+            <div class="rule"></div>
+            <div class="skills-lines">{{SKILLS_LINES}}</div>
+        </section>
         <section style="display: {{EXPERIENCE_DISPLAY}};">
             <h2>Professional Experience</h2>
             <div class="rule"></div>
@@ -32,11 +37,6 @@ const BODY = `
             <div class="rule"></div>
             <div class="edu">{{EDUCATION}}</div>
         </section>
-        <section style="display: {{SKILLS_DISPLAY}};">
-            <h2>Technical Skills</h2>
-            <div class="rule"></div>
-            <div class="skills-lines">{{SKILLS_LINES}}</div>
-        </section>
     </div>
 `;
 
@@ -50,7 +50,11 @@ function wrap(css: string) {
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4; margin: 0.42in; }
-        html, body { background: #fff; }
+        html, body {
+            background: #fff;
+            hyphens: none;
+            -webkit-hyphens: none;
+        }
         @media print {
             body { padding: 0 !important; }
             a { color: #111; text-decoration: none; }
@@ -58,9 +62,16 @@ function wrap(css: string) {
         .contact:empty { display: none; }
         .contact a { color: #111; text-decoration: none; }
         ${CONTACT_BAR_CSS}
-        .job { page-break-inside: avoid; }
+        .job { page-break-inside: avoid; break-inside: avoid-page; }
+        .job-header { page-break-after: avoid; break-after: avoid; }
         .job-header > div:first-child { flex: 1; min-width: 0; }
         .job-dates { white-space: nowrap; flex-shrink: 0; }
+        .job li, .summary-block, .edu {
+            hyphens: none;
+            -webkit-hyphens: none;
+            overflow-wrap: break-word;
+            word-break: normal;
+        }
         .skills-list {
             list-style-type: disc;
             margin: 2px 0 0 1.15em;
@@ -117,7 +128,7 @@ const CLASSIC_CSS = `
             display: flex; justify-content: space-between; align-items: baseline;
             gap: 10px; font-size: 10pt; margin-bottom: 2px;
         }
-        .job-title { font-weight: 700; font-style: italic; color: #111; }
+        .job-title { font-weight: 700; color: #111; }
         .job-company { font-weight: 700; color: #111; }
         .job-dates { font-weight: 600; color: #111; font-size: 9.5pt; }
         .job ul { list-style-type: disc; margin: 2px 0 0 1.1em; padding: 0; }

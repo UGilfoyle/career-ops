@@ -163,7 +163,7 @@ function collapseAwsCrumbs(items) {
   return items.filter((s) => !isAwsServiceCrumb(s));
 }
 
-function skillsBulletList(items) {
+function skillsCategoryLines(items) {
   const seen = new Set();
   const unique = [];
   for (const raw of collapseAwsCrumbs(items)) {
@@ -178,14 +178,58 @@ function skillsBulletList(items) {
     unique.push(label);
   }
   if (!unique.length) return '';
-  return `<ul class="skills-list">${unique
-    .map((s) => `<li>${escapeHtml(s)}</li>`)
-    .join('')}</ul>`;
+
+  const buckets = {
+    Languages: [],
+    Frameworks: [],
+    Databases: [],
+    Cloud: [],
+    Other: [],
+  };
+  for (const label of unique) {
+    buckets[skillCategory(label)].push(label);
+  }
+
+  const order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
+  return order
+    .filter((name) => buckets[name].length)
+    .map(
+      (name) =>
+        `<div class="skill-line"><span class="skill-label">${name}:</span> ${escapeHtml(buckets[name].join(', '))}</div>`,
+    )
+    .join('');
+}
+
+function skillCategory(label) {
+  const k = String(label || '').toLowerCase().replace(/\.js$/i, 'js');
+  if (
+    /^(javascript|typescript|python|java|go|golang|rust|ruby|php|c\+\+|c#|\.net|kotlin|swift|scala|sql|html|css|sass|less)$/i.test(k)
+    || /^(javascript|typescript|python|java)\b/.test(k)
+  ) {
+    return 'Languages';
+  }
+  if (
+    /^(nodejs|node\.js|react|reactjs|react\.js|express|fastapi|flask|django|nextjs|next\.js|nestjs|nest\.js|vue|angular|spring|rails|laravel|fastify|hono|remix)$/i.test(k)
+    || /^(node\.?js|react|express|fastapi|django|flask|next|nest)/i.test(k)
+  ) {
+    return 'Frameworks';
+  }
+  if (
+    /^(postgres|postgresql|mysql|mariadb|mongo|mongodb|redis|oracle|dynamodb|sqlite|chromadb|cassandra|elasticsearch|opensearch|supabase|firestore)$/i.test(k)
+  ) {
+    return 'Databases';
+  }
+  if (
+    /^(aws|gcp|azure|docker|kubernetes|k8s|terraform|linux|ci\/cd|ecs|ec2|lambda)$/i.test(k)
+    || /^(aws|azure|gcp|docker|kubernetes)\b/.test(k)
+  ) {
+    return 'Cloud';
+  }
+  return 'Other';
 }
 
 /**
- * Build Technical Skills as a bullet list (no "Core Competencies:" label —
- * the section heading already says Technical Skills).
+ * Build Technical Skills as labeled category rows (Languages / Frameworks / Databases / Cloud).
  * Never unpacks IDE assistants from parentheticals like "(Cursor, Claude Code, GPTs)".
  * Never emits employer brands (American Express → Express).
  */
@@ -256,9 +300,8 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
   }
 
   const uniqueTech = sanitizeCompetencyList(techSkills, jdText).slice(0, 16);
-  if (uniqueTech.length) return skillsBulletList(uniqueTech);
+  if (uniqueTech.length) return skillsCategoryLines(uniqueTech);
 
-  // Last resort: only real tech-stack tokens — never dump JD prose / employer brands
   const fallback = sanitizeCompetencyList([...competencies, ...superpowers], jdText).slice(0, 16);
-  return skillsBulletList(fallback);
+  return skillsCategoryLines(fallback);
 }

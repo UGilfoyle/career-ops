@@ -657,8 +657,11 @@ function bulletMentionsOtherCompany(bullet, ownCompany, allJobs) {
 /** Fix mid-sentence LLM splice crumbs inside a single bullet string. */
 export function repairMidSentenceArtifacts(bullet) {
   let t = String(bullet || '');
+  t = t.replace(/[\u00ad\u200b-\u200d\uFEFF\uFFFD]/g, '');
+  t = t.replace(/â€"|â€“|â€”|â€˜|â€™/g, '-');
   t = t.replace(/\bservices\s+Integrity\s+through\b/gi, 'services, preserving data integrity through');
   t = t.replace(/\brecords,?\s+preserving\.?\s*Integrity\s+through\b/gi, 'records, preserving data integrity through');
+  t = t.replace(/,\s*preserving data\.?\s*$/i, ', preserving data integrity.');
   t = t.replace(/\bplatform,?\s+synthesizing\.?\s*Logic\s+into\b/gi, 'platform, synthesizing business logic into');
   t = t.replace(/\s+In addition,?\s+I\s+/gi, '. Also ');
   t = t.replace(/\bworkflows\s+that\s+reduced\.?\s*$/i, 'workflows that reduced manual effort.');
