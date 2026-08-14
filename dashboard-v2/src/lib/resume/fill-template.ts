@@ -6,8 +6,8 @@ import {
 import { extractTechFromTexts, renderCategorizedSkills } from '@/lib/resume/skills-html-bridge';
 import { renderContactBarHtml } from '@/lib/resume/contact-bar';
 import { getTemplateHtml } from './ats-professional-template';
-import type { ExperienceEntry, ResumeContext } from './types';
-import { DEFAULT_TEMPLATE_ID } from './types';
+import { DEFAULT_TEMPLATE_ID, type ExperienceEntry, type ResumeContext } from './types';
+import { formatPeriodDisplay } from './date-range';
 
 function escapeHtml(s: unknown): string {
   return String(s || '')
@@ -141,7 +141,7 @@ export function renderExperienceHtml(
       ).slice(0, budget);
       let role = String(job.role || '').trim().replace(/\s*\((?:contract|freelance|temporary|project)\)\s*/gi, '').trim();
       let company = String(job.company || '').trim();
-      const dates = String(job.period || '').trim();
+      const dates = formatPeriodDisplay(job.period || '');
       role = stripDates(role);
       company = stripDates(company);
       if (role.toLowerCase() === company.toLowerCase()) company = '';
@@ -151,7 +151,7 @@ export function renderExperienceHtml(
 
       let titleLeft = '';
       if (company && role && !hasCompanyInRole && !hasRoleInCompany) {
-        titleLeft = `<span class="job-company">${escapeHtml(company)}</span> — <span class="job-title">${escapeHtml(role)}</span>`;
+        titleLeft = `<span class="job-company">${escapeHtml(company)}</span> - <span class="job-title">${escapeHtml(role)}</span>`;
       } else if (role && hasCompanyInRole) {
         titleLeft = `<span class="job-title">${escapeHtml(role)}</span>`;
       } else if (company && hasRoleInCompany) {

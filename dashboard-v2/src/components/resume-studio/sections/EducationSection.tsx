@@ -34,7 +34,7 @@ export function EducationSection({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Degree" value={edu.degree || ''} onChange={(v) => update(index, { degree: v })} />
             <Field label="School" value={edu.school || ''} onChange={(v) => update(index, { school: v })} />
-            <Field label="Years" value={edu.period || ''} onChange={(v) => update(index, { period: v })} placeholder="2014 – 2018" />
+            <Field label="Years" value={edu.period || ''} onChange={(v) => update(index, { period: v })} placeholder="2014 - 2018" />
             <Field label="Location" value={edu.location || ''} onChange={(v) => update(index, { location: v })} />
           </div>
         </div>

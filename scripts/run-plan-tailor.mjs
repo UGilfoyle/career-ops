@@ -24,6 +24,7 @@ import { buildApplicationDocumentPaths } from '../document-filename.mjs';
 import { buildHtml as buildCoverHtml } from '../generate-cover-letter.mjs';
 import { renderContactBarHtml } from '../resume-contact-html.mjs';
 import { renderCategorizedSkills } from '../resume-skills-html.mjs';
+import { formatPeriodDisplay } from '../resume-quality.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -74,8 +75,8 @@ function renderExperience(profile, resume) {
     return `
     <div class="job">
       <div class="job-header">
-        <div><span class="job-company">${escapeHtml(job.company || '')}</span> — <span class="job-title">${escapeHtml(job.role || '')}</span></div>
-        <div class="job-dates">${escapeHtml(job.period || '')}</div>
+        <div><span class="job-company">${escapeHtml(job.company || '')}</span> - <span class="job-title">${escapeHtml(job.role || '')}</span></div>
+        <div class="job-dates">${escapeHtml(formatPeriodDisplay(job.period || ''))}</div>
       </div>
       <ul>${li}</ul>
     </div>`;

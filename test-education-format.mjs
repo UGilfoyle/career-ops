@@ -9,7 +9,7 @@ const corrupted = {
 };
 
 const line = formatEducationLine(corrupted);
-const expected = 'Master of Computer Applications (MCA), Uttaranchal University (2016 – 2018)';
+const expected = 'Master of Computer Applications (MCA), Uttaranchal University (2016 - 2018)';
 
 if (line !== expected) {
   console.error('FAIL education format');
@@ -24,7 +24,7 @@ const bca = formatEducationLine({
   period: '2013 – 2016',
 });
 
-if (!bca.includes('(2013 – 2016)') || bca.includes('2013 – 2013')) {
+if (!bca.includes('(2013 - 2016)') || bca.includes('2013 - 2013')) {
   console.error('FAIL BCA format:', bca);
   process.exit(1);
 }

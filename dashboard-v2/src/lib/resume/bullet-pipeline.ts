@@ -5,6 +5,7 @@
 export {
   normalizeExperienceBulletList,
   sanitizeExperienceEntries,
+  formatPeriodDisplay,
   isEmbeddedJobHeader,
   isIncompleteBullet,
   isGarbledBullet,

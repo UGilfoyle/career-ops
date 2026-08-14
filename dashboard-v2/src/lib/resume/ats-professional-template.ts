@@ -49,7 +49,7 @@ function wrap(css: string) {
     <title>{{NAME}} - Resume</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        @page { size: A4; margin: 0.55in; }
+        @page { size: A4; margin: 0.42in; }
         html, body { background: #fff; }
         @media print {
             body { padding: 0 !important; }
@@ -86,43 +86,45 @@ ${BODY}
 const CLASSIC_CSS = `
         body {
             font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
-            font-size: 10.5pt;
-            line-height: 1.38;
+            font-size: 10pt;
+            line-height: 1.32;
             color: #1a1a1a;
-            padding: 0.55in;
+            padding: 0.4in;
             -webkit-font-smoothing: antialiased;
         }
         .container { max-width: 100%; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 14px; padding-bottom: 2px; }
+        header { text-align: center; margin-bottom: 8px; padding-bottom: 0; }
         h1 {
-            font-size: 20pt; font-weight: 700; letter-spacing: 1.2px;
-            text-transform: uppercase; margin-bottom: 6px; line-height: 1.15;
-            color: #0f172a;
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-size: 18pt; font-weight: 700; letter-spacing: 0.4px;
+            text-transform: none; margin-bottom: 4px; line-height: 1.12;
+            color: #111;
         }
-        .contact { font-size: 9pt; color: #334155; line-height: 1.45; margin-bottom: 2px; }
-        .top-rule { margin-top: 10px; border-top: 2.5px solid #1e3a5f; }
-        section { margin-top: 13px; }
+        .contact { font-size: 9pt; color: #334155; line-height: 1.35; margin-bottom: 2px; }
+        .top-rule { margin-top: 6px; border-top: 1.5px solid #111; }
+        section { margin-top: 8px; }
         h2 {
-            font-size: 10pt; font-weight: 700; letter-spacing: 1.1px;
-            text-transform: uppercase; margin-bottom: 4px; color: #1e3a5f;
+            font-size: 10.5pt; font-weight: 700; letter-spacing: 0.2px;
+            text-transform: none; margin-bottom: 2px; color: #111;
+            font-family: Georgia, "Times New Roman", Times, serif;
         }
-        .rule { border-top: 1px solid #94a3b8; margin-bottom: 7px; }
-        .skills-lines { font-size: 9.5pt; line-height: 1.42; color: #1e293b; }
-        .skill-line { margin-bottom: 3px; }
-        .skill-label { font-weight: 700; color: #0f172a; }
-        .job { margin-bottom: 11px; }
+        .rule { border-top: 1px solid #111; margin-bottom: 4px; }
+        .skills-lines { font-size: 9.5pt; line-height: 1.35; color: #1e293b; }
+        .skill-line { margin-bottom: 2px; }
+        .skill-label { font-weight: 700; color: #111; }
+        .job { margin-bottom: 7px; }
         .job-header {
             display: flex; justify-content: space-between; align-items: baseline;
-            gap: 12px; font-size: 9.5pt; margin-bottom: 3px;
+            gap: 10px; font-size: 10pt; margin-bottom: 2px;
         }
-        .job-title { font-weight: 700; color: #0f172a; }
-        .job-company { font-weight: 600; color: #334155; }
-        .job-dates { font-weight: 600; color: #475569; font-size: 9pt; }
-        .job ul { list-style-type: disc; margin: 3px 0 0 1.15em; padding: 0; }
-        .job li { margin-bottom: 2.5px; padding-left: 2px; line-height: 1.4; color: #1e293b; }
-        .summary-block { font-size: 9.5pt; line-height: 1.48; color: #1e293b; white-space: pre-line; }
-        .edu { font-size: 9.5pt; line-height: 1.4; color: #1e293b; }
-        .edu > div { margin-bottom: 4px; }
+        .job-title { font-weight: 700; font-style: italic; color: #111; }
+        .job-company { font-weight: 700; color: #111; }
+        .job-dates { font-weight: 600; color: #111; font-size: 9.5pt; }
+        .job ul { list-style-type: disc; margin: 2px 0 0 1.1em; padding: 0; }
+        .job li { margin-bottom: 1.5px; padding-left: 1px; line-height: 1.32; color: #1a1a1a; }
+        .summary-block { font-size: 9.5pt; line-height: 1.38; color: #1a1a1a; white-space: pre-line; }
+        .edu { font-size: 9.5pt; line-height: 1.32; color: #1a1a1a; }
+        .edu > div { margin-bottom: 3px; }
 `;
 
 const MODERN_COMPACT_CSS = `
@@ -450,53 +452,53 @@ const IVY_CSS = `
         body {
             font-family: Georgia, "Times New Roman", Times, serif;
             font-size: 10.5pt;
-            line-height: 1.42;
+            line-height: 1.38;
             color: #1f2937;
-            padding: 0.6in;
+            padding: 0.42in;
             -webkit-font-smoothing: antialiased;
         }
         .container { max-width: 100%; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 18px; }
+        header { text-align: center; margin-bottom: 10px; }
         h1 {
-            font-size: 22pt; font-weight: 700; letter-spacing: 2px;
-            text-transform: uppercase; margin-bottom: 8px; line-height: 1.15;
+            font-size: 20pt; font-weight: 700; letter-spacing: 1.2px;
+            text-transform: uppercase; margin-bottom: 6px; line-height: 1.15;
             color: #111827;
             font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
         }
         .contact {
-            font-size: 9pt; color: #4b5563; line-height: 1.5; margin-bottom: 2px;
+            font-size: 9pt; color: #4b5563; line-height: 1.4; margin-bottom: 2px;
             font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
         }
-        .top-rule { margin-top: 12px; border-top: 1px solid #9ca3af; }
-        section { margin-top: 16px; }
+        .top-rule { margin-top: 8px; border-top: 1px solid #9ca3af; }
+        section { margin-top: 10px; }
         h2 {
             font-size: 10pt; font-weight: 700; letter-spacing: 1.6px;
-            text-transform: uppercase; margin-bottom: 5px; color: #374151;
+            text-transform: uppercase; margin-bottom: 4px; color: #374151;
             font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
         }
-        .rule { border-top: 1px solid #d1d5db; margin-bottom: 8px; }
+        .rule { border-top: 1px solid #d1d5db; margin-bottom: 5px; }
         .skills-lines {
-            font-size: 10pt; line-height: 1.45;
+            font-size: 10pt; line-height: 1.4;
             font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
         }
         .skills-list { columns: 2; column-gap: 1.5em; }
-        .job { margin-bottom: 14px; }
+        .job { margin-bottom: 9px; }
         .job-header {
             display: flex; justify-content: space-between; align-items: baseline;
-            gap: 12px; font-size: 10.5pt; margin-bottom: 4px;
+            gap: 12px; font-size: 10.5pt; margin-bottom: 3px;
             font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
         }
         .job-title { font-weight: 700; color: #111827; }
         .job-company { font-weight: 600; color: #4b5563; font-style: italic; }
         .job-dates { font-weight: 600; color: #6b7280; font-size: 9.5pt; }
-        .job ul { list-style-type: disc; margin: 4px 0 0 1.15em; padding: 0; }
-        .job li { margin-bottom: 3.5px; line-height: 1.42; }
-        .summary-block { font-size: 10.5pt; line-height: 1.5; white-space: pre-line; }
+        .job ul { list-style-type: disc; margin: 3px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 2.5px; line-height: 1.38; }
+        .summary-block { font-size: 10.5pt; line-height: 1.42; white-space: pre-line; }
         .edu {
-            font-size: 10pt; line-height: 1.42;
+            font-size: 10pt; line-height: 1.38;
             font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
         }
-        .edu > div { margin-bottom: 5px; }
+        .edu > div { margin-bottom: 4px; }
 `;
 
 /** Enhancv Single Column–inspired: substantial spacing, ATS-safe */
@@ -683,7 +685,7 @@ export const TEMPLATE_CATALOG: TemplateMeta[] = [
     id: 'ats-professional',
     name: 'ATS Classic',
     badge: 'Recommended',
-    description: 'Icon contact row (phone, email, LinkedIn, GitHub) + clean ATS sections.',
+    description: 'Compact academic layout: serif name, heading rules, right-aligned dates.',
     file: 'templates/ats-template-professional.html',
   },
   {

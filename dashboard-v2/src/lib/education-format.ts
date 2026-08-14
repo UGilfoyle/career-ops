@@ -14,7 +14,7 @@ function extractEducationYears(text: string): string {
   const unique = [...new Set(years)].sort((a, b) => a - b);
   if (unique.length === 0) return '';
   if (unique.length === 1) return String(unique[0]);
-  return `${unique[0]} – ${unique[unique.length - 1]}`;
+  return `${unique[0]} - ${unique[unique.length - 1]}`;
 }
 
 function stripEducationDateNoise(text: string): string {

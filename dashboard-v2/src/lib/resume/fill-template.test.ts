@@ -80,6 +80,17 @@ function run() {
 
   const expHtml2 = renderExperienceHtml(sample.experience, 2);
   assert.ok(expHtml2.includes('job-company'), 'experience markup');
+  assert.ok(expHtml2.includes('Jan 2022 - Present'), 'en-dash period becomes single hyphen');
+  assert.ok(!expHtml2.includes('--'), 'no double hyphen in dates');
+  assert.ok(!expHtml2.includes('—'), 'no em-dash between company and role');
+  assert.ok(expHtml2.includes('Example Corp</span> - <span class="job-title">'), 'company - role separator');
+
+  const messyDates = renderExperienceHtml(
+    [{ role: 'Engineer', company: 'Acme', period: 'Jan 2022 -- Present', bullets: ['Shipped APIs for the platform.'] }],
+    2
+  );
+  assert.equal(messyDates.includes('Jan 2022 - Present'), true, 'double hyphen dates collapse');
+  assert.equal(messyDates.includes('--'), false, 'rendered HTML has no --');
 
   const skills = renderSkillsLines([
     'Monolith-to-microservices transition',

@@ -710,11 +710,22 @@ export function dedupeBulletsAcrossJobs(experience) {
   return jobs;
 }
 
+/** Display date ranges as "Jul 2025 - Present". Never --, en-dash, or em-dash. */
+export function formatPeriodDisplay(raw) {
+  return String(raw || '')
+    .replace(/[\u2010-\u2015\u2212]/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/\s*-\s*/g, ' - ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 export function sanitizeExperienceEntries(experience) {
   if (!Array.isArray(experience)) return [];
   let jobs = experience
     .map((job) => ({
       ...job,
+      period: formatPeriodDisplay(job.period || ''),
       bullets: (Array.isArray(job.bullets) ? job.bullets : [])
         .map(repairMidSentenceArtifacts)
         .filter((b) => !isEmbeddedJobHeader(b)),

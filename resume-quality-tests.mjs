@@ -20,6 +20,7 @@ import {
   preferSourceIfThin,
   isEmbeddedJobHeader,
   sanitizeExperienceEntries,
+  formatPeriodDisplay,
   parseTenureMonths,
   bulletsBudgetForRole,
   rewriteFirstPersonBullet,
@@ -483,6 +484,9 @@ console.log('resume-quality tests\n');
     },
   ]);
   assert(!cleaned[0].bullets.some((b) => /Rubico IT/i.test(b)), 'strips nested job header from KOCO bullets');
+  assert(cleaned[0].period === 'Oct 2021 - Jul 2022', 'sanitizer uses ASCII hyphen in periods');
+  assert(formatPeriodDisplay('Jan 2022 -- Present') === 'Jan 2022 - Present', 'collapses double hyphen dates');
+  assert(formatPeriodDisplay('July 2024 – March 2025') === 'July 2024 - March 2025', 'en-dash becomes hyphen');
 
   const dropped = normalizeExperienceBulletList([
     'Orchestrated deployment workflows that reduced.',

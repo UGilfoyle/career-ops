@@ -13,6 +13,7 @@ import {
   preferSourceIfThin,
   parseTenureMonths,
   sanitizeExperienceEntries,
+  formatPeriodDisplay,
   isEmbeddedJobHeader,
   isIncompleteBullet,
   isGarbledBullet,
@@ -350,7 +351,7 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
 
     let role = (job.role || '').trim();
     let company = (job.company || '').trim();
-    let dates = (job.period || '').trim();
+    let dates = formatPeriodDisplay(job.period || '');
 
     // Show role title only — never append (Contract) / (Freelance) labels
     role = role.replace(/\s*\((?:contract|freelance|temporary|project)\)\s*/gi, '').trim();
@@ -385,7 +386,7 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     
     let titleLeft = '';
     if (company && role && !hasCompanyInRole && !hasRoleInCompany) {
-      titleLeft = `<span class="job-company">${company}</span> — <span class="job-title">${role}</span>`;
+      titleLeft = `<span class="job-company">${company}</span> - <span class="job-title">${role}</span>`;
     } else if (role && hasCompanyInRole) {
       // Role already contains company - just show role
       titleLeft = `<span class="job-title">${role}</span>`;
@@ -1228,7 +1229,7 @@ function buildCoverSenderDetails(c) {
 }
 
 function coverLetterBodyToHtml(text) {
-  const raw = String(text || '').trim();
+  const raw = String(text || '').trim().replace(/\n{3,}/g, '\n\n');
   if (!raw) return '';
   let blocks = raw
     .split(/\n\s*\n/)
@@ -1240,7 +1241,10 @@ function coverLetterBodyToHtml(text) {
       .map((b) => b.replace(/\r/g, '').trim())
       .filter(Boolean);
   }
-  return blocks.map((p) => `<p>${escapeHtmlCl(p.replace(/\n+/g, ' '))}</p>`).join('');
+  return blocks
+    .slice(0, 3)
+    .map((p) => `<p>${escapeHtmlCl(p.replace(/\n+/g, ' '))}</p>`)
+    .join('');
 }
 
 async function tailorPackage(jd, profile, companyName, passedCompanyType) {
@@ -1394,7 +1398,8 @@ ${roleDigest}
 
 2. COVER LETTER (body only — template adds "Dear Hiring Manager," and "Sincerely,"):
    - Return ONLY the letter body: NO salutation, NO sign-off
-   - Under 150 words total. 3 short paragraphs separated by \\n\\n
+   - Under 150 words total. Exactly 3 paragraphs separated by a single \\n\\n. No extra blank lines.
+   - Do not pad with filler or repeated closings.
    - Tone: first person, formal. Prefer "I am writing...", "The posting emphasizes..."
    - Para 1 (2 sentences): Interest at ${companyName}; reference a concrete JD requirement
    - Para 2 (2-3 sentences): Map experience to JD requirements with tools and outcomes
