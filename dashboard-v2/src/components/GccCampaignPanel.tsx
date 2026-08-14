@@ -27,6 +27,7 @@ type PipelineGccJob = {
   pipeline_id?: number;
   company?: string;
   title?: string;
+  url?: string;
   score?: string | number | null;
   gcc_signal_score?: number | null;
   gcc_high_value?: boolean;
@@ -42,6 +43,7 @@ type Props = {
   onOpenPipeline?: () => void;
   onTailorJob?: (jobId: number) => void;
   onAddToOutreach?: (company: string, role: string) => void;
+  onResearchDraft?: (opts: { jobId?: number; company: string; role: string; url?: string }) => void;
   lastGccScanAdded?: number | null;
   lastGccScanAt?: string | null;
   gccPipelineTotal?: number;
@@ -60,6 +62,7 @@ export function GccCampaignPanel({
   onOpenPipeline,
   onTailorJob,
   onAddToOutreach,
+  onResearchDraft,
   lastGccScanAdded = null,
   lastGccScanAt = null,
   gccPipelineTotal = 0,
@@ -300,6 +303,22 @@ export function GccCampaignPanel({
                             Track
                           </button>
                         )}
+                        {onResearchDraft && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onResearchDraft({
+                                jobId: job.pipeline_id,
+                                company: String(job.company || ''),
+                                role: String(job.title || ''),
+                                url: job.url,
+                              })
+                            }
+                            className="rounded-lg border border-[#E5E5E0] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#1C1C1E] hover:bg-[#FAFAF8]"
+                          >
+                            Draft
+                          </button>
+                        )}
                         {onTailorJob && job.pipeline_id != null && (
                           <button
                             type="button"
@@ -413,9 +432,21 @@ export function GccCampaignPanel({
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <button type="button" onClick={() => removeTarget(t.id)} className="p-2 text-[#9CA3AF] hover:text-rose-600">
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        {onResearchDraft && (
+                          <button
+                            type="button"
+                            onClick={() => onResearchDraft({ company: t.company, role: t.role })}
+                            className="rounded-lg border border-[#E5E5E0] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#1C1C1E] hover:bg-[#FAFAF8]"
+                            title="Research company and draft email"
+                          >
+                            Draft
+                          </button>
+                        )}
+                        <button type="button" onClick={() => removeTarget(t.id)} className="p-2 text-[#9CA3AF] hover:text-rose-600">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

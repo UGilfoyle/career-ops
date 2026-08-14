@@ -13,7 +13,8 @@
     "test:resume": "npx tsx src/lib/resume/fill-template.test.ts && npx tsx src/lib/resume/parse-resume-text.test.ts",
     "test:billing": "npx tsx src/lib/billing/billing.test.ts",
     "test:practice": "npx tsx src/lib/practice/practice.test.ts",
-    "test:unit": "npm run test:billing && npm run test:practice && npm run test:resume"
+    "test:outreach": "npx tsx src/lib/outreach/parse.test.ts",
+    "test:unit": "npm run test:billing && npm run test:practice && npm run test:resume && npm run test:outreach"
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.11.2",

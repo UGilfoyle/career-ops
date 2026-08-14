@@ -53,6 +53,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHeader';
 import ProPaywall, { type PendingPayment } from './ProPaywall';
 import { defaultGccCampaign, type GccCampaign } from './gcc-campaign';
+import { OutreachDraftModal, type OutreachTarget } from './OutreachDraftModal';
 import { ONBOARDING_STORAGE_KEY, DASHBOARD_TOUR_STEPS } from '@/lib/onboarding-flow';
 import {
   STALE_POSTING_DAYS,
@@ -63,6 +64,11 @@ import {
 
 /** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
 const SHOW_RESUME_MANAGER_NAV = false;
+
+/** Tabs that should fill leftover viewport height instead of using 13-inch vh math. */
+const FILL_TABS = new Set(['chat', 'terminal', 'resume-studio', 'practice']);
+
+const PANE_WIDTH = 'w-full min-w-0 max-w-5xl xl:max-w-6xl 2xl:max-w-7xl';
 
 function TabLoading() {
   return (
@@ -255,6 +261,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [clearPipelineScope, setClearPipelineScope] = useState<'all' | 'visible'>('all');
   const [clearPipelineLoading, setClearPipelineLoading] = useState(false);
   const [gccCampaign, setGccCampaign] = useState<GccCampaign>(defaultGccCampaign);
+  const [outreachTarget, setOutreachTarget] = useState<OutreachTarget | null>(null);
   const [studioReviewJob, setStudioReviewJob] = useState<{
     jobId: number;
     company?: string;
@@ -283,7 +290,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   } | null>(null);
   const hasPro = Boolean(billing?.hasPro || isAdmin);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
-  const lastBgEventRef = useRef<number>(0);
+  const lastBgEventRef = useRef<number>(Number(initialData?.meta?.lastBackgroundEventId || 0));
 
   const terminalUser = terminalUsernameFromSession(session);
   const terminalPrompt = `${terminalUser}@career-ops:~$`;
@@ -629,18 +636,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
   }, [status, session?.user?.email, session?.user?.id]);
 
-  // Track last seen background completion event (so we can show toast even if it completed while user was away)
+  // Mark the latest background event as already seen so a completed tailor/scan
+  // from yesterday does not toast again on every page load.
   useEffect(() => {
     if (status !== 'authenticated') return;
     const userKey = session?.user?.email || session?.user?.id || 'default';
     const key = `career_ops_last_seen_bg_event:${userKey}`;
+    const currentId = Number(initialData?.meta?.lastBackgroundEventId || 0);
     try {
-      const seen = localStorage.getItem(key);
-      if (seen === null) localStorage.setItem(key, '0');
+      const stored = Number(localStorage.getItem(key) || 0);
+      const seen = Math.max(stored, currentId, lastBgEventRef.current);
+      lastBgEventRef.current = seen;
+      localStorage.setItem(key, String(seen));
     } catch {
-      // ignore storage failures
+      lastBgEventRef.current = Math.max(lastBgEventRef.current, currentId);
     }
-  }, [status, session?.user?.email, session?.user?.id]);
+  }, [status, session?.user?.email, session?.user?.id, initialData?.meta?.lastBackgroundEventId]);
 
   const completeOnboarding = () => {
     const userKey = session?.user?.email || session?.user?.id || 'default';
@@ -954,6 +965,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       ].join('|');
 
     let lastFp = pollFingerprint(initialData?.meta);
+    let allowDeltaToasts = false;
 
     const fetchData = () => {
       fetch('/api/data?t=' + Date.now(), { cache: 'no-store' })
@@ -966,7 +978,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             // Background job completion — dedupe by event id (avoids double "GCC Scan completed")
             const notifyBackgroundCompletion = (meta: any, storageKey: string) => {
               const eventId = Number(meta?.lastBackgroundEventId || 0);
-              if (eventId <= 0 || eventId === lastBgEventRef.current) return false;
+              if (eventId <= 0 || eventId <= lastBgEventRef.current) return false;
               lastBgEventRef.current = eventId;
               const msg = formatCompletionMessage(meta);
               setToast({ show: true, message: msg.toast });
@@ -1002,7 +1014,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               // ignore storage failures
             }
 
-            if (prevData) {
+            if (allowDeltaToasts && prevData) {
               const prevMeta = prevData.meta || {};
               const nextMeta = d.meta || {};
               const bgNotified = notifyBackgroundCompletion(nextMeta, lastSeenKey);
@@ -1051,6 +1063,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             return d;
           });
           lastFp = pollFingerprint(d?.meta);
+          allowDeltaToasts = true;
           setLoading(false);
         });
     };
@@ -1892,7 +1905,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           </div>
           <div className="w-10" aria-hidden />
         </div>
-        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8">
+        <div
+          className={`min-h-0 flex-1 ${
+            FILL_TABS.has(activeTab)
+              ? 'flex flex-col overflow-hidden'
+              : 'overflow-x-hidden overflow-y-auto'
+          } p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 md:p-6 xl:p-8 2xl:px-10 2xl:py-8`}
+        >
         <AnimatePresence>
           {isSearchOpen && (
             <motion.div
@@ -1926,6 +1945,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
         </AnimatePresence>
 
+        <div className={FILL_TABS.has(activeTab) ? 'flex min-h-0 flex-1 flex-col' : undefined}>
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <motion.div key="dash" className="space-y-8">
@@ -2306,7 +2326,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
                 {appsViewMode === 'table' ? (
                   <div className="p-4">
-                    <div className="h-[min(560px,calc(100vh-13rem))] min-h-[420px] overflow-auto rounded-xl border border-[#E5E5E0] bg-white">
+                    <div className="h-[min(70dvh,calc(100dvh-12rem))] min-h-[16rem] sm:min-h-[22rem] overflow-auto rounded-xl border border-[#E5E5E0] bg-white">
                       <table className="w-full min-w-[56rem] text-left">
                         <thead className="sticky top-0 z-10 bg-[#FAFAF8] border-b border-[#E5E5E0] shadow-[0_1px_0_#E5E5E0]">
                           <tr className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
@@ -2424,7 +2444,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   </div>
                 ) : (
                   <div className="p-4">
-                    <div className="h-[min(560px,calc(100vh-13rem))] min-h-[420px] overflow-x-auto">
+                    <div className="h-[min(70dvh,calc(100dvh-12rem))] min-h-[16rem] sm:min-h-[22rem] overflow-x-auto">
                       <div className="grid h-full min-w-[900px] grid-cols-5 gap-3 min-h-0">
                     {kanbanColumns.map((col) => {
                       const colApps = sortedApplications.filter((app: any) =>
@@ -2715,6 +2735,21 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             <button
                               type="button"
                               onClick={() =>
+                                setOutreachTarget({
+                                  jobId: Number(job.pipeline_id),
+                                  company: String(job.company || ''),
+                                  role: String(job.title || ''),
+                                  url: String(job.url || ''),
+                                })
+                              }
+                              className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
+                              title="Research company and draft outreach email"
+                            >
+                              <Mail size={14} className="inline" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
                                 openInStudio({
                                   jobId: Number(job.pipeline_id),
                                   company: job.company,
@@ -2785,7 +2820,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
 
           {activeTab === 'resume-studio' && (
-            <motion.div key="resume-studio" className="space-y-4">
+            <motion.div key="resume-studio" className="flex min-h-0 flex-1 flex-col space-y-3 sm:space-y-4">
               <PageSectionHeader
                 title="Resume Studio"
                 subtitle="Master resume editor with live ATS preview — same profile that powers tailor"
@@ -2795,6 +2830,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   <Loader2 className="animate-spin text-[#1C1C1E]" size={28} />
                 </div>
               ) : hasPro ? (
+              <div className="min-h-0 flex-1">
               <ResumeStudio
                 initialProfile={
                   profileFormData?.candidate?.full_name || (profileFormData?.experience || []).length
@@ -2840,6 +2876,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 }}
                 onOpenGeneratedDocs={() => setActiveTab('generated-docs')}
               />
+              </div>
               ) : (
                 <ProPaywall
                   feature="resume-studio"
@@ -3343,12 +3380,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
 
           {activeTab === 'terminal' && (
-            <motion.div key="terminal" className="space-y-6">
+            <motion.div key="terminal" className="flex min-h-0 flex-1 flex-col space-y-4 sm:space-y-6">
               <PageSectionHeader
                 title="Terminal"
                 subtitle="Run scan, rank, tailor, and apply commands"
               />
-            <div className="relative flex h-[600px] flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.25rem] sm:rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
               <div className="p-5 border-b border-[#E5E5E0] flex justify-between items-center bg-[#F5F5F0]">
                  <div className="flex items-center gap-3">
                     <div className="h-3 w-3 bg-[#f59e0b] rounded-full" />
@@ -3356,7 +3393,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                  </div>
                  <button onClick={() => setLogs([])} className="text-[10px] text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors uppercase tracking-widest font-bold">Flush Buffers</button>
               </div>
-              <div id="terminal-logs" className="flex-1 p-8 font-mono text-sm overflow-y-auto whitespace-pre-wrap bg-white text-[#292524] scroll-smooth leading-relaxed select-text cursor-text">
+              <div id="terminal-logs" className="flex-1 min-h-0 p-4 sm:p-6 md:p-8 font-mono text-sm overflow-y-auto whitespace-pre-wrap bg-white text-[#292524] scroll-smooth leading-relaxed select-text cursor-text">
                  {logs.length === 0 && !isExecuting ? (
                    <div className="select-text">
                      <pre className="font-mono text-[10px] sm:text-xs text-[#1C1C1E] mb-6 leading-tight font-bold">
@@ -3448,6 +3485,7 @@ System Initialized — v2.0`}
                 void requestTailor(jobId);
               }}
               onAddToOutreach={(company: string, role: string) => addToGccCampaign(company, role)}
+              onResearchDraft={(opts) => setOutreachTarget(opts)}
               highValueCount={(data?.pipeline || []).filter((j: any) => j.gcc_high_value).length}
               isSaving={isSaving}
               saveStatus={saveStatus}
@@ -3455,7 +3493,7 @@ System Initialized — v2.0`}
           )}
 
           {activeTab === 'settings' && (
-            <motion.div key="settings" className="w-full max-w-5xl space-y-8">
+            <motion.div key="settings" className={`${PANE_WIDTH} space-y-8`}>
                <PageSectionHeader
                  title="Settings"
                  subtitle="Profile, targeting keywords, resume import, and GitHub automation"
@@ -3885,7 +3923,7 @@ System Initialized — v2.0`}
 
                  <ConfigSection title="Experience" icon={<Briefcase size={18} className="text-[#1C1C1E]" />}>
                    <div className="space-y-4">
-                     <div className="max-h-[min(560px,calc(100vh-18rem))] overflow-y-auto pr-2 space-y-4">
+                     <div className="max-h-[min(60dvh,calc(100dvh-16rem))] overflow-y-auto pr-2 space-y-4">
                      {(profileFormData.experience || []).map((exp: any, idx: number) => (
                        <div key={idx} className="p-5 bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl">
                          <div className="flex items-start justify-between gap-4 mb-4">
@@ -3988,7 +4026,7 @@ System Initialized — v2.0`}
 
                  <ConfigSection title="Education" icon={<FileText size={18} className="text-[#1C1C1E]" />}>
                    <div className="space-y-4">
-                     <div className="max-h-[min(480px,calc(100vh-20rem))] overflow-y-auto pr-2 space-y-4">
+                     <div className="max-h-[min(50dvh,calc(100dvh-18rem))] overflow-y-auto pr-2 space-y-4">
                      {(profileFormData.education || []).map((edu: any, idx: number) => (
                        <div key={idx} className="p-5 bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl">
                          <div className="flex items-start justify-between gap-4 mb-4">
@@ -4168,10 +4206,10 @@ System Initialized — v2.0`}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 15 }}
               transition={{ duration: 0.25 }}
-              className="flex flex-col h-[calc(100vh-8rem)] w-full max-w-5xl bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden shadow-sm"
+              className={`flex min-h-0 flex-1 flex-col ${PANE_WIDTH} mx-auto bg-white border border-[#E5E5E0] rounded-[1.25rem] sm:rounded-[2rem] overflow-hidden shadow-sm`}
             >
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-[#E5E5E0] px-6 py-4 bg-[#FAFAF8]">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5E5E0] px-4 py-3 sm:px-6 sm:py-4 bg-[#FAFAF8]">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[#1C1C1E] flex items-center justify-center text-white">
                     <Bot size={20} />
@@ -4215,14 +4253,14 @@ System Initialized — v2.0`}
               )}
 
               {/* Message List */}
-              <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-[#FAFAF8]/30">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 space-y-4 bg-[#FAFAF8]/30">
                 {chatMessages.map((msg, i) => (
                   <div
                     key={i}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      className={`max-w-[90%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                         msg.role === 'user'
                           ? 'bg-[#1C1C1E] text-white shadow-sm font-medium'
                           : 'bg-white text-[#1C1C1E] border border-[#E5E5E0] shadow-sm whitespace-pre-wrap'
@@ -4248,7 +4286,7 @@ System Initialized — v2.0`}
 
               {/* Suggestions Panel */}
               {chatMessages.length === 1 && (
-                <div className="px-6 py-3 border-t border-[#E5E5E0]/60 bg-[#FAFAF8]/50">
+                <div className="px-4 py-3 sm:px-6 border-t border-[#E5E5E0]/60 bg-[#FAFAF8]/50">
                   <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-2">Suggested Prompts</p>
                   <div className="flex flex-wrap gap-2">
                     {[
@@ -4271,7 +4309,7 @@ System Initialized — v2.0`}
               )}
 
               {/* Input Form */}
-              <div className="border-t border-[#E5E5E0] px-6 py-4 bg-white">
+              <div className="border-t border-[#E5E5E0] px-4 py-3 sm:px-6 sm:py-4 bg-white shrink-0">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -4306,7 +4344,7 @@ System Initialized — v2.0`}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 15 }}
               transition={{ duration: 0.25 }}
-              className="w-full min-w-0 max-w-5xl overflow-x-hidden"
+              className={`${PANE_WIDTH} min-h-0 flex-1 overflow-x-hidden overflow-y-auto`}
             >
               <PracticePanel
                 pipeline={data?.pipeline || []}
@@ -4328,6 +4366,7 @@ System Initialized — v2.0`}
           )}
         </AnimatePresence>
         </div>
+        </div>
       </main>
 
       {/* Job Details Modal */}
@@ -4337,7 +4376,7 @@ System Initialized — v2.0`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[90] flex items-center justify-center p-6"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[90] flex items-center justify-center p-3 sm:p-6"
             onClick={() => setJobDetailsOpen(false)}
           >
             <motion.div
@@ -4674,6 +4713,8 @@ System Initialized — v2.0`}
         )}
       </AnimatePresence>
 
+      <OutreachDraftModal target={outreachTarget} onClose={() => setOutreachTarget(null)} />
+
       {/* Toast Notification */}
       <AnimatePresence>
         {toast.show && (
@@ -4681,7 +4722,7 @@ System Initialized — v2.0`}
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-6 right-6 z-[100] bg-[#1C1C1E] text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10"
+            className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[100] max-w-[min(24rem,calc(100vw-1.5rem))] bg-[#1C1C1E] text-white px-5 py-3.5 sm:px-6 sm:py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10"
           >
             <CheckCircle2 size={20} className="text-[#f59e0b]" />
             <span className="text-sm font-bold tracking-wide">{toast.message}</span>

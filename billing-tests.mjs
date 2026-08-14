@@ -337,6 +337,20 @@ test('chat route uses checkCopilotRateLimit', () => {
   assert.ok(src.includes('copilot_rate_limit'));
 });
 
+test('outreach research rate-limits before copilot spend', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/outreach/research/route.ts'), 'utf8');
+  const post = src.indexOf('export async function POST');
+  assert.ok(post > -1);
+  const body = src.slice(post);
+  const ip = body.indexOf('outreach:ip:');
+  const burst = body.indexOf('outreach-burst:');
+  const copilot = body.indexOf('checkCopilotRateLimit');
+  assert.ok(ip > -1 && burst > -1 && copilot > -1);
+  assert.ok(ip < copilot && burst < copilot, 'burst must run before Copilot quota increment');
+  assert.ok(body.includes('outreach:${sessionUserId}'));
+  assert.ok(body.includes('Retry-After'));
+});
+
 test('resume export-pdf gates with assertProAccess', () => {
   const src = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/resume/export-pdf/route.ts'), 'utf8');
   assert.ok(src.includes('assertProAccess'));
@@ -387,7 +401,7 @@ test('checkout short-circuits for Pro users and pending claims', () => {
   const src = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/checkout/route.ts'), 'utf8');
   assert.ok(src.includes('hasProAccess'));
   assert.ok(src.includes('blocksNewPayment'));
-  const proGuard = src.indexOf('hasProAccess(userId, email)');
+  const proGuard = src.indexOf('hasProAccess(userId, email');
   const stripeCall = src.indexOf('api.stripe.com');
   assert.ok(proGuard > -1 && proGuard < stripeCall, 'Pro guard must run before any provider call');
 });

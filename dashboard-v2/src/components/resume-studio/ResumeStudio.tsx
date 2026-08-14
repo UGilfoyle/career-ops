@@ -277,7 +277,7 @@ export default function ResumeStudio({
   }, []);
 
   return (
-    <div className="flex min-h-[min(640px,calc(100dvh-8rem))] flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-[#FAFAF8] shadow-sm lg:h-[calc(100dvh-2rem)] lg:min-h-[640px]">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-[#FAFAF8] shadow-sm">
       <StudioToolbar
         saveStatus={saveStatus}
         saveError={saveError}
