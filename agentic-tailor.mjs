@@ -65,12 +65,21 @@ import {
   IndeedFetchError,
 } from './indeed-job.mjs';
 import {
+  isNaukriUrl,
+  fetchNaukriJob,
+  stripNaukriChrome,
+  looksLikeNaukriPollution,
+  naukriManualJdHint,
+  NaukriFetchError,
+} from './naukri-job.mjs';
+import {
   buildTailoringPlan,
   executeTailoringPlan,
   repairTailoredResume,
   measureMutableRoleCoverage,
   assertPreservedEquality,
   restorePreservedEmployers,
+  scrubGapToolsFromMutableRoles,
 } from './resume-tailoring-plan.mjs';
 
 let hf = null;
@@ -732,6 +741,23 @@ async function scrapeJD(url) {
     }
   }
 
+  if (isNaukriUrl(targetUrl)) {
+    console.log('🎯 Naukri URL detected. Fetching JD via Jina (strips similar-jobs chrome)…');
+    try {
+      const text = await fetchNaukriJob(targetUrl);
+      if (text && looksLikeUsableJd(text, { minLength: 220 })) {
+        console.log(`✅ Naukri JD extracted (${text.length} chars)`);
+        return text;
+      }
+    } catch (err) {
+      if (err?.naukriBlocked) throw err;
+      console.warn(`⚠️ Naukri Jina fetch failed: ${err.message}`);
+    }
+    // Never Playwright/HTML-dump a Naukri listing — "Similar jobs" leaks other stacks
+    // (Python fullstack, Nest) and the tailor then invents FastAPI/Angular on Quest.
+    throw new NaukriFetchError(naukriManualJdHint(targetUrl));
+  }
+
   // Intercept BambooHR URLs to fetch clean JSON details directly
   let bhrSubdomain = null;
   let bhrJobId = null;
@@ -982,6 +1008,9 @@ async function scrapeJD(url) {
               || document.querySelector('.jobsearch-BodyContainer');
             return jdContainer ? jdContainer.innerText : document.body.innerText;
           });
+        } else if (isNaukriUrl(targetUrl)) {
+          await browser.close();
+          throw new NaukriFetchError(naukriManualJdHint(targetUrl));
         } else {
           text = await page.evaluate(() => document.body.innerText);
         }
@@ -989,6 +1018,7 @@ async function scrapeJD(url) {
         if (text && text.trim().length > 100) return text.trim();
         lastErr = new Error('Playwright returned empty page text');
       } catch (err) {
+        if (err?.naukriBlocked || err?.indeedBlocked) throw err;
         lastErr = err;
         console.warn(`⚠ Playwright scrape (${attempt.label}) failed: ${err.message}`);
         if (browser) {
@@ -999,12 +1029,19 @@ async function scrapeJD(url) {
         }
       }
     }
+    if (isNaukriUrl(targetUrl)) {
+      throw lastErr?.naukriBlocked ? lastErr : new NaukriFetchError(naukriManualJdHint(targetUrl));
+    }
     try {
       console.warn('⚠ Falling back to HTML fetch after Playwright errors…');
       return await fetchHtmlJdFallback();
     } catch (fetchErr) {
       throw new Error(`Scrape failed: ${lastErr?.message || 'unknown'} | fetch fallback: ${fetchErr.message}`);
     }
+  }
+
+  if (isNaukriUrl(targetUrl)) {
+    throw new NaukriFetchError(naukriManualJdHint(targetUrl));
   }
 
   console.warn('⚠ Playwright unavailable in this runtime. Falling back to enhanced HTML fetch.');
@@ -1141,17 +1178,29 @@ async function scrapeJD(url) {
 
 async function resolveJdText(entry) {
   let jdText = String(entry?.jd_text || '').trim();
+  if (isNaukriUrl(entry.url) && jdText) {
+    jdText = stripNaukriChrome(jdText);
+    if (looksLikeNaukriPollution(jdText) || !looksLikeUsableJd(jdText, { minLength: 220 })) {
+      jdText = '';
+    }
+  }
   if (jdText.length >= 200) {
     console.log(`📄 Using stored JD text from database (${jdText.length} chars).`);
     return jdText;
   }
 
   try {
-    const scraped = await scrapeJD(entry.url);
+    let scraped = await scrapeJD(entry.url);
     // Indeed serves navigation chrome instead of a 403 page — tailoring on that
     // yields 0% JD coverage, so stop with instructions rather than guessing.
     if (isIndeedUrl(entry.url) && !looksLikeUsableJd(scraped)) {
       throw new IndeedFetchError(indeedManualJdHint(entry.url));
+    }
+    if (isNaukriUrl(entry.url)) {
+      scraped = stripNaukriChrome(scraped);
+      if (looksLikeNaukriPollution(scraped) || !looksLikeUsableJd(scraped, { minLength: 220 })) {
+        throw new NaukriFetchError(naukriManualJdHint(entry.url));
+      }
     }
     if (scraped && scraped.length > jdText.length) {
       return scraped;
@@ -1162,7 +1211,7 @@ async function resolveJdText(entry) {
     }
     return scraped || '';
   } catch (err) {
-    if (err?.indeedBlocked) throw err;
+    if (err?.indeedBlocked || err?.naukriBlocked) throw err;
     if (jdText.length > 0) {
       console.warn(`⚠️ JD scrape failed (${err.message}); using stored partial JD (${jdText.length} chars).`);
       return jdText;
@@ -1342,12 +1391,12 @@ GLOBAL RULES:
 - NO buzzwords: passion, leveraging, synergies, robust, seamless, cutting-edge, proven track record
 - NO AI-sounding phrases
 - Individual Ownership (I, not We): Position all technical achievements, summaries, and cover letters as direct personal contributions. Never use team-oriented language like "we", "our", "us", "assisted with", "participated in", or "worked in a team to". Use first-person singular "I" or strong active verbs (e.g. "I built...", "I engineered...", "Architected...", "Designed...") to show individual ownership of the work.
-- 100% JD-Alignment (ATS-FIRST): Mirror the FULL JD tech stack in Summary, Core Competencies, AND Experience bullets using exact JD terminology (React, NestJS, Azure, etc.). Prefer JD wording over CV wording when they differ. Do not withhold gap tools from experience — rewrite bullets so they read as if delivery used the JD stack. Still never invent employers or fake percentage metrics that are not in the digest.
+- 100% JD-Alignment (ATS-FIRST): Mirror honest JD tech in Summary and Core Competencies using exact JD wording (Angular, Node.js, TypeScript, Docker, Kubernetes, PostgreSQL, AWS). Experience bullets stay on tools proven in THAT role's digest. Never rewrite Quest/INTVERSE/etc. as if they shipped a JD-only stack (no FastAPI/Angular/Nest on a Node/Redis role). Gap tools belong in competencies only, never invented into bullets. Still never invent employers or fake percentage metrics that are not in the digest.
 - Use short sentences, active voice, specific numbers where they appear in the digest
 - Lead with substance, not filler${companyTypeRule}
-- Highlight Applied AI & GenAI/LLM: If the JD requires or mentions AI, Generative AI, Large Language Models (LLMs), RAG, vector databases, or machine learning, prioritize and weave the candidate's AI experience (e.g., ChromaDB document ingestion pipeline with multiprocessing, conversation query-rewriting, Anthropic Claude/OpenAI GPT integrations with tenacity backoff retry, self-correcting validation loops for LLMs) into the summary, core competencies, and tailored experience bullets.
+- Highlight Applied AI & GenAI/LLM: Only if THIS posting's own requirements mention AI/LLM/RAG (ignore Naukri "Similar jobs" chrome). Then weave digest-proven AI work into summary/competencies. Never paste FastAPI/SSE/LLM onto a role whose digest does not contain that work.
 - Freelance / Contract / Temporary Role Adaptation: If the JD indicates a freelance, contract, or temporary role, adapt the summary and cover letter to emphasize high autonomy, rapid team integration, immediate contribution, and deliverables-oriented execution. DO NOT change the candidate's existing job titles on the resume to "Freelance" or "Contractor". Keep professional titles (e.g., "Senior Software Engineer") as-is. Avoid adding clunky "doing freelancing" or "freelancing work" phrasing.
-- CRITICAL ATS OPTIMIZATION (90+ ATS Score Target): Maximize exact keyword matching. Extract the primary languages, frameworks, databases, cloud platforms, and technical skills from the JD and weave them verbatim into the Summary, Core Competencies, and Rewritten Bullets. Match terminology exactly (e.g. if the JD writes "PostgreSQL", do not write "Postgres" or "SQL database").
+- CRITICAL ATS OPTIMIZATION (90+ ATS Score Target): Maximize exact keyword matching in Summary and Core Competencies using JD wording (PostgreSQL not Postgres). Experience bullets may use a JD term only when that same tool already appears in THAT role's digest. Never invent Angular/Nest/FastAPI/Azure into a Node/Redis/AWS role.
 - CRITICAL — QUANTIFIED IMPACT (90+ target): Enforce strong quantification. Wherever a metric is present in the candidate's experience digest (%, dollar amounts, latency, throughput, CPU reduction, uptime, speedups), preserve and highlight it in the rewritten bullets. Never invent or fabricate metrics.
 - CRITICAL — VERB VARIETY: Start each bullet with a unique, strong action verb (e.g., architected, engineered, streamlined, deployed, accelerated). Avoid repeating the same verb in consecutive bullet points.
 
@@ -1376,14 +1425,14 @@ ${roleDigest}
       BULLET RULES — COMPANY-AWARE TONE (do not oversell older roles):
       - SENIOR LinkedIn/ATS bar ONLY for: Quest Global / Quest, INTVERSE, Glidewell, Srijan — ownership, architecture, reliability, mentoring/SDLC, measurable impact
       - MID-LEVEL professional tone for: KOCO, Rubico, Artisanssoft (and any other older/junior-era roles) — competent IC voice (Developed/Built/Implemented/Delivered). Never junior fluff (Helped/Assisted/Worked on). Never Staff/Senior architect voice (Architected/Owned/Drove/Mentored) on mid employers
-      - LinkedIn formula: [Strong verb] + [scope/system] + [tech from JD stack] + [outcome/metric from digest]
+      - LinkedIn formula: [Strong verb] + [scope/system] + [tech from THAT role's digest] + [outcome/metric from digest]
       - SENIOR GOOD: "Architected event-driven microservices on Node.js/Python, cutting infra cost 30%." / "Owned AWS right-sizing and autoscaling, protecting 99.95% uptime." / "Led peer review and mentoring that raised SDLC quality across the squad."
       - MID GOOD: "Developed Node.js multi-tenant APIs serving client platforms." / "Built MongoDB schemas and REST endpoints for deliverables." / "Implemented payment gateway integrations processing 1,000+ daily transactions."
       - BAD (all employers): "Worked on APIs." / "Helped the team." / "Assisted with deployments." / first-person essays
       - Ban openings everywhere: Helped, Assisted, Worked on, Responsible for, Duties included
       - Senior-prefer (Quest/INTVERSE/Glidewell/Srijan only): Architected, Owned, Drove, Engineered, Shipped, Hardened, Scaled, Mentored, Instituted, Diagnosed
       - Mid-prefer (KOCO/Rubico/Artisanssoft): Developed, Built, Implemented, Delivered, Integrated, Deployed, Provisioned, Established — not Architected/Owned/Drove
-      - JD-FIRST: rewrite bullets to use exact JD stack terms (NestJS, Azure, TypeScript, etc.) even when the digest used adjacent tools (Express→NestJS, AWS→Azure when JD requires it). Keep the same projects/outcomes from the digest.
+      - JD-HONEST: keep digest tools (Node.js, TypeScript, PostgreSQL, AWS, Docker). You may add a JD synonym that is the same tool (Postgres→PostgreSQL). NEVER swap Express→NestJS, AWS→Azure, React→Angular, or invent FastAPI/SSE/LLM on a role that did not use them.
       - NEVER invent fake percentage metrics or employers; never append spam like "applying X in production"
       - Each bullet MUST include at least one metric from the digest when the source bullet has one; never fabricate numbers
       - Start each bullet with a UNIQUE action verb — no two bullets may share the same opening verb
@@ -1580,6 +1629,8 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
         );
         executed.resume = restorePreservedEmployers(rePolished, executed.preservedSnapshot);
       }
+      executed.resume = scrubGapToolsFromMutableRoles(executed.resume, plan, profile);
+      executed.resume = restorePreservedEmployers(executed.resume, executed.preservedSnapshot);
     }
 
     data.resume = executed.resume;
@@ -1594,7 +1645,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
       `🎯 JD ATS alignment: ${executed.jd_alignment_score}% (plan family=${plan.family}; frozen roles=${plan.preserveIndices.length})`
     );
     if (gapKeywords.length > 0) {
-      console.log(`ℹ JD gap stack woven for ATS match: ${gapKeywords.slice(0, 8).join(', ')}`);
+      console.log(`ℹ JD gap stack listed in competencies only (not experience): ${gapKeywords.slice(0, 8).join(', ')}`);
     }
 
     const audit = auditResumeQuality(data.resume);

@@ -268,9 +268,8 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
   );
   if (superpowers.length === 0 && competencies.length === 0) return '';
 
-  const techSkills = [...competencies];
-
-  const existingLower = new Set(techSkills.map((x) => x.toLowerCase()));
+  const fromProfile = [];
+  const existingLower = new Set();
   for (const sp of superpowers) {
     const s = String(sp || '').trim();
     if (!s || existingLower.has(s.toLowerCase()) || isNarrativeSuperpower(s)) continue;
@@ -280,7 +279,7 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
       for (const tech of parenMatch[1].split(',').map((t) => t.trim()).filter(Boolean)) {
         if (isEditorIdeTool(tech) || isJunkKeyword(tech) || isEmployerBrandKeyword(tech, jdText)) continue;
         if (!existingLower.has(tech.toLowerCase()) && isTechStackSkill(tech)) {
-          techSkills.push(tech);
+          fromProfile.push(tech);
           existingLower.add(tech.toLowerCase());
         }
       }
@@ -294,14 +293,14 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
       && !/^ai-?native tool integration$/i.test(cleanedSp)
       && isTechStackSkill(cleanedSp)
     ) {
-      techSkills.push(cleanedSp);
+      fromProfile.push(cleanedSp);
       existingLower.add(cleanedSp.toLowerCase());
     }
   }
 
-  const uniqueTech = sanitizeCompetencyList(techSkills, jdText).slice(0, 16);
+  const uniqueTech = sanitizeCompetencyList([...fromProfile, ...competencies], jdText).slice(0, 18);
   if (uniqueTech.length) return skillsCategoryLines(uniqueTech);
 
-  const fallback = sanitizeCompetencyList([...competencies, ...superpowers], jdText).slice(0, 16);
+  const fallback = sanitizeCompetencyList([...fromProfile, ...competencies, ...superpowers], jdText).slice(0, 18);
   return skillsCategoryLines(fallback);
 }

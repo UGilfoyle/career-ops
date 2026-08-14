@@ -529,6 +529,20 @@ console.log('resume-quality tests\n');
   assert(rubicoJob.bullets.some((b) => /MongoDB/i.test(b)), 'Rubico keeps MongoDB bullet');
   assert(!/services Integrity through/i.test(kocoJob.bullets.join(' ')), 'Integrity mid-sentence repaired');
 
+  const preserving = normalizeBulletText(
+    'Built Node.js services, preserving data.',
+    'KOCO Schools',
+  );
+  assert(/preserving data integrity/i.test(preserving), 'KOCO preserving data. is repaired');
+  assert(!/preserving data\.\s*$/i.test(preserving), 'does not leave truncated preserving data.');
+
+  const streaming = normalizeBulletText(
+    'Implemented Server-Sent Events for token-by-token response streaming.',
+    'Quest Global',
+  );
+  assert(streaming.includes('token\u2011by\u2011token'), 'compound hyphen is non-breaking in PDF');
+  assert(!/token-by-token/.test(streaming), 'ASCII hyphen removed from token-by-token');
+
   const amexScreenshot = normalizeExperienceBulletList([
     'Authored the complete backend architecture for a multi-tenant platform serving 25,000+ active users, synthesizing complex business logic into scalable, highly available Node.js services.',
     'Integrity through rigorous algorithmic validation with zero data loss.',

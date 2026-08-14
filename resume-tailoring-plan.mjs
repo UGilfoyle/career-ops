@@ -265,33 +265,35 @@ function domainPhraseTransferable(phrase, corpus, honest = []) {
 }
 
 /**
- * Keywords to weave into mutable-role bullets — FULL JD stack (ATS-first).
- * No honesty / proven-only filter: if the JD names it, it is eligible to weave.
+ * Keywords to weave into mutable-role bullets — proven profile tools only.
+ * Gap JD tools (Angular, NestJS, Azure) stay in competencies, never bullets.
  */
 export function selectWeaveKeywords(plan, profile) {
-  void profile;
   const out = [];
   const seen = new Set();
+  const gapKeys = new Set((plan?.keywords?.gaps || []).map((g) => normalizeKey(g)).filter(Boolean));
+  const corpus = profileCorpusText(profile);
+  const honest = plan?.keywords?.honest || [];
   const push = (kw) => {
     const raw = String(kw || '').trim();
     if (!raw || isJunkKeyword(raw)) return;
     if (!isWeaveableNounPhrase(raw) && !isApprovedSkillPhrase(raw)) return;
     if (!isApprovedSkillPhrase(raw) && !isWeavableKeyword(raw)) return;
     const key = normalizeKey(raw);
-    if (!key || seen.has(key)) return;
+    if (!key || seen.has(key) || gapKeys.has(key)) return;
     seen.add(key);
     out.push(raw);
   };
 
-  // JD-first: atsMirror + gaps + mustHave + domain + honest (order = priority)
+  for (const kw of honest) push(kw);
+  for (const kw of plan?.keywords?.domain || []) {
+    if (domainPhraseTransferable(kw, corpus, honest)) push(kw);
+  }
   for (const kw of [
     ...(plan?.keywords?.atsMirror || []),
-    ...(plan?.keywords?.gaps || []),
     ...(plan?.keywords?.mustHave || []),
-    ...(plan?.keywords?.domain || []),
-    ...(plan?.keywords?.honest || []),
   ]) {
-    push(kw);
+    if (keywordLikelyProven(kw, plan?.fit) || corpus.includes(normalizeKey(kw))) push(kw);
   }
   return out.slice(0, 20);
 }
@@ -381,6 +383,49 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
   return copy;
 }
 
+function escapeGapRegex(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function stripGapMention(bullet, gap) {
+  const raw = String(gap || '').trim();
+  if (!raw || raw.length < 3) return bullet;
+  const escaped = escapeGapRegex(raw).replace(/\\\./g, '\\.?');
+  let t = String(bullet || '');
+  t = t.replace(new RegExp(`\\s*\\(${escaped}\\)`, 'gi'), '');
+  t = t.replace(new RegExp(`(?:\\s*(?:,|/|and|&))?\\s*\\b${escaped}\\b`, 'gi'), '');
+  return t.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/,\s*,/g, ',').replace(/\s+\./g, '.').trim();
+}
+
+/**
+ * Drop JD-gap tools (Angular, NestJS, Azure) from experience unless that role's
+ * source digest already names them. Skills/summary may still list gaps for ATS.
+ */
+export function scrubGapToolsFromMutableRoles(resume, plan, profile) {
+  const gaps = (plan?.keywords?.gaps || []).filter(
+    (g) => g && (isApprovedSkillPhrase(g) || isWeavableKeyword(g)),
+  );
+  if (!gaps.length || !resume?.experience || !plan?.tailorIndices?.length) return resume;
+  const copy = JSON.parse(JSON.stringify(resume));
+  for (const idx of plan.tailorIndices) {
+    const source = (profile?.experience?.[idx]?.bullets || []).join('\n');
+    const key = String(idx);
+    const bullets = Array.isArray(copy.experience[key]) ? copy.experience[key] : [];
+    copy.experience[key] = bullets
+      .map((b) => {
+        let t = String(b || '');
+        for (const gap of gaps) {
+          if (keywordCoveredInText(source, gap)) continue;
+          if (!keywordCoveredInText(t, gap)) continue;
+          t = stripGapMention(t, gap);
+        }
+        return t;
+      })
+      .filter((b) => String(b).replace(/[.\s]/g, '').length > 24);
+  }
+  return copy;
+}
+
 /**
  * Normalize source bullets for frozen employers (tone only, no JD weave).
  */
@@ -435,7 +480,7 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     || estimateYears(profile?.experience)
     || 0;
   const atsKeywords = plan.keywords.atsMirror;
-  // JD-first: weave + summarize against the full JD stack (gaps included)
+  // Summary/competencies may list the full JD stack. Experience weave is proven tools only.
   const jdLead = [...new Set([
     ...(plan.keywords.atsMirror || []),
     ...(plan.keywords.gaps || []),
@@ -443,7 +488,7 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     ...(plan.keywords.honest || []),
   ])].filter((k) => isApprovedSkillPhrase(k) || isWeavableKeyword(k));
   const weave = selectWeaveKeywords(plan, profile);
-  const bulletKeywords = weave.length ? weave : jdLead;
+  const bulletKeywords = weave.length ? weave : (plan.keywords.honest || []);
 
   const preserved = snapshotPreservedBullets(profile, plan);
 
@@ -520,9 +565,10 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     },
   );
 
-  // Final freeze + aggressive JD weave (gaps allowed)
+  // Final freeze + honest weave only (gaps stay in competencies)
   let finalResume = restorePreservedEmployers(polished, preserved);
-  finalResume = injectWeaveIntoMutableRoles(finalResume, plan, bulletKeywords, 4);
+  finalResume = injectWeaveIntoMutableRoles(finalResume, plan, bulletKeywords, 2);
+  finalResume = scrubGapToolsFromMutableRoles(finalResume, plan, profile);
   finalResume = restorePreservedEmployers(finalResume, preserved);
 
   const coverLetter = opts.llmCoverLetter
@@ -572,7 +618,7 @@ export function repairTailoredResume(resume, plan, profile, jdText) {
     ...(plan.keywords.mustHave || []),
     ...(plan.keywords.honest || []),
   ])];
-  const bulletKeywords = weave.length ? weave : jdLead;
+  const bulletKeywords = weave.length ? weave : (plan.keywords.honest || []);
   const preserved = snapshotPreservedBullets(profile, plan);
 
   // Patch summary / competencies with full JD stack
@@ -598,23 +644,24 @@ export function repairTailoredResume(resume, plan, profile, jdText) {
     }
   }
 
-  const repaired = injectWeaveIntoMutableRoles(aligned, plan, bulletKeywords, 4);
+  const repaired = injectWeaveIntoMutableRoles(aligned, plan, bulletKeywords, 2);
+  const scrubbed = scrubGapToolsFromMutableRoles(repaired, plan, profile);
   // Rebuild summary when top JD weave phrases are absent
   const topDomain = bulletKeywords
     .filter((k) => String(k).split(/\s+/).length >= 2 || /-/.test(k))
     .slice(0, 3);
-  const summaryLower = String(repaired.summary || '').toLowerCase();
+  const summaryLower = String(scrubbed.summary || '').toLowerCase();
   const missingDomain = topDomain.filter((k) => !summaryLower.includes(String(k).toLowerCase()));
   if (missingDomain.length >= 2 || (topDomain.length && missingDomain.length === topDomain.length)) {
-    repaired.summary = buildHonestSummary(
-      repaired.summary || '',
+    scrubbed.summary = buildHonestSummary(
+      scrubbed.summary || '',
       estimateYears(profile?.experience),
       [...jdLead, ...bulletKeywords],
       jdText,
     );
   }
 
-  return restorePreservedEmployers(repaired, preserved);
+  return restorePreservedEmployers(scrubbed, preserved);
 }
 
 /**

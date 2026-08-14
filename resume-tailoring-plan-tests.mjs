@@ -14,9 +14,12 @@ import {
   executeTailoringPlan,
   assertPreservedEquality,
   measureMutableRoleCoverage,
+  selectWeaveKeywords,
+  scrubGapToolsFromMutableRoles,
   DEFAULT_FULL_TAILOR,
   DEFAULT_PRESERVE_VERBATIM,
 } from './resume-tailoring-plan.mjs';
+import { stripNaukriChrome } from './naukri-job.mjs';
 import { validateResumeAlignment } from './resume-alignment-validator.mjs';
 import { hydrateResumeProfile } from './profile-hydrate.mjs';
 
@@ -221,6 +224,78 @@ assert(
   !(restoredEval.reasons || []).some((r) => /Frozen employers changed/.test(r)),
   `no false frozen-employer FAIL when LLM draft drops frozen roles (got ${(restoredEval.reasons || []).join('; ')})`,
 );
+
+console.log('\n10. BMW-style fullstack JD — Angular is a gap, not a Quest bullet\n');
+const BMW_JD = `
+Job Title: Fullstack Software Developer
+BMW Techworks India — Pune — 7 to 10 years
+Roles and Responsibilities:
+Design and develop Angular and Node.js applications with high availability, performance, security, and scalability.
+Job Requirements:
+JavaScript, TypeScript, Angular, Node.js, PostgreSQL, Docker, Kubernetes, AWS EC2, AWS S3.
+`;
+const planBmw = buildTailoringPlan(BMW_JD, profile);
+const weaveBmw = selectWeaveKeywords(planBmw, profile).join(' ').toLowerCase();
+assert(!/\bangular\b/.test(weaveBmw), `Angular stays out of bullet weave (got ${weaveBmw})`);
+assert(
+  (planBmw.keywords.gaps || []).some((k) => /angular/i.test(k))
+    || !(profileCorpusTextSafe(profile).includes('angular')),
+  'Angular is treated as a gap unless already in the profile',
+);
+const pkgBmw = executeTailoringPlan(planBmw, profile, {
+  jdText: BMW_JD,
+  companyName: 'BMW Techworks India',
+});
+const mutableBmw = planBmw.tailorIndices
+  .map((i) => (pkgBmw.resume.experience?.[String(i)] || []).join('\n'))
+  .join('\n');
+assert(!/\bAngular\b/i.test(mutableBmw), 'mutable bullets do not invent Angular');
+assert(!/\bNestJS\b/i.test(mutableBmw), 'mutable bullets do not invent NestJS from similar-jobs chrome');
+const compsBmw = (pkgBmw.resume.core_competencies || []).join(' ');
+assert(/\bNode\.?js\b/i.test(compsBmw) || /\bTypeScript\b/i.test(compsBmw), 'BMW competencies keep honest stack');
+assert(
+  /\bAngular\b/i.test(compsBmw) || (planBmw.keywords.gaps || []).some((k) => /angular/i.test(k)),
+  'Angular is ATS-listed in competencies or recorded as a gap',
+);
+
+const pollutedBmw = `${BMW_JD}
+
+## Similar jobs
+### Senior Software Engineer: Python Full-stack
+### Full Stack Next.Js & Nest JS Professional
+`;
+const cleanBmwJd = stripNaukriChrome(pollutedBmw);
+assert(!/Python Full-stack|Nest JS|Next\.Js/i.test(cleanBmwJd), 'Naukri similar-jobs chrome stripped before tailor');
+const planClean = buildTailoringPlan(cleanBmwJd, profile);
+const pkgClean = executeTailoringPlan(planClean, profile, {
+  jdText: cleanBmwJd,
+  companyName: 'BMW Techworks India',
+});
+const mutableClean = planClean.tailorIndices
+  .map((i) => (pkgClean.resume.experience?.[String(i)] || []).join('\n'))
+  .join('\n');
+assert(!/\bNestJS\b/i.test(mutableClean), 'stripped Naukri JD does not NestJS-stuff Quest');
+assert(!/\bNext\.js\b/i.test(mutableClean), 'stripped Naukri JD does not Next.js-stuff Quest');
+assert(!/\bAngular\b/i.test(mutableClean), 'stripped Naukri JD still does not invent Angular in bullets');
+
+const lied = JSON.parse(JSON.stringify(pkgBmw.resume));
+const qKey = String(planBmw.tailorIndices[0] || 0);
+lied.experience[qKey] = [
+  'Architected Angular dashboards for the BMW stack.',
+  ...(lied.experience[qKey] || []),
+];
+const scrubbedLie = scrubGapToolsFromMutableRoles(lied, planBmw, profile);
+const scrubbedQuest = (scrubbedLie.experience[qKey] || []).join('\n');
+assert(!/\bAngular\b/i.test(scrubbedQuest), 'scrub strips invented Angular from Quest');
+
+function profileCorpusTextSafe(p) {
+  const parts = [];
+  for (const role of p?.experience || []) {
+    for (const b of role?.bullets || []) parts.push(String(b));
+  }
+  parts.push(...(p?.narrative?.superpowers || []).map(String));
+  return parts.join('\n').toLowerCase();
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

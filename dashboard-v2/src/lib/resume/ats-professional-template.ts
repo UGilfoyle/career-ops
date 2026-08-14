@@ -70,7 +70,7 @@ function wrap(css: string) {
             hyphens: none;
             -webkit-hyphens: none;
             overflow-wrap: break-word;
-            word-break: normal;
+            word-break: keep-all;
         }
         .skills-list {
             list-style-type: disc;

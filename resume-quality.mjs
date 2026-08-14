@@ -570,7 +570,10 @@ export function scrubResumeArtifacts(text) {
  */
 export function normalizeBulletText(bullet, companyOrRoleText = '') {
   const company = String(companyOrRoleText || '');
-  let t = elevateBulletForEmployer(scrubResumeArtifacts(String(bullet || '')), company)
+  let t = elevateBulletForEmployer(
+    repairMidSentenceArtifacts(scrubResumeArtifacts(String(bullet || ''))),
+    company,
+  )
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/^[•\-*▸]\s*/, '')
     .replace(/,\s*\./g, '.')
@@ -590,7 +593,16 @@ export function normalizeBulletText(bullet, companyOrRoleText = '') {
   // Capitalize first alphabetic character
   t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
   if (!/[.!?]$/.test(t)) t += '.';
-  return elevateBulletForEmployer(t, company || t);
+  t = protectCompoundHyphens(elevateBulletForEmployer(t, company || t));
+  return t;
+}
+
+/** Keep token-by-token / end-to-end on one line in PDF (ASCII hyphen is a wrap point). */
+export function protectCompoundHyphens(text) {
+  return String(text || '').replace(
+    /\b(token-by-token|end-to-end|peer-to-peer|day-to-day|line-by-line)\b/gi,
+    (m) => m.replace(/-/g, '\u2011'),
+  );
 }
 
 /** Past-tense / strong action verbs that legitimately open a resume bullet. */
