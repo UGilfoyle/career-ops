@@ -95,6 +95,10 @@ const AdminUsersPanel = dynamic(() => import('./AdminUsersPanel'), {
   ssr: false,
   loading: TabLoading,
 });
+const AdminProductAnalyticsPanel = dynamic(() => import('./AdminProductAnalyticsPanel'), {
+  ssr: false,
+  loading: TabLoading,
+});
 const AdminPaymentsPanel = dynamic(() => import('./AdminPaymentsPanel'), {
   ssr: false,
   loading: TabLoading,
@@ -234,6 +238,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   // Visitor analytics state
   const [visitorStats, setVisitorStats] = useState<any>(null);
   const [adminOverview, setAdminOverview] = useState<any>(null);
+  const [productAnalytics, setProductAnalytics] = useState<any>(null);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
 
@@ -411,16 +416,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     setAdminLoading(true);
     setAdminError(null);
     try {
-      const [usersRes, viewsRes] = await Promise.all([
+      const [usersRes, viewsRes, analyticsRes] = await Promise.all([
         fetch('/api/admin/overview'),
         fetch('/api/view'),
+        fetch('/api/admin/analytics'),
       ]);
       const usersJson = await usersRes.json().catch(() => ({}));
       const viewsJson = await viewsRes.json().catch(() => ({}));
+      const analyticsJson = await analyticsRes.json().catch(() => ({}));
       if (!usersRes.ok) {
         throw new Error(usersJson?.error || 'Failed to load user registry');
       }
+      if (!analyticsRes.ok) {
+        throw new Error(analyticsJson?.error || 'Failed to load product analytics');
+      }
       setAdminOverview(usersJson);
+      setProductAnalytics(analyticsJson);
       setVisitorStats(viewsJson);
     } catch (e: unknown) {
       setAdminError(e instanceof Error ? e.message : 'Admin load failed');
@@ -1866,7 +1877,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={navCollapsed} onClick={() => goTab('cv')} />
             )}
             {isAdmin && (
-              <NavItem id="nav-analytics" icon={<Shield size={18}/>} label="Admin" active={activeTab === 'analytics'} collapsed={navCollapsed} onClick={() => goTab('analytics', () => { if (!adminOverview) { void loadAdminData(); } })} />
+              <NavItem id="nav-analytics" icon={<Shield size={18}/>} label="Admin" active={activeTab === 'analytics'} collapsed={navCollapsed} onClick={() => goTab('analytics', () => { if (!adminOverview || !productAnalytics) { void loadAdminData(); } })} />
             )}
             <NavItem id="nav-docs" icon={<BookOpen size={18}/>} label="Tutorial & Docs" active={activeTab === 'docs'} collapsed={navCollapsed} onClick={() => goTab('docs')} />
           </nav>
@@ -3079,6 +3090,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
           {activeTab === 'analytics' && isAdmin && (
             <motion.div key="analytics" className="space-y-12">
+              <AdminProductAnalyticsPanel
+                data={productAnalytics}
+                loading={adminLoading}
+                error={adminError}
+                onRefresh={() => { void loadAdminData(); }}
+              />
+
               <AdminPaymentsPanel />
 
               <AdminUsersPanel

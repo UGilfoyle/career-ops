@@ -15,6 +15,50 @@ export const PORTAL_DOMAINS = {
   'japan-dev': 'japan-dev.com',
 };
 
+export const COMPANY_DOMAIN_ALIASES = {
+  addepar: 'addepar.com',
+  accenture: 'accenture.com',
+  amazon: 'amazon.com',
+  apple: 'apple.com',
+  atlassian: 'atlassian.com',
+  caterpillar: 'caterpillar.com',
+  'caterpillar inc': 'caterpillar.com',
+  cognizant: 'cognizant.com',
+  deloitte: 'deloitte.com',
+  'deloitte india': 'deloitte.com',
+  'deloitte usi': 'deloitte.com',
+  ey: 'ey.com',
+  'ernst and young': 'ey.com',
+  'ernst & young': 'ey.com',
+  google: 'google.com',
+  ibm: 'ibm.com',
+  infosys: 'infosys.com',
+  kpmg: 'kpmg.com',
+  meta: 'meta.com',
+  microsoft: 'microsoft.com',
+  oracle: 'oracle.com',
+  pwc: 'pwc.com',
+  'pwc india': 'pwc.com',
+  pricewaterhousecoopers: 'pwc.com',
+  sap: 'sap.com',
+  siemens: 'siemens.com',
+  tcs: 'tcs.com',
+  'tata consultancy services': 'tcs.com',
+  wipro: 'wipro.com',
+  goldman: 'goldmansachs.com',
+  'goldman sachs': 'goldmansachs.com',
+  jpmorgan: 'jpmorganchase.com',
+  'jp morgan': 'jpmorganchase.com',
+  qualcomm: 'qualcomm.com',
+  salesforce: 'salesforce.com',
+  stripe: 'stripe.com',
+  uber: 'uber.com',
+  zomato: 'zomato.com',
+  swiggy: 'swiggy.com',
+  flipkart: 'flipkart.com',
+  razorpay: 'razorpay.com',
+};
+
 const GENERIC_OG_HINTS = [
   'default-share',
   'placeholder',
@@ -23,11 +67,15 @@ const GENERIC_OG_HINTS = [
   'static.licdn.com/sc/h/',
 ];
 
-/**
- * @param {string | null | undefined} url
- * @param {string | null | undefined} source
- * @returns {string | null}
- */
+export function normalizeCompanyKey(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^\w\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function resolvePortalKey(url, source = '') {
   const u = String(url || '').toLowerCase();
   const s = String(source || '').toLowerCase();
@@ -48,21 +96,7 @@ export function resolvePortalKey(url, source = '') {
   return null;
 }
 
-/**
- * @param {string | null | undefined} portalKey
- * @param {number} [size]
- */
-export function portalFaviconUrl(portalKey, size = 64) {
-  const domain = portalKey ? PORTAL_DOMAINS[portalKey] : null;
-  if (!domain) return null;
-  return googleFaviconUrl(domain, size);
-}
-
-/**
- * @param {string | null | undefined} domain
- * @param {number} [size]
- */
-export function googleFaviconUrl(domain, size = 64) {
+export function googleFaviconUrl(domain, size = 128) {
   const d = String(domain || '')
     .trim()
     .replace(/^https?:\/\//, '')
@@ -72,10 +106,86 @@ export function googleFaviconUrl(domain, size = 64) {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(d)}&sz=${size}`;
 }
 
-/**
- * Browser-side extractor — pass to page.evaluate().
- * @returns {{ ogImage: string | null, appleTouch: string | null, favicon: string | null, jsonLd: string | null }}
- */
+export function clearbitLogoUrl(domain) {
+  const d = String(domain || '')
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split('/')[0];
+  if (!d || !d.includes('.')) return null;
+  return `https://logo.clearbit.com/${encodeURIComponent(d)}`;
+}
+
+export function portalFaviconUrl(portalKey, size = 64) {
+  const domain = portalKey ? PORTAL_DOMAINS[portalKey] : null;
+  if (!domain) return null;
+  return googleFaviconUrl(domain, size);
+}
+
+export function extractEmployerSlugFromUrl(url) {
+  try {
+    const u = new URL(String(url || ''));
+    const host = u.hostname.toLowerCase();
+    const parts = u.pathname.split('/').filter(Boolean);
+    if (host.includes('greenhouse.io') && parts[0]) return parts[0].toLowerCase();
+    if (host.includes('lever.co') && parts[0]) return parts[0].toLowerCase();
+    if (host.includes('ashbyhq.com') && parts[0]) return parts[0].toLowerCase();
+    if (host.includes('workable.com') && parts[0] && parts[0] !== 'j') return parts[0].toLowerCase();
+    if (host.includes('bamboohr.com') && parts[0] === 'careers' && parts[1]) return parts[1].toLowerCase();
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export function inferCompanyDomain(company, url) {
+  const key = normalizeCompanyKey(company);
+  if (key && COMPANY_DOMAIN_ALIASES[key]) return COMPANY_DOMAIN_ALIASES[key];
+
+  if (key) {
+    const withoutSuffix = key
+      .replace(/\b(indi[a]?|usa|us|llp|inc|ltd|limited|plc|gmbh|corp|corporation|services|technologies|technology|tech|labs|studio|group|holdings)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (COMPANY_DOMAIN_ALIASES[withoutSuffix]) return COMPANY_DOMAIN_ALIASES[withoutSuffix];
+    const first = withoutSuffix.split(' ')[0];
+    if (first && first.length >= 3 && COMPANY_DOMAIN_ALIASES[first]) return COMPANY_DOMAIN_ALIASES[first];
+    if (first && first.length >= 4 && !PORTAL_DOMAINS[first]) return `${first}.com`;
+  }
+
+  const slug = extractEmployerSlugFromUrl(url);
+  if (slug) {
+    const slugKey = slug.replace(/[-_]/g, ' ');
+    if (COMPANY_DOMAIN_ALIASES[slugKey]) return COMPANY_DOMAIN_ALIASES[slugKey];
+    const compact = slug.replace(/[-_]/g, '');
+    if (COMPANY_DOMAIN_ALIASES[compact]) return COMPANY_DOMAIN_ALIASES[compact];
+    if (slug.length >= 3) return `${compact}.com`;
+  }
+
+  try {
+    const host = new URL(String(url || '')).hostname.toLowerCase();
+    const portalHosts = Object.values(PORTAL_DOMAINS);
+    if (host && !portalHosts.some((d) => host === d || host.endsWith(`.${d}`))) {
+      const bare = host.replace(/^www\./, '');
+      if (bare.split('.').length >= 2) return bare;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return null;
+}
+
+export function inferCompanyLogoUrls(company, url) {
+  const domain = inferCompanyDomain(company, url);
+  if (!domain) return { primary: null, fallback: null, domain: null };
+  return {
+    domain,
+    primary: clearbitLogoUrl(domain),
+    fallback: googleFaviconUrl(domain, 128),
+  };
+}
+
 export function extractLogoCandidatesInBrowser() {
   const abs = (href) => {
     if (!href) return null;
@@ -124,18 +234,11 @@ export function extractLogoCandidatesInBrowser() {
   };
 }
 
-/**
- * @param {string | null | undefined} url
- */
 export function isGenericOgImage(url) {
   const u = String(url || '').toLowerCase();
   return GENERIC_OG_HINTS.some((hint) => u.includes(hint));
 }
 
-/**
- * @param {{ jsonLd?: string | null, ogImage?: string | null, appleTouch?: string | null, favicon?: string | null }} candidates
- * @returns {{ url: string, source: string } | null}
- */
 export function pickCompanyLogoFromCandidates(candidates = {}) {
   if (candidates.jsonLd) return { url: candidates.jsonLd, source: 'json-ld' };
   if (candidates.ogImage && !isGenericOgImage(candidates.ogImage)) {
@@ -146,10 +249,6 @@ export function pickCompanyLogoFromCandidates(candidates = {}) {
   return null;
 }
 
-/**
- * @param {{ url?: string, source?: string, scrapedLogo?: object | null, company?: string }} input
- * @returns {{ portal_key: string | null, logo_url: string | null, logo_source: string | null }}
- */
 export function resolveJobLogoFields(input = {}) {
   const portal_key = resolvePortalKey(input.url, input.source);
   const picked = input.scrapedLogo ? pickCompanyLogoFromCandidates(input.scrapedLogo) : null;
@@ -162,7 +261,15 @@ export function resolveJobLogoFields(input = {}) {
     };
   }
 
-  // Scanned jobs without HTML: cache portal favicon so UI still shows board branding.
+  const inferred = inferCompanyLogoUrls(input.company, input.url);
+  if (inferred.primary) {
+    return {
+      portal_key,
+      logo_url: inferred.primary,
+      logo_source: 'company-clearbit',
+    };
+  }
+
   if (portal_key) {
     return {
       portal_key,

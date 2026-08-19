@@ -7,6 +7,7 @@ import sql from '@/lib/db';
 import { auth } from '@/auth';
 import { rateLimit, formatRetryHint } from '@/lib/rate-limit';
 import { ensureBackgroundSchema } from '@/lib/ops-schema';
+import { parseRunMetadata } from '@/lib/analytics/run-metadata';
 
 export const dynamic = 'force-dynamic';
 
@@ -429,10 +430,19 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
   try {
     // Create a run record (for lifecycle + traceability)
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const runMeta = parseRunMetadata({ actionScript: script, actionArgs: args || '' });
     await ensureBackgroundSchema(sql);
     await sql`
-      INSERT INTO background_runs (id, user_id, action_script, action_args, status)
-      VALUES (${runId}, ${String(userId)}, ${script}, ${args || null}, 'queued')
+      INSERT INTO background_runs (id, user_id, action_script, action_args, status, job_id, action_type)
+      VALUES (
+        ${runId},
+        ${String(userId)},
+        ${script},
+        ${args || null},
+        'queued',
+        ${runMeta.job_id},
+        ${runMeta.action_type}
+      )
       ON CONFLICT (id) DO NOTHING
     `;
 
@@ -682,10 +692,19 @@ export async function POST(req: NextRequest) {
       }
 
       const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const runMeta = parseRunMetadata({ actionScript: script, actionArgs: scriptArgs || '' });
       await ensureBackgroundSchema(sql);
       await sql`
-        INSERT INTO background_runs (id, user_id, action_script, action_args, status)
-        VALUES (${runId}, ${String(userId)}, ${script}, ${scriptArgs || null}, 'queued')
+        INSERT INTO background_runs (id, user_id, action_script, action_args, status, job_id, action_type)
+        VALUES (
+          ${runId},
+          ${String(userId)},
+          ${script},
+          ${scriptArgs || null},
+          'queued',
+          ${runMeta.job_id},
+          ${runMeta.action_type}
+        )
         ON CONFLICT (id) DO NOTHING
       `;
 

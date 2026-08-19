@@ -158,7 +158,7 @@ function tryAdd(url, company, title, source) {
     return 'filtered';
   }
   seenUrls.add(url);
-  const logoFields = resolveJobLogoFields({ url, source });
+  const logoFields = resolveJobLogoFields({ url, source, company });
   newJobs.push({ url, canonical_url: cleanUrl, company, title, source, ...logoFields });
   return 'added';
 }

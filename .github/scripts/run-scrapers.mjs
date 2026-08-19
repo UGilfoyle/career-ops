@@ -44,7 +44,7 @@ function buildGithubRunUrl() {
  * cron runs (workflow_dispatch inputs are empty), so `/api/background/complete` returns 400.
  * Notify once per finished tenant from the worker with real fields.
  */
-async function notifyDashboardCompletion({ userId, exitCode }) {
+async function notifyDashboardCompletion({ userId, exitCode, startedAt }) {
   const url = (process.env.DASHBOARD_WEBHOOK_URL || '').trim();
   const secret = (process.env.WORKER_WEBHOOK_SECRET || '').trim();
   if (!url || !secret) return;
@@ -57,6 +57,11 @@ async function notifyDashboardCompletion({ userId, exitCode }) {
   const status = exitCode === 0 ? 'success' : 'failure';
   const runUrl = buildGithubRunUrl();
   const runId = [process.env.GITHUB_RUN_ID || process.env.RUN_ID || 'local', uid].filter(Boolean).join('-');
+  const durationMs = startedAt ? Date.now() - startedAt : null;
+
+  let jobId = null;
+  const firstArg = actionArgs.split(/\s+/)[0];
+  if (/^\d+$/.test(firstArg)) jobId = Number.parseInt(firstArg, 10);
 
   const payload = {
     user_id: uid,
@@ -65,6 +70,8 @@ async function notifyDashboardCompletion({ userId, exitCode }) {
     action_args: actionArgs,
     status,
     run_url: runUrl || undefined,
+    job_id: jobId ?? undefined,
+    duration_ms: durationMs ?? undefined,
   };
 
   try {
@@ -90,7 +97,7 @@ async function notifyDashboardCompletion({ userId, exitCode }) {
 function runScraper(userId) {
   return new Promise((resolve, reject) => {
     console.log(`\n▶️  Starting scan for user [${userId}]`);
-    const start = Date.now();
+    const startedAt = Date.now();
 
     const script = process.env.ACTION_SCRIPT || 'scratch-scan.mjs';
     const rawArgs = (process.env.ACTION_ARGS || '').trim();
@@ -112,13 +119,13 @@ function runScraper(userId) {
     });
 
     child.on('close', (code) => {
-      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+      const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
       if (code === 0) {
         console.log(`✅ User [${userId}] scan completed in ${elapsed}s`);
       } else {
         console.error(`⚠️  User [${userId}] scan exited with code ${code} (${elapsed}s)`);
       }
-      resolve(code);
+      resolve({ code, startedAt });
     });
 
     child.on('error', (err) => {
@@ -171,14 +178,17 @@ async function main() {
     // Manual trigger for a specific user — propagate exit code to Actions
     console.log(`\n🎯 Targeting specific user: ${specificUserId}`);
     let lastCode = 1;
+    let startedAt = Date.now();
     try {
-      lastCode = await runScraper(specificUserId);
+      const result = await runScraper(specificUserId);
+      lastCode = result.code;
+      startedAt = result.startedAt;
       if (lastCode !== 0) failed++;
     } catch {
       failed++;
       lastCode = 1;
     }
-    await notifyDashboardCompletion({ userId: specificUserId, exitCode: lastCode });
+    await notifyDashboardCompletion({ userId: specificUserId, exitCode: lastCode, startedAt });
   } else {
     // Cron mode: scan all active tenants
     const activeUsers = await sql`
@@ -194,15 +204,18 @@ async function main() {
 
       for (const tenant of activeUsers) {
         let code = 1;
+        let startedAt = Date.now();
         try {
-          code = await runScraper(tenant.user_id);
+          const result = await runScraper(tenant.user_id);
+          code = result.code;
+          startedAt = result.startedAt;
           if (code === 0) success++;
           else failed++;
         } catch {
           failed++;
           code = 1;
         }
-        await notifyDashboardCompletion({ userId: tenant.user_id, exitCode: code });
+        await notifyDashboardCompletion({ userId: tenant.user_id, exitCode: code, startedAt });
       }
 
       console.log('\n═══════════════════════════════════════════');

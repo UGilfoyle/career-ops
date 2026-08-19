@@ -94,7 +94,7 @@ function tryAdd(url, company, title, source, trustedEmployer) {
     return 'not_gcc';
   }
   seenUrls.add(url);
-  const logoFields = resolveJobLogoFields({ url, source });
+  const logoFields = resolveJobLogoFields({ url, source, company: employer });
   newJobs.push({
     url,
     canonical_url: cleanUrl,

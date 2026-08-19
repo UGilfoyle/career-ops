@@ -127,6 +127,24 @@ async function migrate() {
       )
     `;
     await sql`CREATE INDEX IF NOT EXISTS background_runs_user_id_queued_at_idx ON background_runs (user_id, queued_at DESC)`;
+    try {
+      await sql`
+        ALTER TABLE background_runs
+          ADD COLUMN IF NOT EXISTS job_id INTEGER,
+          ADD COLUMN IF NOT EXISTS action_type TEXT,
+          ADD COLUMN IF NOT EXISTS error_message TEXT,
+          ADD COLUMN IF NOT EXISTS duration_ms INTEGER
+      `;
+      await sql`
+        ALTER TABLE background_events
+          ADD COLUMN IF NOT EXISTS job_id INTEGER,
+          ADD COLUMN IF NOT EXISTS action_type TEXT
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS background_runs_action_type_idx ON background_runs (action_type, queued_at DESC)`;
+      await sql`CREATE INDEX IF NOT EXISTS background_runs_user_action_idx ON background_runs (user_id, action_type, queued_at DESC)`;
+    } catch (e) {
+      console.warn('Skipped background_runs analytics columns:', e.message);
+    }
     await sql`
       CREATE TABLE IF NOT EXISTS background_events (
         id SERIAL PRIMARY KEY,

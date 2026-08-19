@@ -9,26 +9,41 @@ const userId = userIdArg ? Number.parseInt(userIdArg.split('=')[1], 10) : null;
 const dryRun = process.argv.includes('--dry-run');
 
 async function main() {
+  await sql`
+    ALTER TABLE jobs
+      ADD COLUMN IF NOT EXISTS portal_key TEXT,
+      ADD COLUMN IF NOT EXISTS logo_url TEXT,
+      ADD COLUMN IF NOT EXISTS logo_source TEXT
+  `;
+
   const rows = userId
     ? await sql`
-        SELECT id, url, source, logo_url, logo_source, portal_key
+        SELECT id, url, source, company, logo_url, logo_source, portal_key
         FROM jobs
         WHERE user_id = ${userId}
-          AND (logo_url IS NULL OR portal_key IS NULL)
+          AND (
+            logo_url IS NULL
+            OR portal_key IS NULL
+            OR logo_source = 'portal-favicon'
+            OR logo_source IS NULL
+          )
         ORDER BY created_at DESC
         LIMIT 2000
       `
     : await sql`
-        SELECT id, url, source, logo_url, logo_source, portal_key
+        SELECT id, url, source, company, logo_url, logo_source, portal_key
         FROM jobs
-        WHERE logo_url IS NULL OR portal_key IS NULL
+        WHERE logo_url IS NULL
+           OR portal_key IS NULL
+           OR logo_source = 'portal-favicon'
+           OR logo_source IS NULL
         ORDER BY created_at DESC
         LIMIT 2000
       `;
 
   let updated = 0;
   for (const row of rows) {
-    const fields = resolveJobLogoFields({ url: row.url, source: row.source });
+    const fields = resolveJobLogoFields({ url: row.url, source: row.source, company: row.company });
     if (!fields.logo_url && !fields.portal_key) continue;
 
     const needsUpdate =
@@ -55,6 +70,7 @@ async function main() {
   }
 
   console.log(`${dryRun ? 'Would update' : 'Updated'} ${updated} job(s).`);
+  await sql.end();
 }
 
 main().catch((e) => {
