@@ -436,8 +436,8 @@ export default function LandingPage() {
                         key={videoFormat}
                         src={
                           videoFormat === '16x9'
-                            ? process.env.NEXT_PUBLIC_DEMO_VIDEO_16X9_URL || process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || '/videos/career_ops_promo_16x9.mp4'
-                            : process.env.NEXT_PUBLIC_DEMO_VIDEO_9X16_URL || '/videos/career_ops_promo_9x16.mp4'
+                            ? process.env.NEXT_PUBLIC_DEMO_VIDEO_16X9_URL || process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || 'https://pub-ce5912def25f4eea943dd4e0f0aea182.r2.dev/career_ops_promo_16x9.mp4'
+                            : process.env.NEXT_PUBLIC_DEMO_VIDEO_9X16_URL || 'https://pub-ce5912def25f4eea943dd4e0f0aea182.r2.dev/career_ops_promo_9x16.mp4'
                         }
                         controls
                         autoPlay
