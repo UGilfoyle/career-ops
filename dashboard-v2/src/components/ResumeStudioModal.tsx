@@ -63,7 +63,7 @@ export default function ResumeStudioModal({ open, onClose, onSeeRoadmap }: Resum
             <div className="p-6">
               <p className="text-sm leading-relaxed text-[#6B6B6B]">
                 We&apos;re shipping a visual resume editor with live preview, template gallery, and per-job diff
-                review — the workflow you asked for. Your pipeline, tailor, and PDF export keep working today.
+                review, the workflow you asked for. Your pipeline, tailor, and PDF export keep working today.
               </p>
               <ul className="mt-4 space-y-2 text-sm text-[#1C1C1E]">
                 <li className="flex items-center gap-2">

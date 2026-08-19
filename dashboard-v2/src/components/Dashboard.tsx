@@ -55,6 +55,8 @@ import { JobAvatar } from './JobAvatar';
 import ProPaywall, { type PendingPayment } from './ProPaywall';
 import { defaultGccCampaign, type GccCampaign } from './gcc-campaign';
 import { OutreachDraftModal, type OutreachTarget } from './OutreachDraftModal';
+import { PipelineStudioView } from './PipelineStudioView';
+import { MarkdownMessage } from './MarkdownMessage';
 import { ONBOARDING_STORAGE_KEY, DASHBOARD_TOUR_STEPS } from '@/lib/onboarding-flow';
 import {
   STALE_POSTING_DAYS,
@@ -266,6 +268,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [clearPipelineOpen, setClearPipelineOpen] = useState(false);
   const [clearPipelineScope, setClearPipelineScope] = useState<'all' | 'visible'>('all');
   const [clearPipelineLoading, setClearPipelineLoading] = useState(false);
+  const [pipelineViewMode, setPipelineViewMode] = useState<'studio' | 'table'>('studio');
   const [gccCampaign, setGccCampaign] = useState<GccCampaign>(defaultGccCampaign);
   const [outreachTarget, setOutreachTarget] = useState<OutreachTarget | null>(null);
   const [studioReviewJob, setStudioReviewJob] = useState<{
@@ -1846,9 +1849,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <Zap size={14} className="text-white" strokeWidth={2} />
             </div>
             {!navCollapsed && (
-              <div className="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden">
-                <span className="truncate text-[16px] font-semibold text-[#1a1a1a]">Career-Ops</span>
-                <span className="shrink-0 text-[11px] font-medium text-[#9ca3af]">v2.0</span>
+              <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+                <span className="truncate text-[15px] font-bold text-[#1C1C1E]">Career-Ops</span>
+                <span className="shrink-0 rounded-full bg-emerald-50/70 px-1.5 py-0.5 text-[8px] font-semibold font-mono text-emerald-800 border border-emerald-200/80 uppercase tracking-tight leading-none">
+                  v3
+                </span>
               </div>
             )}
             {!lgUp && (
@@ -2586,9 +2591,71 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <PageSectionHeader
                 title="Job Pipeline"
                 subtitle={`AI-ranked opportunities · ${pipelineTotal} job${pipelineTotal === 1 ? '' : 's'} in pipeline`}
-                actions={searchActions}
+                actions={
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setPipelineViewMode('studio')}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                          pipelineViewMode === 'studio'
+                            ? 'bg-[#1C1C1E] text-white shadow-sm'
+                            : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                        }`}
+                      >
+                        <Columns size={12} /> Studio 3-Col
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPipelineViewMode('table')}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                          pipelineViewMode === 'table'
+                            ? 'bg-[#1C1C1E] text-white shadow-sm'
+                            : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                        }`}
+                      >
+                        <List size={12} /> Table View
+                      </button>
+                    </div>
+                    {searchActions}
+                  </div>
+                }
               />
-            <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
+
+              {pipelineViewMode === 'studio' ? (
+                <PipelineStudioView
+                  pipeline={data?.pipeline || []}
+                  onEvaluate={(job) => {
+                    const id = Number(job.pipeline_id ?? job.id);
+                    if (Number.isFinite(id)) {
+                      setActiveTab('terminal');
+                      runCommand(`eval ${id}`);
+                    }
+                  }}
+                  onTailor={(jobId) => {
+                    setStudioInitialJobId(jobId);
+                    setActiveTab('resume-studio');
+                  }}
+                  onMarkApplied={(jobId) => {
+                    void handleMarkApplied(jobId);
+                  }}
+                  onOutreach={(job) => {
+                    const id = Number(job.pipeline_id ?? job.id);
+                    setOutreachTarget({
+                      jobId: Number.isFinite(id) ? id : undefined,
+                      company: job.company || 'Company',
+                      role: job.title || 'Role',
+                      url: job.url,
+                    });
+                  }}
+                  onScan={() => {
+                    setActiveTab('terminal');
+                    runCommand('scan --deep');
+                  }}
+                  onClear={openClearPipelineModal}
+                />
+              ) : (
+                <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
               <div className="flex flex-col gap-4 border-b border-[#E5E5E0] bg-gradient-to-r from-[#FAFAF8] to-white p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-lg font-bold text-[#1C1C1E]">Live Job Pipeline</h2>
@@ -2828,15 +2895,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 </table>
               </div>
             </div>
+            )}
             </motion.div>
           )}
 
           {activeTab === 'resume-studio' && (
-            <motion.div key="resume-studio" className="flex min-h-0 flex-1 flex-col space-y-3 sm:space-y-4">
-              <PageSectionHeader
-                title="Resume Studio"
-                subtitle="Master resume editor with live ATS preview — same profile that powers tailor"
-              />
+            <motion.div key="resume-studio" className="flex min-h-0 flex-1 flex-col">
               {billing === null ? (
                 <div className="flex justify-center py-24">
                   <Loader2 className="animate-spin text-[#1C1C1E]" size={28} />
@@ -4270,20 +4334,24 @@ Career-Ops terminal`}
               )}
 
               {/* Message List */}
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 space-y-4 bg-[#FAFAF8]/30">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 space-y-4 bg-[#FAFAF8]/40">
                 {chatMessages.map((msg, i) => (
                   <div
                     key={i}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[90%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      className={`max-w-[92%] sm:max-w-[80%] rounded-2xl px-4 py-3.5 sm:px-5 sm:py-4 text-sm leading-relaxed ${
                         msg.role === 'user'
-                          ? 'bg-[#1C1C1E] text-white shadow-sm font-medium'
-                          : 'bg-white text-[#1C1C1E] border border-[#E5E5E0] shadow-sm whitespace-pre-wrap'
+                          ? 'bg-[#1C1C1E] text-white shadow-sm font-medium whitespace-pre-wrap'
+                          : 'bg-white text-[#1C1C1E] border border-[#E5E5E0] shadow-sm'
                       }`}
                     >
-                      {msg.content}
+                      {msg.role === 'user' ? (
+                        msg.content
+                      ) : (
+                        <MarkdownMessage content={msg.content} />
+                      )}
                     </div>
                   </div>
                 ))}

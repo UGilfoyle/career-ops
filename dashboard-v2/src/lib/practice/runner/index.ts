@@ -1,5 +1,6 @@
 import { runWithOnlineCompiler } from './onlinecompiler';
 import { runWithPiston } from './piston';
+import { runWithLocalNode } from './local';
 import {
   PRACTICE_RUN_MAX_CODE_BYTES,
   PRACTICE_RUN_MAX_STDIN_BYTES,
@@ -9,14 +10,17 @@ import {
   type PracticeRunResult,
 } from './types';
 
-export type PracticeRunnerProvider = 'onlinecompiler' | 'piston';
+export type PracticeRunnerProvider = 'onlinecompiler' | 'piston' | 'local';
 
 export function resolvePracticeRunnerProvider(
   raw = process.env.PRACTICE_RUNNER_PROVIDER,
 ): PracticeRunnerProvider {
-  const v = String(raw || 'onlinecompiler').trim().toLowerCase();
+  const v = String(raw || '').trim().toLowerCase();
   if (v === 'piston') return 'piston';
-  return 'onlinecompiler';
+  if (v === 'onlinecompiler') return 'onlinecompiler';
+  if (process.env.PISTON_URL) return 'piston';
+  if (process.env.ONLINECOMPILER_API_KEY) return 'onlinecompiler';
+  return 'local';
 }
 
 export function validatePracticeRunInput(body: {
@@ -54,7 +58,19 @@ export async function executePracticeRun(
 ): Promise<PracticeRunResult> {
   const provider = opts?.provider ?? resolvePracticeRunnerProvider();
   if (provider === 'piston') return runWithPiston(req);
-  return runWithOnlineCompiler(req);
+  if (provider === 'onlinecompiler') return runWithOnlineCompiler(req);
+  
+  // Local zero-config fallback for JS/TS
+  if (req.language === 'javascript' || req.language === 'typescript') {
+    return runWithLocalNode(req);
+  }
+  
+  // If piston URL is available, run with piston
+  if (process.env.PISTON_URL) {
+    return runWithPiston(req);
+  }
+
+  return runWithLocalNode(req);
 }
 
 export {

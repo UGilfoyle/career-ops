@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Download, FileCheck2, FileUp, Loader2, Target, Zap } from 'lucide-react';
+import { Download, FileCheck2, FileUp, Lightbulb, Loader2, Plus, Target, Zap } from 'lucide-react';
 import type { ResumeContext } from '@/lib/resume/types';
 import { getCompetencies } from '@/lib/resume/types';
+import { MatchProgressRing } from './MatchProgressRing';
 
 export type PipelineJobOption = {
   pipeline_id?: number | string;
@@ -26,15 +27,22 @@ type JdMatchPanelProps = {
   hasGeneratedResume?: boolean;
 };
 
+type Suggestion = {
+  text: string;
+  section: string;
+};
+
 type MatchState = {
   loading: boolean;
   error: string | null;
   honest: string[];
   gaps: string[];
+  partial: string[];
   coveragePct: number;
   atsScore: number | null;
   atsSource: 'jd' | 'structure';
   hasJd: boolean;
+  suggestions: Suggestion[];
 };
 
 type JdMode = 'pipeline' | 'paste';
@@ -95,10 +103,12 @@ export function JdMatchPanel({
     error: null,
     honest: [],
     gaps: [],
+    partial: [],
     coveragePct: 0,
     atsScore: null,
     atsSource: 'structure',
     hasJd: false,
+    suggestions: [],
   });
 
   const matchDraftKey = useMemo(() => draftMatchKey(draft), [draft]);
@@ -116,10 +126,12 @@ export function JdMatchPanel({
           error: String(matchJson.error || 'JD match unavailable'),
           honest: [],
           gaps: [],
+          partial: [],
           coveragePct: 0,
           atsScore: typeof atsJson.score === 'number' ? atsJson.score : null,
           atsSource: (atsJson.source as 'jd' | 'structure') || 'structure',
           hasJd: false,
+          suggestions: [],
         });
         onAtsUpdate?.(
           typeof atsJson.score === 'number' ? atsJson.score : null,
@@ -134,15 +146,24 @@ export function JdMatchPanel({
           ? atsJson.score
           : coveragePct || null;
 
+      // Build suggestions from gaps
+      const rawGaps = Array.isArray(matchJson.gaps) ? (matchJson.gaps as string[]) : [];
+      const suggestions: Suggestion[] = rawGaps.slice(0, 4).map((g) => ({
+        text: `Add ${g} experience to relevant section`,
+        section: 'experience',
+      }));
+
       setState({
         loading: false,
         error: null,
         honest: Array.isArray(matchJson.honest) ? (matchJson.honest as string[]) : [],
-        gaps: Array.isArray(matchJson.gaps) ? (matchJson.gaps as string[]) : [],
+        gaps: rawGaps,
+        partial: Array.isArray(matchJson.partial) ? (matchJson.partial as string[]) : [],
         coveragePct,
         atsScore,
         atsSource: (atsJson.source as 'jd' | 'structure') || 'jd',
         hasJd: true,
+        suggestions,
       });
       onAtsUpdate?.(atsScore, (atsJson.source as 'jd' | 'structure') || 'jd');
     },
@@ -159,11 +180,13 @@ export function JdMatchPanel({
             ...s,
             honest: [],
             gaps: [],
+            partial: [],
             coveragePct: 0,
             atsScore: null,
             atsSource: 'structure',
             hasJd: false,
             error: null,
+            suggestions: [],
           }));
           onAtsUpdate?.(null, 'structure');
         }
@@ -199,12 +222,14 @@ export function JdMatchPanel({
         ...s,
         honest: [],
         gaps: [],
+        partial: [],
         coveragePct: 0,
         atsScore: null,
         atsSource: 'structure',
         hasJd: false,
         error: null,
         loading: false,
+        suggestions: [],
       }));
       onAtsUpdate?.(null, 'structure');
       return undefined;
@@ -431,63 +456,118 @@ export function JdMatchPanel({
 
       {showResults ? (
         <>
-          <div className="flex items-center gap-3 rounded-xl border border-[#E5E5E0] bg-[#F5F5F0] px-3 py-2.5">
-            <div className="rounded-full bg-[#1C1C1E] px-3 py-1 font-mono text-sm text-white">
-              ATS {state.atsScore ?? '—'}/100
-            </div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
-              {state.atsSource === 'jd' ? 'JD keyword coverage' : 'Profile completeness'}
-              {' · '}
-              {state.coveragePct}% honest match
+          {/* ── Score overview with progress ring ── */}
+          <div className="flex items-center gap-4 rounded-2xl border border-[#E5E5E0] bg-gradient-to-r from-[#F5F5F0] to-white p-4">
+            <MatchProgressRing
+              value={state.coveragePct}
+              size={72}
+              strokeWidth={5}
+              sublabel="Match"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="rounded-full bg-[#1C1C1E] px-2.5 py-0.5 font-mono text-[10px] text-white">
+                  ATS {state.atsScore ?? '—'}/100
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
+                  {state.atsSource === 'jd' ? 'JD keyword coverage' : 'Profile completeness'}
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-[#E5E5E0] overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700 ease-out"
+                  style={{
+                    width: `${state.coveragePct}%`,
+                    background: state.coveragePct >= 75 ? '#10b981' : state.coveragePct >= 50 ? '#f59e0b' : '#ef4444',
+                  }}
+                />
+              </div>
+              <p className="text-[10px] text-[#9CA3AF] mt-1 font-medium">
+                {state.honest.length} matched · {state.partial.length} partial · {state.gaps.length} gaps
+              </p>
             </div>
           </div>
 
-          <div>
-            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-700">
-              Proven in profile
+          {/* ── JD Requirements — color-coded chips ── */}
+          <div className="space-y-3">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E]">
+              JD Requirements
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {state.honest.length ? (
-                state.honest.slice(0, 16).map((k) => (
-                  <span
-                    key={k}
-                    className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800"
-                  >
-                    {k}
-                  </span>
-                ))
-              ) : (
-                <span className="text-xs text-[#9CA3AF]">No honest matches extracted</span>
-              )}
+              {state.honest.slice(0, 16).map((k) => (
+                <span
+                  key={`h-${k}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 transition-colors hover:bg-emerald-100"
+                  title="Proven in your profile"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  {k}
+                </span>
+              ))}
+              {state.partial.slice(0, 8).map((k) => (
+                <span
+                  key={`p-${k}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800 transition-colors hover:bg-amber-100"
+                  title="Partial match — present but not strong"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  {k}
+                </span>
+              ))}
+              {state.gaps.slice(0, 12).map((k) => (
+                <span
+                  key={`g-${k}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700 transition-colors hover:bg-rose-100"
+                  title="Missing from profile — do not claim"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                  {k}
+                </span>
+              ))}
+              {!state.honest.length && !state.gaps.length && !state.partial.length ? (
+                <span className="text-xs text-[#9CA3AF]">No requirements extracted</span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-3 text-[9px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+              <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Matched</span>
+              <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Partial</span>
+              <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Missing</span>
             </div>
           </div>
 
-          <div>
-            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-700">
-              JD gaps (do not claim)
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {state.gaps.length ? (
-                state.gaps.slice(0, 12).map((k) => (
-                  <span
-                    key={k}
-                    className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800"
+          {/* ── Suggested Improvements ── */}
+          {state.suggestions.length > 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E]">
+                  <Lightbulb size={12} className="text-amber-500" />
+                  Suggested Improvements
+                </div>
+              </div>
+              {state.suggestions.map((s, i) => (
+                <div
+                  key={i}
+                  className="group flex items-center gap-2 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 transition-colors hover:border-[#1C1C1E]/30"
+                >
+                  <p className="flex-1 text-xs font-medium text-[#1C1C1E]">{s.text}</p>
+                  <button
+                    type="button"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#E5E5E0] bg-[#FAFAF8] text-[#9CA3AF] transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+                    title="Add to resume"
                   >
-                    {k}
-                  </span>
-                ))
-              ) : (
-                <span className="text-xs text-[#9CA3AF]">No gaps detected</span>
-              )}
+                    <Plus size={12} />
+                  </button>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : null}
 
           {onTailor && (mode === 'paste' || !jobHasDoc) ? (
             <button
               type="button"
               onClick={mode === 'paste' ? () => void handleTailorPastedJd() : () => onTailor(activeJobId!)}
               disabled={ingesting || (mode === 'pipeline' && !selectedJobId)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#27272a] disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#27272a] disabled:opacity-50 transition-colors active:scale-[0.98]"
             >
               <Zap size={14} />
               {mode === 'paste' ? 'Tailor resume for this JD' : 'Tailor this job — deep'}

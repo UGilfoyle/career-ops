@@ -132,7 +132,7 @@ export function GccCampaignPanel({
     <motion.div key="gcc" className="w-full max-w-6xl space-y-8">
       <PageSectionHeader
         title="GCC Campaign"
-        subtitle="30-day break-in system — connections, curated outreach, and interview tracking"
+        subtitle="30-day break-in system: connections, curated outreach, and interview tracking"
         actions={
                  <div className="flex flex-wrap items-center gap-3">
                    {onImportAllGcc && pipelineGccJobs.length > 0 && (
@@ -231,7 +231,7 @@ export function GccCampaignPanel({
               </span>
             </div>
             <p className="mt-1 text-xs text-[#6B6B6B]">
-              From <code className="text-[#57534e]">gcc-scan --deep</code> — also visible in Job Pipeline with a GCC badge.
+              From <code className="text-[#57534e]">gcc-scan --deep</code> (also visible in Job Pipeline with a GCC badge).
             </p>
           </div>
           {onOpenPipeline && pipelineGccJobs.length > 0 && (
@@ -252,8 +252,8 @@ export function GccCampaignPanel({
               <p className="mt-2 text-xs text-amber-700 max-w-md mx-auto">
                 Last scan ({new Date(lastGccScanAt).toLocaleString()}): <strong>{lastGccScanAdded} role(s) added</strong>.
                 {lastGccScanAdded === 0
-                  ? ' DuckDuckGo/board APIs found nothing matching your keywords — broaden positive keywords in Settings.'
-                  : ' Data may still be syncing — refresh in ~10s or open Job Pipeline.'}
+                  ? ' DuckDuckGo/board APIs found nothing matching your keywords. Broaden positive keywords in Settings.'
+                  : ' Data may still be syncing. Refresh in ~10s or open Job Pipeline.'}
               </p>
             ) : (
               <p className="mt-2 text-xs text-[#9CA3AF] max-w-md mx-auto">
@@ -261,7 +261,7 @@ export function GccCampaignPanel({
               </p>
             )}
             {gccPipelineTotal > 0 && pipelineGccJobs.length === 0 && (
-              <p className="mt-2 text-xs text-[#6B6B6B]">{gccPipelineTotal} GCC role(s) in database — reload dashboard if stale.</p>
+              <p className="mt-2 text-xs text-[#6B6B6B]">{gccPipelineTotal} GCC role(s) in database (reload dashboard if stale).</p>
             )}
           </div>
         ) : (
@@ -362,7 +362,7 @@ export function GccCampaignPanel({
           <div className="p-10 text-center text-[#9CA3AF] text-sm">
             <p className="font-semibold text-[#6B6B6B]">Outreach tracker is empty</p>
             <p className="mt-2 max-w-md mx-auto">
-              Import roles from <strong className="text-[#57534e]">Discovered GCC roles</strong> above, or add companies manually — then log DMs, emails, and follow-ups.
+              Import roles from <strong className="text-[#57534e]">Discovered GCC roles</strong> above, or add companies manually to log DMs, emails, and follow-ups.
             </p>
           </div>
         ) : (
@@ -462,7 +462,7 @@ export function GccCampaignPanel({
       </div>
 
       <p className="text-xs text-[#9CA3AF]">
-        Tip: Run <code className="text-[#6B6B6B]">gcc-scan --deep</code> for captive employers, tailor with PAR bullets, then log outreach here — avoid blind Apply Now buttons.
+        Tip: Run <code className="text-[#6B6B6B]">gcc-scan --deep</code> for captive employers, tailor with PAR bullets, then log outreach here instead of blind Apply Now buttons.
       </p>
     </motion.div>
   );

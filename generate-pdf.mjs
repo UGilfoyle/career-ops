@@ -62,9 +62,9 @@ function normalizeTextForATS(html) {
 
   function sanitizeText(text) {
     if (!text) return text;
-    let t = text;
-    t = t.replace(/\u2014/g, () => { bump('em-dash', 1); return '-'; });
-    t = t.replace(/\u2013/g, () => { bump('en-dash', 1); return '-'; });
+    t = t.replace(/(\d)\s*[\u2014\u2013]\s*(\d)/g, '$1-$2');
+    t = t.replace(/\s*[\u2014\u2013]\s*/g, () => { bump('em-dash', 1); return ', '; });
+    t = t.replace(/[\u2014\u2013]/g, () => { bump('em-dash', 1); return ', '; });
     t = t.replace(/[\u201C\u201D\u201E\u201F]/g, () => { bump('smart-double-quote', 1); return '"'; });
     t = t.replace(/[\u2018\u2019\u201A\u201B]/g, () => { bump('smart-single-quote', 1); return "'"; });
     t = t.replace(/\u2026/g, () => { bump('ellipsis', 1); return '...'; });

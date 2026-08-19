@@ -105,7 +105,7 @@ export function OutreachDraftModal({ target, onClose }: Props) {
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">Research & draft</p>
                 <h3 className="mt-1 text-lg font-bold text-[#1C1C1E]">
-                  {target.company} — {target.role}
+                  {target.company} • {target.role}
                 </h3>
                 <p className="mt-1 text-xs text-[#6B6B6B]">
                   Public sources only. No LinkedIn login, no Hunter. Copy and send yourself.

@@ -552,14 +552,12 @@ export function scrubResumeArtifacts(text) {
   t = t.replace(/\bsynthesizing using\.?\s*$/i, '');
   t = t.replace(/\bDelivered\s+(\d+(?:\.\d+)?%)\s+through\s*$/gi, '');
 
-  // Naked metric subjects missing a verb
-  if (/^mean time to recovery\b/i.test(t)) {
-    t = t.replace(/^mean time/i, 'Cut mean time');
-  } else if (/^connection exhaustion\b/i.test(t)) {
-    t = t.replace(/^connection exhaustion/i, 'Reduced connection exhaustion');
-  } else if (/^catching\b/i.test(t)) {
-    t = t.replace(/^catching\b/i, 'Caught');
-  }
+  // Strict Anti-AI: Eliminate em-dashes (—), en-dashes (–) and double-hyphens (--) that look like LLM output
+  t = t.replace(/\s*—\s*/g, ', ');
+  t = t.replace(/\s*–\s*/g, ', ');
+  t = t.replace(/\s+--\s+/g, ', ');
+  t = t.replace(/\s{2,}/g, ' ');
+  t = t.replace(/,\s*,/g, ',');
 
   return t.replace(/\s{2,}/g, ' ').replace(/\.\s*\./g, '.').trim();
 }
@@ -1153,7 +1151,7 @@ function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets, 
   return bullets.map((b) => {
     let cleanB = removeSplicedFragments(cleanSpellingAndGrammar(b));
     if (hasQuantifiedImpact(cleanB)) return { bullet: cleanB, enriched: false };
-
+    
     // Graft metric from overlapping source bullet only (honesty)
     if (metricSources.length > 0) {
       let best = null;
@@ -1175,13 +1173,13 @@ function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets, 
         }
       }
     }
-
+    
     // Synthetic metrics are OFF — synthesizeMetric always returns null
     if (allowSyntheticMetrics) {
-      const synthesized = synthesizeMetric(cleanB);
+    const synthesized = synthesizeMetric(cleanB);
       if (synthesized) {
-        const trimmed = String(cleanB).trim().replace(/\.$/, '');
-        return { bullet: cleanSpellingAndGrammar(`${trimmed}, ${synthesized}.`), enriched: true };
+    const trimmed = String(cleanB).trim().replace(/\.$/, '');
+    return { bullet: cleanSpellingAndGrammar(`${trimmed}, ${synthesized}.`), enriched: true };
       }
     }
     return { bullet: cleanB, enriched: false };

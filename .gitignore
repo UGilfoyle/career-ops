@@ -48,6 +48,8 @@ INSTRUCTIONS.md
 article-digest.md
 interview-prep/*.md
 !interview-prep/story-bank.md
+!interview-prep/ai-dsa-handbook.md
+!interview-prep/gemini-ai-dsa-handbook-prompt.md
 
 # Auto-generated scratch scripts (may contain hardcoded personal data)
 scratch/
@@ -71,3 +73,4 @@ dashboard-v2/vercel_deploy_output.log
 
 # Figma design prompts
 docs/figma-prompts-*.md
+docs/UI_V3_GALLERY.md

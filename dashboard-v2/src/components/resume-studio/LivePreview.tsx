@@ -4,9 +4,47 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { estimateMasterAtsScore, fillAtsTemplate } from '@/lib/resume/fill-template';
 import { getTemplateMeta } from '@/lib/resume/ats-professional-template';
 import type { ResumeContext } from '@/lib/resume/types';
+import { getCompetencies } from '@/lib/resume/types';
+import { CompetencyBadgeStack, type CompetencyScore } from './CompetencyBadge';
 
 const PAGE_WIDTH_PX = 794; // ~210mm at 96dpi
 const PAGE_HEIGHT_PX = 1123; // ~297mm at 96dpi (one A4 page)
+
+/** Derive section-level competency scores from draft content + ATS score. */
+function computeCompetencyScores(draft: ResumeContext, atsScore: number | null): CompetencyScore[] {
+  if (atsScore == null) return [];
+
+  const expCount = (draft.experience || []).length;
+  const eduCount = (draft.education || []).length;
+  const skillCount = getCompetencies(draft).length;
+  const hasHeadline = Boolean(draft.narrative?.headline?.trim());
+
+  // Normalized sub-scores derived from profile completeness
+  const base = (atsScore ?? 0) / 100;
+  const scores: CompetencyScore[] = [];
+
+  if (expCount > 0) {
+    const depth = Math.min(10, base * 10 * (0.8 + Math.min(expCount, 4) * 0.05));
+    scores.push({ label: 'Technical Depth', score: Math.round(depth * 10) / 10 });
+  }
+
+  if (hasHeadline || expCount >= 2) {
+    const leadership = Math.min(10, base * 10 * (0.6 + Math.min(expCount, 3) * 0.1));
+    scores.push({ label: 'Leadership', score: Math.round(leadership * 10) / 10 });
+  }
+
+  if (skillCount > 0) {
+    const domain = Math.min(10, base * 10 * (0.7 + Math.min(skillCount, 10) * 0.03));
+    scores.push({ label: 'Domain Fit', score: Math.round(domain * 10) / 10 });
+  }
+
+  if (eduCount > 0) {
+    const academic = Math.min(10, base * 8 * (0.7 + Math.min(eduCount, 2) * 0.15));
+    scores.push({ label: 'Academic', score: Math.round(academic * 10) / 10 });
+  }
+
+  return scores;
+}
 
 export function LivePreview({
   draft,
@@ -27,6 +65,7 @@ export function LivePreview({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(PAGE_WIDTH_PX);
   const [contentHeight, setContentHeight] = useState(PAGE_HEIGHT_PX);
+  const [showBadges, setShowBadges] = useState(true);
   const deferredDraft = useDeferredValue(draft);
   const html = useMemo(() => fillAtsTemplate(deferredDraft), [deferredDraft]);
   const syncing = deferredDraft !== draft;
@@ -36,6 +75,11 @@ export function LivePreview({
   const atsLabel = externalAtsSource === 'jd' ? 'JD ATS' : 'Profile';
   const missingName = !String(draft.candidate?.full_name || '').trim();
   const templateMeta = getTemplateMeta(draft.studio?.template_id);
+
+  const competencyScores = useMemo(
+    () => computeCompetencyScores(draft, atsScore),
+    [draft, atsScore],
+  );
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -48,10 +92,10 @@ export function LivePreview({
     return () => ro.disconnect();
   }, []);
 
-  // Re-measure after HTML changes so multi-page resumes aren't clipped to 1 page.
-  useEffect(() => {
-    setContentHeight(PAGE_HEIGHT_PX);
-  }, [html]);
+  // Re-measure after HTML changes on frame load
+  const handleIframeLoad = () => {
+    measureIframe();
+  };
 
   const measureIframe = () => {
     const iframe = iframeRef.current;
@@ -94,6 +138,20 @@ export function LivePreview({
           >
             {atsLabel} ~{atsScore}/100
           </span>
+          {competencyScores.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowBadges((v) => !v)}
+              className={`rounded-lg px-2 py-1 text-[10px] font-bold transition-colors ${
+                showBadges
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : 'border border-[#E5E5E0] bg-white text-[#6B6B6B] hover:text-[#1C1C1E]'
+              }`}
+              title="Toggle competency badges"
+            >
+              Scores
+            </button>
+          ) : null}
           <div className="hidden sm:flex sm:items-center sm:gap-2">
             {[75, 100, 125].map((z) => (
               <button
@@ -115,7 +173,7 @@ export function LivePreview({
 
       {missingName ? (
         <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 sm:px-4">
-          Add your full name in Personal Info — preview is showing the placeholder “Your Name”.
+          Add your full name in Personal Info — preview is showing the placeholder &quot;Your Name&quot;.
         </div>
       ) : null}
 
@@ -132,6 +190,9 @@ export function LivePreview({
             marginBottom: scaledExtra > 0 ? `${scaledExtra}px` : undefined,
           }}
         >
+          {/* Competency score badges — floating overlay */}
+          <CompetencyBadgeStack scores={competencyScores} visible={showBadges} />
+
           <div
             className="bg-white"
             style={{
