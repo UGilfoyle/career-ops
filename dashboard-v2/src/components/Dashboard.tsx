@@ -50,7 +50,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
-import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHeader';
+import { PageSectionHeader, AiScoreBadge } from './PageSectionHeader';
+import { JobAvatar } from './JobAvatar';
 import ProPaywall, { type PendingPayment } from './ProPaywall';
 import { defaultGccCampaign, type GccCampaign } from './gcc-campaign';
 import { OutreachDraftModal, type OutreachTarget } from './OutreachDraftModal';
@@ -2193,7 +2194,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                          <div key={app.app_id || i} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
                            <div className="flex min-w-0 items-start gap-3">
                               <span className="mt-1 font-mono text-[10px] font-bold tabular-nums text-[#C4C4BE]">{formatRowNumber(i)}</span>
-                              <CompanyAvatar name={app.company} size="sm" />
+                              <JobAvatar company={app.company} url={app.url} source={app.source} logoUrl={app.logo_url} portalKey={app.portal_key} logoSource={app.logo_source} size="sm" />
                               <div className="min-w-0">
                                 <div className="truncate font-bold text-[#1C1C1E]">
                                   {app.company}{app.role ? ` — ${app.role}` : ''}
@@ -2350,7 +2351,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </td>
                               <td className="px-5 py-4">
                                 <div className="flex items-center gap-2.5">
-                                  <CompanyAvatar name={app.company} size="sm" />
+                                  <JobAvatar company={app.company} url={app.url} source={app.source} logoUrl={app.logo_url} portalKey={app.portal_key} logoSource={app.logo_source} size="sm" />
                                   <span className="font-bold text-[#1C1C1E] max-w-[12rem] break-words">{app.company}</span>
                                 </div>
                               </td>
@@ -2499,7 +2500,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                       <span className="font-mono text-[10px] font-bold tabular-nums text-[#C4C4BE] shrink-0">
                                         {formatRowNumber(cardIdx)}
                                       </span>
-                                      <CompanyAvatar name={app.company} size="sm" />
+                                      <JobAvatar company={app.company} url={app.url} source={app.source} logoUrl={app.logo_url} portalKey={app.portal_key} logoSource={app.logo_source} size="sm" />
                                     </div>
                                     <AiScoreBadge score={app.score} />
                                   </div>
@@ -2640,7 +2641,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
-                            <CompanyAvatar name={job.company} />
+                            <JobAvatar company={job.company} url={job.url} source={job.source} logoUrl={job.logo_url} portalKey={job.portal_key} logoSource={job.logo_source} />
                             <div className="min-w-0 flex items-center gap-2">
                               <div className="truncate font-bold text-[#1C1C1E]">{job.company}</div>
                               {job.company_type === 'GCC' && (

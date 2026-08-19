@@ -24,7 +24,10 @@ async function migrate() {
         ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ,
         ADD COLUMN IF NOT EXISTS posted_confidence TEXT,
         ADD COLUMN IF NOT EXISTS posted_reason TEXT,
-        ADD COLUMN IF NOT EXISTS posted_checked_at TIMESTAMPTZ
+        ADD COLUMN IF NOT EXISTS posted_checked_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS portal_key TEXT,
+        ADD COLUMN IF NOT EXISTS logo_url TEXT,
+        ADD COLUMN IF NOT EXISTS logo_source TEXT
     `;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS newsletter_opt_in BOOLEAN DEFAULT true`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`;

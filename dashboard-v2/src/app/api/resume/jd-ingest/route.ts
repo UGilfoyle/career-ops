@@ -5,6 +5,7 @@ import sql from '@/lib/db';
 import { assertProAccess } from '@/lib/billing/entitlements';
 import { countryFromRequest } from '@/lib/billing/geo';
 import { extractDocumentText, inferTitleFromJd } from '@/lib/resume/extract-document-text';
+import { resolveJobLogoFields } from '@/lib/job-logos';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -62,9 +63,10 @@ export async function POST(req: NextRequest) {
     const resolvedCompany = company || 'Custom JD';
     const resolvedTitle = title || inferTitleFromJd(jdText);
     const manualUrl = `manual:jd:${userId}:${randomUUID()}`;
+    const logoFields = resolveJobLogoFields({ url: manualUrl, source: 'manual-jd' });
 
     const rows = await sql`
-      INSERT INTO jobs (url, canonical_url, company, title, source, user_id, jd_text)
+      INSERT INTO jobs (url, canonical_url, company, title, source, user_id, jd_text, portal_key, logo_url, logo_source)
       VALUES (
         ${manualUrl},
         ${manualUrl},
@@ -72,7 +74,10 @@ export async function POST(req: NextRequest) {
         ${resolvedTitle},
         'manual-jd',
         ${userId},
-        ${jdText}
+        ${jdText},
+        ${logoFields.portal_key},
+        ${logoFields.logo_url},
+        ${logoFields.logo_source}
       )
       RETURNING id, company, title
     `;

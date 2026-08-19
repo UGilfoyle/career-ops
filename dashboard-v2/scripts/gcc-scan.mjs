@@ -9,6 +9,7 @@ import {
   fetchGreenhouseJobs,
   fetchLeverJobs,
 } from '../../gcc-scan-engine.mjs';
+import { resolveJobLogoFields } from './lib/job-logos.mjs';
 
 const rawUserId = process.env.SCAN_USER_ID || process.argv[2] || 1;
 const userId = Number.parseInt(String(rawUserId), 10);
@@ -93,7 +94,16 @@ function tryAdd(url, company, title, source, trustedEmployer) {
     return 'not_gcc';
   }
   seenUrls.add(url);
-  newJobs.push({ url, canonical_url: cleanUrl, company: employer, title, source, company_type: 'GCC' });
+  const logoFields = resolveJobLogoFields({ url, source });
+  newJobs.push({
+    url,
+    canonical_url: cleanUrl,
+    company: employer,
+    title,
+    source,
+    company_type: 'GCC',
+    ...logoFields,
+  });
   stats.added++;
   return 'added';
 }
@@ -107,14 +117,28 @@ async function persistAndScore() {
         ADD COLUMN IF NOT EXISTS canonical_url TEXT,
         ADD COLUMN IF NOT EXISTS company_type TEXT,
         ADD COLUMN IF NOT EXISTS gcc_signal_score INTEGER,
-        ADD COLUMN IF NOT EXISTS gcc_high_value BOOLEAN DEFAULT FALSE;
+        ADD COLUMN IF NOT EXISTS gcc_high_value BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS portal_key TEXT,
+        ADD COLUMN IF NOT EXISTS logo_url TEXT,
+        ADD COLUMN IF NOT EXISTS logo_source TEXT;
     `;
   } catch { /* ignore */ }
 
   for (const job of newJobs) {
     await sql`
-      INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type)
-      VALUES (${job.url}, ${job.canonical_url}, ${job.company}, ${job.title}, ${job.source}, ${userId}, 'GCC')
+      INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type, portal_key, logo_url, logo_source)
+      VALUES (
+        ${job.url},
+        ${job.canonical_url},
+        ${job.company},
+        ${job.title},
+        ${job.source},
+        ${userId},
+        'GCC',
+        ${job.portal_key ?? null},
+        ${job.logo_url ?? null},
+        ${job.logo_source ?? null}
+      )
       ON CONFLICT (user_id, url) DO NOTHING
     `;
   }

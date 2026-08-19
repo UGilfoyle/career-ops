@@ -13,7 +13,8 @@ import {
   UserPlus,
   Calendar,
 } from 'lucide-react';
-import { PageSectionHeader, AiScoreBadge, CompanyAvatar } from './PageSectionHeader';
+import { PageSectionHeader, AiScoreBadge } from './PageSectionHeader';
+import { JobAvatar } from './JobAvatar';
 import type { GccCampaign, GccTarget } from './gcc-campaign';
 
 export type { GccCampaign, GccTarget };
@@ -28,6 +29,10 @@ type PipelineGccJob = {
   company?: string;
   title?: string;
   url?: string;
+  source?: string | null;
+  portal_key?: string | null;
+  logo_url?: string | null;
+  logo_source?: string | null;
   score?: string | number | null;
   gcc_signal_score?: number | null;
   gcc_high_value?: boolean;
@@ -280,7 +285,7 @@ export function GccCampaignPanel({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <CompanyAvatar name={job.company} size="sm" />
+                        <JobAvatar company={job.company} url={job.url} source={job.source} logoUrl={job.logo_url} portalKey={job.portal_key} logoSource={job.logo_source} size="sm" />
                         <span className="font-bold text-[#1C1C1E]">{job.company}</span>
                         {job.gcc_high_value && (
                           <span className="rounded-md border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-violet-800">

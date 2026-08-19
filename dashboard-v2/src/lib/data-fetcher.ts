@@ -59,7 +59,11 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           j.company,
           j.title as role,
           j.url,
-          j.score
+          j.score,
+          j.source,
+          j.portal_key,
+          j.logo_url,
+          j.logo_source
         FROM applications a
         JOIN jobs j ON a.job_id = j.id
         WHERE a.user_id = ${userId}
@@ -103,6 +107,9 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
       company: p.company,
       score: p.score,
       source: p.source,
+      portal_key: p.portal_key ?? null,
+      logo_url: p.logo_url ?? null,
+      logo_source: p.logo_source ?? null,
       created_at: p.created_at,
       posted_at: p.posted_at ?? null,
       posted_confidence: p.posted_confidence ?? null,
@@ -131,6 +138,9 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           j.company,
           j.score,
           j.source,
+          j.portal_key,
+          j.logo_url,
+          j.logo_source,
           j.created_at,
           j.posted_at,
           j.posted_confidence,
@@ -182,6 +192,9 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           j.company,
           j.score,
           j.source,
+          j.portal_key,
+          j.logo_url,
+          j.logo_source,
           j.created_at,
           j.company_type,
           j.gcc_signal_score,
@@ -217,6 +230,9 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           j.company,
           j.score,
           j.source,
+          j.portal_key,
+          j.logo_url,
+          j.logo_source,
           j.created_at,
           a.id AS app_id,
           a.status AS application_status,

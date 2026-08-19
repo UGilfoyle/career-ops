@@ -4,6 +4,7 @@ import sql from './db/client.mjs';
 import { classifyCompany } from '../../gcc-classify.mjs';
 import { scoreGccSignals } from '../../gcc-signal-engine.mjs';
 import { discoverJobsWithoutBrowser } from './lib/ddg-discovery.mjs';
+import { resolveJobLogoFields } from './lib/job-logos.mjs';
 
 const rawUserId = process.env.SCAN_USER_ID || process.argv[2] || 1;
 const userId = Number.parseInt(String(rawUserId), 10);
@@ -157,7 +158,8 @@ function tryAdd(url, company, title, source) {
     return 'filtered';
   }
   seenUrls.add(url);
-  newJobs.push({ url, canonical_url: cleanUrl, company, title, source });
+  const logoFields = resolveJobLogoFields({ url, source });
+  newJobs.push({ url, canonical_url: cleanUrl, company, title, source, ...logoFields });
   return 'added';
 }
 
@@ -487,7 +489,10 @@ async function run() {
           ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ,
           ADD COLUMN IF NOT EXISTS posted_confidence TEXT,
           ADD COLUMN IF NOT EXISTS posted_reason TEXT,
-          ADD COLUMN IF NOT EXISTS posted_checked_at TIMESTAMPTZ;
+          ADD COLUMN IF NOT EXISTS posted_checked_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS portal_key TEXT,
+          ADD COLUMN IF NOT EXISTS logo_url TEXT,
+          ADD COLUMN IF NOT EXISTS logo_source TEXT;
       `;
     } catch {
       // ignore
@@ -495,8 +500,19 @@ async function run() {
     for (const job of newJobs) {
       const companyType = classifyCompany(job.company);
       await sql`
-        INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type)
-        VALUES (${job.url}, ${job.canonical_url || job.url?.split?.('?')?.[0] || job.url}, ${job.company}, ${job.title}, ${job.source}, ${userId}, ${companyType})
+        INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type, portal_key, logo_url, logo_source)
+        VALUES (
+          ${job.url},
+          ${job.canonical_url || job.url?.split?.('?')?.[0] || job.url},
+          ${job.company},
+          ${job.title},
+          ${job.source},
+          ${userId},
+          ${companyType},
+          ${job.portal_key ?? null},
+          ${job.logo_url ?? null},
+          ${job.logo_source ?? null}
+        )
         ON CONFLICT (user_id, url) DO NOTHING
       `;
     }

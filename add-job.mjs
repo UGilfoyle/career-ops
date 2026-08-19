@@ -11,6 +11,10 @@ import {
   indeedManualJdHint,
   IndeedFetchError,
 } from './indeed-job.mjs';
+import {
+  extractLogoCandidatesInBrowser,
+  resolveJobLogoFields,
+} from './dashboard-v2/scripts/lib/job-logos.mjs';
 
 const url = process.argv[2];
 const userId = process.env.SCAN_USER_ID || 1;
@@ -361,6 +365,8 @@ async function scrapeJD(url) {
       jdText = await page.evaluate(() => document.body.innerText);
     }
 
+    const scrapedLogo = await page.evaluate(extractLogoCandidatesInBrowser);
+
     await browser.close();
     const text = jdText.trim();
 
@@ -389,7 +395,7 @@ async function scrapeJD(url) {
       );
     }
 
-    const meta = { ...linkedInMeta, text };
+    const meta = { ...linkedInMeta, text, scrapedLogo };
     return meta;
   } catch (err) {
     await browser.close();
@@ -497,11 +503,30 @@ async function main() {
   else if (li.title) title = li.title;
 
   const score = calculateJobScore(jdText, profile);
+  const logoFields = resolveJobLogoFields({
+    url: rawUrl,
+    source: 'manual-add',
+    scrapedLogo: scrape.scrapedLogo,
+    company,
+  });
 
   // Insert to database (store full URL user pasted; canonical for dedupe / display)
   const [inserted] = await sql`
-    INSERT INTO jobs (user_id, url, canonical_url, company, title, source, score, jd_text, created_at)
-    VALUES (${userId}, ${rawUrl}, ${canonical}, ${company}, ${title}, 'manual-add', ${score}, ${jdText.slice(0, 25000)}, NOW())
+    INSERT INTO jobs (user_id, url, canonical_url, company, title, source, score, jd_text, portal_key, logo_url, logo_source, created_at)
+    VALUES (
+      ${userId},
+      ${rawUrl},
+      ${canonical},
+      ${company},
+      ${title},
+      'manual-add',
+      ${score},
+      ${jdText.slice(0, 25000)},
+      ${logoFields.portal_key},
+      ${logoFields.logo_url},
+      ${logoFields.logo_source},
+      NOW()
+    )
     RETURNING id, company, title, score
   `;
 
