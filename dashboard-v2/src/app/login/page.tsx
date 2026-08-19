@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState, Suspense, useCallback } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Briefcase, Key, Mail, ArrowRight, Github, Loader2, AlertCircle, CheckCircle2, Shield } from 'lucide-react';
+import { Key, Mail, ArrowRight, Github, Loader2, AlertCircle, CheckCircle2, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { TurnstileWidget } from '@/components/TurnstileWidget';
+import AuthShell from '@/components/auth/AuthShell';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || '';
 
@@ -66,96 +67,96 @@ function LoginContent() {
       });
 
       if (result?.error) {
-        if (result.error.includes("verify your email")) {
-           router.push(`/verify?email=${encodeURIComponent(email)}`);
-           return;
+        if (result.error.includes('verify your email')) {
+          router.push(`/verify?email=${encodeURIComponent(email)}`);
+          return;
         }
         setError(result.error === 'CredentialsSignin' ? 'Invalid credentials or access denied.' : result.error);
       } else {
         router.push(callbackUrl);
         router.refresh();
       }
-    } catch (err) {
-      setError("An unexpected error occurred.");
+    } catch {
+      setError('An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#1C1C1E] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
-      {/* Background Glows: Subtle warm tones */}
-      <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#f59e0b]/5 rounded-full blur-[150px]" />
-      
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md z-10"
-      >
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center h-14 w-14 bg-[#1C1C1E] rounded-2xl shadow-xl mb-6">
-            <Briefcase className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight mb-2">Welcome Back</h1>
-          <p className="text-[#9CA3AF] font-medium">Sign in to your dashboard</p>
+    <AuthShell>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+        <div className="mb-8 lg:mb-10">
+          <h1 className="text-3xl font-bold tracking-tight text-[#1C1C1E] sm:text-4xl">Sign in</h1>
+          <p className="mt-2 text-sm font-medium text-[#6B6B6B]">Welcome back — enter your account details</p>
         </div>
 
         {isVerified && !autoGithub && (
-          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 text-sm font-bold">
+          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
             <CheckCircle2 size={18} />
             Account activated. You can sign in now.
           </div>
         )}
 
         {isReset && (
-          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 text-sm font-bold">
+          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
             <CheckCircle2 size={18} />
             Password updated. Sign in with your new password.
           </div>
         )}
 
         {autoGithub && (
-          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 text-sm font-bold">
+          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
             <Loader2 size={18} className="animate-spin" />
             Email verified. Redirecting to GitHub sign-in...
           </div>
         )}
 
-        <div className="bg-white border border-[#E5E5E0] rounded-[2.5rem] p-10 shadow-2xl shadow-black/[0.02]">
+        <div className="rounded-2xl border border-[#E5E5E0] bg-white p-8 shadow-xl shadow-black/[0.03] sm:p-10">
           {oauthErrorMessage && (
-            <div className="mb-6 flex items-center gap-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold">
+            <div className="mb-6 flex items-center gap-4 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-xs font-bold text-rose-600">
               <AlertCircle size={14} />
               {oauthErrorMessage}
             </div>
           )}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] ml-1">Email Address</label>
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF] group-focus-within:text-[#1C1C1E] transition-colors" size={18} />
+              <label className="ml-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
+                Email address
+              </label>
+              <div className="group relative">
+                <Mail
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF] transition-colors group-focus-within:text-[#1C1C1E]"
+                  size={18}
+                />
                 <input
                   name="email"
                   type="email"
                   placeholder="name@company.com"
                   required
-                  className="w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-[#1C1C1E] transition-all font-bold placeholder:text-[#9CA3AF]/50"
+                  className="w-full rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8]/50 py-4 pl-12 pr-4 font-bold outline-none transition-all placeholder:text-[#9CA3AF]/50 focus:border-[#1C1C1E]"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] ml-1">Password</label>
-              <div className="relative group">
-                <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF] group-focus-within:text-[#1C1C1E] transition-colors" size={18} />
+              <label className="ml-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
+                Password
+              </label>
+              <div className="group relative">
+                <Key
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF] transition-colors group-focus-within:text-[#1C1C1E]"
+                  size={18}
+                />
                 <input
                   name="password"
                   type="password"
                   placeholder="••••••••"
                   required
-                  className="w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-[#1C1C1E] transition-all font-bold placeholder:text-[#9CA3AF]/50"
+                  className="w-full rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8]/50 py-4 pl-12 pr-4 font-bold outline-none transition-all placeholder:text-[#9CA3AF]/50 focus:border-[#1C1C1E]"
                 />
               </div>
-              <div className="text-right pt-1">
+              <div className="pt-1 text-right">
                 <Link href="/forgot-password" className="text-xs font-bold text-[#6B6B6B] hover:text-[#1C1C1E]">
                   Forgot password?
                 </Link>
@@ -163,10 +164,10 @@ function LoginContent() {
             </div>
 
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold"
+                className="flex items-center gap-4 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-xs font-bold text-rose-600"
               >
                 <AlertCircle size={14} />
                 {error}
@@ -177,14 +178,16 @@ function LoginContent() {
               <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onToken={onTurnstileToken} />
             ) : null}
 
-            <button 
+            <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#1C1C1E] text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#27272a] transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#1C1C1E] py-4 font-bold text-white shadow-lg transition-all hover:bg-[#27272a] active:scale-[0.98] disabled:opacity-50"
             >
-              {isLoading ? <Loader2 className="animate-spin" size={20} /> : (
+              {isLoading ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
                 <>
-                  Sign In
+                  Sign in
                   <ArrowRight size={20} className="text-white/40" />
                 </>
               )}
@@ -192,40 +195,51 @@ function LoginContent() {
           </form>
 
           <div className="mt-8 flex items-center gap-4 text-[#E5E5E0]">
-             <div className="h-px w-full bg-[#E5E5E0]" />
-             <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] whitespace-nowrap">Or</span>
-             <div className="h-px w-full bg-[#E5E5E0]" />
+            <div className="h-px w-full bg-[#E5E5E0]" />
+            <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
+              Or
+            </span>
+            <div className="h-px w-full bg-[#E5E5E0]" />
           </div>
 
-          <button 
+          <button
             type="button"
             onClick={() => signIn('github', { callbackUrl: githubCallbackUrl })}
-            className="w-full mt-6 bg-white border border-[#E5E5E0] text-[#1C1C1E] font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#FAFAF8] transition-all"
+            className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl border border-[#E5E5E0] bg-white py-4 font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
           >
             <Github size={20} />
             Continue with GitHub
           </button>
         </div>
 
-        <p className="mt-10 text-center text-[#9CA3AF] text-sm font-medium">
+        <p className="mt-8 text-center text-sm font-medium text-[#9CA3AF]">
           New to Career-Ops?{' '}
-          <Link href="/signup" className="text-[#1C1C1E] font-bold hover:underline underline-offset-4 decoration-[#E5E5E0]">
-            Create Account
+          <Link
+            href="/signup"
+            className="font-bold text-[#1C1C1E] decoration-[#E5E5E0] underline-offset-4 hover:underline"
+          >
+            Create account
           </Link>
         </p>
 
-        <div className="mt-12 flex items-center justify-center gap-3 text-[#E5E5E0]">
-           <Shield size={16} />
-           <span className="text-[9px] font-bold uppercase tracking-[0.25em]">Encrypted sign-in</span>
+        <div className="mt-8 flex items-center justify-center gap-2 text-[#D4D4CE]">
+          <Shield size={14} />
+          <span className="text-[9px] font-bold uppercase tracking-[0.25em]">Encrypted sign-in</span>
         </div>
       </motion.div>
-    </div>
+    </AuthShell>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center"><Loader2 className="animate-spin text-[#1C1C1E]" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#FAFAF8]">
+          <Loader2 className="animate-spin text-[#1C1C1E]" size={28} />
+        </div>
+      }
+    >
       <LoginContent />
     </Suspense>
   );
