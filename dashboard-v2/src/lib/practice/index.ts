@@ -4,6 +4,13 @@ export { checkPracticeQuota } from './quota';
 export { evaluatePracticeQuota } from './quota-math';
 export type { PracticeQuotaResult } from './quota-math';
 export { generatePracticePack, buildOfflinePracticePack, hashJdText } from './generate-pack';
+export {
+  GEMINI_AI_DSA_HANDBOOK_PROMPT,
+  GEMINI_HANDBOOK_VISUALS_FOLLOWUP,
+  HANDBOOK_WEEKS,
+  HANDBOOK_REPO_PROMPT_PATH,
+  HANDBOOK_REPO_TRACKER_PATH,
+} from './handbook-prompt';
 export { extractPracticeKeywords, assessJdPracticeFit } from './jd-keywords';
 export {
   assertPracticeBetaAccess,

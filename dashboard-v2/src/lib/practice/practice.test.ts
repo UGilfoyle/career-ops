@@ -153,6 +153,16 @@ async function run() {
   assert.equal(ok.stdout, '1\n');
   assert.equal(ok.provider, 'onlinecompiler');
 
+  const { GEMINI_AI_DSA_HANDBOOK_PROMPT, HANDBOOK_WEEKS } = await import('./handbook-prompt');
+  assert.equal(HANDBOOK_WEEKS.length, 4);
+  assert.match(GEMINI_AI_DSA_HANDBOOK_PROMPT, /Akash Kaintura/);
+  assert.match(GEMINI_AI_DSA_HANDBOOK_PROMPT, /\bRAG\b/);
+  assert.match(GEMINI_AI_DSA_HANDBOOK_PROMPT, /ChromaDB/);
+  assert.match(GEMINI_AI_DSA_HANDBOOK_PROMPT, /VISUAL RULES/);
+  assert.match(GEMINI_AI_DSA_HANDBOOK_PROMPT, /xychart-beta/);
+  const { GEMINI_HANDBOOK_VISUALS_FOLLOWUP } = await import('./handbook-prompt');
+  assert.match(GEMINI_HANDBOOK_VISUALS_FOLLOWUP, /VISUAL PASS/);
+
   console.log('practice tests passed');
 }
 
