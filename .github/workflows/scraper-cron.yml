@@ -41,11 +41,15 @@ jobs:
       - name: Install dependencies
         run: npm install --omit=dev
 
-      - name: Install dashboard-v2 dependencies
-        working-directory: dashboard-v2
-        run: npm install --omit=dev
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package.json') }}
 
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run worker process

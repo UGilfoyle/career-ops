@@ -687,6 +687,98 @@ const CREST_CSS = `
         .edu > div { margin-bottom: 5px; }
 `;
 
+/** FAANG Elite: Ultra-clean Inter typography with vibrant subtle gradient hairline and high-density impact layout */
+const FAANG_ELITE_CSS = `
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 9.5pt;
+            line-height: 1.42;
+            color: #0f172a;
+            padding: 0.42in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: left; margin-bottom: 12px; }
+        h1 {
+            font-size: 20pt; font-weight: 800; letter-spacing: -0.03em;
+            text-transform: none; margin-bottom: 4px; line-height: 1.12;
+            color: #0f172a;
+        }
+        .contact { font-size: 8.5pt; color: #475569; line-height: 1.4; margin-bottom: 2px; font-weight: 500; }
+        .contact a { color: #0284c7; text-decoration: none; }
+        .top-rule { margin-top: 8px; height: 2px; background: linear-gradient(to right, #0284c7, #6366f1); border-radius: 1px; border: none; }
+        section { margin-top: 11px; }
+        h2 {
+            font-size: 9.5pt; font-weight: 800; letter-spacing: 0.6px;
+            text-transform: uppercase; margin-bottom: 3px; color: #0f172a;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .rule { border-top: 1.5px solid #e2e8f0; margin-bottom: 6px; }
+        .skills-lines { font-size: 9pt; line-height: 1.42; color: #334155; }
+        .skill-line { margin-bottom: 3px; }
+        .skill-label { font-weight: 700; color: #0f172a; }
+        .job { margin-bottom: 10px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 9.5pt; margin-bottom: 2px;
+        }
+        .job-title { font-weight: 700; color: #0f172a; }
+        .job-company { font-weight: 600; color: #0284c7; }
+        .job-dates { font-weight: 600; color: #64748b; font-size: 8.5pt; font-variant-numeric: tabular-nums; }
+        .job ul { list-style-type: disc; margin: 2px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 2.5px; padding-left: 2px; line-height: 1.38; color: #334155; }
+        .summary-block { font-size: 9pt; line-height: 1.45; color: #334155; white-space: pre-line; }
+        .edu { font-size: 9pt; line-height: 1.38; color: #334155; }
+        .edu > div { margin-bottom: 4px; }
+`;
+
+/** Executive Minimalist: Refined editorial serif body with crisp sans headers for VP, Staff & Lead roles */
+const EXECUTIVE_CSS = `
+        body {
+            font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
+            font-size: 9.8pt;
+            line-height: 1.45;
+            color: #1e293b;
+            padding: 0.45in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 14px; }
+        h1 {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 21pt; font-weight: 800; letter-spacing: -0.02em;
+            text-transform: uppercase; margin-bottom: 5px; line-height: 1.15;
+            color: #0f172a;
+        }
+        .contact { font-family: 'Inter', sans-serif; font-size: 8.5pt; color: #475569; line-height: 1.4; margin-bottom: 4px; }
+        .contact a { color: #0f172a; text-decoration: none; }
+        .top-rule { margin-top: 8px; border-top: 2px solid #0f172a; }
+        section { margin-top: 12px; }
+        h2 {
+            font-family: 'Inter', sans-serif;
+            font-size: 9.5pt; font-weight: 800; letter-spacing: 1px;
+            text-transform: uppercase; margin-bottom: 3px; color: #0f172a;
+        }
+        .rule { border-top: 1px solid #94a3b8; margin-bottom: 7px; }
+        .skills-lines { font-family: 'Inter', sans-serif; font-size: 9pt; line-height: 1.42; color: #334155; }
+        .skill-line { margin-bottom: 3px; }
+        .skill-label { font-weight: 700; color: #0f172a; }
+        .job { margin-bottom: 11px; }
+        .job-header {
+            font-family: 'Inter', sans-serif;
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 9.5pt; margin-bottom: 2px;
+        }
+        .job-title { font-weight: 700; color: #0f172a; }
+        .job-company { font-weight: 600; color: #475569; font-style: italic; }
+        .job-dates { font-weight: 600; color: #64748b; font-size: 8.5pt; }
+        .job ul { list-style-type: disc; margin: 3px 0 0 1.25em; padding: 0; }
+        .job li { margin-bottom: 3px; line-height: 1.4; color: #334155; }
+        .summary-block { font-size: 9.5pt; line-height: 1.5; color: #334155; white-space: pre-line; }
+        .edu { font-family: 'Inter', sans-serif; font-size: 9pt; line-height: 1.4; }
+        .edu > div { margin-bottom: 4px; }
+`;
+
 export type TemplateMeta = {
   id: string;
   name: string;
@@ -697,24 +789,38 @@ export type TemplateMeta = {
 
 export const TEMPLATE_CATALOG: TemplateMeta[] = [
   {
+    id: 'ats-faang',
+    name: 'FAANG Elite',
+    badge: 'Popular',
+    description: 'High-density tech layout with subtle gradient hairline and optimal 1-page fit.',
+    file: 'templates/ats-template-faang.html',
+  },
+  {
+    id: 'ats-executive',
+    name: 'Executive Minimalist',
+    badge: 'Senior / Lead',
+    description: 'Refined editorial serif body with crisp headers for Staff, Lead and Director roles.',
+    file: 'templates/ats-template-executive.html',
+  },
+  {
     id: 'ats-professional',
     name: 'ATS Classic',
     badge: 'Recommended',
-    description: 'Compact academic layout: serif name, heading rules, right-aligned dates.',
+    description: 'Compact academic layout with bold name, heading rules, and right-aligned dates.',
     file: 'templates/ats-template-professional.html',
   },
   {
     id: 'ats-ivy',
     name: 'Ivy League',
     badge: 'Enhancv style',
-    description: 'Classic grey accents + serif body — recruiter-trusted ATS layout.',
+    description: 'Classic grey accents with serif body in a recruiter-trusted ATS layout.',
     file: 'templates/ats-template-ivy.html',
   },
   {
     id: 'ats-single',
     name: 'Single Column',
     badge: 'ATS',
-    description: 'Substantial single-column green accents — fills space for experienced pros.',
+    description: 'Substantial single-column green accents that fill space for experienced pros.',
     file: 'templates/ats-template-single.html',
   },
   {
@@ -727,61 +833,63 @@ export const TEMPLATE_CATALOG: TemplateMeta[] = [
   {
     id: 'ats-timeline',
     name: 'Timeline ATS',
-    description: 'Left accent rail on roles — still single-column for ATS parsers.',
+    description: 'Left accent rail on roles while remaining single-column for ATS parsers.',
     file: 'templates/ats-template-timeline.html',
   },
   {
     id: 'ats-crest',
     name: 'Crest',
-    description: 'Refined double-rule header — executive feel, fully ATS-readable.',
+    description: 'Refined double-rule header with an executive feel and full ATS readability.',
     file: 'templates/ats-template-crest.html',
   },
   {
     id: 'ats-prime',
     name: 'Prime ATS',
     badge: 'resume.io style',
-    description: 'Streamlined navy accent layout — optimized for ATS parse + recruiter skim.',
+    description: 'Streamlined navy accent layout optimized for ATS parse and recruiter skim.',
     file: 'templates/ats-template-prime.html',
   },
   {
     id: 'ats-traditional',
     name: 'Traditional',
     badge: '7+ years',
-    description: 'Sizable sections and serif body — fills 2 pages for senior career history.',
+    description: 'Sizable sections and serif body that fills 2 pages for senior career history.',
     file: 'templates/ats-template-traditional.html',
   },
   {
     id: 'ats-precision',
     name: 'Precision ATS',
-    description: 'Highlighted skills band for keyword density — clean single-column body.',
+    description: 'Highlighted skills band for keyword density with a clean single-column body.',
     file: 'templates/ats-template-precision.html',
   },
   {
     id: 'ats-header',
     name: 'Header ATS',
-    description: 'Bold dark name band — achievements and experience stay ATS-readable.',
+    description: 'Bold dark name band where achievements and experience stay ATS-readable.',
     file: 'templates/ats-template-header.html',
   },
   {
     id: 'ats-modern-compact',
     name: 'Modern Compact',
-    description: 'Tighter spacing — more content per page (better for mid-level, not 7+ yrs).',
+    description: 'Tighter spacing for more content per page (optimal for mid-level).',
     file: 'templates/ats-template-modern-compact.html',
   },
   {
     id: 'ats-technical',
     name: 'Technical',
-    description: 'Monospace accents for skills and dates — reads well for engineering roles.',
+    description: 'Monospace accents for skills and dates that read well for engineering roles.',
     file: 'templates/ats-template-technical.html',
   },
   {
     id: 'ats-minimal',
     name: 'Minimal',
-    description: 'Extra whitespace and lighter rules — clean executive-friendly ATS layout.',
+    description: 'Extra whitespace and lighter rules for a clean executive-friendly ATS layout.',
     file: 'templates/ats-template-minimal.html',
   },
 ];
 
+export const ATS_FAANG_TEMPLATE = wrap(FAANG_ELITE_CSS);
+export const ATS_EXECUTIVE_TEMPLATE = wrap(EXECUTIVE_CSS);
 export const ATS_PROFESSIONAL_TEMPLATE = wrap(CLASSIC_CSS);
 export const ATS_MODERN_COMPACT_TEMPLATE = wrap(MODERN_COMPACT_CSS);
 export const ATS_TECHNICAL_TEMPLATE = wrap(TECHNICAL_CSS);
@@ -797,6 +905,8 @@ export const ATS_CLEAN_TEMPLATE = wrap(CLEAN_ATS_CSS);
 export const ATS_CREST_TEMPLATE = wrap(CREST_CSS);
 
 export const TEMPLATE_REGISTRY: Record<string, string> = {
+  'ats-faang': ATS_FAANG_TEMPLATE,
+  'ats-executive': ATS_EXECUTIVE_TEMPLATE,
   'ats-professional': ATS_PROFESSIONAL_TEMPLATE,
   'ats-modern-compact': ATS_MODERN_COMPACT_TEMPLATE,
   'ats-technical': ATS_TECHNICAL_TEMPLATE,
@@ -812,11 +922,11 @@ export const TEMPLATE_REGISTRY: Record<string, string> = {
   'ats-crest': ATS_CREST_TEMPLATE,
 };
 
-export const DEFAULT_TEMPLATE_ID = 'ats-professional';
+export const DEFAULT_TEMPLATE_ID = 'ats-faang';
 
 export function getTemplateHtml(templateId?: string): string {
   const id = templateId || DEFAULT_TEMPLATE_ID;
-  return TEMPLATE_REGISTRY[id] || ATS_PROFESSIONAL_TEMPLATE;
+  return TEMPLATE_REGISTRY[id] || ATS_FAANG_TEMPLATE;
 }
 
 export function getTemplateMeta(templateId?: string): TemplateMeta {
@@ -827,3 +937,4 @@ export function getTemplateMeta(templateId?: string): TemplateMeta {
 export function resolveTemplateFile(templateId?: string): string {
   return getTemplateMeta(templateId).file;
 }
+
