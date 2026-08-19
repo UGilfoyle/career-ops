@@ -33,7 +33,7 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
   const [future, setFuture] = useState<ResumeContext[]>([]);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [openSection, setOpenSection] = useState<string>('personal');
+  const [openSection, setOpenSection] = useState<string>('');
   const hydratedRef = useRef(false);
   const skipHistoryRef = useRef(false);
   const draftRef = useRef(draft);

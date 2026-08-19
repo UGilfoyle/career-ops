@@ -29,6 +29,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Career-Ops | Job search pipeline",
   description: "Scan jobs, score matches, tailor resumes, and track applications in one workspace.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Career-Ops",
+  },
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },

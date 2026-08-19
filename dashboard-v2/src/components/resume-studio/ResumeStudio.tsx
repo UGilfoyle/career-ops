@@ -76,10 +76,24 @@ export default function ResumeStudio({
   const [banner, setBanner] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? reviewJob?.jobId ?? null);
+  const [leftTab, setLeftTab] = useState<'jd' | 'editor'>('jd');
   const [liveAts, setLiveAts] = useState<{ score: number | null; source: 'jd' | 'structure' }>({
     score: null,
     source: 'structure',
   });
+
+  // Derive job context for toolbar breadcrumb
+  const jobContext = useMemo(() => {
+    if (!selectedJobId) return null;
+    const match = pipeline.find(
+      (j) => Number(j.pipeline_id ?? j.id) === selectedJobId,
+    );
+    if (!match && !reviewJob) return null;
+    return {
+      company: match?.company || reviewJob?.company || undefined,
+      title: match?.title || reviewJob?.title || undefined,
+    };
+  }, [selectedJobId, pipeline, reviewJob]);
 
   useEffect(() => {
     const next = initialJobId ?? reviewJob?.jobId ?? null;
@@ -291,6 +305,9 @@ export default function ResumeStudio({
         exportingPdf={exportingPdf}
         templateLabel={templateMeta.name}
         onOpenTemplates={() => setGalleryOpen(true)}
+        jobContext={jobContext}
+        atsScore={liveAts.score}
+        atsSource={liveAts.source}
       />
 
       {banner ? (
@@ -302,100 +319,132 @@ export default function ResumeStudio({
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
         <div className="min-h-0 overflow-y-auto border-b border-[#E5E5E0] lg:border-b-0 lg:border-r">
           <div className="space-y-3 p-4">
-            {isEmpty ? (
-              <div className="rounded-2xl border border-dashed border-[#E5E5E0] bg-white p-8 text-center space-y-3">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C1C1E] text-white">
-                  <Sparkles size={20} />
-                </div>
-                <h3 className="text-lg font-bold text-[#1C1C1E]">Start your master resume</h3>
-                <p className="text-sm text-[#6B6B6B] max-w-md mx-auto">
-                  Import a PDF/DOCX or fill the sections below. Paste any job description to match keywords and tailor a resume.
-                </p>
+            {/* ── Left Pane Sub-Navigation ── */}
+            <div className="flex rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-0.5">
+              <button
+                type="button"
+                onClick={() => setLeftTab('jd')}
+                className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  leftTab === 'jd'
+                    ? 'bg-[#1C1C1E] text-white shadow-sm'
+                    : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                }`}
+              >
+                <Sparkles size={13} /> JD Match Inspector
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeftTab('editor')}
+                className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  leftTab === 'editor'
+                    ? 'bg-[#1C1C1E] text-white shadow-sm'
+                    : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                }`}
+              >
+                <Files size={13} /> Edit Master Resume
+              </button>
+            </div>
+
+            {leftTab === 'jd' ? (
+              <>
+                <JdMatchPanel
+                  draft={draft}
+                  pipeline={pipeline}
+                  selectedJobId={selectedJobId}
+                  onSelectJob={(id) => {
+                    setSelectedJobId(id);
+                  }}
+                  onTailor={onTailorJob}
+                  onAtsUpdate={onAtsUpdate}
+                  hasGeneratedResume={Boolean(
+                    reviewJob?.has_resume_html
+                    || reviewJob?.has_resume_pdf
+                    || (reviewJob?.jobId && selectedJobId === reviewJob.jobId
+                      && (reviewJob.has_resume_html || reviewJob.has_resume_pdf))
+                  )}
+                />
+
+                {reviewJob ? (
+                  <JobReviewLite
+                    draft={draft}
+                    jobId={reviewJob.jobId}
+                    company={reviewJob.company}
+                    title={reviewJob.title}
+                    pipelineScore={reviewJob.score}
+                    atsContentScore={reviewJob.ats_content_score}
+                    hasResumeHtml={reviewJob.has_resume_html}
+                    hasResumePdf={reviewJob.has_resume_pdf}
+                    onClose={onClearReviewJob}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <div className="space-y-3">
+                {isEmpty ? (
+                  <div className="rounded-2xl border border-dashed border-[#E5E5E0] bg-white p-8 text-center space-y-3">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C1C1E] text-white">
+                      <Sparkles size={20} />
+                    </div>
+                    <h3 className="text-lg font-bold text-[#1C1C1E]">Start your master resume</h3>
+                    <p className="text-sm text-[#6B6B6B] max-w-md mx-auto">
+                      Import a PDF/DOCX or fill the sections below. Paste any job description to match keywords and tailor a resume.
+                    </p>
+                  </div>
+                ) : null}
+
+                <SectionAccordion
+                  id="personal"
+                  title="Personal Info"
+                  open={openSection === 'personal'}
+                  onToggle={() => toggleSection('personal')}
+                >
+                  <PersonalInfoSection candidate={draft.candidate || {}} onChange={updateCandidate} />
+                </SectionAccordion>
+
+                <SectionAccordion
+                  id="summary"
+                  title="Professional Summary"
+                  open={openSection === 'summary'}
+                  onToggle={() => toggleSection('summary')}
+                >
+                  <SummarySection
+                    headline={draft.narrative?.headline || ''}
+                    exitStory={draft.narrative?.exit_story || ''}
+                    onChange={updateNarrative}
+                  />
+                </SectionAccordion>
+
+                <SectionAccordion
+                  id="competencies"
+                  title="Core Competencies"
+                  open={openSection === 'competencies'}
+                  onToggle={() => toggleSection('competencies')}
+                  badge={`${competencies.length}`}
+                >
+                  <CompetenciesSection tags={competencies} onChange={updateCompetencies} />
+                </SectionAccordion>
+
+                <SectionAccordion
+                  id="experience"
+                  title="Experience"
+                  open={openSection === 'experience'}
+                  onToggle={() => toggleSection('experience')}
+                  badge={`${(draft.experience || []).length}`}
+                >
+                  <ExperienceSection experience={draft.experience || []} onChange={updateExperience} />
+                </SectionAccordion>
+
+                <SectionAccordion
+                  id="education"
+                  title="Education"
+                  open={openSection === 'education'}
+                  onToggle={() => toggleSection('education')}
+                  badge={`${(draft.education || []).length}`}
+                >
+                  <EducationSection education={draft.education || []} onChange={updateEducation} />
+                </SectionAccordion>
               </div>
-            ) : null}
-
-            <JdMatchPanel
-              draft={draft}
-              pipeline={pipeline}
-              selectedJobId={selectedJobId}
-              onSelectJob={(id) => {
-                setSelectedJobId(id);
-              }}
-              onTailor={onTailorJob}
-              onAtsUpdate={onAtsUpdate}
-              hasGeneratedResume={Boolean(
-                reviewJob?.has_resume_html
-                || reviewJob?.has_resume_pdf
-                || (reviewJob?.jobId && selectedJobId === reviewJob.jobId
-                  && (reviewJob.has_resume_html || reviewJob.has_resume_pdf))
-              )}
-            />
-
-            {reviewJob ? (
-              <JobReviewLite
-                draft={draft}
-                jobId={reviewJob.jobId}
-                company={reviewJob.company}
-                title={reviewJob.title}
-                pipelineScore={reviewJob.score}
-                atsContentScore={reviewJob.ats_content_score}
-                hasResumeHtml={reviewJob.has_resume_html}
-                hasResumePdf={reviewJob.has_resume_pdf}
-                onClose={onClearReviewJob}
-              />
-            ) : null}
-
-            <SectionAccordion
-              id="personal"
-              title="Personal Info"
-              open={openSection === 'personal'}
-              onToggle={() => toggleSection('personal')}
-            >
-              <PersonalInfoSection candidate={draft.candidate || {}} onChange={updateCandidate} />
-            </SectionAccordion>
-
-            <SectionAccordion
-              id="summary"
-              title="Professional Summary"
-              open={openSection === 'summary'}
-              onToggle={() => toggleSection('summary')}
-            >
-              <SummarySection
-                headline={draft.narrative?.headline || ''}
-                exitStory={draft.narrative?.exit_story || ''}
-                onChange={updateNarrative}
-              />
-            </SectionAccordion>
-
-            <SectionAccordion
-              id="competencies"
-              title="Core Competencies"
-              open={openSection === 'competencies'}
-              onToggle={() => toggleSection('competencies')}
-              badge={`${competencies.length}`}
-            >
-              <CompetenciesSection tags={competencies} onChange={updateCompetencies} />
-            </SectionAccordion>
-
-            <SectionAccordion
-              id="experience"
-              title="Experience"
-              open={openSection === 'experience'}
-              onToggle={() => toggleSection('experience')}
-              badge={`${(draft.experience || []).length}`}
-            >
-              <ExperienceSection experience={draft.experience || []} onChange={updateExperience} />
-            </SectionAccordion>
-
-            <SectionAccordion
-              id="education"
-              title="Education"
-              open={openSection === 'education'}
-              onToggle={() => toggleSection('education')}
-              badge={`${(draft.education || []).length}`}
-            >
-              <EducationSection education={draft.education || []} onChange={updateEducation} />
-            </SectionAccordion>
+            )}
 
             {onOpenGeneratedDocs ? (
               <button

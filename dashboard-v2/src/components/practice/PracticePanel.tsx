@@ -8,6 +8,7 @@ import ProPaywall, { type PendingPayment } from '../ProPaywall';
 import PracticeComingSoon from './PracticeComingSoon';
 import HandbookCard from './HandbookCard';
 import PracticePackView, { type PracticePackContent } from './PracticePackView';
+import { PracticeIdeView } from './PracticeIdeView';
 
 type PipelineJob = {
   pipeline_id?: number | string;
@@ -70,6 +71,7 @@ export default function PracticePanel({
   const [error, setError] = useState('');
   const [showPaywall, setShowPaywall] = useState(false);
   const [comingSoon, setComingSoon] = useState(false);
+  const [sandboxOpen, setSandboxOpen] = useState(true);
 
   const sessionEmail = session?.user?.email ?? null;
   const clientBetaAllowed =
@@ -233,27 +235,14 @@ export default function PracticePanel({
 
   return (
     <div className="w-full min-w-0 max-w-full space-y-4 overflow-x-hidden sm:space-y-6">
-      <div className="flex flex-col gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold text-[#1C1C1E]">Interview Practice</h2>
-          <p className="mt-0.5 text-xs font-medium leading-relaxed text-[#6B6B6B]">
-            JD packs for the role in front of you. AI + DSA concepts: handbook card below, then
-            generate a pack to drill in the editor.
-          </p>
-        </div>
-        {quota && (
-          <div className="w-full break-words rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-xs font-semibold leading-snug text-[#475569] [overflow-wrap:anywhere]">
-            {quota.banner}
-            {!quota.pro && quota.resetAt && quota.remaining === 0 && (
-              <span className="mt-0.5 block text-[10px] font-medium text-[#9CA3AF]">
-                Resets {new Date(quota.resetAt).toLocaleString()}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      <HandbookCard />
+      {/* ── Screen 3: Full Interview Practice IDE ── */}
+      <PracticeIdeView
+        company={activePack?.company || company || (jobs[0]?.company) || 'Stripe'}
+        role={activePack?.role || role || (jobs[0]?.title) || 'Senior Backend Engineer'}
+        codingPrompts={activePack?.content?.coding}
+        systemDesignPrompts={activePack?.content?.systemDesign}
+        behavioralPrompts={activePack?.content?.behavioral}
+      />
 
       {showPaywall && (
         <ProPaywall
@@ -265,33 +254,58 @@ export default function PracticePanel({
         />
       )}
 
-      <div className="min-w-0 rounded-2xl border border-[#E5E5E0] bg-white p-3 shadow-sm sm:rounded-[1.5rem] sm:p-5">
+      {/* ── Generate Custom Pack for Any Job ── */}
+      <div className="min-w-0 rounded-2xl border border-[#E5E5E0] bg-white p-4 shadow-sm sm:rounded-[1.5rem] sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-[#F5F5F0] pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-[#1C1C1E]">Generate Tailored Interview Pack</h3>
+            <p className="text-xs text-[#6B6B6B]">Generate specific coding, system design & behavioral prompts from any job description</p>
+          </div>
+          {quota && (
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              {quota.banner || 'Pro · Ready'}
+            </span>
+          )}
+        </div>
+
         <div className="mb-4 grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setMode('job')}
-            className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-bold sm:px-3 ${
-              mode === 'job' ? 'bg-[#1C1C1E] text-white' : 'bg-[#F4F4F0] text-[#6B6B6B]'
+            className={`min-h-10 rounded-xl px-2 py-2 text-xs font-bold sm:px-3 transition-colors ${
+              mode === 'job' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'bg-[#F4F4F0] text-[#6B6B6B] hover:text-[#1C1C1E]'
             }`}
           >
-            Pipeline job
+            Pipeline Job
           </button>
           <button
             type="button"
             onClick={() => setMode('paste')}
-            className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-bold sm:px-3 ${
-              mode === 'paste' ? 'bg-[#1C1C1E] text-white' : 'bg-[#F4F4F0] text-[#6B6B6B]'
+            className={`min-h-10 rounded-xl px-2 py-2 text-xs font-bold sm:px-3 transition-colors ${
+              mode === 'paste' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'bg-[#F4F4F0] text-[#6B6B6B] hover:text-[#1C1C1E]'
             }`}
           >
-            Paste JD
+            Paste Custom JD
           </button>
         </div>
 
         {mode === 'job' ? (
           <label className="block text-xs font-bold text-[#6B6B6B]">
-            Select job
-            <select value={jobId} onChange={(e) => setJobId(e.target.value)} className={fieldClass}>
-              <option value="">Choose…</option>
+            Select Target Job
+            <select
+              value={jobId}
+              onChange={(e) => {
+                const jId = e.target.value;
+                setJobId(jId);
+                const selected = jobs.find((j) => j.id === jId);
+                if (selected) {
+                  setCompany(selected.company);
+                  setRole(selected.title);
+                }
+              }}
+              className={fieldClass}
+            >
+              <option value="">Choose from pipeline…</option>
               {jobs.map((j) => (
                 <option key={j.id} value={j.id}>
                   {j.company} — {j.title}
@@ -313,7 +327,7 @@ export default function PracticePanel({
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                   className={fieldClass}
-                  placeholder="Acme"
+                  placeholder="e.g. Stripe, Google, Digicert"
                 />
               </label>
               <label className="block text-xs font-bold text-[#6B6B6B]">
@@ -322,18 +336,18 @@ export default function PracticePanel({
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   className={fieldClass}
-                  placeholder="Senior Backend Engineer"
+                  placeholder="e.g. Senior Backend Engineer"
                 />
               </label>
             </div>
             <label className="block text-xs font-bold text-[#6B6B6B]">
-              Job description
+              Job Description
               <textarea
                 value={jdText}
                 onChange={(e) => setJdText(e.target.value)}
-                rows={6}
+                rows={5}
                 className={fieldClass}
-                placeholder="Paste the full JD here…"
+                placeholder="Paste the full job description here…"
               />
             </label>
           </div>
@@ -350,29 +364,24 @@ export default function PracticePanel({
             type="button"
             disabled={loading}
             onClick={() => void generate()}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60 sm:w-auto"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#27272a] active:scale-95 transition-all disabled:opacity-60 sm:w-auto"
           >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            Generate practice pack
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} className="text-amber-300" />}
+            Generate Practice Pack
           </button>
           <button
             type="button"
             onClick={() => void refreshMeta()}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E0] px-3 py-2.5 text-xs font-bold text-[#6B6B6B] sm:w-auto"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E0] bg-white px-3.5 py-2.5 text-xs font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors sm:w-auto"
           >
             <RefreshCw size={14} /> Refresh
           </button>
         </div>
       </div>
 
-      {activePack && (
-        <div className="min-w-0 rounded-2xl border border-[#E5E5E0] bg-white p-3 shadow-sm sm:rounded-[1.5rem] sm:p-5">
-          <PracticePackView
-            content={activePack.content}
-            company={activePack.company}
-            role={activePack.role}
-          />
-        </div>
+      {/* AI + DSA 4-week handbook — strictly restricted to super admin */}
+      {sessionEmail?.trim().toLowerCase() === 'akash.k96.official@gmail.com' && (
+        <HandbookCard />
       )}
 
       {packs.length > 0 && (

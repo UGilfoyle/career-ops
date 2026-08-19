@@ -11,8 +11,9 @@ export function lifetimeProGithubLogins(): string[] {
 const DEFAULT_LIFETIME_PRO_EMAILS =
   'akashkaintura.ak@gmail.com,akash.k96.official@gmail.com';
 
-/** Interview Practice live beta — Akash only unless PRACTICE_BETA_EMAILS overrides. */
-const DEFAULT_PRACTICE_BETA_EMAILS = 'akash.k96.official@gmail.com';
+/** Interview Practice live beta — enabled for admin emails and local dev. */
+const DEFAULT_PRACTICE_BETA_EMAILS =
+  'akash.k96.official@gmail.com,akashkaintura.ak@gmail.com,test@example.com,dev@careerops.local';
 
 function splitEmailList(raw: string): string[] {
   return raw
@@ -74,9 +75,9 @@ export function isLifetimeProEmail(email?: string | null): boolean {
 
 /**
  * Live Interview Practice beta (generate UI + APIs).
- * Default: only akash.k96.official@gmail.com (and Gmail variants).
  */
 export function canAccessPracticeBeta(email?: string | null): boolean {
+  if (process.env.NODE_ENV !== 'production') return true;
   if (!email?.trim()) return false;
   return emailMatchesAllowlist(email, practiceBetaEmails());
 }

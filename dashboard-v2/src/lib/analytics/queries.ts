@@ -1,4 +1,5 @@
 import sql from '@/lib/db';
+import { ensureBackgroundSchema, ensureMasterPdfSchema } from '@/lib/ops-schema';
 
 export type UserAnalyticsRow = {
   id: number;
@@ -66,6 +67,8 @@ export async function fetchProductAnalytics(): Promise<{
   users: UserAnalyticsRow[];
   daily: DailyActivityRow[];
 }> {
+  await ensureBackgroundSchema(sql);
+  await ensureMasterPdfSchema(sql);
   const [summaryRows, userRows, dailyRows] = await Promise.all([
     sql`
       SELECT

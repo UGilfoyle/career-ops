@@ -47,6 +47,9 @@ function wrap(css: string) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{NAME}} - Resume</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4; margin: 0.42in; }
@@ -54,6 +57,7 @@ function wrap(css: string) {
             background: #fff;
             hyphens: none;
             -webkit-hyphens: none;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
         @media print {
             body { padding: 0 !important; }
@@ -96,46 +100,46 @@ ${BODY}
 
 const CLASSIC_CSS = `
         body {
-            font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
-            font-size: 10pt;
-            line-height: 1.32;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 9.5pt;
+            line-height: 1.4;
             color: #1a1a1a;
             padding: 0.4in;
             -webkit-font-smoothing: antialiased;
         }
         .container { max-width: 100%; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 8px; padding-bottom: 0; }
+        header { text-align: center; margin-bottom: 10px; padding-bottom: 0; }
         h1 {
-            font-family: Georgia, "Times New Roman", Times, serif;
-            font-size: 18pt; font-weight: 700; letter-spacing: 0.4px;
-            text-transform: none; margin-bottom: 4px; line-height: 1.12;
-            color: #111;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 18pt; font-weight: 800; letter-spacing: -0.5px;
+            text-transform: none; margin-bottom: 5px; line-height: 1.15;
+            color: #111827;
         }
-        .contact { font-size: 9pt; color: #334155; line-height: 1.35; margin-bottom: 2px; }
-        .top-rule { margin-top: 6px; border-top: 1.5px solid #111; }
-        section { margin-top: 8px; }
+        .contact { font-size: 8.5pt; color: #4b5563; line-height: 1.4; margin-bottom: 4px; font-weight: 500; }
+        .top-rule { margin-top: 8px; border-top: 1.5px solid #111827; }
+        section { margin-top: 10px; }
         h2 {
-            font-size: 10.5pt; font-weight: 700; letter-spacing: 0.2px;
-            text-transform: none; margin-bottom: 2px; color: #111;
-            font-family: Georgia, "Times New Roman", Times, serif;
+            font-size: 9.5pt; font-weight: 700; letter-spacing: 0.5px;
+            text-transform: uppercase; margin-bottom: 3px; color: #111827;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        .rule { border-top: 1px solid #111; margin-bottom: 4px; }
-        .skills-lines { font-size: 9.5pt; line-height: 1.35; color: #1e293b; }
-        .skill-line { margin-bottom: 2px; }
-        .skill-label { font-weight: 700; color: #111; }
-        .job { margin-bottom: 7px; }
+        .rule { border-top: 1px solid #e5e7eb; margin-bottom: 6px; }
+        .skills-lines { font-size: 9pt; line-height: 1.4; color: #374151; }
+        .skill-line { margin-bottom: 3px; }
+        .skill-label { font-weight: 700; color: #111827; }
+        .job { margin-bottom: 9px; }
         .job-header {
             display: flex; justify-content: space-between; align-items: baseline;
-            gap: 10px; font-size: 10pt; margin-bottom: 2px;
+            gap: 10px; font-size: 9.5pt; margin-bottom: 3px;
         }
-        .job-title { font-weight: 700; color: #111; }
-        .job-company { font-weight: 700; color: #111; }
-        .job-dates { font-weight: 600; color: #111; font-size: 9.5pt; }
-        .job ul { list-style-type: disc; margin: 2px 0 0 1.1em; padding: 0; }
-        .job li { margin-bottom: 1.5px; padding-left: 1px; line-height: 1.32; color: #1a1a1a; }
-        .summary-block { font-size: 9.5pt; line-height: 1.38; color: #1a1a1a; white-space: pre-line; }
-        .edu { font-size: 9.5pt; line-height: 1.32; color: #1a1a1a; }
-        .edu > div { margin-bottom: 3px; }
+        .job-title { font-weight: 700; color: #111827; }
+        .job-company { font-weight: 600; color: #4b5563; }
+        .job-dates { font-weight: 500; color: #6b7280; font-size: 8.5pt; }
+        .job ul { list-style-type: disc; margin: 3px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 2.5px; padding-left: 2px; line-height: 1.38; color: #374151; }
+        .summary-block { font-size: 9pt; line-height: 1.45; color: #374151; white-space: pre-line; }
+        .edu { font-size: 9pt; line-height: 1.38; color: #374151; }
+        .edu > div { margin-bottom: 4px; }
 `;
 
 const MODERN_COMPACT_CSS = `

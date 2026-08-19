@@ -44,7 +44,7 @@ export default function ProPaywall({
 
   const desc =
     feature === 'resume-studio'
-      ? 'Edit your master resume, live ATS preview, PDF export, and JD match — included with Pro.'
+      ? 'Edit your master resume, live ATS preview, PDF export, and JD match (included with Pro).'
       : feature === 'practice'
         ? 'Free plan: 1 JD practice pack every 7 days. Upgrade for unlimited coding, system design, and STAR packs tailored to each role.'
         : `Free plan: 10 Copilot messages every 2 hours${copilotRemaining != null ? ` (${copilotRemaining} left)` : ''}. Upgrade for unlimited coaching synced to your profile.`;
@@ -134,7 +134,7 @@ export default function ProPaywall({
             Check verification status
           </button>
           <p className="text-[11px] text-[#9CA3AF] mt-4 max-w-xs">
-            No need to pay again — one payment per account is tracked until it is approved.
+            No need to pay again: one payment per account is tracked until it is approved.
           </p>
         </>
       ) : (
@@ -149,7 +149,7 @@ export default function ProPaywall({
             className="inline-flex items-center gap-2 bg-[#1C1C1E] text-white font-semibold text-sm px-6 py-3 rounded-xl hover:bg-black transition disabled:opacity-60"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : null}
-            Upgrade to Pro — pay via UPI
+            Upgrade to Pro (Pay via UPI)
           </button>
           <p className="text-[11px] text-[#9CA3AF] mt-4 max-w-xs">
             Pay {planDisplay} → submit payment details → we verify → Pro access email lands in your inbox.

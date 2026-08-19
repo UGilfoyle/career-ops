@@ -779,8 +779,8 @@ function findKnownTechInText(text) {
         if (/american\s*$/i.test(before)) continue;
         if (/dev$/i.test(before)) continue;
       }
-      found.push(m[0]);
-      occupied.push([start, end]);
+        found.push(m[0]);
+        occupied.push([start, end]);
     }
   }
   return found;

@@ -7,8 +7,10 @@ When the user asks to prep for an interview at a specific company+role, or when 
 1. **Company name** and **role title** (required)
 2. **Evaluation report** in `reports/` (if exists) — read for archetype, gaps, matched proof points
 3. **Story bank** at `interview-prep/story-bank.md` — read for existing prepared stories
-4. **CV** at `cv.md` + `article-digest.md` — read for proof points
-5. **Profile** at `config/profile.yml` + `modes/_profile.md` — read for candidate context
+4. **AI + DSA tracker** at `interview-prep/ai-dsa-handbook.md` — 4-week plan; Gemini prompt at `interview-prep/gemini-ai-dsa-handbook-prompt.md`
+5. **CV** at `cv.md` + `article-digest.md` — read for proof points
+6. **Profile** at `config/profile.yml` + `modes/_profile.md` — read for candidate context
+7. **Dashboard Interview Practice** — JD-linked coding / design / STAR packs (handbook = concepts; pack = that job)
 
 ## Step 1 — Research
 

@@ -48,7 +48,7 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF] mb-2">Interactive walkthrough</p>
           <h2 className="text-3xl md:text-4xl font-bold text-[#1C1C1E] tracking-tight">How Career-Ops works</h2>
           <p className="text-[#6B6B6B] mt-3 max-w-xl mx-auto text-sm font-medium">
-            Same flow after signup — preview it here before creating an account.
+            Same flow after signup. Preview it here before creating an account.
           </p>
         </div>
       )}
@@ -116,7 +116,7 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
             href="/signup"
             className="inline-flex items-center gap-2 px-8 py-4 bg-[#1C1C1E] text-white font-bold rounded-2xl hover:bg-[#27272a] transition-all shadow-lg"
           >
-            Start free — tour included
+            Start free (tour included)
             <ChevronRight size={18} />
           </Link>
         </div>
