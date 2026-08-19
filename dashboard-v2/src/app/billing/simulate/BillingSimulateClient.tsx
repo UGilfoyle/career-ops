@@ -172,7 +172,7 @@ export default function BillingSimulateClient() {
                     <div>
                       <p className="text-sm font-semibold text-amber-900">Payment under verification</p>
                       <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                        We already have your payment details. Pro unlocks as soon as we confirm it — no need to pay again.
+                        We already have your payment. Pro activates once we confirm it — no need to pay again.
                       </p>
                       <p className="text-[11px] font-mono text-amber-900/70 mt-2">UTR {claim.utr}</p>
                     </div>
@@ -192,7 +192,7 @@ export default function BillingSimulateClient() {
               {(step === 'admin' || step === 'done') && claimStatus !== 'pending' && (
                 <div className="text-center py-8 space-y-2">
                   <p className="text-sm font-semibold text-[#1C1C1E]">
-                    {claimStatus === 'approved' ? 'Pro unlocked ✓' : 'Payment rejected'}
+                    {claimStatus === 'approved' ? 'Pro active ✓' : 'Payment rejected'}
                   </p>
                   <p className="text-xs text-[#6B6B6B]">UTR {claim.utr}</p>
                 </div>
@@ -277,7 +277,7 @@ export default function BillingSimulateClient() {
                   <p className="text-xs">
                     Subject: Your Career-Ops Pro access link
                     <br />
-                    CTA → /auth/access?token=… → Resume Studio unlocked
+                    CTA → /auth/access?token=… → Resume Studio access
                   </p>
                 </div>
               )}

@@ -32,8 +32,8 @@ export async function GET() {
       banner: quota.pro
         ? 'Pro · unlimited practice packs'
         : quota.remaining > 0
-          ? '1 JD practice pack / week · Pro unlocks unlimited'
-          : '0 free packs left this week · Pro unlocks unlimited',
+          ? '1 JD practice pack / week · Pro: unlimited'
+          : '0 free packs left this week · Pro: unlimited',
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to load practice quota';

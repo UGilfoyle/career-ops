@@ -20,11 +20,10 @@ export default function PracticeComingSoon() {
         Private beta
       </div>
       <h2 className="text-xl font-bold tracking-tight text-[#1C1C1E] sm:text-3xl">
-        Something wonderful is coming soon
+        Interview Practice — coming soon
       </h2>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-[#6B6B6B] sm:text-base">
-        Interview Practice — JD-linked coding, system design, and behavioral packs — is in a
-        limited rollout. We&apos;ll open it up when it&apos;s ready for everyone.
+        JD-linked coding, system design, and behavioral packs are in a limited rollout. We&apos;ll open access when it&apos;s ready for everyone.
       </p>
     </motion.div>
   );

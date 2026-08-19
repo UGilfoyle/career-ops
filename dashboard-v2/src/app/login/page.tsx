@@ -97,7 +97,7 @@ function LoginContent() {
             <Briefcase className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-4xl font-bold tracking-tight mb-2">Welcome Back</h1>
-          <p className="text-[#9CA3AF] font-medium">Access your AI career command center</p>
+          <p className="text-[#9CA3AF] font-medium">Sign in to your dashboard</p>
         </div>
 
         {isVerified && !autoGithub && (
@@ -193,7 +193,7 @@ function LoginContent() {
 
           <div className="mt-8 flex items-center gap-4 text-[#E5E5E0]">
              <div className="h-px w-full bg-[#E5E5E0]" />
-             <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] whitespace-nowrap">Third Party</span>
+             <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] whitespace-nowrap">Or</span>
              <div className="h-px w-full bg-[#E5E5E0]" />
           </div>
 
@@ -216,7 +216,7 @@ function LoginContent() {
 
         <div className="mt-12 flex items-center justify-center gap-3 text-[#E5E5E0]">
            <Shield size={16} />
-           <span className="text-[9px] font-bold uppercase tracking-[0.25em]">Secure Auth v2.0-modern</span>
+           <span className="text-[9px] font-bold uppercase tracking-[0.25em]">Encrypted sign-in</span>
         </div>
       </motion.div>
     </div>

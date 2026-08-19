@@ -20,7 +20,7 @@ function AuthContinueContent() {
     if (provider === 'github') {
       return {
         title: 'Email Verified',
-        subtitle: 'Connecting your GitHub identity and preparing your dashboard.',
+        subtitle: 'Sign in with GitHub to finish setting up your account.',
         buttonLabel: 'Continue with GitHub',
       };
     }

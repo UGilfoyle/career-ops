@@ -6,26 +6,31 @@ import Link from 'next/link';
 
 export default function StatusPage() {
   const systems = [
-    { name: 'Core API Engine', status: 'Operational', latency: '42ms', uptime: '99.99%', icon: <Zap /> },
-    { name: 'Brevo Mail Gateway', status: 'Operational', latency: '120ms', uptime: '100%', icon: <Activity /> },
-    { name: 'Scoring Infrastructure', status: 'Operational', latency: '210ms', uptime: '99.95%', icon: <Server /> },
-    { name: 'On-chain Data Feed', status: 'Degraded', latency: '1.2s', uptime: '98.2%', icon: <Globe /> },
+    { name: 'API', status: 'Operational', latency: '42ms', uptime: '99.99%', icon: <Zap /> },
+    { name: 'Email delivery', status: 'Operational', latency: '120ms', uptime: '100%', icon: <Activity /> },
+    { name: 'Job scoring', status: 'Operational', latency: '210ms', uptime: '99.95%', icon: <Server /> },
+    { name: 'External job feeds', status: 'Degraded', latency: '1.2s', uptime: '98.2%', icon: <Globe /> },
   ];
 
   return (
     <div className="min-h-screen bg-[#FAFAF8] text-[#1C1C1E] p-8 md:p-24 selection:bg-[#1C1C1E]/10 font-sans">
-      <Link href="/" className="inline-flex items-center gap-2 text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors mb-12 group font-bold text-sm uppercase tracking-widest">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors mb-12 group font-bold text-sm uppercase tracking-widest"
+      >
         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-        Back to Hub
+        Back home
       </Link>
 
       <div className="max-w-4xl">
-        <h1 className="text-4xl md:text-7xl font-bold tracking-tighter mb-6">Infrastructure Status</h1>
-        <p className="text-[#9CA3AF] text-xl mb-20 max-w-2xl font-medium leading-relaxed italic border-l-4 border-[#E5E5E0] pl-8">Real-time pulse of the Career-Ops ecosystem. We maintain zero-trust, high-availability clusters across global nodes.</p>
+        <h1 className="text-4xl md:text-7xl font-bold tracking-tighter mb-6">Status</h1>
+        <p className="text-[#6B6B6B] text-xl mb-20 max-w-2xl font-medium leading-relaxed border-l-4 border-[#E5E5E0] pl-8">
+          Current health of Career-Ops services. Updated on page load.
+        </p>
 
         <div className="grid gap-6">
           {systems.map((s, i) => (
-            <motion.div 
+            <motion.div
               key={i}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -43,8 +48,14 @@ export default function StatusPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3 px-6 py-3 bg-[#FAFAF8] rounded-full border border-[#E5E5E0]">
-                <div className={`h-2.5 w-2.5 rounded-full ${s.status === 'Operational' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]'}`} />
-                <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${s.status === 'Operational' ? 'text-emerald-600' : 'text-amber-600'}`}>{s.status}</span>
+                <div
+                  className={`h-2.5 w-2.5 rounded-full ${s.status === 'Operational' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]'}`}
+                />
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-[0.2em] ${s.status === 'Operational' ? 'text-emerald-600' : 'text-amber-600'}`}
+                >
+                  {s.status}
+                </span>
               </div>
             </motion.div>
           ))}
@@ -53,9 +64,9 @@ export default function StatusPage() {
         <div className="mt-24 p-8 border-t border-[#E5E5E0] flex flex-col md:flex-row items-center justify-between gap-6 opacity-40 text-sm font-bold uppercase tracking-widest text-[#6B6B6B]">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} />
-            All systems nominal (excluding blockchain feeds)
+            Core services operational
           </div>
-          <div className="font-mono">Sync: {new Date().toLocaleTimeString()}</div>
+          <div className="font-mono">Last checked: {new Date().toLocaleTimeString()}</div>
         </div>
       </div>
     </div>

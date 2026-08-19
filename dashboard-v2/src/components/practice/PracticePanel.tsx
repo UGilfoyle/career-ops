@@ -6,6 +6,7 @@ import { Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import { canAccessPracticeBeta } from '@/lib/lifetime-access';
 import ProPaywall, { type PendingPayment } from '../ProPaywall';
 import PracticeComingSoon from './PracticeComingSoon';
+import HandbookCard from './HandbookCard';
 import PracticePackView, { type PracticePackContent } from './PracticePackView';
 
 type PipelineJob = {
@@ -207,7 +208,7 @@ export default function PracticePanel({
           freeLimit: data.quota.freeLimit ?? prev?.freeLimit ?? 1,
           banner: data.quota.pro
             ? 'Pro · unlimited Interview Practice packs'
-            : prev?.banner || '1 JD practice pack / week · Pro unlocks unlimited',
+            : prev?.banner || '1 JD practice pack / week · Pro: unlimited',
         }));
       }
       await refreshMeta();
@@ -236,7 +237,8 @@ export default function PracticePanel({
         <div className="min-w-0">
           <h2 className="text-lg font-bold text-[#1C1C1E]">Interview Practice</h2>
           <p className="mt-0.5 text-xs font-medium leading-relaxed text-[#6B6B6B]">
-            JD-linked coding, system design &amp; behavioral packs. Run code in the editor.
+            JD packs for the role in front of you. AI + DSA concepts: handbook card below, then
+            generate a pack to drill in the editor.
           </p>
         </div>
         {quota && (
@@ -250,6 +252,8 @@ export default function PracticePanel({
           </div>
         )}
       </div>
+
+      <HandbookCard />
 
       {showPaywall && (
         <ProPaywall

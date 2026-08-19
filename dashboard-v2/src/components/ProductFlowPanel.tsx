@@ -48,7 +48,7 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF] mb-2">Interactive walkthrough</p>
           <h2 className="text-3xl md:text-4xl font-bold text-[#1C1C1E] tracking-tight">How Career-Ops works</h2>
           <p className="text-[#6B6B6B] mt-3 max-w-xl mx-auto text-sm font-medium">
-            Same flow you&apos;ll see after signup — no account needed to preview the sequence.
+            Same flow after signup — preview it here before creating an account.
           </p>
         </div>
       )}

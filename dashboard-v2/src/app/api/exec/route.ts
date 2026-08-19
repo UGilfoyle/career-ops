@@ -415,15 +415,15 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
     : script === 'gcc-scan.mjs'
       ? 'GCC scan'
       : script === 'agentic-tailor.mjs'
-        ? 'agentic tailoring'
+        ? 'resume tailoring'
         : 'auto-apply';
   const actionDesc = script === 'scratch-scan.mjs'
-    ? 'Scouting the market for your best-fit opportunities...'
+    ? 'Running deep scan...'
     : script === 'gcc-scan.mjs'
-      ? 'Hunting GCC/captive employers in Pune, Bengaluru & Hyderabad...'
+      ? 'Scanning GCC/captive employers in Pune, Bengaluru & Hyderabad...'
       : script === 'agentic-tailor.mjs'
-        ? 'Crafting a tailored application package just for you...'
-        : 'Submitting your application intelligently...';
+        ? 'Generating tailored resume...'
+        : 'Running auto-apply...';
   send({ type: 'stdout', content: `[EXEC] ▶ ${actionDesc}\n` });
 
   try {

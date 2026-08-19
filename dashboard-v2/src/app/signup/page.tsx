@@ -51,7 +51,7 @@ function SignupForm() {
   }, [searchParams]);
 
   const validateForm = () => {
-    if (formData.name.length < 2) return 'Candidate name must be at least 2 characters.';
+    if (formData.name.length < 2) return 'Name must be at least 2 characters.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return 'Invalid Email Address format.';
     if (formData.password.length < 8) return 'Password must be at least 8 characters.';
     return null;
@@ -91,14 +91,14 @@ function SignupForm() {
         const text = await res.text();
         console.error('Server returned non-JSON:', text.substring(0, 500));
         throw new Error(
-          `Critical Infrastructure Failure (HTTP ${res.status}). This usually means DATABASE_URL is missing or Neon is unreachable.`
+          `Sign-up failed (HTTP ${res.status}). Check your connection and try again.`
         );
       }
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Registration sequence interrupted.');
+        throw new Error(data.error || 'Registration failed. Please try again.');
       }
 
       sessionStorage.setItem(
@@ -130,8 +130,8 @@ function SignupForm() {
           <div className="inline-flex items-center justify-center h-14 w-14 bg-[#1C1C1E] rounded-2xl shadow-xl mb-6">
             <Briefcase className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-4xl font-bold tracking-tight mb-2">Initialize Account</h1>
-          <p className="text-[#9CA3AF] font-medium text-sm">Create your secure career command center</p>
+          <h1 className="text-4xl font-bold tracking-tight mb-2">Create account</h1>
+          <p className="text-[#9CA3AF] font-medium text-sm">Free to start — verify your email after signup</p>
           {referralCode ? (
             <p className="mt-3 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full inline-block px-3 py-1">
               Invited via {referralCode}
@@ -154,14 +154,14 @@ function SignupForm() {
                 <div className="h-20 w-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Shield className="h-10 w-10 text-emerald-500" />
                 </div>
-                <h2 className="text-2xl font-bold mb-2">Identity Created</h2>
-                <p className="text-[#9CA3AF] mb-4 font-medium italic">Handshaking with verification engine...</p>
+                <h2 className="text-2xl font-bold mb-2">Account created</h2>
+                <p className="text-[#9CA3AF] mb-4 font-medium">Redirecting to email verification…</p>
               </motion.div>
             ) : (
               <motion.form key="form" onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] ml-1">
-                    Candidate Name
+                    Full name
                   </label>
                   <div className="relative group">
                     <User
@@ -254,7 +254,7 @@ function SignupForm() {
                 <div className="mt-8 flex items-center gap-4 text-[#E5E5E0]">
                   <div className="h-px w-full bg-[#E5E5E0]" />
                   <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] whitespace-nowrap">
-                    Third Party
+                    Or
                   </span>
                   <div className="h-px w-full bg-[#E5E5E0]" />
                 </div>
@@ -284,7 +284,7 @@ function SignupForm() {
 
         <div className="mt-12 flex items-center justify-center gap-3 text-[#E5E5E0]">
           <Shield size={16} />
-          <span className="text-[9px] font-bold uppercase tracking-[0.25em]">SaaS Identity v2.0-modern</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.25em]">Encrypted sign-up</span>
         </div>
       </motion.div>
     </div>

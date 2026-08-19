@@ -195,7 +195,7 @@ export default function UpiCheckoutPage() {
                     <p className="text-sm font-semibold text-amber-900">Payment under verification</p>
                     <p className="text-xs text-amber-800 mt-1 leading-relaxed">
                       {data?.claim?.message ||
-                        'We already have your payment details. Pro unlocks as soon as we confirm it — no need to pay again.'}
+                        'We already have your payment. Pro activates once we confirm it — no need to pay again.'}
                     </p>
                     {data?.claim?.utr && (
                       <p className="text-[11px] font-mono text-amber-900/70 mt-2">UTR {data.claim.utr}</p>

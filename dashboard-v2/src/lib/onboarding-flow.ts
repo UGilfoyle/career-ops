@@ -16,7 +16,7 @@ export const PUBLIC_GETTING_STARTED: PublicFlowStep[] = [
     id: 'signup',
     step: '1',
     title: 'Create your account',
-    summary: 'Sign up free, verify email, open your command center.',
+    summary: 'Sign up free, verify email, open your dashboard.',
     detail: 'GitHub or email signup. After verify you land on the dashboard with a guided tour — no credit card.',
   },
   {
@@ -62,9 +62,9 @@ export type DashboardTourStep = {
 export const DASHBOARD_TOUR_STEPS: DashboardTourStep[] = [
   {
     target: null,
-    title: 'Welcome to Career Command Center',
+    title: 'Welcome to Career-Ops',
     content:
-      'Your AI job search pipeline: discover roles, score matches, tailor ATS resumes, track applications, and run GCC outreach — all in one place. This quick tour shows the path most users follow.',
+      'Your job search workspace: discover roles, score matches, tailor resumes, track applications, and run GCC outreach. This quick tour covers the usual workflow.',
   },
   {
     target: 'nav-settings',
@@ -113,7 +113,7 @@ export const DASHBOARD_TOUR_STEPS: DashboardTourStep[] = [
     target: 'nav-practice',
     title: 'Interview Practice',
     content:
-      'Generate a JD-linked practice pack (coding, system design, behavioral). Free: 1 pack / week. Pro unlocks unlimited.',
+      'Generate a JD-linked practice pack (coding, system design, behavioral). Free: 1 pack / week. Pro includes unlimited.',
   },
   {
     target: null,

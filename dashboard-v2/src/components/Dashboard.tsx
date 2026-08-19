@@ -2020,7 +2020,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    {
                      id: 'github',
                      label: 'Connect GitHub automation',
-                     hint: 'PAT (workflow scope) unlocks deep scan & tailor',
+                     hint: 'PAT (workflow scope) required for deep scan & tailor',
                      done: githubDone,
                      onClick: () => setActiveTab('settings'),
                    },
@@ -3188,7 +3188,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <motion.div key="docs" className="space-y-10">
               <PageSectionHeader
                 title="Tutorial & Docs"
-                subtitle="Master Career-Ops: auto-discover, rank, tailor, and apply to jobs"
+                subtitle="Learn Career-Ops: discover jobs, score matches, tailor resumes, track applications"
               />
 
               {/* Grid Layout: Intro and Deep Flag */}
@@ -3200,13 +3200,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     How Career-Ops Works
                   </h3>
                   <p className="text-sm text-[#6B6B6B] leading-relaxed font-medium">
-                    Career-Ops is a fully automated, agentic job search, evaluation, and application pipeline. 
-                    It continuously works in the background to scan job boards, rank them against your profile, 
-                    tailor your materials, and help you apply.
+                    Career-Ops helps you scan job boards, score roles against your profile, tailor resumes, and track where you&apos;ve applied.
                   </p>
                   <div className="space-y-4">
                     {[
-                      { step: '1', title: 'Identity Setup', text: 'Settings: profile, experience, education, and targeting keywords.' },
+                      { step: '1', title: 'Set up profile', text: 'Settings: profile, experience, education, and targeting keywords.' },
                       { step: '2', title: 'Job Discovery', text: 'gcc-scan --deep for GCC captives, or scan --deep for all boards. add <url> for a single posting.' },
                       { step: '3', title: 'Pipeline & Status', text: 'Review AI scores, Mark Applied when done, Tailor high matches.' },
                       { step: '4', title: 'GCC Outreach', text: 'GCC Campaign tab: import high-value jobs, log DMs — avoid blind Apply.' },
@@ -3389,9 +3387,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <div className="p-5 border-b border-[#E5E5E0] flex justify-between items-center bg-[#F5F5F0]">
                  <div className="flex items-center gap-3">
                     <div className="h-3 w-3 bg-[#f59e0b] rounded-full" />
-                    <span className="text-[10px] font-mono text-[#57534e] uppercase tracking-[0.2em] font-bold">Career-Ops Output Console</span>
+                    <span className="text-[10px] font-mono text-[#57534e] uppercase tracking-[0.2em] font-bold">Terminal</span>
                  </div>
-                 <button onClick={() => setLogs([])} className="text-[10px] text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors uppercase tracking-widest font-bold">Flush Buffers</button>
+                 <button onClick={() => setLogs([])} className="text-[10px] text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors uppercase tracking-widest font-bold">Clear</button>
               </div>
               <div id="terminal-logs" className="flex-1 min-h-0 p-4 sm:p-6 md:p-8 font-mono text-sm overflow-y-auto whitespace-pre-wrap bg-white text-[#292524] scroll-smooth leading-relaxed select-text cursor-text">
                  {logs.length === 0 && !isExecuting ? (
@@ -3403,13 +3401,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 / /___/ /_/ / /  /  __/  __/ /   / /_/ / /_/ (__  ) 
 \\____/\\__,_/_/   \\___/\\___/_/    \\____/ .___/____/  
                                      /_/            
-System Initialized — v2.0`}
+Career-Ops terminal`}
                      </pre>
                      <div className="text-[#6B6B6B] space-y-2 mb-4">
                        <p><strong className="text-[#57534e]">1. gcc-scan --deep</strong> <span className="text-[#9CA3AF]">→</span> GCC/captive employers (India hubs)</p>
                        <p><strong className="text-[#57534e]">2. scan --deep</strong> <span className="text-[#9CA3AF]">→</span> Broad job-board discovery</p>
                        <p><strong className="text-[#57534e]">3. rank --deep</strong> <span className="text-[#9CA3AF]">→</span> Score and rank discovered roles</p>
-                       <p><strong className="text-[#57534e]">4. tailor &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Generate hyper-custom Resumes & Cover Letters</p>
+                       <p><strong className="text-[#57534e]">4. tailor &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Generate tailored resume & cover letter</p>
                        <p><strong className="text-[#57534e]">5. apply &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Automatically apply to role</p>
                        <p><strong className="text-[#57534e]">6. add &lt;url&gt;</strong> <span className="text-[#9CA3AF]">→</span> Scrape & add job to pipeline</p>
                        <br/>
@@ -4809,7 +4807,7 @@ System Initialized — v2.0`}
                       onClick={() => walkthroughStep < steps.length - 1 ? setWalkthroughStep(walkthroughStep + 1) : completeOnboarding()}
                       className="px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#27272a] transition-all shadow-lg shadow-black/10"
                     >
-                      {walkthroughStep === steps.length - 1 ? 'Get Started' : 'Next'}
+                      {walkthroughStep === steps.length - 1 ? 'Finish tour' : 'Next'}
                       <ChevronRight size={14} />
                     </button>
                   </div>

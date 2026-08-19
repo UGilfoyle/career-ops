@@ -8,7 +8,7 @@ export function practiceComingSoonResponse() {
   return NextResponse.json(
     {
       error: 'coming_soon',
-      message: 'Interview Practice is coming soon. Stay tuned.',
+      message: 'Interview Practice is not available on your account yet.',
     },
     { status: 403 },
   );

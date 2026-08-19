@@ -66,7 +66,7 @@ export default function LandingPage() {
             href="/signup"
             className="px-5 py-2.5 bg-[#1C1C1E] text-white font-bold rounded-xl hover:bg-[#27272a] transition-all shadow-md active:scale-95"
           >
-            Join Platform
+            Sign up
           </Link>
         </div>
       </header>
@@ -88,13 +88,12 @@ export default function LandingPage() {
           </button>
 
           <h1 className="text-6xl md:text-8xl font-bold tracking-tighter leading-tight text-[#1C1C1E]">
-            Automate Your <br />
-            <span className="text-[#9CA3AF]">Career Ascension</span>
+            Run your job search <br />
+            <span className="text-[#9CA3AF]">from one place</span>
           </h1>
 
           <p className="text-[#6B6B6B] text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            AI command center with Career Copilot, Resume Studio, portal scanning, and pipeline intelligence —
-            tailored CVs in minutes, not hours.
+            Scan portals, score matches, tailor resumes, and track applications — with Career Copilot and Resume Studio built in.
           </p>
 
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-12">
@@ -102,7 +101,7 @@ export default function LandingPage() {
               href="/signup"
               className="w-full md:w-auto px-10 py-5 bg-[#1C1C1E] text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 hover:bg-[#27272a] transition-all shadow-xl active:scale-95 group"
             >
-              Get Started for Free
+              Create free account
               <ArrowRight className="group-hover:translate-x-1 transition-transform text-white/50" />
             </Link>
             <button
@@ -183,10 +182,10 @@ export default function LandingPage() {
               Documentation
             </Link>
             <Link href="/privacy" className="hover:text-[#1C1C1E] transition-colors">
-              Privacy Core
+              Privacy
             </Link>
             <Link href="/status" className="hover:text-[#1C1C1E] transition-colors">
-              Infra Status
+              Status
             </Link>
           </div>
         </div>

@@ -229,7 +229,7 @@ export const sendProAccessEmail = async (
 
   const htmlContent = emailShell(`
             <h1 class="headline">Your Pro access is ready</h1>
-            <p class="subtext">Hi ${name || 'there'}, thanks for subscribing (${priceDisplay}/month). Use the secure link below to unlock <strong>Resume Studio</strong> and unlimited <strong>Career Copilot</strong>.</p>
+            <p class="subtext">Hi ${name || 'there'}, thanks for subscribing (${priceDisplay}/month). Use the link below to access <strong>Resume Studio</strong> and unlimited <strong>Career Copilot</strong>.</p>
             <div class="center">
               <a class="cta" href="${accessLink}">Activate Pro access</a>
             </div>

@@ -117,7 +117,7 @@ export default function ProPaywall({
               <p className="text-sm font-semibold text-amber-900">Payment under verification</p>
               <p className="text-xs text-amber-800 mt-1 leading-relaxed">
                 {pendingPayment?.message ||
-                  'We received your payment details. Pro unlocks as soon as we confirm it.'}
+                  'We received your payment. Pro activates once we confirm it.'}
               </p>
               {pendingPayment?.utr && (
                 <p className="text-[11px] font-mono text-amber-900/70 mt-2">UTR {pendingPayment.utr}</p>
@@ -149,7 +149,7 @@ export default function ProPaywall({
             className="inline-flex items-center gap-2 bg-[#1C1C1E] text-white font-semibold text-sm px-6 py-3 rounded-xl hover:bg-black transition disabled:opacity-60"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : null}
-            Unlock Pro — pay via UPI
+            Upgrade to Pro — pay via UPI
           </button>
           <p className="text-[11px] text-[#9CA3AF] mt-4 max-w-xs">
             Pay {planDisplay} → submit payment details → we verify → Pro access email lands in your inbox.

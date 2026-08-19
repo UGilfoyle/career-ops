@@ -37,7 +37,7 @@ const comingFeatures = [
   {
     icon: <FileDown size={18} />,
     title: 'One-click export',
-    desc: 'PDF and JSON from the studio — same data that powers agentic tailor today.',
+    desc: 'PDF and JSON export — same output as terminal tailor today.',
   },
 ];
 
@@ -81,8 +81,7 @@ export default function ResumeStudioTeaser({
         </div>
         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1C1C1E]">Resume Studio</h2>
         <p className="text-[#6B6B6B] text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-          A Reactive Resume–style builder inside your command center — without leaving scan, score, tailor, and
-          track. We&apos;re building it carefully; your current workflow is unchanged.
+          Edit, preview, and export resumes without leaving scan, score, tailor, and track. In development — your current workflow is unchanged.
         </p>
       </div>
 

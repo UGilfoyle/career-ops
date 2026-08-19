@@ -27,8 +27,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Career-Ops | AI Career Command Center",
-  description: "Advanced multi-tenant AI platform for career ascension, job scanning, and resume tailoring.",
+  title: "Career-Ops | Job search pipeline",
+  description: "Scan jobs, score matches, tailor resumes, and track applications in one workspace.",
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
