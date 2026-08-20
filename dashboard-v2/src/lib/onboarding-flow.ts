@@ -1,5 +1,5 @@
 /** Bump when the in-dashboard tour changes materially — new users always see latest. */
-export const ONBOARDING_STORAGE_KEY = 'career_ops_onboarding_v3';
+export const ONBOARDING_STORAGE_KEY = 'career_ops_onboarding_v4';
 
 export type PublicFlowStep = {
   id: string;
@@ -17,7 +17,7 @@ export const PUBLIC_GETTING_STARTED: PublicFlowStep[] = [
     step: '1',
     title: 'Create your account',
     summary: 'Sign up free, verify email, open your dashboard.',
-    detail: 'GitHub or email signup. After verify you land on the dashboard with a guided tour — no credit card.',
+    detail: 'GitHub or email signup. After verify you land on the dashboard with a guided tour, no credit card required.',
   },
   {
     id: 'profile',
@@ -30,8 +30,8 @@ export const PUBLIC_GETTING_STARTED: PublicFlowStep[] = [
     id: 'discover',
     step: '3',
     title: 'Discover jobs',
-    summary: 'GCC captives vs general boards — two different scan commands.',
-    detail: 'Targeting GCC/captive roles? Run gcc-scan --deep. Broad job-board hunt? Run scan --deep. Both need GitHub PAT for --deep on cloud.',
+    summary: 'GCC captives vs general boards, two dedicated scan engines.',
+    detail: 'Targeting GCC/captive roles? Run gcc-scan --deep. Broad job-board hunt? Run scan --deep. Both run seamlessly in the cloud.',
     command: 'gcc-scan --deep',
   },
   {
@@ -45,9 +45,9 @@ export const PUBLIC_GETTING_STARTED: PublicFlowStep[] = [
   {
     id: 'gcc',
     step: '5',
-    title: 'GCC outreach (optional)',
-    summary: 'GCC Campaign tab — curated DMs, not blind Apply Now.',
-    detail: 'Import high-value GCC jobs, log LinkedIn/email outreach, and track follow-ups in the 30-day campaign tracker.',
+    title: 'GCC outreach & practice',
+    summary: 'GCC Campaign & Interview Practice IDE.',
+    detail: 'Import high-value GCC jobs, log LinkedIn DMs, and prepare in the multi-language coding & system design IDE.',
   },
 ];
 
@@ -56,69 +56,71 @@ export type DashboardTourStep = {
   title: string;
   content: string;
   tab?: string;
+  actionHint?: string;
 };
 
-/** In-app walkthrough copy (icons mapped in Dashboard). */
+/** In-app walkthrough steps with automatic tab switching and live target spotlights. */
 export const DASHBOARD_TOUR_STEPS: DashboardTourStep[] = [
   {
     target: null,
     title: 'Welcome to Career-Ops',
     content:
-      'Your job search workspace: discover roles, score matches, tailor resumes, track applications, and run GCC outreach. This quick tour covers the usual workflow.',
+      'Your AI-powered job search command center. Discover high-match jobs, tailor ATS-optimized resumes in 15 layouts, practice technical interviews, and track applications.',
+    actionHint: 'Take the 1-minute interactive tour',
   },
   {
     target: 'nav-settings',
-    title: 'Start in Settings',
+    title: 'Step 1: Settings & Targeting Rules',
     content:
-      'Upload your resume or fill Experience & Education. Add a 2–3 sentence headline and your targeting keywords. The AI uses this for scoring, tailoring, and Career Copilot answers.',
-  },
-  {
-    target: 'config-targeting',
-    title: 'Smart job filtering',
-    content:
-      'POSITIVE keywords = roles you want (Senior, Backend, Remote). NEGATIVE = noise to drop (Junior, PHP). Every pipeline job gets a 0–10 AI score from these rules.',
+      'Configure your profile, headline, and positive/negative keywords (e.g. Senior, Backend, AWS vs Junior, PHP). The AI uses these to calculate 0–10 match scores automatically.',
     tab: 'settings',
+    actionHint: 'Profile keywords drive all scoring',
   },
   {
     target: 'nav-terminal',
-    title: 'The command terminal',
+    title: 'Step 2: Command Terminal',
     content:
-      'Type commands here. gcc-scan --deep hunts GCC/captive employers (Stripe, JPMorgan, SAP Labs…) in India hubs. scan --deep crawls LinkedIn, Naukri, Indeed broadly. Add --deep on Vercel (needs GitHub PAT in Settings).',
+      'Run cloud automation directly: scan --deep crawls 45+ job portals, gcc-scan --deep targets captive GCC employers, and eval <id> tailors resumes instantly.',
+    tab: 'terminal',
+    actionHint: 'Type commands or click action buttons',
   },
   {
     target: 'nav-pipeline',
-    title: 'Your job pipeline',
+    title: 'Step 3: Pipeline Studio & Smart Filters',
     content:
-      'Discovered jobs land here with AI scores. GCC jobs show a GCC badge + signal score. Click Evaluate, Tailor, or Mark Applied — applied jobs stay visible with a green Applied status.',
-  },
-  {
-    target: 'nav-gcc',
-    title: 'GCC Campaign tracker',
-    content:
-      'Targeting captive employers? After gcc-scan --deep, import high-value jobs here. Log DMs, emails, and follow-ups — curated outreach beats blind Apply Now.',
+      'All discovered jobs land here with live match scores. Filter by Hot Matches (7.0+), GCC Targets, or view Applied roles. Completed applications are kept inactive to keep your queue fresh.',
+    tab: 'pipeline',
+    actionHint: 'Explore hot opportunities & mark applied',
   },
   {
     target: 'nav-resume-studio',
-    title: 'Resume Studio',
+    title: 'Step 4: Resume Studio (15 ATS Templates)',
     content:
-      'Live ATS preview, JD match scoring, template picker, and one-click PDF export. Pick a pipeline job for JD context, then tailor from Studio or the Terminal.',
-  },
-  {
-    target: 'nav-chat',
-    title: 'Career Copilot',
-    content:
-      'Chat with AI that knows your profile. Draft LinkedIn outreach, prep interviews, analyze skill gaps, or ask what to run next in the terminal.',
+      'Live ATS preview with 15 executive layouts including FAANG Elite, Executive Minimalist, and Prime ATS. Live JD keyword matching, section tailoring, and one-click PDF export.',
+    tab: 'studio',
+    actionHint: '100% single-column ATS verified',
   },
   {
     target: 'nav-practice',
-    title: 'Interview Practice',
+    title: 'Step 5: Interview Practice IDE',
     content:
-      'Generate a JD-linked practice pack (coding, system design, behavioral). Free: 1 pack / week. Pro includes unlimited.',
+      'Practice technical coding in 10 languages (Python, JS, Go, Rust, C++, Java) powered by our free sandbox. Also includes Excalidraw system design and STAR behavioral AI scoring.',
+    tab: 'practice',
+    actionHint: 'Run live test cases & get AI feedback',
+  },
+  {
+    target: 'nav-chat',
+    title: 'Step 6: Career Copilot AI',
+    content:
+      'Chat with an AI assistant that understands your full CV and target roles. Draft high-conversion LinkedIn DMs, analyze skill gaps, or prep for company-specific interview loops.',
+    tab: 'chat',
+    actionHint: 'Generate outreach messages in seconds',
   },
   {
     target: null,
-    title: "You're ready",
+    title: "You're All Set!",
     content:
-      'Quick start: 1) Save Settings 2) gcc-scan --deep or scan --deep 3) Tailor a 7+ match 4) Mark Applied when done 5) Log GCC outreach if relevant. Type help in Terminal anytime.',
+      'Quick start: 1) Verify your Settings 2) Run a scan in Terminal 3) Tailor your top matches in Resume Studio 4) Practice coding loops in the IDE. You can restart this tour anytime from the footer.',
+    actionHint: 'Start exploring your pipeline',
   },
 ];

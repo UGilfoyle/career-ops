@@ -171,8 +171,8 @@ export function PipelineStudioView({
       const score = parseNumericScore(job.score ?? job.score_raw);
       const isApplied = Boolean(job.is_applied || (typeof job.status === 'string' && job.status.toLowerCase().includes('applied')));
 
-      if (filterTab === 'hot' && score < 7.0) return false;
-      if (filterTab === 'gcc' && !job.is_gcc) return false;
+      if (filterTab === 'hot' && (score < 7.0 || isApplied)) return false;
+      if (filterTab === 'gcc' && (!job.is_gcc || isApplied)) return false;
       if (filterTab === 'applied' && !isApplied) return false;
 
       // Text search
@@ -406,7 +406,7 @@ export function PipelineStudioView({
                   transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.3) }}
                   className={`group rounded-2xl border p-4 transition-all hover:shadow-md ${
                     isApplied
-                      ? 'border-emerald-200 bg-emerald-50/20'
+                      ? 'border-emerald-200/90 bg-[#F9FAF8] opacity-70 hover:opacity-100'
                       : 'border-[#E5E5E0] bg-white hover:border-[#1C1C1E]/30'
                   }`}
                 >
@@ -422,10 +422,15 @@ export function PipelineStudioView({
                         size="md"
                       />
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-bold text-[#6B6B6B] uppercase tracking-wider">
                             {job.company || 'Company'}
                           </span>
+                          {isApplied && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 border border-emerald-300 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              ✓ Applied (Inactive)
+                            </span>
+                          )}
                           {job.is_gcc ? (
                             <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
                               GCC
