@@ -44,6 +44,8 @@ export type PracticeIdeProps = {
   codingPrompts?: PromptItem[];
   systemDesignPrompts?: PromptItem[];
   behavioralPrompts?: PromptItem[];
+  /** Total tailored questions in the active pack (coding + SD + behavioral). */
+  questionCount?: number;
   onBack?: () => void;
 };
 
@@ -272,6 +274,7 @@ export function PracticeIdeView({
   codingPrompts = [],
   systemDesignPrompts = [],
   behavioralPrompts = [],
+  questionCount,
   onBack,
 }: PracticeIdeProps) {
   const [activeTab, setActiveTab] = useState<'coding' | 'systemDesign' | 'behavioral'>('coding');
@@ -374,20 +377,34 @@ export function PracticeIdeView({
               {activeTab === 'behavioral' && <MessageSquare size={14} />}
             </div>
             <h2 className="text-base font-extrabold text-[#1C1C1E] tracking-tight">Interview Practice</h2>
+            {typeof questionCount === 'number' && questionCount > 0 ? (
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                {questionCount} Q
+              </span>
+            ) : null}
           </div>
 
           {/* Practice Mode Tabs */}
           <div className="flex items-center rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-0.5">
             {[
-              { id: 'coding', label: 'Coding' },
-              { id: 'systemDesign', label: 'System Design' },
-              { id: 'behavioral', label: 'Behavioral (STAR)' },
+              {
+                id: 'coding' as const,
+                label: `Coding${codingPrompts.length ? ` (${codingPrompts.length})` : ''}`,
+              },
+              {
+                id: 'systemDesign' as const,
+                label: `System Design${systemDesignPrompts.length ? ` (${systemDesignPrompts.length})` : ''}`,
+              },
+              {
+                id: 'behavioral' as const,
+                label: `Behavioral${behavioralPrompts.length ? ` (${behavioralPrompts.length})` : ''}`,
+              },
             ].map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => {
-                  setActiveTab(tab.id as any);
+                  setActiveTab(tab.id);
                   setSelectedPromptIndex(0);
                   setAiReviewOutput(null);
                 }}

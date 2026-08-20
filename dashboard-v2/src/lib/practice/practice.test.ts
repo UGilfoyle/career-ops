@@ -65,12 +65,27 @@ async function run() {
   });
   const validated = validatePracticePackJson(pack);
   assert.equal(validated.ok, true, validated.errors?.join('; '));
-  assert.ok((validated.data?.coding.length || 0) >= 5);
-  assert.ok((validated.data?.systemDesign.length || 0) >= 3);
-  assert.ok((validated.data?.behavioral.length || 0) >= 4);
+  assert.ok((validated.data?.coding.length || 0) >= 8);
+  assert.ok((validated.data?.systemDesign.length || 0) >= 5);
+  assert.ok((validated.data?.behavioral.length || 0) >= 7);
+  const total =
+    (validated.data?.coding.length || 0) +
+    (validated.data?.systemDesign.length || 0) +
+    (validated.data?.behavioral.length || 0);
+  assert.ok(total >= 20, `expected ≥20 questions, got ${total}`);
 
   const bad = validatePracticePackJson({ coding: [], systemDesign: [], behavioral: [] });
   assert.equal(bad.ok, false);
+
+  const shortRejected = validatePracticePackJson({
+    company: 'X',
+    role: 'Y',
+    keywords: ['Node.js'],
+    coding: pack.coding.slice(0, 3),
+    systemDesign: pack.systemDesign.slice(0, 2),
+    behavioral: pack.behavioral.slice(0, 2),
+  });
+  assert.equal(shortRejected.ok, false);
 
   const hcm = assessJdPracticeFit(
     'Oracle HCM Functional Engineer BIP Alert Composer Journeys DFF EFF',
@@ -100,8 +115,42 @@ async function run() {
     fit: { tier: 'strong', note: 'ok' },
   });
   assert.ok(coerced);
-  assert.ok(coerced.coding.length >= 5);
+  assert.ok(coerced.coding.length >= 8);
+  assert.ok(coerced.systemDesign.length >= 5);
+  assert.ok(coerced.behavioral.length >= 7);
   assert.equal(coerced.coding[0].difficulty, 'medium');
+
+  // Short LLM output must be padded to 20
+  const padded = coercePracticePack(
+    {
+      company: 'PadCo',
+      role: 'Backend',
+      keywords: ['TypeScript'],
+      coding: [{ title: 'Only one', prompt: 'Write a tiny rate limiter sketch.', outline: 'Token bucket basics here.' }],
+      systemDesign: [
+        {
+          title: 'Only SD',
+          prompt: 'Design a small notification service for spikes.',
+          outline: 'Queue → batch → DLQ path.',
+        },
+      ],
+      behavioral: [
+        {
+          title: 'Only STAR',
+          prompt: 'Tell a story about owning an unclear requirement end to end.',
+          outline: 'Clarify → ship → measure outcome.',
+        },
+      ],
+    },
+    { jdText: 'Build APIs with TypeScript Node.js', company: 'PadCo', role: 'Backend', keywords: ['TypeScript'] },
+  );
+  assert.ok(padded);
+  assert.ok(padded.coding.length >= 8);
+  assert.ok(padded.systemDesign.length >= 5);
+  assert.ok(padded.behavioral.length >= 7);
+  assert.ok(
+    padded.coding.length + padded.systemDesign.length + padded.behavioral.length >= 20,
+  );
 
   assert.equal(hashJdText('abc').length, 32);
   assert.equal(hashJdText('abc'), hashJdText('abc'));
@@ -109,7 +158,7 @@ async function run() {
 
   assert.equal(resolvePracticeRunnerProvider('onlinecompiler'), 'onlinecompiler');
   assert.equal(resolvePracticeRunnerProvider('piston'), 'piston');
-  assert.equal(resolvePracticeRunnerProvider(''), 'onlinecompiler');
+  assert.equal(resolvePracticeRunnerProvider(''), 'auto');
   assert.equal(ONLINECOMPILER_COMPILER.python, 'python-3.14');
   assert.equal(ONLINECOMPILER_COMPILER.javascript, 'typescript-deno');
 

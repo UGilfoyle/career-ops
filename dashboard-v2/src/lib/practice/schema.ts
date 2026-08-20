@@ -48,9 +48,10 @@ export const practicePackJsonSchema = z.object({
       note: z.string().trim().max(800),
     })
     .optional(),
-  coding: z.array(promptItemSchema).min(5).max(8),
-  systemDesign: z.array(promptItemSchema).min(3).max(4),
-  behavioral: z.array(promptItemSchema).min(4).max(6),
+  /** Locked mix: 8 coding + 5 system design + 7 behavioral = 20+ */
+  coding: z.array(promptItemSchema).min(8).max(10),
+  systemDesign: z.array(promptItemSchema).min(5).max(6),
+  behavioral: z.array(promptItemSchema).min(7).max(8),
 });
 
 export type PracticePackJson = z.infer<typeof practicePackJsonSchema>;

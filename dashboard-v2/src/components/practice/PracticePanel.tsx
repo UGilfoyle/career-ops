@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import { canAccessPracticeBeta } from '@/lib/lifetime-access';
@@ -16,6 +16,18 @@ type PipelineJob = {
   company?: string;
   title?: string;
   role?: string;
+  is_applied?: boolean;
+  application_status?: string | null;
+  app_id?: number | null;
+};
+
+type ApplicationRow = {
+  id?: number | string;
+  job_id?: number | string;
+  company?: string;
+  title?: string;
+  role?: string;
+  status?: string | null;
 };
 
 type QuotaState = {
@@ -36,6 +48,7 @@ type PackSummary = {
 
 type Props = {
   pipeline?: PipelineJob[];
+  applications?: ApplicationRow[];
   planDisplay: string;
   planSubtitle: string;
   pendingPayment?: PendingPayment | null;
@@ -45,8 +58,21 @@ type Props = {
 const fieldClass =
   'mt-1.5 w-full min-w-0 rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-3 text-base text-[#1C1C1E] sm:py-2.5 sm:text-sm';
 
+function jobIsApplied(job: PipelineJob) {
+  const status = String(job.application_status || '').toUpperCase();
+  if (['APPLIED', 'RESPONDED', 'INTERVIEW', 'INTERVIEWING', 'OFFER', 'SENT'].includes(status)) {
+    return true;
+  }
+  return Boolean(job.is_applied || job.app_id);
+}
+
+function packTotal(counts: { coding: number; systemDesign: number; behavioral: number }) {
+  return (counts.coding || 0) + (counts.systemDesign || 0) + (counts.behavioral || 0);
+}
+
 export default function PracticePanel({
   pipeline = [],
+  applications = [],
   planDisplay,
   planSubtitle,
   pendingPayment,
@@ -71,20 +97,62 @@ export default function PracticePanel({
   const [error, setError] = useState('');
   const [showPaywall, setShowPaywall] = useState(false);
   const [comingSoon, setComingSoon] = useState(false);
+  const [jobFilter, setJobFilter] = useState<'applied' | 'all'>('applied');
   const [sandboxOpen, setSandboxOpen] = useState(true);
 
   const sessionEmail = session?.user?.email ?? null;
   const clientBetaAllowed =
     sessionStatus === 'authenticated' && canAccessPracticeBeta(sessionEmail);
 
-  const jobs = pipeline
-    .slice(0, 80)
-    .map((j) => ({
-      id: String(j.pipeline_id ?? j.id ?? ''),
-      company: j.company || 'Company',
-      title: j.title || j.role || 'Role',
-    }))
-    .filter((j) => j.id);
+  const appliedJobIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const app of applications) {
+      if (app.job_id != null) ids.add(String(app.job_id));
+    }
+    for (const j of pipeline) {
+      if (jobIsApplied(j)) ids.add(String(j.pipeline_id ?? j.id ?? ''));
+    }
+    ids.delete('');
+    return ids;
+  }, [applications, pipeline]);
+
+  const jobs = useMemo(() => {
+    const mapped = pipeline
+      .map((j) => ({
+        id: String(j.pipeline_id ?? j.id ?? ''),
+        company: j.company || 'Company',
+        title: j.title || j.role || 'Role',
+        applied: jobIsApplied(j) || appliedJobIds.has(String(j.pipeline_id ?? j.id ?? '')),
+      }))
+      .filter((j) => j.id);
+
+    // Also surface applications that might not be in the truncated pipeline view
+    for (const app of applications) {
+      const id = String(app.job_id ?? '');
+      if (!id || mapped.some((m) => m.id === id)) continue;
+      mapped.push({
+        id,
+        company: app.company || 'Company',
+        title: app.title || app.role || 'Role',
+        applied: true,
+      });
+    }
+
+    const applied = mapped.filter((j) => j.applied);
+    const rest = mapped.filter((j) => !j.applied);
+    // Applied first in the full list
+    const ordered = [...applied, ...rest];
+    if (jobFilter === 'applied') return applied.length ? applied : ordered.slice(0, 0);
+    return ordered.slice(0, 80);
+  }, [pipeline, applications, appliedJobIds, jobFilter]);
+
+  const activeQuestionCount = activePack
+    ? packTotal({
+        coding: activePack.content?.coding?.length || 0,
+        systemDesign: activePack.content?.systemDesign?.length || 0,
+        behavioral: activePack.content?.behavioral?.length || 0,
+      })
+    : 0;
 
   const refreshMeta = useCallback(async () => {
     const [qRes, pRes] = await Promise.all([
@@ -242,6 +310,7 @@ export default function PracticePanel({
         codingPrompts={activePack?.content?.coding}
         systemDesignPrompts={activePack?.content?.systemDesign}
         behavioralPrompts={activePack?.content?.behavioral}
+        questionCount={activeQuestionCount || undefined}
       />
 
       {showPaywall && (
@@ -259,7 +328,9 @@ export default function PracticePanel({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-[#F5F5F0] pb-3">
           <div>
             <h3 className="text-sm font-bold text-[#1C1C1E]">Generate Tailored Interview Pack</h3>
-            <p className="text-xs text-[#6B6B6B]">Generate specific coding, system design & behavioral prompts from any job description</p>
+            <p className="text-xs text-[#6B6B6B]">
+              20 questions from your stack + experience, tuned to an applied role or pasted JD
+            </p>
           </div>
           {quota && (
             <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
@@ -290,34 +361,68 @@ export default function PracticePanel({
         </div>
 
         {mode === 'job' ? (
-          <label className="block text-xs font-bold text-[#6B6B6B]">
-            Select Target Job
-            <select
-              value={jobId}
-              onChange={(e) => {
-                const jId = e.target.value;
-                setJobId(jId);
-                const selected = jobs.find((j) => j.id === jId);
-                if (selected) {
-                  setCompany(selected.company);
-                  setRole(selected.title);
-                }
-              }}
-              className={fieldClass}
-            >
-              <option value="">Choose from pipeline…</option>
-              {jobs.map((j) => (
-                <option key={j.id} value={j.id}>
-                  {j.company} — {j.title}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setJobFilter('applied')}
+                className={`min-h-9 rounded-xl px-2 py-1.5 text-[11px] font-bold transition-colors ${
+                  jobFilter === 'applied'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-[#F4F4F0] text-[#6B6B6B] hover:text-[#1C1C1E]'
+                }`}
+              >
+                Applied jobs
+              </button>
+              <button
+                type="button"
+                onClick={() => setJobFilter('all')}
+                className={`min-h-9 rounded-xl px-2 py-1.5 text-[11px] font-bold transition-colors ${
+                  jobFilter === 'all'
+                    ? 'bg-[#1C1C1E] text-white'
+                    : 'bg-[#F4F4F0] text-[#6B6B6B] hover:text-[#1C1C1E]'
+                }`}
+              >
+                All pipeline
+              </button>
+            </div>
+            <label className="block text-xs font-bold text-[#6B6B6B]">
+              Select target job
+              <select
+                value={jobId}
+                onChange={(e) => {
+                  const jId = e.target.value;
+                  setJobId(jId);
+                  const selected = jobs.find((j) => j.id === jId);
+                  if (selected) {
+                    setCompany(selected.company);
+                    setRole(selected.title);
+                  }
+                }}
+                className={fieldClass}
+              >
+                <option value="">
+                  {jobFilter === 'applied' ? 'Choose an applied job…' : 'Choose from pipeline…'}
                 </option>
-              ))}
-            </select>
-            {jobs.length === 0 && (
-              <span className="mt-1 block text-[11px] font-medium leading-snug text-[#9CA3AF]">
-                No pipeline jobs yet — paste a JD instead, or run a scan.
-              </span>
-            )}
-          </label>
+                {jobs.map((j) => (
+                  <option key={j.id} value={j.id}>
+                    {j.applied ? '✓ ' : ''}
+                    {j.company} — {j.title}
+                  </option>
+                ))}
+              </select>
+              {jobFilter === 'applied' && jobs.length === 0 && (
+                <span className="mt-1 block text-[11px] font-medium leading-snug text-[#9CA3AF]">
+                  No applied jobs yet — switch to All pipeline, or paste a JD. Mark Applied in Pipeline first for best practice packs.
+                </span>
+              )}
+              {jobFilter === 'all' && jobs.length === 0 && (
+                <span className="mt-1 block text-[11px] font-medium leading-snug text-[#9CA3AF]">
+                  No pipeline jobs yet — paste a JD instead, or run a scan.
+                </span>
+              )}
+            </label>
+          </div>
         ) : (
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -367,7 +472,7 @@ export default function PracticePanel({
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#27272a] active:scale-95 transition-all disabled:opacity-60 sm:w-auto"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} className="text-amber-300" />}
-            Generate Practice Pack
+            Generate 20-Question Pack
           </button>
           <button
             type="button"
@@ -398,8 +503,8 @@ export default function PracticePanel({
                     {(p.company || 'Company') + ' · ' + (p.role || 'Role')}
                   </p>
                   <p className="text-[11px] text-[#9CA3AF]">
-                    {new Date(p.createdAt).toLocaleString()} · C{p.counts.coding} / SD
-                    {p.counts.systemDesign} / B{p.counts.behavioral}
+                    {new Date(p.createdAt).toLocaleString()} · {packTotal(p.counts)} Q · C
+                    {p.counts.coding} / SD{p.counts.systemDesign} / B{p.counts.behavioral}
                   </p>
                 </div>
                 <button

@@ -204,27 +204,39 @@ function buildSystemPrompt(fitNote: string): string {
 Generate a JD-linked practice pack as STRICT JSON only (no markdown).
 
 Rules:
-- Target senior backend/platform interviews (APIs, concurrency, SQL, distributed systems, AWS/cloud).
+- Produce AT LEAST 20 questions: coding 8, systemDesign 5, behavioral 7 (you may add 1–2 extras within max caps).
+- Personalize using the candidate profileHints (tech stack, recent employers/roles, competencies). Reference their real stack in coding/systemDesign prompts when relevant.
+- Tie behavioral prompts to their experience themes (ownership, incidents, mentoring, cross-team) without inventing fake employers.
+- Target interviews for the given company/role from the JD.
 - Flavor coding prompts with JD stack keywords when relevant.
 - ${fitNote}
 - If fit is low (functional/vendor HCM/admin JD): use general backend/platform prompts. Do NOT invent deep Oracle Fusion HCM, BIP, OTB, or admin configuration quizzes.
-- coding: 5–8 items. Each needs id, title, prompt, outline (short hints, NOT a full solution dump), optional difficulty (easy|medium|hard), optional stackHints[].
-- systemDesign: 3–4 items with id, title, prompt, outline.
-- behavioral: 4–6 STAR-style prompts with id, title, prompt, outline, optional starHint.
+- coding: exactly 8 items (max 10). Each needs id, title, prompt, outline (short hints, NOT a full solution dump), optional difficulty (easy|medium|hard), optional stackHints[].
+- systemDesign: exactly 5 items (max 6) with id, title, prompt, outline.
+- behavioral: exactly 7 STAR-style prompts (max 8) with id, title, prompt, outline, optional starHint.
 - Include fit: { tier, note } matching the assessed fit.
 - Include keywords array (echo provided keywords; do not invent irrelevant vendor skills).
 - Keep outlines to concise bullet-style hints (what to cover), not complete code.`;
 }
 
+export type PracticeProfileHints = {
+  headline?: string;
+  superpowers?: string[];
+  targetingPositive?: string[];
+  competencies?: string[];
+  experienceDigest?: Array<{
+    company?: string;
+    role?: string;
+    period?: string;
+    bullets?: string[];
+  }>;
+};
+
 export type GeneratePackInput = {
   jdText: string;
   company?: string;
   role?: string;
-  profileHints?: {
-    headline?: string;
-    superpowers?: string[];
-    targetingPositive?: string[];
-  };
+  profileHints?: PracticeProfileHints;
 };
 
 export type GeneratePackResult = {
@@ -286,27 +298,11 @@ export async function generatePracticePack(input: GeneratePackInput): Promise<Ge
         role: 'string',
         keywords: 'string[]',
         fit: { tier: 'strong|partial|low', note: 'string' },
-        coding: [
-          {
-            id: 'string',
-            title: 'string',
-            prompt: 'string',
-            outline: 'string',
-            difficulty: 'easy|medium|hard?',
-            stackHints: 'string[]?',
-          },
-        ],
-        systemDesign: [{ id: 'string', title: 'string', prompt: 'string', outline: 'string' }],
-        behavioral: [
-          {
-            id: 'string',
-            title: 'string',
-            prompt: 'string',
-            outline: 'string',
-            starHint: 'string?',
-          },
-        ],
+        coding: '8–10 items',
+        systemDesign: '5–6 items',
+        behavioral: '7–8 STAR items',
       },
+      countsRequired: { coding: 8, systemDesign: 5, behavioral: 7, totalMin: 20 },
     },
     null,
     2,
@@ -332,7 +328,12 @@ export async function generatePracticePack(input: GeneratePackInput): Promise<Ge
       fit: (parsed as { fit?: unknown }).fit || fit,
     };
 
-    const coerced = coercePracticePack(merged);
+    const coerced = coercePracticePack(merged, {
+      jdText,
+      company,
+      role,
+      keywords,
+    });
     const pack = coerced || parsePracticePackJson(merged);
     return { pack, keywords, jdHash };
   } catch (err) {

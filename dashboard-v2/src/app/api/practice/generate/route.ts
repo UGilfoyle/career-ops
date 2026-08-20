@@ -89,10 +89,34 @@ export async function POST(req: NextRequest) {
     `;
     const resumeContext = (profileRows[0]?.resume_context || {}) as {
       narrative?: { headline?: string; superpowers?: string[] };
+      experience?: Array<{
+        company?: string;
+        role?: string;
+        period?: string;
+        bullets?: string[];
+      }>;
     };
     const targeting = (profileRows[0]?.targeting_keywords || {}) as {
       positive?: string[];
     };
+
+    const competencies = Array.isArray(resumeContext.narrative?.superpowers)
+      ? resumeContext.narrative!.superpowers!.map(String).filter(Boolean).slice(0, 24)
+      : [];
+    const experienceDigest = (Array.isArray(resumeContext.experience)
+      ? resumeContext.experience
+      : []
+    )
+      .slice(0, 6)
+      .map((e) => ({
+        company: String(e?.company || '').trim() || undefined,
+        role: String(e?.role || '').trim() || undefined,
+        period: String(e?.period || '').trim() || undefined,
+        bullets: Array.isArray(e?.bullets)
+          ? e.bullets.map(String).filter(Boolean).slice(0, 2)
+          : undefined,
+      }))
+      .filter((e) => e.company || e.role);
 
     const generated = await generatePracticePack({
       jdText,
@@ -100,8 +124,10 @@ export async function POST(req: NextRequest) {
       role,
       profileHints: {
         headline: resumeContext.narrative?.headline,
-        superpowers: resumeContext.narrative?.superpowers,
+        superpowers: competencies,
+        competencies,
         targetingPositive: targeting.positive,
+        experienceDigest,
       },
     });
 

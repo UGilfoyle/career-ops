@@ -4503,6 +4503,7 @@ Career-Ops terminal`}
             >
               <PracticePanel
                 pipeline={data?.pipeline || []}
+                applications={data?.applications || []}
                 planDisplay={billing.plan.display}
                 planSubtitle={billing.plan.subtitle}
                 pendingPayment={billing.payment}
