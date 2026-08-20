@@ -37,7 +37,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.5.0",
-    "unpdf": "^1.6.2",
+    "unpdf": "^1.8.1",
     "zod": "^4.3.6",
     "puppeteer-core": "^24.15.0",
     "@sparticuz/chromium-min": "^138.0.2"
