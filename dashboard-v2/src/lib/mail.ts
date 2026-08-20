@@ -7,9 +7,23 @@ const brevo = new BrevoClient({
 /** Prefer env; fallback to Brevo-verified sender with DKIM & DMARC configured. */
 const DEFAULT_SENDER_EMAIL = 'noreply@careerops.dpdns.org';
 
+function sanitizeSenderEmail(raw?: string): string {
+  if (!raw) return DEFAULT_SENDER_EMAIL;
+  let cleaned = raw.trim();
+  // Strip accidental key=value prefix (e.g. if pasted "BREVO_SENDER_EMAIL=noreply@..." into Vercel value)
+  cleaned = cleaned.replace(/^[a-zA-Z0-9_]*brevo[a-zA-Z0-9_]*\s*=\s*/i, '').trim();
+  cleaned = cleaned.replace(/^['"]|['"]$/g, '').trim();
+  const match = cleaned.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  if (match) return match[0];
+  return DEFAULT_SENDER_EMAIL;
+}
+
 const getSender = () => ({
-  name: (process.env.BREVO_SENDER_NAME || 'Career-Ops').trim(),
-  email: (process.env.BREVO_SENDER_EMAIL || DEFAULT_SENDER_EMAIL).trim(),
+  name: (process.env.BREVO_SENDER_NAME || 'Career-Ops')
+    .trim()
+    .replace(/^[a-zA-Z0-9_]*name\s*=\s*/i, '')
+    .replace(/^['"]|['"]$/g, '') || 'Career-Ops',
+  email: sanitizeSenderEmail(process.env.BREVO_SENDER_EMAIL),
 });
 
 function assertSenderConfigured(context: string): { name: string; email: string } | null {
