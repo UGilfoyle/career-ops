@@ -204,7 +204,7 @@ async function migrate() {
       CREATE TABLE IF NOT EXISTS application_tracking (
         id SERIAL PRIMARY KEY,
         user_id TEXT NOT NULL,
-        application_id INTEGER REFERENCES applications(id) ON DELETE CASCADE,
+        application_id INTEGER,
         slug TEXT UNIQUE NOT NULL,
         company TEXT NOT NULL,
         role TEXT,
@@ -244,6 +244,19 @@ async function migrate() {
       `;
     } catch (e) {
       console.warn('Skipped application_tracking_application_id_uidx:', e.message);
+    }
+    try {
+      await sql`
+        ALTER TABLE application_tracking
+          DROP CONSTRAINT IF EXISTS application_tracking_application_id_fkey
+      `;
+      await sql`
+        ALTER TABLE application_tracking
+          ADD CONSTRAINT application_tracking_application_id_fkey
+          FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE SET NULL
+      `;
+    } catch (e) {
+      console.warn('Skipped application_tracking FK SET NULL:', e.message);
     }
 
     console.log('Migration successful: billing, practice, background, page_views, master_pdf, user_profiles, jobs/apps indexes, application telemetry.');

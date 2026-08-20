@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import sql from '@/lib/db';
 import { ensureApplicationTelemetrySchema } from '@/lib/ops-schema';
-import { appOrigin } from '@/lib/telemetry/urls';
+import { appOriginFromRequest } from '@/lib/telemetry/urls';
 import { buildEngagementFollowup } from '@/lib/telemetry/followup';
 
 export const dynamic = 'force-dynamic';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, context: RouteContext) {
+export async function GET(req: Request, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -117,7 +117,7 @@ export async function GET(_req: Request, context: RouteContext) {
       tracking: {
         id: track.id,
         slug: track.slug,
-        url: `${appOrigin()}/v/${track.slug}`,
+        url: `${appOriginFromRequest(req)}/v/${track.slug}`,
         company: track.company,
         role: track.role,
         view_count: viewCount,

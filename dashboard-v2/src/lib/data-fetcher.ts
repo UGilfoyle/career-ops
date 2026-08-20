@@ -48,6 +48,33 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
   };
 
   const fetchApplications = async () => {
+    const fetchAppsWithoutTelemetry = () => sql`
+      SELECT 
+        a.id as app_id,
+        a.job_id as job_id,
+        a.status,
+        a.applied_at,
+        a.resume_file,
+        j.company,
+        j.title as role,
+        j.url,
+        j.score,
+        j.source,
+        j.portal_key,
+        j.logo_url,
+        j.logo_source,
+        NULL::text as stealth_slug,
+        0 as stealth_views,
+        0 as stealth_clicks,
+        0 as stealth_dwell_sec,
+        NULL::timestamptz as stealth_last_engaged_at
+      FROM applications a
+      JOIN jobs j ON a.job_id = j.id
+      WHERE a.user_id = ${userId}
+      ORDER BY a.applied_at DESC
+      LIMIT ${APPLICATIONS_PAGE_SIZE}
+    `;
+
     try {
       const { ensureApplicationTelemetrySchema } = await import('@/lib/ops-schema');
       await ensureApplicationTelemetrySchema(sql);
@@ -78,8 +105,16 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
         ORDER BY a.applied_at DESC
         LIMIT ${APPLICATIONS_PAGE_SIZE}
       `;
-    } catch {
-      return [];
+    } catch (err) {
+      console.warn(
+        '[fetchApplications] telemetry join/schema failed — loading apps without stealth cols:',
+        err instanceof Error ? err.message : err
+      );
+      try {
+        return await fetchAppsWithoutTelemetry();
+      } catch {
+        return [];
+      }
     }
   };
 

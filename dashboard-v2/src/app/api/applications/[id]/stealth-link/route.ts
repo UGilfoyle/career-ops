@@ -4,27 +4,42 @@ import sql from '@/lib/db';
 import { ensureApplicationTelemetrySchema } from '@/lib/ops-schema';
 import type { ResumeContext } from '@/lib/resume/types';
 import {
-  appOrigin,
+  appOriginFromRequest,
   buildTrackingSlug,
   normalizeExternalUrl,
 } from '@/lib/telemetry/urls';
-import { setCachedTracking } from '@/lib/telemetry/cache';
+import { invalidateTrackingCache, setCachedTracking } from '@/lib/telemetry/cache';
 
 export const dynamic = 'force-dynamic';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+async function loadProfileUrls(userId: string) {
+  const [profileRow] = await sql`
+    SELECT resume_context FROM user_profiles WHERE user_id = ${Number(userId)} LIMIT 1
+  `;
+  const ctx = (profileRow?.resume_context || {}) as ResumeContext;
+  const candidate = ctx.candidate || {};
+  return {
+    githubUrl: normalizeExternalUrl(candidate.github),
+    linkedinUrl: normalizeExternalUrl(candidate.linkedin),
+    portfolioUrl: normalizeExternalUrl(candidate.portfolio_url),
+  };
+}
+
 /**
  * Ensure a stealth companion link exists for an application and return its URL.
  * Idempotent: reuses existing application_tracking row when present.
+ * Always refreshes destination URLs from the candidate profile + busts KV cache.
  */
-export async function POST(_req: Request, context: RouteContext) {
+export async function POST(req: Request, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = String(session.user.id);
+    const origin = appOriginFromRequest(req);
     const { id } = await context.params;
     const applicationId = Number(id);
     if (!Number.isFinite(applicationId) || applicationId <= 0) {
@@ -49,26 +64,37 @@ export async function POST(_req: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
+    const { githubUrl, linkedinUrl, portfolioUrl } = await loadProfileUrls(userId);
+
     const [existing] = await sql`
-      SELECT id, slug, github_url, linkedin_url, portfolio_url,
-             view_count, click_count, total_dwell_sec, last_engaged_at
+      SELECT id, slug, view_count, click_count, total_dwell_sec, last_engaged_at
       FROM application_tracking
       WHERE application_id = ${applicationId} AND user_id = ${userId}
       LIMIT 1
     `;
 
     if (existing) {
+      await sql`
+        UPDATE application_tracking
+        SET
+          github_url = ${githubUrl},
+          linkedin_url = ${linkedinUrl},
+          portfolio_url = ${portfolioUrl},
+          company = ${String(app.company || 'Company')},
+          role = ${String(app.role || '')}
+        WHERE id = ${existing.id}
+      `;
+      await invalidateTrackingCache(String(existing.slug));
       void setCachedTracking(String(existing.slug), {
         id: Number(existing.id),
-        github_url: existing.github_url ?? null,
-        linkedin_url: existing.linkedin_url ?? null,
-        portfolio_url: existing.portfolio_url ?? null,
+        github_url: githubUrl,
+        linkedin_url: linkedinUrl,
+        portfolio_url: portfolioUrl,
       });
-      const url = `${appOrigin()}/v/${existing.slug}`;
       return NextResponse.json({
         ok: true,
         slug: existing.slug,
-        url,
+        url: `${origin}/v/${existing.slug}`,
         view_count: existing.view_count ?? 0,
         click_count: existing.click_count ?? 0,
         total_dwell_sec: existing.total_dwell_sec ?? 0,
@@ -76,16 +102,6 @@ export async function POST(_req: Request, context: RouteContext) {
         created: false,
       });
     }
-
-    const [profileRow] = await sql`
-      SELECT resume_context FROM user_profiles WHERE user_id = ${Number(userId)} LIMIT 1
-    `;
-    const ctx = (profileRow?.resume_context || {}) as ResumeContext;
-    const candidate = ctx.candidate || {};
-
-    const githubUrl = normalizeExternalUrl(candidate.github);
-    const linkedinUrl = normalizeExternalUrl(candidate.linkedin);
-    const portfolioUrl = normalizeExternalUrl(candidate.portfolio_url);
 
     let slug = buildTrackingSlug(String(app.company || 'company'), String(app.role || 'role'));
     let insertedId: number | null = null;
@@ -116,6 +132,7 @@ export async function POST(_req: Request, context: RouteContext) {
     }
 
     if (insertedId) {
+      await invalidateTrackingCache(slug);
       void setCachedTracking(slug, {
         id: insertedId,
         github_url: githubUrl,
@@ -124,11 +141,10 @@ export async function POST(_req: Request, context: RouteContext) {
       });
     }
 
-    const url = `${appOrigin()}/v/${slug}`;
     return NextResponse.json({
       ok: true,
       slug,
-      url,
+      url: `${origin}/v/${slug}`,
       view_count: 0,
       click_count: 0,
       total_dwell_sec: 0,
@@ -144,6 +160,6 @@ export async function POST(_req: Request, context: RouteContext) {
   }
 }
 
-export async function GET(_req: Request, context: RouteContext) {
-  return POST(_req, context);
+export async function GET(req: Request, context: RouteContext) {
+  return POST(req, context);
 }

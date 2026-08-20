@@ -29,6 +29,21 @@ export function appOrigin(): string {
   ).replace(/\/$/, '');
 }
 
+/**
+ * Prefer the request host when local (localhost / 127.0.0.1) so Copy Stealth Link
+ * works against `next dev` even if NEXTAUTH_URL points at production.
+ */
+export function appOriginFromRequest(req: Request): string {
+  const rawHost = req.headers.get('x-forwarded-host') || req.headers.get('host') || '';
+  const host = rawHost.split(',')[0]?.trim() || '';
+  const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host);
+  if (isLocal) {
+    const proto = (req.headers.get('x-forwarded-proto') || 'http').split(',')[0]?.trim() || 'http';
+    return `${proto}://${host}`.replace(/\/$/, '');
+  }
+  return appOrigin();
+}
+
 export function slugifySegment(raw: string, max = 40): string {
   return (
     String(raw || '')

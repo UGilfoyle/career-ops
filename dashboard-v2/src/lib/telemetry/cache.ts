@@ -1,6 +1,6 @@
 import { kvDel, kvGet, kvSet } from './kv';
 
-export const TRACKING_CACHE_TTL_SEC = 60 * 60; // 1 hour
+export const TRACKING_CACHE_TTL_SEC = 15 * 60; // 15 min — short enough for profile link edits
 
 export type TrackingDestCache = {
   id: number;

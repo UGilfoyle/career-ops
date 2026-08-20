@@ -105,7 +105,7 @@ export async function ensureApplicationTelemetrySchema(sql: postgres.Sql): Promi
       CREATE TABLE IF NOT EXISTS application_tracking (
         id SERIAL PRIMARY KEY,
         user_id TEXT NOT NULL,
-        application_id INTEGER REFERENCES applications(id) ON DELETE CASCADE,
+        application_id INTEGER,
         slug TEXT UNIQUE NOT NULL,
         company TEXT NOT NULL,
         role TEXT,
@@ -145,6 +145,23 @@ export async function ensureApplicationTelemetrySchema(sql: postgres.Sql): Promi
       `;
     } catch (e) {
       console.warn('[ensureApplicationTelemetrySchema] unique application_id index skipped:', (e as Error).message);
+    }
+  });
+
+  // Separate key so existing isolates that already ran Phase-1 DDL still pick up SET NULL.
+  await onceSchema('application_telemetry_fk_set_null', async () => {
+    try {
+      await sql`
+        ALTER TABLE application_tracking
+          DROP CONSTRAINT IF EXISTS application_tracking_application_id_fkey
+      `;
+      await sql`
+        ALTER TABLE application_tracking
+          ADD CONSTRAINT application_tracking_application_id_fkey
+          FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE SET NULL
+      `;
+    } catch (e) {
+      console.warn('[ensureApplicationTelemetrySchema] application_id FK SET NULL skipped:', (e as Error).message);
     }
   });
 }
