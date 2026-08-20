@@ -591,13 +591,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   };
 
   const tourIcons = [
-    <Zap key="zap" size={24} />,
+    <Zap key="welcome" size={24} />,
     <Settings key="settings" size={24} />,
-    <Search key="search" size={24} />,
     <TerminalIcon key="terminal" size={24} />,
     <BarChart3 key="pipeline" size={24} />,
-    <Target key="gcc" size={24} />,
     <Sparkles key="studio" size={24} />,
+    <Code key="practice" size={24} />,
     <MessageSquare key="chat" size={24} />,
     <CheckCircle2 key="done" size={24} />,
   ];
@@ -626,6 +625,24 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       }, step?.tab ? 300 : 0);
     }
   }, [walkthroughStep]);
+
+  useEffect(() => {
+    if (walkthroughStep === null) return;
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        e.preventDefault();
+        setWalkthroughStep((prev) => (prev !== null && prev < steps.length - 1 ? prev + 1 : (completeOnboarding(), null)));
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setWalkthroughStep((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        completeOnboarding();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [walkthroughStep, steps.length]);
 
   // Trigger walkthrough for both email+password and GitHub OAuth users
   useEffect(() => {
@@ -4867,32 +4884,42 @@ Career-Ops terminal`}
                 </div>
 
                 <div className="mb-6">
-                  <div className="h-12 w-12 bg-gradient-to-br from-[#1C1C1E] to-[#44403c] rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-black/10">
+                  <div className="h-12 w-12 bg-gradient-to-br from-[#1C1C1E] to-[#44403c] rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-black/10">
                     <div className="text-white">{steps[walkthroughStep].icon}</div>
                   </div>
 
-                  <h2 className="text-xl font-bold text-[#1C1C1E] mb-3 tracking-tight leading-tight">{steps[walkthroughStep].title}</h2>
+                  {steps[walkthroughStep].actionHint && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 border border-stone-200 text-[#1C1C1E] text-[11px] font-semibold mb-3">
+                      <Sparkles size={12} className="text-amber-600" />
+                      <span>{steps[walkthroughStep].actionHint}</span>
+                    </div>
+                  )}
+
+                  <h2 className="text-xl font-bold text-[#1C1C1E] mb-2.5 tracking-tight leading-tight">{steps[walkthroughStep].title}</h2>
                   <p className="text-[#6B6B6B] leading-relaxed text-sm">{steps[walkthroughStep].content}</p>
                 </div>
 
                 <div className="flex items-center justify-between mt-6 pt-5 border-t border-[#F5F5F0]">
-                  <div className="flex gap-1.5">
-                    {steps.map((_, s) => (
-                      <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${walkthroughStep === s ? 'bg-[#1C1C1E] w-6' : 'bg-[#E5E5E0] w-1.5'}`} />
-                    ))}
+                  <div className="flex items-center gap-3">
+                    <div className="flex gap-1.5">
+                      {steps.map((_, s) => (
+                        <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${walkthroughStep === s ? 'bg-[#1C1C1E] w-6' : 'bg-[#E5E5E0] w-1.5'}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-stone-400 font-mono hidden sm:inline">Use ← → arrow keys</span>
                   </div>
                   <div className="flex gap-2">
                     {walkthroughStep > 0 && (
                       <button
                         onClick={() => setWalkthroughStep(walkthroughStep - 1)}
-                        className="px-4 py-2.5 text-[#6B6B6B] hover:text-[#1C1C1E] rounded-xl font-bold text-xs transition-colors"
+                        className="px-4 py-2.5 text-[#6B6B6B] hover:text-[#1C1C1E] rounded-xl font-bold text-xs transition-colors cursor-pointer"
                       >
                         Back
                       </button>
                     )}
                     <button
                       onClick={() => walkthroughStep < steps.length - 1 ? setWalkthroughStep(walkthroughStep + 1) : completeOnboarding()}
-                      className="px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#27272a] transition-all shadow-lg shadow-black/10"
+                      className="px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#27272a] transition-all shadow-lg shadow-black/10 cursor-pointer"
                     >
                       {walkthroughStep === steps.length - 1 ? 'Finish tour' : 'Next'}
                       <ChevronRight size={14} />

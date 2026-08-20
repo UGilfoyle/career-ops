@@ -4,8 +4,8 @@ const brevo = new BrevoClient({
     apiKey: process.env.BREVO_API_KEY || ''
 });
 
-/** Prefer env; fallback to Brevo-verified sender so OTP never silently dies. */
-const DEFAULT_SENDER_EMAIL = 'akash.k96.official@gmail.com';
+/** Prefer env; fallback to Brevo-verified sender with DKIM & DMARC configured. */
+const DEFAULT_SENDER_EMAIL = 'noreply@careerops.dpdns.org';
 
 const getSender = () => ({
   name: (process.env.BREVO_SENDER_NAME || 'Career-Ops').trim(),
@@ -80,14 +80,21 @@ export const sendVerificationEmail = async (email: string, token: string) => {
       console.warn('⚠️ BREVO_API_KEY missing. Verification token for', email, 'is:', token);
       return;
     }
-    if (!assertSenderConfigured('verification email')) {
+    const sender = assertSenderConfigured('verification email');
+    if (!sender) {
       console.warn('Verification token for', email, 'is:', token);
       return;
     }
 
-    const sender = getSender();
+    const textContent = `Confirm your Career-Ops account\n\nYour verification code is: ${token}\n\nThis code expires in 10 minutes. Do not share it with anyone.\n\nIf you did not create a Career-Ops account, you can safely ignore this email.`;
+
     const result = await brevo.transactionalEmails.sendTransacEmail({
       subject: 'Your Career-Ops verification code',
+      sender,
+      replyTo: sender,
+      to: [{ email }],
+      tags: ['auth-otp-verification'],
+      textContent,
       htmlContent: emailShell(`
             <h1 class="headline">Confirm your email</h1>
             <p class="subtext">Enter this code on the verification page to finish setting up your account.</p>
@@ -96,11 +103,9 @@ export const sendVerificationEmail = async (email: string, token: string) => {
             </div>
             <p class="expiry">This code expires in 10 minutes. Do not share it with anyone.</p>
             <div class="footer">
-              <p class="notice">Didn't create a Career-Ops account? You can ignore this email — nothing will be changed.</p>
+              <p class="notice">Didn't create a Career-Ops account? You can ignore this email - nothing will be changed.</p>
             </div>
       `),
-      sender,
-      to: [{ email }]
     });
     
     console.log('OTP Email sent successfully:', result);
@@ -117,14 +122,21 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
       console.warn('⚠️ BREVO_API_KEY missing. Reset token for', email, 'is:', token);
       return;
     }
-    if (!assertSenderConfigured('password reset email')) {
+    const sender = assertSenderConfigured('password reset email');
+    if (!sender) {
       console.warn('Reset token for', email, 'is:', token);
       return;
     }
 
-    const sender = getSender();
+    const textContent = `Reset your Career-Ops password\n\nYour password reset code is: ${token}\n\nThis code expires in 10 minutes. For security, never share this code.\n\nIf you did not request a password reset, you can safely ignore this email.`;
+
     return await brevo.transactionalEmails.sendTransacEmail({
       subject: 'Reset your Career-Ops password',
+      sender,
+      replyTo: sender,
+      to: [{ email }],
+      tags: ['auth-password-reset'],
+      textContent,
       htmlContent: emailShell(`
             <h1 class="headline">Reset your password</h1>
             <p class="subtext">Use this code on the reset page. If you didn't request a reset, ignore this email.</p>
@@ -136,8 +148,6 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
               <p class="notice">For security, never share this code. Career-Ops will never ask for it by phone or chat.</p>
             </div>
       `),
-      sender,
-      to: [{ email }]
     });
   } catch (error) {
     console.error('Failed to send password reset email:', error);
@@ -162,7 +172,8 @@ export const sendMonthlyNewsletterEmail = async (params: MonthlyNewsletterParams
     console.warn('⚠️ BREVO_API_KEY missing. Skipping monthly newsletter for', email);
     return null;
   }
-  if (!assertSenderConfigured('monthly newsletter')) {
+  const sender = assertSenderConfigured('monthly newsletter');
+  if (!sender) {
     return null;
   }
 
@@ -175,8 +186,10 @@ export const sendMonthlyNewsletterEmail = async (params: MonthlyNewsletterParams
     : 'Your Career-Ops monthly check-in';
 
   const intro = inactive
-    ? `Hey ${first} — it’s been a quiet stretch. Your scan targets, tailored resumes, and Master Resume Studio are still ready when you are.`
-    : `Hey ${first} — a quick monthly nudge from Career-Ops. Keep momentum with a scan, a deep tailor, or a Master Resume polish.`;
+    ? `Hey ${first} - it has been a quiet stretch. Your scan targets, tailored resumes, and Master Resume Studio are still ready when you are.`
+    : `Hey ${first} - a quick monthly nudge from Career-Ops. Keep momentum with a scan, a deep tailor, or a Master Resume polish.`;
+
+  const textContent = `${headline}\n\n${intro}\n\n- Scan portals for roles matching your target keywords\n- Tailor an ATS-optimized resume + cover letter\n- Master Resume Studio: keep your canonical profile ready\n\nOpen Career-Ops: ${dashboardUrl}\nRefer friends: ${referralUrl}\nUnsubscribe: ${unsubscribeUrl}`;
 
   const htmlContent = emailShell(`
             <h1 class="headline">${headline}</h1>
@@ -184,7 +197,7 @@ export const sendMonthlyNewsletterEmail = async (params: MonthlyNewsletterParams
             <ul class="bullets">
               <li><strong>Scan</strong> portals for roles that match your targeting keywords</li>
               <li><strong>Tailor</strong> an ATS-optimized resume + cover letter for a high-score job</li>
-              <li><strong>Master Resume Studio</strong> — keep your canonical profile ready for every application</li>
+              <li><strong>Master Resume Studio</strong> - keep your canonical profile ready for every application</li>
             </ul>
             <div class="center">
               <a class="cta" href="${dashboardUrl}">Open Career-Ops</a>
@@ -206,9 +219,12 @@ export const sendMonthlyNewsletterEmail = async (params: MonthlyNewsletterParams
   try {
     const result = await brevo.transactionalEmails.sendTransacEmail({
       subject,
-      htmlContent,
-      sender: getSender(),
+      sender,
+      replyTo: sender,
       to: [{ email }],
+      tags: ['newsletter-monthly'],
+      textContent,
+      htmlContent,
     });
     console.log('Monthly newsletter sent:', email);
     return result;
@@ -226,6 +242,8 @@ export const sendProAccessEmail = async (
 ) => {
   const sender = assertSenderConfigured('Pro access email');
   if (!sender) return null;
+
+  const textContent = `Your Career-Ops Pro access is ready\n\nHi ${name || 'there'}, thanks for subscribing (${priceDisplay}/month). Activate Pro access: ${accessLink}\n\nThis link expires in 7 days.\n\nFeatures:\n- Master resume editor + live ATS preview\n- PDF export & JD keyword match\n- Unlimited Career Copilot synced to your profile`;
 
   const htmlContent = emailShell(`
             <h1 class="headline">Your Pro access is ready</h1>
@@ -247,9 +265,12 @@ export const sendProAccessEmail = async (
   try {
     return await brevo.transactionalEmails.sendTransacEmail({
       subject: 'Your Career-Ops Pro access link',
-      htmlContent,
       sender,
+      replyTo: sender,
       to: [{ email }],
+      tags: ['billing-pro-access'],
+      textContent,
+      htmlContent,
     });
   } catch (error) {
     console.error('Failed to send Pro access email:', email, error);
@@ -270,14 +291,16 @@ export const sendUpiClaimAdminEmail = async (
   const sender = assertSenderConfigured('UPI claim admin email');
   if (!sender) return null;
 
+  const textContent = `UPI payment to verify\n\n${payload.userEmail} submitted Rs. ${payload.amountInr} Pro payment.\nUTR: ${payload.utr}\nRef: ${payload.transactionRef || '-'}\n\nApprove: ${payload.approveUrl}`;
+
   const htmlContent = emailShell(`
             <h1 class="headline">UPI payment to verify</h1>
             <p class="subtext">${payload.userEmail} submitted ₹${payload.amountInr} Pro payment.</p>
             <ul class="bullets">
               <li><strong>UTR:</strong> ${payload.utr}</li>
-              <li><strong>Ref:</strong> ${payload.transactionRef || '—'}</li>
+              <li><strong>Ref:</strong> ${payload.transactionRef || '-'}</li>
             </ul>
-            <p class="subtext">Check your ICICI statement, then approve if amount matches.</p>
+            <p class="subtext">Check your statement, then approve if amount matches.</p>
             <div class="center">
               <a class="cta" href="${payload.approveUrl}">Approve Pro access</a>
             </div>
@@ -285,10 +308,13 @@ export const sendUpiClaimAdminEmail = async (
 
   try {
     return await brevo.transactionalEmails.sendTransacEmail({
-      subject: `[Career-Ops] Verify UPI ₹${payload.amountInr} — ${payload.utr}`,
-      htmlContent,
+      subject: `[Career-Ops] Verify UPI Rs. ${payload.amountInr} - ${payload.utr}`,
       sender,
+      replyTo: sender,
       to: [{ email: adminEmail }],
+      tags: ['billing-upi-admin'],
+      textContent,
+      htmlContent,
     });
   } catch (error) {
     console.error('Failed to send UPI admin email:', adminEmail, error);

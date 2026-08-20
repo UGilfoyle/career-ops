@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
             return;
           }
           scriptName = 'gcc-scan.mjs';
-        } else if (cmd === 'tailor' || cmd === 'offer-match') {
+        } else if (cmd === 'tailor' || cmd === 'offer-match' || cmd === 'eval' || cmd === 'evaluate' || cmd === 'oferta') {
           const { target, deep, yes } = parseCommandWithDeep(q, cmd);
           const useDeep = deep || process.env.VERCEL === '1';
           if (useDeep) {

@@ -1,6 +1,7 @@
+import { runWithWandbox } from './wandbox';
 import { runWithOnlineCompiler } from './onlinecompiler';
 import { runWithPiston } from './piston';
-import { runWithLocalNode } from './local';
+import { runWithLocalNode, runWithLocalCLI } from './local';
 import {
   PRACTICE_RUN_MAX_CODE_BYTES,
   PRACTICE_RUN_MAX_STDIN_BYTES,
@@ -10,17 +11,19 @@ import {
   type PracticeRunResult,
 } from './types';
 
-export type PracticeRunnerProvider = 'onlinecompiler' | 'piston' | 'local';
+export type PracticeRunnerProvider = 'auto' | 'wandbox' | 'onlinecompiler' | 'piston' | 'local';
 
 export function resolvePracticeRunnerProvider(
   raw = process.env.PRACTICE_RUNNER_PROVIDER,
 ): PracticeRunnerProvider {
   const v = String(raw || '').trim().toLowerCase();
+  if (v === 'wandbox') return 'wandbox';
   if (v === 'piston') return 'piston';
   if (v === 'onlinecompiler') return 'onlinecompiler';
-  if (process.env.PISTON_URL) return 'piston';
+  if (v === 'local') return 'local';
   if (process.env.ONLINECOMPILER_API_KEY) return 'onlinecompiler';
-  return 'local';
+  if (process.env.PISTON_URL) return 'piston';
+  return 'auto';
 }
 
 export function validatePracticeRunInput(body: {
@@ -57,20 +60,40 @@ export async function executePracticeRun(
   opts?: { provider?: PracticeRunnerProvider },
 ): Promise<PracticeRunResult> {
   const provider = opts?.provider ?? resolvePracticeRunnerProvider();
-  if (provider === 'piston') return runWithPiston(req);
-  if (provider === 'onlinecompiler') return runWithOnlineCompiler(req);
-  
-  // Local zero-config fallback for JS/TS
-  if (req.language === 'javascript' || req.language === 'typescript') {
-    return runWithLocalNode(req);
+
+  // Explicit provider overrides
+  if (provider === 'onlinecompiler') {
+    return runWithOnlineCompiler(req);
   }
-  
-  // If piston URL is available, run with piston
-  if (process.env.PISTON_URL) {
+  if (provider === 'piston') {
     return runWithPiston(req);
   }
 
-  return runWithLocalNode(req);
+  // 1. JavaScript / TypeScript: Safe local isolated VM (0ms network delay, full process mock)
+  if (req.language === 'javascript' || req.language === 'typescript') {
+    return runWithLocalNode(req);
+  }
+
+  // 2. Python: Local python3 spawn if available, fallback to Wandbox
+  if (req.language === 'python') {
+    const localPy = await runWithLocalCLI(req, 'python3', ['-u'], '.py');
+    if (localPy && localPy.status !== 'misconfigured') {
+      return localPy;
+    }
+    return runWithWandbox(req);
+  }
+
+  // 3. Ruby: Local ruby spawn if available, fallback to Wandbox
+  if (req.language === 'ruby') {
+    const localRuby = await runWithLocalCLI(req, 'ruby', [], '.rb');
+    if (localRuby && localRuby.status !== 'misconfigured') {
+      return localRuby;
+    }
+    return runWithWandbox(req);
+  }
+
+  // 4. Default for compiled languages (Go, Rust, C++, C, Java, PHP): Wandbox Free Cloud API
+  return runWithWandbox(req);
 }
 
 export {
@@ -80,5 +103,6 @@ export {
   isPracticeRunLanguage,
 } from './types';
 export type { PracticeRunLanguage, PracticeRunRequest, PracticeRunResult } from './types';
+export { WANDBOX_COMPILER } from './wandbox';
 export { ONLINECOMPILER_COMPILER } from './onlinecompiler';
 export { PISTON_LANGUAGE } from './piston';
