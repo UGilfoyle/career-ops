@@ -8,6 +8,7 @@ import { LivePreview } from './LivePreview';
 import { TemplateGallery } from './TemplateGallery';
 import { JdMatchPanel, type PipelineJobOption } from './JdMatchPanel';
 import { JobReviewLite } from './JobReviewLite';
+import { CoverLetterEditor } from './CoverLetterEditor';
 import { PersonalInfoSection } from './sections/PersonalInfoSection';
 import { SummarySection } from './sections/SummarySection';
 import { CompetenciesSection } from './sections/CompetenciesSection';
@@ -79,7 +80,10 @@ export default function ResumeStudio({
   const [banner, setBanner] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? reviewJob?.jobId ?? null);
-  const [leftTab, setLeftTab] = useState<'jd' | 'editor'>('jd');
+  const [leftTab, setLeftTab] = useState<'jd' | 'editor' | 'cover'>(
+    reviewJob?.docKind === 'cover' ? 'cover' : 'jd'
+  );
+  const [coverPreviewHtml, setCoverPreviewHtml] = useState<string | null>(null);
   const [liveAts, setLiveAts] = useState<{ score: number | null; source: 'jd' | 'structure' }>({
     score: null,
     source: 'structure',
@@ -102,6 +106,12 @@ export default function ResumeStudio({
     const next = initialJobId ?? reviewJob?.jobId ?? null;
     if (next != null) setSelectedJobId(next);
   }, [initialJobId, reviewJob?.jobId]);
+
+  useEffect(() => {
+    if (reviewJob?.docKind === 'cover') {
+      setLeftTab('cover');
+    }
+  }, [reviewJob?.jobId, reviewJob?.docKind]);
 
   const onAutosave = useCallback(
     async (draft: ResumeContext) => {
@@ -324,17 +334,31 @@ export default function ResumeStudio({
           <div className="space-y-3 p-4">
             {/* ── Left Pane Sub-Navigation ── */}
             <div className="flex rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-0.5">
-              <button
-                type="button"
-                onClick={() => setLeftTab('jd')}
-                className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  leftTab === 'jd'
-                    ? 'bg-[#1C1C1E] text-white shadow-sm'
-                    : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
-                }`}
-              >
-                <Sparkles size={13} /> JD Match Inspector
-              </button>
+              {reviewJob?.docKind === 'cover' ? (
+                <button
+                  type="button"
+                  onClick={() => setLeftTab('cover')}
+                  className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    leftTab === 'cover'
+                      ? 'bg-[#1C1C1E] text-white shadow-sm'
+                      : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                  }`}
+                >
+                  <Files size={13} /> Edit Cover Letter
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setLeftTab('jd')}
+                  className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    leftTab === 'jd'
+                      ? 'bg-[#1C1C1E] text-white shadow-sm'
+                      : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                  }`}
+                >
+                  <Sparkles size={13} /> JD Match Inspector
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setLeftTab('editor')}
@@ -347,6 +371,23 @@ export default function ResumeStudio({
                 <Files size={13} /> Edit Master Resume
               </button>
             </div>
+
+            {leftTab === 'cover' && reviewJob?.docKind === 'cover' ? (
+              <CoverLetterEditor
+                jobId={reviewJob.jobId}
+                profileName={draft.candidate?.full_name || ''}
+                company={reviewJob.company}
+                onPreviewHtml={setCoverPreviewHtml}
+                onSaved={() => {
+                  setBanner('Cover letter saved');
+                  setTimeout(() => setBanner(null), 3000);
+                  Object.assign(reviewJob, {
+                    has_cover_letter_html: true,
+                    has_cover_letter_pdf: false,
+                  });
+                }}
+              />
+            ) : null}
 
             {leftTab === 'jd' ? (
               <>
@@ -382,7 +423,6 @@ export default function ResumeStudio({
                     docKind={reviewJob.docKind === 'cover' ? 'cover' : 'resume'}
                     onClose={onClearReviewJob}
                     onDocsUpdated={(next) => {
-                      // Keep review flags in sync after Fix name (parent may hold stale props).
                       if (!reviewJob) return;
                       Object.assign(reviewJob, {
                         has_resume_html: next.has_resume_html ?? reviewJob.has_resume_html,
@@ -396,7 +436,9 @@ export default function ResumeStudio({
                   />
                 ) : null}
               </>
-            ) : (
+            ) : null}
+
+            {leftTab === 'editor' ? (
               <div className="space-y-3">
                 {isEmpty ? (
                   <div className="rounded-2xl border border-dashed border-[#E5E5E0] bg-white p-8 text-center space-y-3">
@@ -462,7 +504,7 @@ export default function ResumeStudio({
                   <EducationSection education={draft.education || []} onChange={updateEducation} />
                 </SectionAccordion>
               </div>
-            )}
+            ) : null}
 
             {onOpenGeneratedDocs ? (
               <button
@@ -479,7 +521,7 @@ export default function ResumeStudio({
 
         <div className="min-h-[320px] lg:min-h-0">
           {reviewJob?.docKind === 'cover' &&
-          (reviewJob.has_cover_letter_html || reviewJob.has_cover_letter_pdf) ? (
+          (coverPreviewHtml || reviewJob.has_cover_letter_html || reviewJob.has_cover_letter_pdf) ? (
             <div className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white lg:min-h-0">
               <div className="flex items-center justify-between border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3">
                 <div>
@@ -487,7 +529,7 @@ export default function ResumeStudio({
                     Live Preview · Cover letter
                   </div>
                   <p className="text-xs font-medium text-[#6B6B6B]">
-                    {reviewJob.company || 'Company'} — use Fix name in the review panel if needed
+                    {reviewJob.company || 'Company'} — edits update live; click Save to persist
                   </p>
                 </div>
                 <a
@@ -499,15 +541,24 @@ export default function ResumeStudio({
                   Open
                 </a>
               </div>
-              <iframe
-                title="Cover letter live preview"
-                src={
-                  reviewJob.has_cover_letter_html
-                    ? `/api/view/${reviewJob.jobId}?type=cl`
-                    : `/api/view/${reviewJob.jobId}?type=cl&format=pdf`
-                }
-                className="w-full flex-1 border-0 bg-white"
-              />
+              {coverPreviewHtml ? (
+                <iframe
+                  title="Cover letter live preview"
+                  srcDoc={coverPreviewHtml}
+                  className="w-full flex-1 border-0 bg-white"
+                  sandbox=""
+                />
+              ) : (
+                <iframe
+                  title="Cover letter live preview"
+                  src={
+                    reviewJob.has_cover_letter_html
+                      ? `/api/view/${reviewJob.jobId}?type=cl`
+                      : `/api/view/${reviewJob.jobId}?type=cl&format=pdf`
+                  }
+                  className="w-full flex-1 border-0 bg-white"
+                />
+              )}
             </div>
           ) : (
             <LivePreview
