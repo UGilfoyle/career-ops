@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { ExternalLink, Github, Linkedin } from 'lucide-react';
+import { ExternalLink, Github, Linkedin, MapPin } from 'lucide-react';
 
 type Props = {
   slug: string;
   name: string;
   headline: string;
+  summary?: string | null;
   company: string;
   role: string | null;
   githubUrl: string | null;
@@ -18,6 +19,7 @@ export function CompanionViewerClient({
   slug,
   name,
   headline,
+  summary,
   company,
   role,
   githubUrl,
@@ -66,6 +68,8 @@ export function CompanionViewerClient({
     };
   }, [slug]);
 
+  const hasLinks = Boolean(githubUrl || linkedinUrl);
+
   return (
     <div className="min-h-dvh bg-[#0B0B0C] text-[#F5F5F0]">
       <div
@@ -83,7 +87,18 @@ export function CompanionViewerClient({
         {headline ? (
           <p className="mt-4 text-base leading-relaxed text-[#C8C8C0] sm:text-lg">{headline}</p>
         ) : null}
-        {location ? <p className="mt-3 text-sm text-[#8A8A84]">{location}</p> : null}
+        {!headline && summary ? (
+          <p className="mt-4 text-base leading-relaxed text-[#C8C8C0] sm:text-lg">{summary}</p>
+        ) : null}
+        {headline && summary ? (
+          <p className="mt-3 text-sm leading-relaxed text-[#9A9A92]">{summary}</p>
+        ) : null}
+        {location ? (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-[#8A8A84]">
+            <MapPin size={14} />
+            {location}
+          </p>
+        ) : null}
 
         <div className="mt-10 flex flex-wrap gap-3">
           {githubUrl ? (
@@ -107,6 +122,13 @@ export function CompanionViewerClient({
             </a>
           ) : null}
         </div>
+
+        {!hasLinks && !headline && !summary ? (
+          <p className="mt-8 max-w-md text-sm leading-relaxed text-[#7A7A74]">
+            Profile details are still syncing. Save Resume Studio personal info (name, headline,
+            GitHub, LinkedIn), then re-copy the stealth link.
+          </p>
+        ) : null}
       </main>
     </div>
   );
