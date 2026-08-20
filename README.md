@@ -18,7 +18,6 @@
 
 <p align="center">
   <a href="#-platform">Platform</a> ·
-  <a href="#-architecture">Architecture</a> ·
   <a href="#-security">Security</a> ·
   <a href="#-quick-start">Quick Start</a> ·
   <a href="#-deployment">Deployment</a> ·
@@ -76,62 +75,6 @@ Admin user registry, visitor analytics, referral codes, monthly product newslett
 | **GDPR-minded** | Local-first data contract, exportable markdown tracker, human-in-the-loop apply |
 
 > **v3 highlight:** Copilot · Resume Studio · saved docs · security hardening · `careerops.dpdns.org`
-
----
-
-## Architecture
-
-```mermaid
-flowchart TB
-    subgraph Client["Client Layer"]
-        Web["Next.js 16 Dashboard<br/>dashboard-v2/"]
-        CLI["AI CLI Agents<br/>Claude · Gemini · OpenCode"]
-    end
-
-    subgraph API["Application Layer"]
-        Auth["NextAuth v5 + Middleware"]
-        REST["REST APIs<br/>chat · exec · resume · admin"]
-        RL["Rate Limiting<br/>memory + Upstash Redis"]
-    end
-
-    subgraph Workers["Worker Layer"]
-        GHA["GitHub Actions<br/>scraper · tailor · newsletter"]
-        Node["Node.js Scripts<br/>scan.mjs · agentic-tailor.mjs"]
-    end
-
-    subgraph Data["Data Layer"]
-        PG[("PostgreSQL / Neon<br/>users · jobs · profiles")]
-        R2[("Cloudflare R2 / S3<br/>PDFs · exports")]
-        Local["Local Markdown<br/>cv.md · applications.md"]
-    end
-
-    subgraph External["External Services"]
-        LLM["Mistral · OpenRouter · HF"]
-        Brevo["Brevo Transactional Email"]
-        ATS["Greenhouse · Ashby · Lever APIs"]
-    end
-
-    Web --> Auth --> REST
-    REST --> RL
-    REST --> PG
-    REST --> GHA
-    REST --> Node
-    CLI --> Local
-    GHA --> Node
-    Node --> ATS
-    Node --> LLM
-    Node --> R2
-    Node --> PG
-    REST --> Brevo
-    Web --> R2
-```
-
-### Request flow (typical tailor job)
-
-1. User adds a job URL or ID in the dashboard terminal (`/api/exec`).
-2. API authenticates, rate-limits, and dispatches GitHub Actions or spawns `agentic-tailor.mjs`.
-3. Worker fetches the JD, scores fit against `cv.md` + profile, writes a report, and generates tailored HTML/PDF.
-4. Artifacts land in `reports/`, the DB tracker, and R2 — visible in **Generated Docs** and **Resume Studio**.
 
 ---
 
