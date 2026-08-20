@@ -7,8 +7,11 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth
   const publicPages = ["/", "/login", "/signup", "/verify", "/forgot-password", "/reset-password", "/auth/continue", "/docs", "/privacy", "/status", "/billing/simulate"]
   const alwaysPublic = ["/billing/simulate"]
-  const isPublicPage = publicPages.includes(req.nextUrl.pathname)
-  const isAlwaysPublic = alwaysPublic.includes(req.nextUrl.pathname)
+  const pathname = req.nextUrl.pathname
+  // Stealth companion + outbound redirects must be public (no auth wall)
+  const isStealthPublic = pathname === "/v" || pathname.startsWith("/v/")
+  const isPublicPage = publicPages.includes(pathname) || isStealthPublic
+  const isAlwaysPublic = alwaysPublic.includes(pathname) || isStealthPublic
 
   if (isPublicPage) {
     // Local billing demo stays public even when logged in

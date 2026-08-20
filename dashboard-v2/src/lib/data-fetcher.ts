@@ -49,6 +49,8 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
 
   const fetchApplications = async () => {
     try {
+      const { ensureApplicationTelemetrySchema } = await import('@/lib/ops-schema');
+      await ensureApplicationTelemetrySchema(sql);
       return await sql`
         SELECT 
           a.id as app_id,
@@ -63,9 +65,15 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           j.source,
           j.portal_key,
           j.logo_url,
-          j.logo_source
+          j.logo_source,
+          t.slug as stealth_slug,
+          COALESCE(t.view_count, 0) as stealth_views,
+          COALESCE(t.click_count, 0) as stealth_clicks,
+          COALESCE(t.total_dwell_sec, 0) as stealth_dwell_sec,
+          t.last_engaged_at as stealth_last_engaged_at
         FROM applications a
         JOIN jobs j ON a.job_id = j.id
+        LEFT JOIN application_tracking t ON t.application_id = a.id AND t.user_id = a.user_id
         WHERE a.user_id = ${userId}
         ORDER BY a.applied_at DESC
         LIMIT ${APPLICATIONS_PAGE_SIZE}

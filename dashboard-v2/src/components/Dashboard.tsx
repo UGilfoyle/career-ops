@@ -46,7 +46,9 @@ import {
   Mail,
   Loader2,
   Menu,
-  GraduationCap
+  GraduationCap,
+  Link2,
+  Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -223,6 +225,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [tagInputNegative, setTagInputNegative] = useState('');
   const [tagInputPortals, setTagInputPortals] = useState('');
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
+  const [stealthCopyAppId, setStealthCopyAppId] = useState<number | null>(null);
+  const [stealthBusyAppId, setStealthBusyAppId] = useState<number | null>(null);
 
   // Auto-dismiss toast after 4 seconds
   useEffect(() => {
@@ -1637,6 +1641,70 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
   };
 
+  const copyStealthLink = async (appId: number) => {
+    if (!Number.isFinite(appId) || appId <= 0) return;
+    setStealthBusyAppId(appId);
+    try {
+      const res = await fetch(`/api/applications/${appId}/stealth-link`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to create stealth link');
+      const url = String(json.url || '');
+      if (!url) throw new Error('No URL returned');
+      await navigator.clipboard.writeText(url);
+      setStealthCopyAppId(appId);
+      setTimeout(() => setStealthCopyAppId((cur) => (cur === appId ? null : cur)), 2000);
+      setData((prev: any) => {
+        if (!prev?.applications) return prev;
+        return {
+          ...prev,
+          applications: prev.applications.map((a: any) =>
+            Number(a.app_id) === appId
+              ? {
+                  ...a,
+                  stealth_slug: json.slug,
+                  stealth_views: json.view_count ?? a.stealth_views ?? 0,
+                  stealth_clicks: json.click_count ?? a.stealth_clicks ?? 0,
+                  stealth_dwell_sec: json.total_dwell_sec ?? a.stealth_dwell_sec ?? 0,
+                  stealth_last_engaged_at: json.last_engaged_at ?? a.stealth_last_engaged_at ?? null,
+                }
+              : a
+          ),
+        };
+      });
+      setToast({ show: true, message: 'Stealth link copied — paste as Portfolio / Website' });
+      setTimeout(() => setToast({ show: false, message: '' }), 3500);
+    } catch (err: any) {
+      setToast({ show: true, message: err?.message || 'Could not copy stealth link' });
+      setTimeout(() => setToast({ show: false, message: '' }), 4000);
+    } finally {
+      setStealthBusyAppId(null);
+    }
+  };
+
+  const renderEngagementBadge = (app: any) => {
+    const views = Number(app.stealth_views || 0);
+    const clicks = Number(app.stealth_clicks || 0);
+    const engaged = views > 0 || clicks > 0 || Boolean(app.stealth_last_engaged_at);
+    if (!app.stealth_slug && !engaged) return null;
+    return (
+      <span
+        title={
+          engaged
+            ? `${views} view${views === 1 ? '' : 's'} · ${clicks} click${clicks === 1 ? '' : 's'}`
+            : 'Stealth link ready — awaiting recruiter open'
+        }
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+          engaged
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+            : 'bg-stone-50 text-stone-500 border border-stone-100'
+        }`}
+      >
+        <Activity size={10} />
+        {engaged ? `Engaged · ${views}v/${clicks}c` : 'Link ready'}
+      </span>
+    );
+  };
+
   const handleMarkApplied = async (jobId: number, options?: { keepModalOpen?: boolean }) => {
     try {
       const res = await fetch('/api/applications/create', {
@@ -2440,15 +2508,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </td>
                               <td className="px-5 py-4 text-[#6B6B6B] font-medium max-w-[14rem] break-words">{app.role}</td>
                             <td className="px-5 py-4">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                ['APPLIED', 'SENT', 'RESPONDED'].includes(displayStatus) ? 'bg-sky-50 text-sky-700 border border-sky-100' :
-                                ['INTERVIEW', 'ENTREVISTA'].includes(displayStatus) ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
-                                ['OFFER', 'OFERTA'].includes(displayStatus) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                ['REJECTED', 'DESCARTADO', 'SKIP', 'DISCARDED'].includes(displayStatus) ? 'bg-stone-100 text-stone-600' :
-                                'bg-amber-50 text-amber-700 border border-amber-100'
-                              }`}>
-                                {displayStatus}
-                              </span>
+                              <div className="flex flex-col gap-1.5 items-start">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                  ['APPLIED', 'SENT', 'RESPONDED'].includes(displayStatus) ? 'bg-sky-50 text-sky-700 border border-sky-100' :
+                                  ['INTERVIEW', 'ENTREVISTA'].includes(displayStatus) ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                                  ['OFFER', 'OFERTA'].includes(displayStatus) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                  ['REJECTED', 'DESCARTADO', 'SKIP', 'DISCARDED'].includes(displayStatus) ? 'bg-stone-100 text-stone-600' :
+                                  'bg-amber-50 text-amber-700 border border-amber-100'
+                                }`}>
+                                  {displayStatus}
+                                </span>
+                                {renderEngagementBadge(app)}
+                              </div>
                             </td>
                             <td className="px-5 py-4 font-mono text-xs text-[#9CA3AF]">
                               {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'N/A'}
@@ -2458,6 +2529,21 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             </td>
                             <td className="px-5 py-4 text-[#1C1C1E]">
                               <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={stealthBusyAppId === Number(app.app_id)}
+                                  onClick={() => copyStealthLink(Number(app.app_id))}
+                                  title="Copy stealth companion link"
+                                  className="p-2 border border-[#E5E5E0] rounded-lg hover:bg-[#F5F5F0] transition-all text-[#6B6B6B] hover:text-[#1C1C1E]"
+                                >
+                                  {stealthBusyAppId === Number(app.app_id) ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : stealthCopyAppId === Number(app.app_id) ? (
+                                    <CheckCircle2 size={14} className="text-emerald-600" />
+                                  ) : (
+                                    <Link2 size={14} />
+                                  )}
+                                </button>
                                 <button
                                   disabled={isAppliedStage}
                                   onClick={() => {
@@ -2589,6 +2675,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   </div>
                                   <h4 className="mb-0.5 line-clamp-2 break-words text-sm font-bold leading-snug text-[#1C1C1E]">{app.company}</h4>
                                   <p className="mb-2 line-clamp-2 break-words text-xs text-[#6B6B6B]">{app.role}</p>
+                                  <div className="mb-2">{renderEngagementBadge(app)}</div>
 
                                   {showOverdue && (
                                     <div className="bg-rose-50 border border-rose-100 rounded-md p-1.5 mb-2 flex items-center gap-1.5 text-[10px] font-bold text-rose-700">
@@ -2610,6 +2697,21 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                         : '—'}
                                     </span>
                                     <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                      <button
+                                        type="button"
+                                        disabled={stealthBusyAppId === Number(app.app_id)}
+                                        onClick={() => copyStealthLink(Number(app.app_id))}
+                                        className="p-1 border border-[#E5E5E0] rounded hover:bg-[#F5F5F0] text-[#6B6B6B] transition-all"
+                                        title="Copy stealth companion link"
+                                      >
+                                        {stealthBusyAppId === Number(app.app_id) ? (
+                                          <Loader2 size={10} className="animate-spin" />
+                                        ) : stealthCopyAppId === Number(app.app_id) ? (
+                                          <CheckCircle2 size={10} className="text-emerald-600" />
+                                        ) : (
+                                          <Link2 size={10} />
+                                        )}
+                                      </button>
                                       {app?.url && (
                                         <a
                                           href={app.url}
