@@ -292,6 +292,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     ats_content_score?: number | null;
     has_resume_html?: boolean;
     has_resume_pdf?: boolean;
+    has_cover_letter_html?: boolean;
+    has_cover_letter_pdf?: boolean;
+    docKind?: 'resume' | 'cover';
   } | null>(null);
   const [studioInitialJobId, setStudioInitialJobId] = useState<number | null>(null);
   const [betaBannerDismissed, setBetaBannerDismissed] = useState(false);
@@ -464,6 +467,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     ats_content_score?: number | null;
     has_resume_html?: boolean;
     has_resume_pdf?: boolean;
+    has_cover_letter_html?: boolean;
+    has_cover_letter_pdf?: boolean;
+    docKind?: 'resume' | 'cover';
   }) => {
     setStudioReviewJob(job);
     setStudioInitialJobId(job.jobId);
@@ -3045,6 +3051,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   ats_content_score: doc.ats_content_score ?? null,
                   has_resume_html: doc.has_resume_html,
                   has_resume_pdf: doc.has_resume_pdf,
+                  has_cover_letter_html: doc.has_cover_letter_html,
+                  has_cover_letter_pdf: doc.has_cover_letter_pdf,
+                  docKind: doc.kind === 'cover' ? 'cover' : 'resume',
                 })
               }
             />

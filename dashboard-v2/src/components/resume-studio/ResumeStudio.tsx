@@ -33,6 +33,9 @@ type ResumeStudioProps = {
     ats_content_score?: number | null;
     has_resume_html?: boolean;
     has_resume_pdf?: boolean;
+    has_cover_letter_html?: boolean;
+    has_cover_letter_pdf?: boolean;
+    docKind?: 'resume' | 'cover';
   } | null;
   onClearReviewJob?: () => void;
 };
@@ -374,7 +377,22 @@ export default function ResumeStudio({
                     atsContentScore={reviewJob.ats_content_score}
                     hasResumeHtml={reviewJob.has_resume_html}
                     hasResumePdf={reviewJob.has_resume_pdf}
+                    hasCoverHtml={reviewJob.has_cover_letter_html}
+                    hasCoverPdf={reviewJob.has_cover_letter_pdf}
+                    docKind={reviewJob.docKind === 'cover' ? 'cover' : 'resume'}
                     onClose={onClearReviewJob}
+                    onDocsUpdated={(next) => {
+                      // Keep review flags in sync after Fix name (parent may hold stale props).
+                      if (!reviewJob) return;
+                      Object.assign(reviewJob, {
+                        has_resume_html: next.has_resume_html ?? reviewJob.has_resume_html,
+                        has_resume_pdf: next.has_resume_pdf ?? reviewJob.has_resume_pdf,
+                        has_cover_letter_html:
+                          next.has_cover_letter_html ?? reviewJob.has_cover_letter_html,
+                        has_cover_letter_pdf:
+                          next.has_cover_letter_pdf ?? reviewJob.has_cover_letter_pdf,
+                      });
+                    }}
                   />
                 ) : null}
               </>
@@ -460,14 +478,47 @@ export default function ResumeStudio({
         </div>
 
         <div className="min-h-[320px] lg:min-h-0">
-          <LivePreview
-            draft={draft}
-            zoom={zoom}
-            onZoomChange={setZoom}
-            onOpenTemplates={() => setGalleryOpen(true)}
-            externalAtsScore={liveAts.score}
-            externalAtsSource={liveAts.source}
-          />
+          {reviewJob?.docKind === 'cover' &&
+          (reviewJob.has_cover_letter_html || reviewJob.has_cover_letter_pdf) ? (
+            <div className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white lg:min-h-0">
+              <div className="flex items-center justify-between border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+                    Live Preview · Cover letter
+                  </div>
+                  <p className="text-xs font-medium text-[#6B6B6B]">
+                    {reviewJob.company || 'Company'} — use Fix name in the review panel if needed
+                  </p>
+                </div>
+                <a
+                  href={`/api/view/${reviewJob.jobId}?type=cl`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:border-[#1C1C1E]"
+                >
+                  Open
+                </a>
+              </div>
+              <iframe
+                title="Cover letter live preview"
+                src={
+                  reviewJob.has_cover_letter_html
+                    ? `/api/view/${reviewJob.jobId}?type=cl`
+                    : `/api/view/${reviewJob.jobId}?type=cl&format=pdf`
+                }
+                className="w-full flex-1 border-0 bg-white"
+              />
+            </div>
+          ) : (
+            <LivePreview
+              draft={draft}
+              zoom={zoom}
+              onZoomChange={setZoom}
+              onOpenTemplates={() => setGalleryOpen(true)}
+              externalAtsScore={liveAts.score}
+              externalAtsSource={liveAts.source}
+            />
+          )}
         </div>
       </div>
 

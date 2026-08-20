@@ -24,6 +24,8 @@ export type GeneratedDoc = {
   has_cover_letter_pdf?: boolean;
   has_resume_html?: boolean;
   has_cover_letter_html?: boolean;
+  /** Set when opening Studio from a resume vs cover letter card. */
+  kind?: 'resume' | 'cover';
 };
 
 type DocKind = 'resume' | 'cover';
@@ -337,10 +339,15 @@ export default function GeneratedDocsPanel({
                           has_cover_letter_pdf: card.has_cover_letter_pdf,
                           mtime: card.mtime,
                           url: card.url,
+                          kind: card.kind,
                         })
                       }
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-xs font-semibold text-[#1C1C1E] transition-colors hover:border-[#1C1C1E] hover:bg-[#FAFAF8]"
-                      title="Compare master vs tailored in Resume Studio"
+                      title={
+                        card.kind === 'cover'
+                          ? 'Open cover letter in Resume Studio'
+                          : 'Compare master vs tailored resume in Resume Studio'
+                      }
                     >
                       <Sparkles size={14} />
                       Studio
