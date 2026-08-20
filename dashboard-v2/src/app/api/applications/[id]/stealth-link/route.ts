@@ -2,35 +2,20 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import sql from '@/lib/db';
 import { ensureApplicationTelemetrySchema } from '@/lib/ops-schema';
-import type { ResumeContext } from '@/lib/resume/types';
 import {
   appOriginFromRequest,
   buildTrackingSlug,
-  normalizeExternalUrl,
 } from '@/lib/telemetry/urls';
 import { invalidateTrackingCache, setCachedTracking } from '@/lib/telemetry/cache';
+import { loadCompanionProfile } from '@/lib/telemetry/companion-profile';
 
 export const dynamic = 'force-dynamic';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-async function loadProfileUrls(userId: string) {
-  const [profileRow] = await sql`
-    SELECT resume_context FROM user_profiles WHERE user_id = ${Number(userId)} LIMIT 1
-  `;
-  const ctx = (profileRow?.resume_context || {}) as ResumeContext;
-  const candidate = ctx.candidate || {};
-  return {
-    githubUrl: normalizeExternalUrl(candidate.github),
-    linkedinUrl: normalizeExternalUrl(candidate.linkedin),
-    portfolioUrl: normalizeExternalUrl(candidate.portfolio_url),
-  };
-}
-
 /**
  * Ensure a stealth companion link exists for an application and return its URL.
- * Idempotent: reuses existing application_tracking row when present.
- * Always refreshes destination URLs from the candidate profile + busts KV cache.
+ * Idempotent: reuses existing row; refreshes destinations from Resume Studio profile.
  */
 export async function POST(req: Request, context: RouteContext) {
   try {
@@ -64,7 +49,10 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
-    const { githubUrl, linkedinUrl, portfolioUrl } = await loadProfileUrls(userId);
+    const profile = await loadCompanionProfile(sql, userId);
+    const githubUrl = profile.githubUrl;
+    const linkedinUrl = profile.linkedinUrl;
+    const portfolioUrl = profile.portfolioUrl;
 
     const [existing] = await sql`
       SELECT id, slug, view_count, click_count, total_dwell_sec, last_engaged_at
@@ -100,6 +88,7 @@ export async function POST(req: Request, context: RouteContext) {
         total_dwell_sec: existing.total_dwell_sec ?? 0,
         last_engaged_at: existing.last_engaged_at ?? null,
         created: false,
+        profile_name: profile.name,
       });
     }
 
@@ -150,6 +139,7 @@ export async function POST(req: Request, context: RouteContext) {
       total_dwell_sec: 0,
       last_engaged_at: null,
       created: true,
+      profile_name: profile.name,
     });
   } catch (error: unknown) {
     console.error('[stealth-link]', error);
