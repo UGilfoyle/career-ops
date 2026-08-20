@@ -85,7 +85,7 @@ async function runMatchApis(
   return { matchJson, atsJson, matchOk: matchRes.ok };
 }
 
-const JD_ATS_TARGET = 94;
+const JD_ATS_TARGET = 95;
 
 export function JdMatchPanel({
   draft,

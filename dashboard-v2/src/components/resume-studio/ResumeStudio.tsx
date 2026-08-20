@@ -418,7 +418,7 @@ export default function ResumeStudio({
                     if (Array.isArray(aligned.experience) && aligned.experience.length) {
                       updateExperience(aligned.experience);
                     }
-                    setBanner(`JD keywords mirrored into Live Preview (target ${94}%+). Save if you want this kept.`);
+                    setBanner(`JD keywords mirrored into Live Preview (target ${95}%+). Save if you want this kept.`);
                   }}
                   hasGeneratedResume={Boolean(
                     reviewJob?.has_resume_html

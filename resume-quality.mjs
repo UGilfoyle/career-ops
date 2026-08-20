@@ -556,6 +556,10 @@ export function scrubResumeArtifacts(text) {
   t = t.replace(/\s*—\s*/g, ', ');
   t = t.replace(/\s*–\s*/g, ', ');
   t = t.replace(/\s+--\s+/g, ', ');
+  // Decorative arrows = AI tell (▸ → ⇒ ➔ etc.) — never on a resume
+  t = t.replace(/^[▸►▶➢➤•▪︎]\s*/gm, '');
+  t = t.replace(/\s*[▸►▶➢➤⇒➔➜⟶➞]\s*/g, ' ');
+  t = t.replace(/\s*(?:→|->|=>)\s*/g, ' to ');
   t = t.replace(/\s{2,}/g, ' ');
   t = t.replace(/,\s*,/g, ',');
 
@@ -1513,6 +1517,69 @@ export function estimateAtsContentScore(audit, opts = {}) {
     + skillsBonus
     + summaryBonus;
   return Math.max(0, Math.min(100, base - heavyWordPenalty - verbPenalty - intraPenalty));
+}
+
+/** True only for core AI/ML/LLM/RAG JDs — not Copilot / AI-assisted coding niceties. */
+export function jdIsCoreAiRole(jdText) {
+  const jd = String(jdText || '').toLowerCase();
+  if (!jd) return false;
+  return /\b(large language model|\bllms?\b|\brag\b|retrieval[- ]augmented|vector (?:db|database|search)|langchain|machine learning engineer|ml engineer|generative ai engineer|ai platform|llmops|chromadb|pinecone|embedding model|prompt engineer)\b/i.test(
+    jd,
+  );
+}
+
+const UNSOLICITED_AI_LINE_RE =
+  /\b(llms?|chromadb|pinecone|weaviate|text-embedding|embedding-3|langchain|openai|anthropic|claude\b|llama\b|self-correcting validation|generative ai|rag pipeline|vector (?:db|database|store)|llm[-\s]?rerank|llm[-\s]?pars)\b/i;
+
+/**
+ * For non-AI JDs: drop AI/LLM/RAG invent lines from summary/bullets/skills.
+ * Always strip decorative arrow glyphs from resume text.
+ */
+export function stripUnsolicitedAiFromResume(resume, jdText) {
+  if (!resume || typeof resume !== 'object') return resume;
+  const allowAi = jdIsCoreAiRole(jdText);
+  const out = JSON.parse(JSON.stringify(resume));
+
+  const scrubLine = (line) => scrubResumeArtifacts(String(line || ''));
+  const keepLine = (line) => {
+    const t = scrubLine(line);
+    if (!t) return '';
+    if (!allowAi && UNSOLICITED_AI_LINE_RE.test(t)) return '';
+    return t;
+  };
+
+  if (typeof out.summary === 'string') {
+    out.summary = out.summary
+      .split(/\n+/)
+      .map(keepLine)
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  if (Array.isArray(out.core_competencies)) {
+    out.core_competencies = out.core_competencies
+      .map(keepLine)
+      .filter(Boolean)
+      .filter((c) => allowAi || !UNSOLICITED_AI_LINE_RE.test(c));
+  }
+
+  const scrubBullets = (bullets) =>
+    (Array.isArray(bullets) ? bullets : [])
+      .map(keepLine)
+      .filter(Boolean);
+
+  if (out.experience && typeof out.experience === 'object' && !Array.isArray(out.experience)) {
+    for (const key of Object.keys(out.experience)) {
+      out.experience[key] = scrubBullets(out.experience[key]);
+    }
+  } else if (Array.isArray(out.experience)) {
+    out.experience = out.experience.map((role) => ({
+      ...role,
+      bullets: scrubBullets(role?.bullets),
+    }));
+  }
+
+  return out;
 }
 
 export { ATS_TARGET_SCORE };

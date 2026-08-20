@@ -476,8 +476,11 @@ export function isEmployerBrandKeyword(kw, jdText = '') {
 export function isJunkKeyword(kw) {
   const k = normalizeKeyword(kw).toLowerCase();
   if (!k || k.length < 2) return true;
-  // IDE assistants are never skills / ATS keywords
+  // IDE assistants / "AI-assisted coding" productivity fluff — never ATS skills
   if (isEditorIdeTool(k)) return true;
+  if (/^(ai[-\s]?assisted(\s+coding)?|agentic(\s+development)?(\s+techniques)?|github copilot|cursor ai)$/i.test(k)) {
+    return true;
+  }
   if (isEmployerBrandKeyword(k)) return true;
   // Bare version fragments split from model names ("3-large" from text-embedding-3-large)
   if (/^\d+-[a-z0-9-]+$/.test(k)) return true;
@@ -1059,16 +1062,20 @@ export function formatJdKeywordBlock(jdKeywords) {
   return jdKeywords.map((k, i) => `${i + 1}. ${k}`).join('\n');
 }
 
-/** Target JD keyword coverage in the tailored resume (100 looks fake; 94+ is the bar). */
-export const JD_ALIGNMENT_TARGET = 94;
+/** Target JD keyword coverage (94–96 band; 100 looks fake). */
+export const JD_ALIGNMENT_TARGET = 95;
+/** Soft ceiling — stop pushing once we hit this (avoid perfect 100). */
+export const JD_ALIGNMENT_SOFT_MAX = 96;
 
 /**
  * Push resume text until ≥target% of JD keywords appear (competencies + summary + light weave).
  * Skills section may list the JD stack for ATS; experience weave stays weavable phrases only.
- * Stops at target (default 94) — does not force 100% (perfect scores look fake).
+ * Stops at target (default 95) — does not force 100% (perfect scores look fake).
+ * Soft-caps near JD_ALIGNMENT_SOFT_MAX (96).
  */
 export function forceJdKeywordCoverage(resume, jdKeywords, opts = {}) {
   const target = Number.isFinite(opts.target) ? opts.target : JD_ALIGNMENT_TARGET;
+  const softMax = Number.isFinite(opts.softMax) ? opts.softMax : JD_ALIGNMENT_SOFT_MAX;
   const maxPasses = Number.isFinite(opts.maxPasses) ? opts.maxPasses : 5;
   const sourceExperience = opts.sourceExperience || [];
   const weaveRoleIndices = opts.weaveRoleIndices;
@@ -1084,6 +1091,7 @@ export function forceJdKeywordCoverage(resume, jdKeywords, opts = {}) {
 
   const total = jdKeywords.length;
   const neededMatches = Math.min(total, Math.ceil((target / 100) * total));
+  const maxMatches = Math.min(total, Math.floor((softMax / 100) * total));
 
   let working = JSON.parse(JSON.stringify(resume));
   let alignment = measureJdAlignment(working, jdKeywords);
@@ -1093,7 +1101,8 @@ export function forceJdKeywordCoverage(resume, jdKeywords, opts = {}) {
     passes += 1;
     const comps = Array.isArray(working.core_competencies) ? [...working.core_competencies] : [];
     const compLower = comps.map((c) => String(c).toLowerCase());
-    const stillNeeded = Math.max(0, neededMatches - (alignment.matched?.length || 0));
+    const matchCap = Math.max(neededMatches, Math.min(maxMatches, neededMatches));
+    const stillNeeded = Math.max(0, matchCap - (alignment.matched?.length || 0));
 
     let added = 0;
     const justAdded = [];
@@ -1111,7 +1120,7 @@ export function forceJdKeywordCoverage(resume, jdKeywords, opts = {}) {
     }
     working.core_competencies = uniqueCasePreserved(comps).slice(0, 22);
 
-    // Only weave what we just mirrored — avoid dumping leftover JD terms into summary (keeps ~94–97, not 100)
+    // Only weave what we just mirrored — avoid dumping leftover JD terms into summary (keeps ~94–96, not 100)
     working.summary = weaveKeywordsIntoSummary(
       working.summary,
       justAdded.filter((kw) => isWeavableKeyword(kw)).slice(0, 4),

@@ -270,5 +270,8 @@ _If `voice-dna.md` exists, its §3 Banned List is the canonical, fuller version 
 - Avoid clunky "doing freelancing" or "freelancing work" phrasing.
 
 ### AI Experience Prioritization
-- If the JD requires or mentions AI, Generative AI, Large Language Models (LLMs), RAG, vector search, or machine learning, prioritize and weave the candidate's actual AI experience (ChromaDB document ingestion pipeline, conversation query-rewriting, Claude/GPT API integrations with retry mechanisms, self-correcting validation loops) into the summary, core competencies, and tailored experience bullets.
+- **Only** when the JD is a real AI/ML/LLM/RAG role (core requirements — not a "nice to have" like AI-assisted coding, Copilot, or agentic developer productivity).
+- Never inject ChromaDB, embeddings, Claude/GPT/Llama, RAG, or LLM-feature bullets into AWS/backend/platform JDs that do not require them.
+- Stay on the JD stack. Target ~94–96% JD keyword coverage in the tailored resume — do not pad AI fluff to look "modern".
+- Never use decorative arrows (▸ → ⇒) in resume text — plain bullets / commas only (AI-tells).
 

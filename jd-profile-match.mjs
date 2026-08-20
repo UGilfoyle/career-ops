@@ -523,8 +523,8 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   } else if (/\b(web scrap|scraping|puppeteer|playwright|cheerio|selenium)\b/i.test(jdLower)) {
     lines.push('Ship JavaScript services for data extraction and browser automation with solid REST APIs, Postgres, and cloud delivery.');
   } else if (
-    /\b(copilot|cursor|generative ai|langchain|openai|chatgpt|ai agent)\b/i.test(jdLower) &&
-    !/\bwe may use artificial intelligence\b/i.test(jdLower)
+    // Core AI/ML roles only — NOT "AI-assisted coding" / Copilot / agentic productivity niceties
+    /\b(large language model|\bllms?\b|\brag\b|retrieval[- ]augmented|vector (?:db|database|search)|langchain|machine learning engineer|ml engineer|generative ai engineer|ai platform|llmops|chromadb|pinecone|embedding model)\b/i.test(jdLower)
   ) {
     lines.push('Lead LLM-backed features and AI-assisted delivery with production-grade API reliability and validation loops.');
   } else if (/\bevent-driven|microservice|kafka|message queue\b/i.test(jdLower)) {

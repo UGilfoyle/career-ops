@@ -20,7 +20,9 @@ function escapeHtml(s: unknown): string {
 function stripBulletMarkdown(text: string): string {
   return String(text || '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/^[•\-*▸]\s*/, '')
+    .replace(/^[•\-*▸►▶]\s*/, '')
+    .replace(/\s*[▸►▶➢➤⇒➔➜]\s*/g, ' ')
+    .replace(/\s*(?:→|->|=>)\s*/g, ' to ')
     .trim();
 }
 

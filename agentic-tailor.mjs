@@ -23,6 +23,8 @@ import {
   elevateBulletForEmployer,
   isSeniorToneEmployer,
   removeSplicedFragments,
+  scrubResumeArtifacts,
+  stripUnsolicitedAiFromResume,
 } from './resume-quality.mjs';
 import {
   extractJdKeywords,
@@ -1394,6 +1396,8 @@ GLOBAL RULES:
 - NO AI-sounding phrases
 - Individual Ownership (I, not We): Position all technical achievements, summaries, and cover letters as direct personal contributions. Never use team-oriented language like "we", "our", "us", "assisted with", "participated in", or "worked in a team to". Use first-person singular "I" or strong active verbs (e.g. "I built...", "I engineered...", "Architected...", "Designed...") to show individual ownership of the work.
 - 100% JD-Alignment (ATS-FIRST): Mirror honest JD tech in Summary and Core Competencies using exact JD wording (Angular, Node.js, TypeScript, Docker, Kubernetes, PostgreSQL, AWS). Experience bullets stay on tools proven in THAT role's digest. Never rewrite Quest/INTVERSE/etc. as if they shipped a JD-only stack (no FastAPI/Angular/Nest on a Node/Redis role). Gap tools belong in competencies only, never invented into bullets. Still never invent employers or fake percentage metrics that are not in the digest.
+- JD ONLY: If this JD is AWS/backend/platform and does NOT require LLM/RAG/ML as a core skill, do NOT add ChromaDB, embeddings, Claude/GPT/Llama, "LLM-parsed", or AI-feature bullets. "AI-assisted coding" as a nice-to-have is NOT permission to rewrite the resume as AI engineering.
+- NO decorative arrows (▸ → ⇒) anywhere in resume text — plain sentences only.
 - Use short sentences, active voice, specific numbers where they appear in the digest
 - Lead with substance, not filler${companyTypeRule}
 - Highlight Applied AI & GenAI/LLM: Only if THIS posting's own requirements mention AI/LLM/RAG (ignore Naukri "Similar jobs" chrome). Then weave digest-proven AI work into summary/competencies. Never paste FastAPI/SSE/LLM onto a role whose digest does not contain that work.
@@ -1810,6 +1814,12 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
         `⚠ JD coverage ${pushed.alignment.score}% still below ${JD_ALIGNMENT_TARGET}%. Missing: ${(pushed.alignment.missing || []).slice(0, 12).join(', ')}`,
       );
     }
+  }
+
+  // Never inject AI/LLM/RAG fluff into non-AI JDs; strip decorative arrows (AI tells).
+  data.resume = stripUnsolicitedAiFromResume(data.resume, jd);
+  if (typeof data.resume?.summary === 'string') {
+    data.resume.summary = scrubResumeArtifacts(data.resume.summary);
   }
 
   // Generate the JD-tailored resume even when coverage is below the floor.
