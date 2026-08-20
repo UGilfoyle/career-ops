@@ -10,6 +10,7 @@ import {
   Download,
   X,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 
 export type GeneratedDoc = {
@@ -112,6 +113,52 @@ export default function GeneratedDocsPanel({
   const [filter, setFilter] = useState<DocFilter>('all');
   const [query, setQuery] = useState('');
   const [preview, setPreview] = useState<DocCard | null>(null);
+  const [pdfBusyKey, setPdfBusyKey] = useState<string | null>(null);
+  const [pdfHint, setPdfHint] = useState<string | null>(null);
+
+  async function downloadPdf(card: DocCard) {
+    const url = pdfDownloadUrl(card);
+    if (!url) return;
+    setPdfBusyKey(card.cardKey);
+    setPdfHint(null);
+    try {
+      const res = await fetch(url, { credentials: 'same-origin' });
+      const contentType = res.headers.get('content-type') || '';
+
+      if (res.status === 202 || (res.ok && contentType.includes('text/'))) {
+        const msg = (await res.text()).trim();
+        setPdfHint(msg || 'PDF still generating — wait ~30s and try again.');
+        return;
+      }
+
+      if (!res.ok) {
+        const msg = (await res.text()).trim();
+        setPdfHint(msg || `PDF failed (${res.status})`);
+        return;
+      }
+
+      if (!contentType.includes('application/pdf')) {
+        const msg = (await res.text()).trim();
+        setPdfHint(msg || 'Unexpected response — try again in a moment.');
+        return;
+      }
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `${(card.company || 'resume').replace(/[^\w\- ]+/g, '').replace(/\s+/g, '_')}_${card.kind === 'cover' ? 'cover' : 'resume'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+      setPdfHint(null);
+    } catch (e: unknown) {
+      setPdfHint(e instanceof Error ? e.message : 'PDF download failed');
+    } finally {
+      setPdfBusyKey(null);
+    }
+  }
 
   const allCards = useMemo(() => expandToDocCards(docs), [docs]);
 
@@ -179,6 +226,19 @@ export default function GeneratedDocsPanel({
           />
         </div>
       </div>
+
+      {pdfHint ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+          {pdfHint}
+          <button
+            type="button"
+            onClick={() => setPdfHint(null)}
+            className="ml-3 text-xs font-bold uppercase tracking-wider text-amber-700 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       {filtered.length === 0 ? (
         <div className="rounded-[2rem] border border-dashed border-[#E5E5E0] bg-[#FAFAF8] px-8 py-16 text-center">
@@ -287,13 +347,20 @@ export default function GeneratedDocsPanel({
                     </button>
                   ) : null}
                   {pdfUrl ? (
-                    <a
-                      href={pdfUrl}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#1C1C1E] bg-white px-3 py-2.5 text-xs font-semibold text-[#1C1C1E] transition-colors hover:bg-[#1C1C1E] hover:text-white"
+                    <button
+                      type="button"
+                      disabled={pdfBusyKey === card.cardKey}
+                      onClick={() => void downloadPdf(card)}
+                      title="Download PDF (may take ~30–60s on first generate)"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#1C1C1E] bg-white px-3 py-2.5 text-xs font-semibold text-[#1C1C1E] transition-colors hover:bg-[#1C1C1E] hover:text-white disabled:cursor-wait disabled:opacity-70"
                     >
-                      <Download size={14} />
-                      PDF
-                    </a>
+                      {pdfBusyKey === card.cardKey ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Download size={14} />
+                      )}
+                      {pdfBusyKey === card.cardKey ? 'Wait…' : 'PDF'}
+                    </button>
                   ) : (
                     <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#F0F0EB] bg-[#FAFAF8] px-3 py-2.5 text-xs font-semibold text-[#C4C4C4]">
                       PDF

@@ -4,11 +4,15 @@ import sql from '@/lib/db';
 import { auth } from '@/auth';
 import { r2ConfigDebug, streamR2Object } from '@/lib/r2-client';
 import { renderPdfFromHtml } from '@/lib/pdf-renderer';
+import { ensureBackgroundSchema } from '@/lib/ops-schema';
+import { parseRunMetadata } from '@/lib/analytics/run-metadata';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-/** On-demand HTML→PDF can take a while on cold Chromium. */
-export const maxDuration = 60;
+/** Local Chromium or Actions poll can take a while. */
+export const maxDuration = 120;
+
+type GithubSettings = { pat?: string; repo?: string };
 
 function pdfHeaders(filename: string, download: boolean, source: string): HeadersInit {
   return {
@@ -18,6 +22,122 @@ function pdfHeaders(filename: string, download: boolean, source: string): Header
       : { 'X-Frame-Options': 'SAMEORIGIN' }),
     'X-CareerOps-PDF-Source': source,
   };
+}
+
+async function resolveGithub(userId: string): Promise<{ pat: string; repo: string } | null> {
+  let pat = process.env.GITHUB_PAT || '';
+  let repo = process.env.GITHUB_REPO || 'UGilfoyle/career-ops';
+  try {
+    const [row] = await sql`
+      SELECT resume_context FROM user_profiles WHERE user_id = ${userId} LIMIT 1
+    `;
+    const settings = (row?.resume_context as { github_settings?: GithubSettings } | undefined)
+      ?.github_settings;
+    if (settings?.pat) pat = settings.pat;
+    if (settings?.repo) repo = settings.repo;
+  } catch {
+    /* keep env defaults */
+  }
+  if (!pat) return null;
+  return { pat, repo };
+}
+
+async function dispatchJobPdfAction(
+  userId: string,
+  jobId: string,
+  which: 'resume' | 'cl'
+): Promise<{ ok: boolean; error?: string }> {
+  const gh = await resolveGithub(userId);
+  if (!gh) {
+    return {
+      ok: false,
+      error:
+        'PDF engine unavailable on this server and GITHUB_PAT is not set. Add PAT in Settings → GitHub Automation, or run: tailor ' +
+        jobId +
+        ' --deep',
+    };
+  }
+
+  const actionArgs = `${jobId} ${which}`;
+  const runId = `job-pdf-${jobId}-${which}-${Date.now()}`;
+  const runMeta = parseRunMetadata({
+    actionScript: 'export-job-pdf.mjs',
+    actionArgs,
+    jobId,
+  });
+
+  try {
+    await ensureBackgroundSchema(sql);
+    await sql`
+      INSERT INTO background_runs (id, user_id, action_script, action_args, status, job_id, action_type)
+      VALUES (
+        ${runId},
+        ${String(userId)},
+        ${'export-job-pdf.mjs'},
+        ${actionArgs},
+        ${'queued'},
+        ${runMeta.job_id},
+        ${'export_pdf'}
+      )
+      ON CONFLICT (id) DO NOTHING
+    `;
+  } catch {
+    /* non-fatal */
+  }
+
+  const res = await fetch(
+    `https://api.github.com/repos/${gh.repo}/actions/workflows/scraper-cron.yml/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${gh.pat}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ref: 'main',
+        inputs: {
+          user_id: String(userId),
+          run_id: runId,
+          action_script: 'export-job-pdf.mjs',
+          action_args: actionArgs,
+        },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    return { ok: false, error: `GitHub Actions dispatch failed (${res.status}): ${text.slice(0, 200)}` };
+  }
+  return { ok: true };
+}
+
+async function pollJobPdf(
+  userId: string,
+  jobId: string,
+  type: 'resume' | 'cl',
+  attempts = 24,
+  intervalMs = 3000
+): Promise<{ pdf: Buffer; key: string | null } | null> {
+  for (let i = 0; i < attempts; i++) {
+    const [row] = await sql`
+      SELECT resume_pdf, cover_letter_pdf, resume_pdf_key, cover_letter_pdf_key
+      FROM jobs
+      WHERE id = ${jobId} AND user_id = ${userId}
+      LIMIT 1
+    `;
+    if (row) {
+      const pdf = type === 'cl' ? row.cover_letter_pdf : row.resume_pdf;
+      const key = type === 'cl' ? row.cover_letter_pdf_key : row.resume_pdf_key;
+      if (pdf) {
+        const buf = Buffer.isBuffer(pdf) ? pdf : Buffer.from(pdf);
+        if (buf.length) return { pdf: buf, key: key ? String(key) : null };
+      }
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  return null;
 }
 
 export async function GET(
@@ -34,10 +154,12 @@ export async function GET(
     const type = searchParams.get('type') || 'resume'; // 'resume' or 'cl'
     const download = searchParams.get('download') === '1';
     const format = searchParams.get('format') || 'html'; // 'html' | 'pdf'
+    const waitActions = searchParams.get('wait') !== '0';
 
     const { id } = await params;
     const jobId = id;
     const userId = session.user.id;
+    const docType: 'resume' | 'cl' = type === 'cl' ? 'cl' : 'resume';
 
     const [job] = await sql`
       SELECT
@@ -61,22 +183,23 @@ export async function GET(
       SELECT resume_context FROM user_profiles WHERE user_id = ${userId} LIMIT 1
     `;
     const candidateName =
-      (profileRow as any)?.resume_context?.candidate?.full_name || session.user.name;
+      (profileRow as { resume_context?: { candidate?: { full_name?: string } } } | undefined)
+        ?.resume_context?.candidate?.full_name || session.user.name;
 
     const downloadFilename = buildDownloadFilename({
       candidateName,
       company: job.company,
       roleTitle: job.title,
-      kind: type === 'cl' ? 'cover' : 'resume',
+      kind: docType === 'cl' ? 'cover' : 'resume',
     });
 
     if (format === 'pdf') {
       const filename = downloadFilename;
-      const key = type === 'cl' ? job.cover_letter_pdf_key : job.resume_pdf_key;
-      const htmlToRender = type === 'cl' ? job.cover_letter_html : job.resume_html;
-      const pdfBytea = type === 'cl' ? job.cover_letter_pdf : job.resume_pdf;
+      const key = docType === 'cl' ? job.cover_letter_pdf_key : job.resume_pdf_key;
+      const htmlToRender = docType === 'cl' ? job.cover_letter_html : job.resume_html;
+      const pdfBytea = docType === 'cl' ? job.cover_letter_pdf : job.resume_pdf;
 
-      // 1) R2 (preferred when tailor --deep uploaded a PDF)
+      // 1) R2
       if (key) {
         const dbg = r2ConfigDebug();
         try {
@@ -88,19 +211,16 @@ export async function GET(
           }
         } catch (e: unknown) {
           const msg = String((e as { message?: string })?.message || '');
-          // Recoverable: fall through to BYTEA / on-demand
           const recoverable =
             msg.includes('NoSuchKey') ||
             msg.includes('AccessDenied') ||
             msg.includes('SignatureDoesNotMatch') ||
             msg.includes('InvalidAccessKeyId');
-
           if (!recoverable) {
             return new NextResponse(`R2 error: ${msg}`, {
               status: 500,
               headers: {
                 'X-CareerOps-R2-Endpoint': String(dbg.endpoint),
-                'X-CareerOps-R2-Force-Path-Style': String(dbg.forcePathStyle),
                 'X-CareerOps-R2-Bucket': String(dbg.bucket),
                 'X-CareerOps-R2-Key': String(key),
               },
@@ -110,52 +230,75 @@ export async function GET(
         }
       }
 
-      // 2) Legacy DB BYTEA
+      // 2) DB BYTEA
       if (pdfBytea) {
         return new NextResponse(pdfBytea, {
           headers: pdfHeaders(filename, download, 'db'),
         });
       }
 
-      // 3) On-demand: render from tailored HTML (most common after soft tailor)
-      if (htmlToRender) {
-        try {
-          const renderedPdf = await renderPdfFromHtml(String(htmlToRender));
-          if (renderedPdf?.length) {
-            const bytes = Buffer.from(renderedPdf);
-            if (type === 'cl') {
-              void sql`
-                UPDATE jobs SET cover_letter_pdf = ${bytes}
-                WHERE id = ${jobId} AND user_id = ${userId}
-              `.catch(() => {});
-            } else {
-              void sql`
-                UPDATE jobs SET resume_pdf = ${bytes}
-                WHERE id = ${jobId} AND user_id = ${userId}
-              `.catch(() => {});
-            }
-
-            return new NextResponse(new Uint8Array(bytes), {
-              headers: pdfHeaders(filename, download, 'on-demand-render'),
-            });
-          }
-        } catch (err) {
-          console.error('[view] On-demand PDF render failed:', err);
-        }
-
+      if (!htmlToRender) {
         return new NextResponse(
-          `PDF engine could not render this document. Preview HTML works; retry PDF in a moment, or run: tailor ${jobId} --deep`,
+          `PDF not found. Tailor this job first. Example: tailor ${jobId} --deep`,
+          { status: 404 }
+        );
+      }
+
+      // 3) On-demand Chromium (works locally; often fails on Vercel)
+      try {
+        const renderedPdf = await renderPdfFromHtml(String(htmlToRender));
+        if (renderedPdf?.length) {
+          const bytes = Buffer.from(renderedPdf);
+          if (docType === 'cl') {
+            void sql`
+              UPDATE jobs SET cover_letter_pdf = ${bytes}
+              WHERE id = ${jobId} AND user_id = ${userId}
+            `.catch(() => {});
+          } else {
+            void sql`
+              UPDATE jobs SET resume_pdf = ${bytes}
+              WHERE id = ${jobId} AND user_id = ${userId}
+            `.catch(() => {});
+          }
+          return new NextResponse(new Uint8Array(bytes), {
+            headers: pdfHeaders(filename, download, 'on-demand-render'),
+          });
+        }
+      } catch (err) {
+        console.error('[view] On-demand PDF render failed:', err);
+      }
+
+      // 4) Reliable path: GitHub Actions + Playwright (same as Resume Studio master PDF)
+      if (!waitActions) {
+        return new NextResponse(
+          `PDF engine could not render on this server. Retry with wait=1, or run: tailor ${jobId} --deep`,
           { status: 503 }
         );
       }
 
+      const dispatched = await dispatchJobPdfAction(userId, String(jobId), docType);
+      if (!dispatched.ok) {
+        return new NextResponse(
+          dispatched.error ||
+            `PDF engine failed. Configure GITHUB_PAT in Settings, or run: tailor ${jobId} --deep`,
+          { status: 503 }
+        );
+      }
+
+      const fromActions = await pollJobPdf(userId, String(jobId), docType, 22, 3000);
+      if (fromActions?.pdf?.length) {
+        return new NextResponse(new Uint8Array(fromActions.pdf), {
+          headers: pdfHeaders(filename, download, 'actions'),
+        });
+      }
+
       return new NextResponse(
-        `PDF not found. Tailor this job first (HTML or PDF). Example: tailor ${jobId} --deep`,
-        { status: 404 }
+        `PDF is still generating via GitHub Actions. Wait ~30–60s and click PDF again. (job ${jobId})`,
+        { status: 202 }
       );
     }
 
-    const html = type === 'cl' ? job.cover_letter_html : job.resume_html;
+    const html = docType === 'cl' ? job.cover_letter_html : job.resume_html;
 
     if (!html) {
       return new NextResponse('Content not found', { status: 404 });
@@ -171,7 +314,7 @@ export async function GET(
           : {}),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('View Error:', error);
     return new NextResponse('Error loading content', { status: 500 });
   }

@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
       "./node_modules/@sparticuz/chromium-min/**/*.br",
       "./node_modules/puppeteer-core/.local-chromium/**/*",
     ],
+    "/api/view/[id]": [
+      "./node_modules/@sparticuz/chromium/**/*",
+      "./node_modules/@sparticuz/chromium-min/**/*.br",
+      "./node_modules/puppeteer-core/.local-chromium/**/*",
+    ],
   },
   outputFileTracingIncludes: {
     "/*": [
@@ -48,6 +53,7 @@ const nextConfig: NextConfig = {
       "./fonts/**/*",
     ],
     "/api/resume/export-pdf": ["./runtime-assets/generate-pdf.mjs"],
+    "/api/view/[id]": ["./runtime-assets/generate-pdf.mjs"],
   },
 };
 
