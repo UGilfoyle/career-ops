@@ -57,6 +57,10 @@ import { JobAvatar } from './JobAvatar';
 import ProPaywall, { type PendingPayment } from './ProPaywall';
 import { defaultGccCampaign, type GccCampaign } from './gcc-campaign';
 import { OutreachDraftModal, type OutreachTarget } from './OutreachDraftModal';
+import {
+  EngagementIntelModal,
+  type EngagementIntelTarget,
+} from './EngagementIntelModal';
 import { PipelineStudioView } from './PipelineStudioView';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { MarkdownMessage } from './MarkdownMessage';
@@ -288,6 +292,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [pipelineViewMode, setPipelineViewMode] = useState<'studio' | 'table'>('studio');
   const [gccCampaign, setGccCampaign] = useState<GccCampaign>(defaultGccCampaign);
   const [outreachTarget, setOutreachTarget] = useState<OutreachTarget | null>(null);
+  const [engagementIntelTarget, setEngagementIntelTarget] =
+    useState<EngagementIntelTarget>(null);
   const [studioReviewJob, setStudioReviewJob] = useState<{
     jobId: number;
     company?: string;
@@ -1681,27 +1687,42 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
   };
 
+  const openEngagementIntel = (app: any) => {
+    const appId = Number(app?.app_id);
+    if (!Number.isFinite(appId) || appId <= 0) return;
+    setEngagementIntelTarget({
+      appId,
+      company: String(app.company || 'Company'),
+      role: String(app.role || 'Role'),
+    });
+  };
+
   const renderEngagementBadge = (app: any) => {
     const views = Number(app.stealth_views || 0);
     const clicks = Number(app.stealth_clicks || 0);
     const engaged = views > 0 || clicks > 0 || Boolean(app.stealth_last_engaged_at);
     if (!app.stealth_slug && !engaged) return null;
     return (
-      <span
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          openEngagementIntel(app);
+        }}
         title={
           engaged
-            ? `${views} view${views === 1 ? '' : 's'} · ${clicks} click${clicks === 1 ? '' : 's'}`
-            : 'Stealth link ready — awaiting recruiter open'
+            ? `${views} view${views === 1 ? '' : 's'} · ${clicks} click${clicks === 1 ? '' : 's'} — open intel`
+            : 'Stealth link ready — open intel'
         }
-        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
           engaged
-            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-            : 'bg-stone-50 text-stone-500 border border-stone-100'
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100'
+            : 'bg-stone-50 text-stone-500 border border-stone-100 hover:bg-stone-100'
         }`}
       >
         <Activity size={10} />
         {engaged ? `Engaged · ${views}v/${clicks}c` : 'Link ready'}
-      </span>
+      </button>
     );
   };
 
@@ -4972,6 +4993,13 @@ Career-Ops terminal`}
       </AnimatePresence>
 
       <OutreachDraftModal target={outreachTarget} onClose={() => setOutreachTarget(null)} />
+      <EngagementIntelModal
+        target={engagementIntelTarget}
+        onClose={() => setEngagementIntelTarget(null)}
+        onCopyStealthLink={(appId) => {
+          void copyStealthLink(appId);
+        }}
+      />
 
       {/* Command Palette */}
       <CommandPaletteModal
