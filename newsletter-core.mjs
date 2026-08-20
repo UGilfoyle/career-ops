@@ -271,6 +271,25 @@ export function buildProductUpdateEmailHtml({
 </html>`;
 }
 
+/** Prefer authenticated custom domain — never freemail as default From. */
+const DEFAULT_BREVO_SENDER = 'noreply@careerops.dpdns.org';
+
+function sanitizeBrevoSenderEmail(raw) {
+  if (!raw) return DEFAULT_BREVO_SENDER;
+  let cleaned = String(raw).trim();
+  // Strip accidental key=value paste into env value
+  cleaned = cleaned.replace(/^[a-zA-Z0-9_]*brevo[a-zA-Z0-9_]*\s*=\s*/i, '').trim();
+  cleaned = cleaned.replace(/^['"]|['"]$/g, '').trim();
+  const match = cleaned.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  return match ? match[0] : DEFAULT_BREVO_SENDER;
+}
+
+function sanitizeBrevoSenderName(raw) {
+  let name = String(raw || 'Career-Ops').trim();
+  name = name.replace(/^[a-zA-Z0-9_]*name\s*=\s*/i, '').replace(/^['"]|['"]$/g, '').trim();
+  return name || 'Career-Ops';
+}
+
 /** Send via Brevo REST (no SDK required in Actions). */
 export async function sendViaBrevo({ to, subject, htmlContent }) {
   const apiKey = process.env.BREVO_API_KEY || '';
@@ -278,8 +297,8 @@ export async function sendViaBrevo({ to, subject, htmlContent }) {
     console.warn('[newsletter] BREVO_API_KEY missing — skip send to', to);
     return false;
   }
-  const senderEmail = (process.env.BREVO_SENDER_EMAIL || 'akash.k96.official@gmail.com').trim();
-  const senderName = (process.env.BREVO_SENDER_NAME || 'Career-Ops').trim();
+  const senderEmail = sanitizeBrevoSenderEmail(process.env.BREVO_SENDER_EMAIL);
+  const senderName = sanitizeBrevoSenderName(process.env.BREVO_SENDER_NAME);
   if (!senderEmail) {
     console.error('[newsletter] BREVO_SENDER_EMAIL missing.');
     return false;

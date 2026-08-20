@@ -14,7 +14,20 @@ function sanitizeSenderEmail(raw?: string): string {
   cleaned = cleaned.replace(/^[a-zA-Z0-9_]*brevo[a-zA-Z0-9_]*\s*=\s*/i, '').trim();
   cleaned = cleaned.replace(/^['"]|['"]$/g, '').trim();
   const match = cleaned.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-  if (match) return match[0];
+  if (match) {
+    const email = match[0];
+    // Freemail From → Gmail soft-bounces / spam; force authenticated domain sender.
+    if (/@(gmail|googlemail|yahoo|outlook|hotmail|live)\./i.test(email)) {
+      console.warn(
+        `[mail] Rejecting freemail sender ${email}; using ${DEFAULT_SENDER_EMAIL}`
+      );
+      return DEFAULT_SENDER_EMAIL;
+    }
+    return email;
+  }
+  console.warn(
+    `[mail] Invalid BREVO_SENDER_EMAIL=${JSON.stringify(raw)}; using ${DEFAULT_SENDER_EMAIL}`
+  );
   return DEFAULT_SENDER_EMAIL;
 }
 
