@@ -4,8 +4,6 @@ import sql from '@/lib/db';
 import { auth } from '@/auth';
 import { r2ConfigDebug, streamR2Object } from '@/lib/r2-client';
 
-import { renderPdfFromHtml } from '@/lib/pdf-renderer';
-
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -83,58 +81,69 @@ export async function GET(
                 },
               });
             }
+            if (msg.includes('NoSuchKey')) {
+              return new NextResponse(
+                `PDF not found in R2. The document may not have been uploaded successfully. Rerun 'tailor ${jobId} --deep'. Expected key: ${key}`,
+                { status: 404, headers: { 'X-CareerOps-R2-Key': String(key) } }
+              );
+            }
           }
-        }
-        if (stream) {
-          return new NextResponse(stream, {
+          if (msg.includes('SignatureDoesNotMatch')) {
+            return new NextResponse(
+              [
+                `R2 error: SignatureDoesNotMatch`,
+                ``,
+                `Most common cause: Vercel env vars are using the Cloudflare API token instead of the S3 Access Key ID + Secret Access Key pair.`,
+                `Fix: In Vercel Project → Settings → Environment Variables, set:`,
+                `- R2_ACCESS_KEY_ID = (Access Key ID from Cloudflare R2 "S3 clients")`,
+                `- R2_SECRET_ACCESS_KEY = (Secret Access Key from Cloudflare R2 "S3 clients")`,
+                `- R2_ACCOUNT_ID, R2_BUCKET`,
+                ``,
+                `Debug: endpoint=${dbg.endpoint}, forcePathStyle=${dbg.forcePathStyle}, bucket=${dbg.bucket}, key=${String(key)}`,
+              ].join('\n'),
+              {
+                status: 500,
+                headers: {
+                  'X-CareerOps-R2-Endpoint': String(dbg.endpoint),
+                  'X-CareerOps-R2-Force-Path-Style': String(dbg.forcePathStyle),
+                  'X-CareerOps-R2-Bucket': String(dbg.bucket),
+                  'X-CareerOps-R2-Key': String(key),
+                },
+              }
+            );
+          }
+          return new NextResponse(`R2 error: ${msg}`, {
+            status: 500,
             headers: {
-              'Content-Type': 'application/pdf',
-              ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : { 'X-Frame-Options': 'SAMEORIGIN' }),
-              'X-CareerOps-PDF-Source': 'r2',
+              'X-CareerOps-R2-Endpoint': String(dbg.endpoint),
+              'X-CareerOps-R2-Force-Path-Style': String(dbg.forcePathStyle),
+              'X-CareerOps-R2-Bucket': String(dbg.bucket),
+              'X-CareerOps-R2-Key': String(key),
             },
           });
         }
-      }
-
-      // Backward compatibility: DB BYTEA (older runs)
-      const pdf = type === 'cl' ? job.cover_letter_pdf : job.resume_pdf;
-      if (pdf) {
-        return new NextResponse(pdf, {
+        if (!stream) return new NextResponse('PDF not available (empty object)', { status: 404 });
+        return new NextResponse(stream, {
           headers: {
             'Content-Type': 'application/pdf',
             ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : { 'X-Frame-Options': 'SAMEORIGIN' }),
-            'X-CareerOps-PDF-Source': 'db',
+            'X-CareerOps-PDF-Source': 'r2',
           },
         });
       }
 
-      // On-demand compilation from HTML if PDF key/bytea is not yet pre-rendered
-      const htmlToRender = type === 'cl' ? job.cover_letter_html : job.resume_html;
-      if (htmlToRender) {
-        try {
-          const renderedPdf = await renderPdfFromHtml(htmlToRender);
-          if (renderedPdf?.length) {
-            // Asynchronously save to DB bytea to cache future requests
-            if (type === 'cl') {
-              void sql`UPDATE jobs SET cover_letter_pdf = ${renderedPdf} WHERE id = ${jobId} AND user_id = ${session.user.id}`.catch(() => {});
-            } else {
-              void sql`UPDATE jobs SET resume_pdf = ${renderedPdf} WHERE id = ${jobId} AND user_id = ${session.user.id}`.catch(() => {});
-            }
-
-            return new Response(new Uint8Array(renderedPdf), {
-              headers: {
-                'Content-Type': 'application/pdf',
-                ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : { 'X-Frame-Options': 'SAMEORIGIN' }),
-                'X-CareerOps-PDF-Source': 'on-demand-render',
-              },
-            });
-          }
-        } catch (err) {
-          console.error('[view] On-demand PDF render failed:', err);
-        }
+      // Backward compatibility: DB BYTEA (older runs)
+      const pdf = type === 'cl' ? job.cover_letter_pdf : job.resume_pdf;
+      if (!pdf) {
+        return new NextResponse('PDF not found (run tailor --deep first)', { status: 404 });
       }
-
-      return new NextResponse('PDF not found (run tailor --deep first)', { status: 404 });
+      return new NextResponse(pdf, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : { 'X-Frame-Options': 'SAMEORIGIN' }),
+          'X-CareerOps-PDF-Source': 'db',
+        },
+      });
     }
 
     const html = type === 'cl' ? job.cover_letter_html : job.resume_html;
