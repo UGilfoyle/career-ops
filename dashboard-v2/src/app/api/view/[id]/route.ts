@@ -3,9 +3,22 @@ import { buildDownloadFilename } from '@/lib/document-filename';
 import sql from '@/lib/db';
 import { auth } from '@/auth';
 import { r2ConfigDebug, streamR2Object } from '@/lib/r2-client';
+import { renderPdfFromHtml } from '@/lib/pdf-renderer';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+/** On-demand HTML→PDF can take a while on cold Chromium. */
+export const maxDuration = 60;
+
+function pdfHeaders(filename: string, download: boolean, source: string): HeadersInit {
+  return {
+    'Content-Type': 'application/pdf',
+    ...(download
+      ? { 'Content-Disposition': `attachment; filename="${filename}"` }
+      : { 'X-Frame-Options': 'SAMEORIGIN' }),
+    'X-CareerOps-PDF-Source': source,
+  };
+}
 
 export async function GET(
   request: Request,
@@ -21,10 +34,10 @@ export async function GET(
     const type = searchParams.get('type') || 'resume'; // 'resume' or 'cl'
     const download = searchParams.get('download') === '1';
     const format = searchParams.get('format') || 'html'; // 'html' | 'pdf'
-    
-    // In Next.js 15+, params is a Promise that must be awaited
+
     const { id } = await params;
     const jobId = id;
+    const userId = session.user.id;
 
     const [job] = await sql`
       SELECT
@@ -36,8 +49,8 @@ export async function GET(
         cover_letter_pdf,
         resume_pdf_key,
         cover_letter_pdf_key
-      FROM jobs 
-      WHERE id = ${jobId} AND user_id = ${session.user.id}
+      FROM jobs
+      WHERE id = ${jobId} AND user_id = ${userId}
     `;
 
     if (!job) {
@@ -45,7 +58,7 @@ export async function GET(
     }
 
     const [profileRow] = await sql`
-      SELECT resume_context FROM user_profiles WHERE user_id = ${session.user.id} LIMIT 1
+      SELECT resume_context FROM user_profiles WHERE user_id = ${userId} LIMIT 1
     `;
     const candidateName =
       (profileRow as any)?.resume_context?.candidate?.full_name || session.user.name;
@@ -60,90 +73,86 @@ export async function GET(
     if (format === 'pdf') {
       const filename = downloadFilename;
       const key = type === 'cl' ? job.cover_letter_pdf_key : job.resume_pdf_key;
+      const htmlToRender = type === 'cl' ? job.cover_letter_html : job.resume_html;
+      const pdfBytea = type === 'cl' ? job.cover_letter_pdf : job.resume_pdf;
+
+      // 1) R2 (preferred when tailor --deep uploaded a PDF)
       if (key) {
         const dbg = r2ConfigDebug();
-        let stream: ReadableStream | null = null;
         try {
-          stream = await streamR2Object(String(key));
+          const stream = await streamR2Object(String(key));
+          if (stream) {
+            return new NextResponse(stream, {
+              headers: pdfHeaders(filename, download, 'r2'),
+            });
+          }
         } catch (e: unknown) {
           const msg = String((e as { message?: string })?.message || '');
-          // Resilience: if R2 key missing or auth broken, fall back to DB BYTEA (older runs)
-          // so the user can still download a PDF when it exists.
-          if (msg.includes('NoSuchKey') || msg.includes('AccessDenied') || msg.includes('SignatureDoesNotMatch') || msg.includes('InvalidAccessKeyId')) {
-            const pdfFallback = type === 'cl' ? job.cover_letter_pdf : job.resume_pdf;
-            if (pdfFallback) {
-              return new NextResponse(pdfFallback, {
-                headers: {
-                  'Content-Type': 'application/pdf',
-                  ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : {}),
-                  'X-CareerOps-PDF-Source': msg.includes('NoSuchKey') ? 'db-fallback-no-r2-key' : 'db-fallback',
-                  'X-CareerOps-R2-Key': String(key),
-                },
-              });
-            }
-            if (msg.includes('NoSuchKey')) {
-              return new NextResponse(
-                `PDF not found in R2. The document may not have been uploaded successfully. Rerun 'tailor ${jobId} --deep'. Expected key: ${key}`,
-                { status: 404, headers: { 'X-CareerOps-R2-Key': String(key) } }
-              );
-            }
+          // Recoverable: fall through to BYTEA / on-demand
+          const recoverable =
+            msg.includes('NoSuchKey') ||
+            msg.includes('AccessDenied') ||
+            msg.includes('SignatureDoesNotMatch') ||
+            msg.includes('InvalidAccessKeyId');
+
+          if (!recoverable) {
+            return new NextResponse(`R2 error: ${msg}`, {
+              status: 500,
+              headers: {
+                'X-CareerOps-R2-Endpoint': String(dbg.endpoint),
+                'X-CareerOps-R2-Force-Path-Style': String(dbg.forcePathStyle),
+                'X-CareerOps-R2-Bucket': String(dbg.bucket),
+                'X-CareerOps-R2-Key': String(key),
+              },
+            });
           }
-          if (msg.includes('SignatureDoesNotMatch')) {
-            return new NextResponse(
-              [
-                `R2 error: SignatureDoesNotMatch`,
-                ``,
-                `Most common cause: Vercel env vars are using the Cloudflare API token instead of the S3 Access Key ID + Secret Access Key pair.`,
-                `Fix: In Vercel Project → Settings → Environment Variables, set:`,
-                `- R2_ACCESS_KEY_ID = (Access Key ID from Cloudflare R2 "S3 clients")`,
-                `- R2_SECRET_ACCESS_KEY = (Secret Access Key from Cloudflare R2 "S3 clients")`,
-                `- R2_ACCOUNT_ID, R2_BUCKET`,
-                ``,
-                `Debug: endpoint=${dbg.endpoint}, forcePathStyle=${dbg.forcePathStyle}, bucket=${dbg.bucket}, key=${String(key)}`,
-              ].join('\n'),
-              {
-                status: 500,
-                headers: {
-                  'X-CareerOps-R2-Endpoint': String(dbg.endpoint),
-                  'X-CareerOps-R2-Force-Path-Style': String(dbg.forcePathStyle),
-                  'X-CareerOps-R2-Bucket': String(dbg.bucket),
-                  'X-CareerOps-R2-Key': String(key),
-                },
-              }
-            );
-          }
-          return new NextResponse(`R2 error: ${msg}`, {
-            status: 500,
-            headers: {
-              'X-CareerOps-R2-Endpoint': String(dbg.endpoint),
-              'X-CareerOps-R2-Force-Path-Style': String(dbg.forcePathStyle),
-              'X-CareerOps-R2-Bucket': String(dbg.bucket),
-              'X-CareerOps-R2-Key': String(key),
-            },
-          });
+          console.warn(`[view] R2 miss for job ${jobId} (${msg}); trying fallbacks`);
         }
-        if (!stream) return new NextResponse('PDF not available (empty object)', { status: 404 });
-        return new NextResponse(stream, {
-          headers: {
-            'Content-Type': 'application/pdf',
-            ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : { 'X-Frame-Options': 'SAMEORIGIN' }),
-            'X-CareerOps-PDF-Source': 'r2',
-          },
+      }
+
+      // 2) Legacy DB BYTEA
+      if (pdfBytea) {
+        return new NextResponse(pdfBytea, {
+          headers: pdfHeaders(filename, download, 'db'),
         });
       }
 
-      // Backward compatibility: DB BYTEA (older runs)
-      const pdf = type === 'cl' ? job.cover_letter_pdf : job.resume_pdf;
-      if (!pdf) {
-        return new NextResponse('PDF not found (run tailor --deep first)', { status: 404 });
+      // 3) On-demand: render from tailored HTML (most common after soft tailor)
+      if (htmlToRender) {
+        try {
+          const renderedPdf = await renderPdfFromHtml(String(htmlToRender));
+          if (renderedPdf?.length) {
+            const bytes = Buffer.from(renderedPdf);
+            if (type === 'cl') {
+              void sql`
+                UPDATE jobs SET cover_letter_pdf = ${bytes}
+                WHERE id = ${jobId} AND user_id = ${userId}
+              `.catch(() => {});
+            } else {
+              void sql`
+                UPDATE jobs SET resume_pdf = ${bytes}
+                WHERE id = ${jobId} AND user_id = ${userId}
+              `.catch(() => {});
+            }
+
+            return new NextResponse(new Uint8Array(bytes), {
+              headers: pdfHeaders(filename, download, 'on-demand-render'),
+            });
+          }
+        } catch (err) {
+          console.error('[view] On-demand PDF render failed:', err);
+        }
+
+        return new NextResponse(
+          `PDF engine could not render this document. Preview HTML works; retry PDF in a moment, or run: tailor ${jobId} --deep`,
+          { status: 503 }
+        );
       }
-      return new NextResponse(pdf, {
-        headers: {
-          'Content-Type': 'application/pdf',
-          ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : { 'X-Frame-Options': 'SAMEORIGIN' }),
-          'X-CareerOps-PDF-Source': 'db',
-        },
-      });
+
+      return new NextResponse(
+        `PDF not found. Tailor this job first (HTML or PDF). Example: tailor ${jobId} --deep`,
+        { status: 404 }
+      );
     }
 
     const html = type === 'cl' ? job.cover_letter_html : job.resume_html;

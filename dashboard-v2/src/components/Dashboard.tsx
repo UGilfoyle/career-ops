@@ -3152,8 +3152,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           {/* Action Buttons */}
                           <div className="p-2 sm:p-3">
                             <div className="grid grid-cols-2 gap-2">
-                              {/* Resume PDF */}
-                              {doc.has_resume_pdf ? (
+                              {/* Resume PDF — on-demand from HTML when no pre-rendered PDF */}
+                              {doc.has_resume_pdf || doc.has_resume_html ? (
                                 <a
                                   href={`/api/view/${doc.id}?format=pdf&download=1`}
                                   className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1C1C1E] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
@@ -3169,7 +3169,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               )}
 
                               {/* Cover Letter PDF */}
-                              {doc.has_cover_letter_pdf ? (
+                              {doc.has_cover_letter_pdf || doc.has_cover_letter_html ? (
                                 <a
                                   href={`/api/view/${doc.id}?type=cl&format=pdf&download=1`}
                                   className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1C1C1E] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"

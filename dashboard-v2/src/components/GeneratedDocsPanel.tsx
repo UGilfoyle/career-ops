@@ -93,10 +93,11 @@ function previewUrl(doc: DocCard): string | null {
 }
 
 function pdfDownloadUrl(doc: DocCard): string | null {
-  if (doc.kind === 'cover' && doc.has_cover_letter_pdf) {
+  // PDF may already exist (R2/BYTEA). If not, /api/view renders on-demand from HTML.
+  if (doc.kind === 'cover' && (doc.has_cover_letter_pdf || doc.has_cover_letter_html)) {
     return `/api/view/${doc.id}?type=cl&format=pdf&download=1`;
   }
-  if (doc.kind === 'resume' && doc.has_resume_pdf) {
+  if (doc.kind === 'resume' && (doc.has_resume_pdf || doc.has_resume_html)) {
     return `/api/view/${doc.id}?format=pdf&download=1`;
   }
   return null;
