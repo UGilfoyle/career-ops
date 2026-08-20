@@ -117,9 +117,12 @@ async function pollJobPdf(
   userId: string,
   jobId: string,
   type: 'resume' | 'cl',
-  attempts = 24,
+  attempts = 28,
   intervalMs = 3000
 ): Promise<{ pdf: Buffer; key: string | null } | null> {
+  // Actions runners often need ~15–40s to start; don't burn early polls.
+  await new Promise((r) => setTimeout(r, 12000));
+
   for (let i = 0; i < attempts; i++) {
     const [row] = await sql`
       SELECT resume_pdf, cover_letter_pdf, resume_pdf_key, cover_letter_pdf_key
@@ -131,7 +134,7 @@ async function pollJobPdf(
       const pdf = type === 'cl' ? row.cover_letter_pdf : row.resume_pdf;
       const key = type === 'cl' ? row.cover_letter_pdf_key : row.resume_pdf_key;
       if (pdf) {
-        const buf = Buffer.isBuffer(pdf) ? pdf : Buffer.from(pdf);
+        const buf = Buffer.isBuffer(pdf) ? pdf : Buffer.from(pdf as Uint8Array);
         if (buf.length) return { pdf: buf, key: key ? String(key) : null };
       }
     }
@@ -244,7 +247,8 @@ export async function GET(
         );
       }
 
-      // 3) On-demand Chromium (works locally; often fails on Vercel)
+      // 3) On-demand Chromium — skipped on Vercel by default (burns the whole timeout).
+      // Local/dev still tries Playwright/Puppeteer first.
       try {
         const renderedPdf = await renderPdfFromHtml(String(htmlToRender));
         if (renderedPdf?.length) {
@@ -271,7 +275,7 @@ export async function GET(
       // 4) Reliable path: GitHub Actions + Playwright (same as Resume Studio master PDF)
       if (!waitActions) {
         return new NextResponse(
-          `PDF engine could not render on this server. Retry with wait=1, or run: tailor ${jobId} --deep`,
+          `PDF engine could not render on this server. Retry PDF (wait enabled), or run: tailor ${jobId} --deep`,
           { status: 503 }
         );
       }
@@ -285,7 +289,7 @@ export async function GET(
         );
       }
 
-      const fromActions = await pollJobPdf(userId, String(jobId), docType, 22, 3000);
+      const fromActions = await pollJobPdf(userId, String(jobId), docType, 28, 3000);
       if (fromActions?.pdf?.length) {
         return new NextResponse(new Uint8Array(fromActions.pdf), {
           headers: pdfHeaders(filename, download, 'actions'),

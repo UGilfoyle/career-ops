@@ -128,15 +128,33 @@ async function tryPuppeteerPdf(html: string): Promise<Buffer | null> {
 
 /**
  * Render HTML to PDF buffer on-demand via Playwright or Puppeteer.
+ * On Vercel/serverless, prefer a short Chromium attempt — callers should
+ * fall back to GitHub Actions when this returns null.
  */
-export async function renderPdfFromHtml(html: string): Promise<Buffer | null> {
+export async function renderPdfFromHtml(
+  html: string,
+  opts?: { skipServerless?: boolean; serverlessTimeoutMs?: number }
+): Promise<Buffer | null> {
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+  // Vercel Chromium pack download is flaky and burns the whole function timeout.
+  // Skip unless explicitly forced via CAREER_OPS_FORCE_VERCEL_PDF=1.
+  if (isServerless && opts?.skipServerless !== false) {
+    if (process.env.CAREER_OPS_FORCE_VERCEL_PDF !== '1') {
+      return null;
+    }
+  }
+
   if (!isServerless) {
     const viaPlaywright = await tryPlaywrightPdf(html);
     if (viaPlaywright?.length) return viaPlaywright;
   }
 
-  const viaPuppeteer = await tryPuppeteerPdf(html);
+  const timeoutMs = opts?.serverlessTimeoutMs ?? (isServerless ? 25000 : 45000);
+  const viaPuppeteer = await Promise.race([
+    tryPuppeteerPdf(html),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+  ]);
   if (viaPuppeteer?.length) return viaPuppeteer;
 
   if (isServerless) {

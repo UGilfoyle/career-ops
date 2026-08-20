@@ -18,12 +18,17 @@ import postgres from 'postgres';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const rawArgs = (process.argv[2] || process.env.ACTION_ARGS || '').trim().split(/\s+/).filter(Boolean);
+const rawArgs = (
+  process.argv.length > 2
+    ? process.argv.slice(2).join(' ')
+    : (process.env.ACTION_ARGS || '')
+).trim().split(/\s+/).filter(Boolean);
 const jobId = rawArgs[0];
 const which = (rawArgs[1] || 'both').toLowerCase();
 const userId = String(process.env.SCAN_USER_ID || '').trim();
+const userIdNum = Number.parseInt(userId, 10);
 
-if (!userId || !jobId || !/^\d+$/.test(jobId)) {
+if (!userId || !Number.isFinite(userIdNum) || !jobId || !/^\d+$/.test(jobId)) {
   console.error('Usage: SCAN_USER_ID=<id> node export-job-pdf.mjs <jobId> [resume|cl|both]');
   process.exit(1);
 }
@@ -116,7 +121,7 @@ async function main() {
   const [job] = await sql`
     SELECT id, company, title, resume_html, cover_letter_html
     FROM jobs
-    WHERE id = ${Number(jobId)} AND user_id = ${userId}
+    WHERE id = ${Number(jobId)} AND user_id = ${userIdNum}
     LIMIT 1
   `;
 
@@ -127,7 +132,7 @@ async function main() {
   const doResume = which === 'resume' || which === 'both' || which === 'all';
   const doCover = which === 'cl' || which === 'cover' || which === 'both' || which === 'all';
   const ts = Date.now();
-  const baseKey = `users/${userId}/jobs/${jobId}/${ts}`;
+  const baseKey = `users/${userIdNum}/jobs/${jobId}/${ts}`;
 
   let resumeKey = null;
   let coverKey = null;
@@ -144,7 +149,7 @@ async function main() {
         UPDATE jobs
         SET resume_pdf = ${pdfBuf},
             resume_pdf_key = COALESCE(${uploaded ? resumeKey : null}, resume_pdf_key)
-        WHERE id = ${Number(jobId)} AND user_id = ${userId}
+        WHERE id = ${Number(jobId)} AND user_id = ${userIdNum}
       `;
       console.log(`[job-pdf] resume saved (r2=${uploaded ? resumeKey : 'skip'})`);
     }
@@ -162,7 +167,7 @@ async function main() {
         UPDATE jobs
         SET cover_letter_pdf = ${pdfBuf},
             cover_letter_pdf_key = COALESCE(${uploaded ? coverKey : null}, cover_letter_pdf_key)
-        WHERE id = ${Number(jobId)} AND user_id = ${userId}
+        WHERE id = ${Number(jobId)} AND user_id = ${userIdNum}
       `;
       console.log(`[job-pdf] cover saved (r2=${uploaded ? coverKey : 'skip'})`);
     }

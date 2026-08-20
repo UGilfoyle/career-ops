@@ -8,7 +8,7 @@ export function normalizeActionType(actionScript) {
   if (s.includes('agentic-tailor')) return 'tailor';
   if (s.includes('auto-apply')) return 'apply';
   if (s.includes('add-job')) return 'add_job';
-  if (s.includes('export-pdf') || s.includes('export_master')) return 'export_pdf';
+  if (s.includes('export-pdf') || s.includes('export_master') || s.includes('export-job-pdf')) return 'export_pdf';
   return 'unknown';
 }
 
