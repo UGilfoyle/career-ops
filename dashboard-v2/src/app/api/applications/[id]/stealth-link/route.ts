@@ -8,6 +8,7 @@ import {
   buildTrackingSlug,
   normalizeExternalUrl,
 } from '@/lib/telemetry/urls';
+import { setCachedTracking } from '@/lib/telemetry/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,13 +50,20 @@ export async function POST(_req: Request, context: RouteContext) {
     }
 
     const [existing] = await sql`
-      SELECT slug, view_count, click_count, total_dwell_sec, last_engaged_at
+      SELECT id, slug, github_url, linkedin_url, portfolio_url,
+             view_count, click_count, total_dwell_sec, last_engaged_at
       FROM application_tracking
       WHERE application_id = ${applicationId} AND user_id = ${userId}
       LIMIT 1
     `;
 
     if (existing) {
+      void setCachedTracking(String(existing.slug), {
+        id: Number(existing.id),
+        github_url: existing.github_url ?? null,
+        linkedin_url: existing.linkedin_url ?? null,
+        portfolio_url: existing.portfolio_url ?? null,
+      });
       const url = `${appOrigin()}/v/${existing.slug}`;
       return NextResponse.json({
         ok: true,
@@ -80,9 +88,10 @@ export async function POST(_req: Request, context: RouteContext) {
     const portfolioUrl = normalizeExternalUrl(candidate.portfolio_url);
 
     let slug = buildTrackingSlug(String(app.company || 'company'), String(app.role || 'role'));
+    let insertedId: number | null = null;
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        await sql`
+        const rows = await sql`
           INSERT INTO application_tracking (
             user_id, application_id, slug, company, role,
             github_url, linkedin_url, portfolio_url
@@ -92,7 +101,9 @@ export async function POST(_req: Request, context: RouteContext) {
             ${String(app.company || 'Company')}, ${String(app.role || '')},
             ${githubUrl}, ${linkedinUrl}, ${portfolioUrl}
           )
+          RETURNING id
         `;
+        insertedId = Number(rows[0]?.id);
         break;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -102,6 +113,15 @@ export async function POST(_req: Request, context: RouteContext) {
         }
         throw err;
       }
+    }
+
+    if (insertedId) {
+      void setCachedTracking(slug, {
+        id: insertedId,
+        github_url: githubUrl,
+        linkedin_url: linkedinUrl,
+        portfolio_url: portfolioUrl,
+      });
     }
 
     const url = `${appOrigin()}/v/${slug}`;

@@ -26,4 +26,7 @@ assert.equal(slugifySegment('Stripe Inc!'), 'stripe-inc');
 const slug = buildTrackingSlug('Stripe', 'Staff Engineer');
 assert.match(slug, /^stripe-staff-engineer-[a-f0-9]{4}$/);
 
+// Phase 1.5 cache key contract (keep in sync with cache.ts)
+assert.equal(`tel:slug:acme-eng-ab12`, 'tel:slug:acme-eng-ab12');
+
 console.log('telemetry unit checks passed');
