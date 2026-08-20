@@ -56,6 +56,7 @@ import ProPaywall, { type PendingPayment } from './ProPaywall';
 import { defaultGccCampaign, type GccCampaign } from './gcc-campaign';
 import { OutreachDraftModal, type OutreachTarget } from './OutreachDraftModal';
 import { PipelineStudioView } from './PipelineStudioView';
+import { CommandPaletteModal } from './CommandPaletteModal';
 import { MarkdownMessage } from './MarkdownMessage';
 import { ONBOARDING_STORAGE_KEY, DASHBOARD_TOUR_STEPS } from '@/lib/onboarding-flow';
 import {
@@ -222,6 +223,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [tagInputNegative, setTagInputNegative] = useState('');
   const [tagInputPortals, setTagInputPortals] = useState('');
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
+
+  // Auto-dismiss toast after 4 seconds
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => {
+        setToast({ show: false, message: '' });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.show, toast.message]);
+
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -643,6 +656,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [walkthroughStep, steps.length]);
+
+  // Global shortcut for Command Palette: ⌘K or Ctrl+K
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   // Trigger walkthrough for both email+password and GitHub OAuth users
   useEffect(() => {
@@ -1884,6 +1909,25 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => setCommandPaletteOpen(true)}
+            className={`mb-3.5 flex w-full items-center rounded-xl border border-[#E5E5E0] bg-white text-xs text-[#6B6B6B] shadow-2xs transition-all hover:border-[#1C1C1E]/30 hover:text-[#1C1C1E] cursor-pointer ${
+              navCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'
+            }`}
+            title="Command Palette (⌘K)"
+          >
+            <div className="flex items-center gap-2">
+              <Search size={14} className="text-[#9CA3AF]" />
+              {!navCollapsed && <span className="font-medium">Quick search...</span>}
+            </div>
+            {!navCollapsed && (
+              <kbd className="rounded bg-[#F5F5F0] px-1.5 py-0.5 font-mono text-[9px] font-bold text-[#9CA3AF] border border-[#E5E5E0]">
+                ⌘K
+              </kbd>
+            )}
+          </button>
 
           <nav className="space-y-0.5">
             <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={navCollapsed} onClick={() => goTab('dashboard')} />
@@ -4817,6 +4861,18 @@ Career-Ops terminal`}
 
       <OutreachDraftModal target={outreachTarget} onClose={() => setOutreachTarget(null)} />
 
+      {/* Command Palette */}
+      <CommandPaletteModal
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigateTab={(tab) => goTab(tab)}
+        onRunCommand={(cmd) => {
+          goTab('terminal');
+          runCommand(cmd);
+        }}
+        pipelineJobs={data?.pipeline || []}
+      />
+
       {/* Toast Notification */}
       <AnimatePresence>
         {toast.show && (
@@ -4824,10 +4880,21 @@ Career-Ops terminal`}
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[100] max-w-[min(24rem,calc(100vw-1.5rem))] bg-[#1C1C1E] text-white px-5 py-3.5 sm:px-6 sm:py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10"
+            className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[100] max-w-[min(24rem,calc(100vw-1.5rem))] bg-[#1C1C1E] text-white px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3 border border-white/10"
           >
-            <CheckCircle2 size={20} className="text-[#f59e0b]" />
-            <span className="text-sm font-bold tracking-wide">{toast.message}</span>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <CheckCircle2 size={18} className="text-[#f59e0b] shrink-0" />
+              <span className="text-xs font-bold tracking-wide leading-snug">{toast.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast({ show: false, message: '' })}
+              className="p-1 rounded-lg text-stone-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+              title="Dismiss"
+              aria-label="Dismiss notification"
+            >
+              <X size={15} />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
