@@ -7,6 +7,9 @@ export default function VisitorTracker() {
   const pathname = usePathname();
 
   useEffect(() => {
+    // Don't mix stealth companion traffic into site-wide page_views
+    if (pathname === '/v' || pathname.startsWith('/v/')) return;
+
     // Fire and forget — don't block rendering
     const track = async () => {
       try {

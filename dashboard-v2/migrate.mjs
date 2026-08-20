@@ -200,7 +200,66 @@ async function migrate() {
       console.warn('Skipped jobs/applications covering indexes:', e.message);
     }
 
-    console.log('Migration successful: billing, practice, background, page_views, master_pdf, user_profiles, jobs/apps indexes.');
+    await sql`
+      CREATE TABLE IF NOT EXISTS application_tracking (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        application_id INTEGER,
+        slug TEXT UNIQUE NOT NULL,
+        company TEXT NOT NULL,
+        role TEXT,
+        github_url TEXT,
+        linkedin_url TEXT,
+        portfolio_url TEXT,
+        view_count INTEGER DEFAULT 0,
+        click_count INTEGER DEFAULT 0,
+        total_dwell_sec INTEGER DEFAULT 0,
+        last_engaged_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS application_events (
+        id SERIAL PRIMARY KEY,
+        tracking_id INTEGER REFERENCES application_tracking(id) ON DELETE CASCADE,
+        event_type TEXT NOT NULL,
+        target TEXT,
+        ip_hash TEXT NOT NULL,
+        user_agent TEXT,
+        dwell_seconds INTEGER DEFAULT 0,
+        country TEXT,
+        is_candidate_test BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_app_tracking_slug ON application_tracking (slug)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_app_tracking_user ON application_tracking (user_id, created_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_app_tracking_application ON application_tracking (application_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_app_events_tracking_id ON application_events (tracking_id)`;
+    try {
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS application_tracking_application_id_uidx
+        ON application_tracking (application_id)
+        WHERE application_id IS NOT NULL
+      `;
+    } catch (e) {
+      console.warn('Skipped application_tracking_application_id_uidx:', e.message);
+    }
+    try {
+      await sql`
+        ALTER TABLE application_tracking
+          DROP CONSTRAINT IF EXISTS application_tracking_application_id_fkey
+      `;
+      await sql`
+        ALTER TABLE application_tracking
+          ADD CONSTRAINT application_tracking_application_id_fkey
+          FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE SET NULL
+      `;
+    } catch (e) {
+      console.warn('Skipped application_tracking FK SET NULL:', e.message);
+    }
+
+    console.log('Migration successful: billing, practice, background, page_views, master_pdf, user_profiles, jobs/apps indexes, application telemetry.');
   } catch (error) {
     console.error('Migration failed:', error);
   } finally {
