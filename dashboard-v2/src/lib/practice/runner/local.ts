@@ -23,12 +23,15 @@ export async function runWithLocalNode(req: PracticeRunRequest): Promise<Practic
         outputLogs.push(String(data));
         return true;
       },
-      pipe: (_dest?: unknown) => ({
-        on: (evt: string, cb: () => void) => {
-          if (evt === 'end' || evt === 'finish') cb?.();
-          return this;
-        },
-      }),
+      pipe: (_dest?: unknown) => {
+        const streamObj = {
+          on: (evt: string, cb: () => void) => {
+            if (evt === 'end' || evt === 'finish') cb?.();
+            return streamObj;
+          },
+        };
+        return streamObj;
+      },
     },
     stderr: {
       write: (data: unknown) => {
