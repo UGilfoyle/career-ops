@@ -94,11 +94,11 @@ function previewUrl(doc: DocCard): string | null {
 }
 
 function pdfDownloadUrl(doc: DocCard): string | null {
-  // PDF may already exist (R2/BYTEA). If not, /api/view renders on-demand from HTML.
-  if (doc.kind === 'cover' && (doc.has_cover_letter_pdf || doc.has_cover_letter_html)) {
+  // Instant download only when tailor --deep already stored PDF (R2/BYTEA).
+  if (doc.kind === 'cover' && doc.has_cover_letter_pdf) {
     return `/api/view/${doc.id}?type=cl&format=pdf&download=1`;
   }
-  if (doc.kind === 'resume' && (doc.has_resume_pdf || doc.has_resume_html)) {
+  if (doc.kind === 'resume' && doc.has_resume_pdf) {
     return `/api/view/${doc.id}?format=pdf&download=1`;
   }
   return null;
