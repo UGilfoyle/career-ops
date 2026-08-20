@@ -4,8 +4,8 @@ const brevo = new BrevoClient({
     apiKey: process.env.BREVO_API_KEY || ''
 });
 
-/** Prefer env; fallback to Brevo-verified sender so OTP never silently dies. */
-const DEFAULT_SENDER_EMAIL = 'akash.k96.official@gmail.com';
+/** Prefer env; fallback to Brevo-verified sender with DKIM & DMARC configured. */
+const DEFAULT_SENDER_EMAIL = 'noreply@careerops.dpdns.org';
 
 const getSender = () => ({
   name: (process.env.BREVO_SENDER_NAME || 'Career-Ops').trim(),
