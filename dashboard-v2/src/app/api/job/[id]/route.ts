@@ -53,6 +53,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           j.posted_reason,
           j.posted_checked_at,
           j.ats_content_score,
+          j.jd_alignment_score,
           (j.resume_html IS NOT NULL) AS has_resume_html,
           (j.resume_pdf_key IS NOT NULL OR j.resume_pdf IS NOT NULL) AS has_resume_pdf,
           a.id AS app_id,
@@ -178,6 +179,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       has_resume_html: Boolean(job.has_resume_html),
       has_resume_pdf: Boolean(job.has_resume_pdf),
       ats_content_score: job.ats_content_score ?? null,
+      jd_alignment_score: job.jd_alignment_score ?? null,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -168,6 +168,8 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
       has_resume_pdf: Boolean(extras.has_resume_pdf),
       ats_content_score:
         extras.ats_content_score != null ? Number(extras.ats_content_score) : null,
+      jd_alignment_score:
+        extras.jd_alignment_score != null ? Number(extras.jd_alignment_score) : null,
     };
     };
 
@@ -191,6 +193,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           j.gcc_signal_score,
           j.gcc_high_value,
           j.ats_content_score,
+          j.jd_alignment_score,
           (j.resume_html IS NOT NULL) AS has_resume_html,
           (j.resume_pdf_key IS NOT NULL OR j.resume_pdf IS NOT NULL) AS has_resume_pdf,
           (
@@ -220,6 +223,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           has_resume_html: p.has_resume_html,
           has_resume_pdf: p.has_resume_pdf,
           ats_content_score: p.ats_content_score,
+          jd_alignment_score: p.jd_alignment_score,
         })
       );
     } catch (errFull) {
@@ -336,6 +340,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
             url,
             canonical_url,
             ats_content_score,
+            jd_alignment_score,
             (resume_pdf_key IS NOT NULL OR resume_pdf IS NOT NULL) AS has_resume_pdf,
             (cover_letter_pdf_key IS NOT NULL OR cover_letter_pdf IS NOT NULL) AS has_cover_letter_pdf,
             (resume_html IS NOT NULL) AS has_resume_html,
@@ -358,6 +363,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           name: `Tailored Assets: ${d.company} - ${d.title}`,
           mtime: d.updated_at,
           ats_content_score: d.ats_content_score != null ? Number(d.ats_content_score) : null,
+          jd_alignment_score: d.jd_alignment_score != null ? Number(d.jd_alignment_score) : null,
           has_resume_pdf: !!d.has_resume_pdf,
           has_cover_letter_pdf: !!d.has_cover_letter_pdf,
           has_resume_html: !!d.has_resume_html,
@@ -372,6 +378,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
             created_at,
             url,
             canonical_url,
+            ats_content_score,
             (resume_pdf_key IS NOT NULL OR resume_pdf IS NOT NULL) AS has_resume_pdf,
             (cover_letter_pdf_key IS NOT NULL OR cover_letter_pdf IS NOT NULL) AS has_cover_letter_pdf,
             (resume_html IS NOT NULL) AS has_resume_html,
@@ -394,6 +401,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           name: `Tailored Assets: ${d.company} - ${d.title}`,
           mtime: d.created_at,
           ats_content_score: d.ats_content_score != null ? Number(d.ats_content_score) : null,
+          jd_alignment_score: null,
           has_resume_pdf: !!d.has_resume_pdf,
           has_cover_letter_pdf: !!d.has_cover_letter_pdf,
           has_resume_html: !!d.has_resume_html,

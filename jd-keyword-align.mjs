@@ -1059,6 +1059,83 @@ export function formatJdKeywordBlock(jdKeywords) {
   return jdKeywords.map((k, i) => `${i + 1}. ${k}`).join('\n');
 }
 
+/** Target JD keyword coverage in the tailored resume (100 looks fake; 94+ is the bar). */
+export const JD_ALIGNMENT_TARGET = 94;
+
+/**
+ * Push resume text until ≥target% of JD keywords appear (competencies + summary + light weave).
+ * Skills section may list the JD stack for ATS; experience weave stays weavable phrases only.
+ * Stops at target (default 94) — does not force 100% (perfect scores look fake).
+ */
+export function forceJdKeywordCoverage(resume, jdKeywords, opts = {}) {
+  const target = Number.isFinite(opts.target) ? opts.target : JD_ALIGNMENT_TARGET;
+  const maxPasses = Number.isFinite(opts.maxPasses) ? opts.maxPasses : 5;
+  const sourceExperience = opts.sourceExperience || [];
+  const weaveRoleIndices = opts.weaveRoleIndices;
+  const bulletKeywords = (opts.bulletKeywords || jdKeywords || []).filter((kw) => isWeaveableNounPhrase(kw));
+
+  if (!resume || !jdKeywords?.length) {
+    return {
+      resume,
+      alignment: { score: 0, matched: [], missing: [], matchRatio: 0 },
+      passes: 0,
+    };
+  }
+
+  const total = jdKeywords.length;
+  const neededMatches = Math.min(total, Math.ceil((target / 100) * total));
+
+  let working = JSON.parse(JSON.stringify(resume));
+  let alignment = measureJdAlignment(working, jdKeywords);
+  let passes = 0;
+
+  while (passes < maxPasses && alignment.score < target) {
+    passes += 1;
+    const comps = Array.isArray(working.core_competencies) ? [...working.core_competencies] : [];
+    const compLower = comps.map((c) => String(c).toLowerCase());
+    const stillNeeded = Math.max(0, neededMatches - (alignment.matched?.length || 0));
+
+    let added = 0;
+    const justAdded = [];
+    for (const kw of alignment.missing) {
+      if (added >= stillNeeded) break;
+      const raw = String(kw || '').trim();
+      if (!raw || isJunkKeyword(raw) || isEmployerBrandKeyword(raw)) continue;
+      // ATS skills mirror: approved skill phrases + weavable noun phrases from the JD
+      if (!isApprovedSkillPhrase(raw) && !isWeaveableNounPhrase(raw)) continue;
+      if (compLower.some((c) => c.includes(raw.toLowerCase()) || raw.toLowerCase().includes(c))) continue;
+      comps.unshift(raw);
+      compLower.unshift(raw.toLowerCase());
+      justAdded.push(raw);
+      added += 1;
+    }
+    working.core_competencies = uniqueCasePreserved(comps).slice(0, 22);
+
+    // Only weave what we just mirrored — avoid dumping leftover JD terms into summary (keeps ~94–97, not 100)
+    working.summary = weaveKeywordsIntoSummary(
+      working.summary,
+      justAdded.filter((kw) => isWeavableKeyword(kw)).slice(0, 4),
+      3,
+    );
+
+    alignment = measureJdAlignment(working, jdKeywords);
+    if (alignment.score >= target) break;
+
+    const remaining = Math.max(0, neededMatches - (alignment.matched?.length || 0));
+    const limitedBullets = bulletKeywords.slice(0, Math.max(remaining, 3));
+    const aligned = alignResumeToJd(working, jdKeywords, sourceExperience, {
+      weaveEveryBullet: passes >= 2,
+      bulletKeywords: limitedBullets,
+      summaryKeywords: limitedBullets,
+      weaveRoleIndices,
+    });
+    working = aligned.resume;
+    alignment = measureJdAlignment(working, jdKeywords);
+  }
+
+  return { resume: working, alignment, passes };
+}
+
 /**
  * Fill missing per-role tailored bullets from profile + JD keywords (avoids untailored fallback).
  * @param {number} [rolesCount=4]

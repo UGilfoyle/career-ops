@@ -34,6 +34,8 @@ import {
   isJunkKeyword,
   isWeavableKeyword,
   isEmployerBrandKeyword,
+  forceJdKeywordCoverage,
+  JD_ALIGNMENT_TARGET,
 } from './jd-keyword-align.mjs';
 import { callFirstAvailableFallback } from './llm-fallback.mjs';
 import { renderCategorizedSkills, sanitizeCompetencyList } from './resume-skills-html.mjs';
@@ -1776,6 +1778,40 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     ];
   }
 
+  // Hard push: JD keywords must land in resume text at 94%+ (100 looks fake).
+  {
+    const atsKws = activePlan.keywords?.atsMirror?.length
+      ? activePlan.keywords.atsMirror
+      : [
+          ...(activePlan.keywords?.honest || []),
+          ...(activePlan.keywords?.domain || []),
+        ];
+    const pushed = forceJdKeywordCoverage(data.resume, atsKws, {
+      target: JD_ALIGNMENT_TARGET,
+      maxPasses: 5,
+      sourceExperience: Array.isArray(profile?.experience) ? profile.experience : [],
+      weaveRoleIndices: activePlan.tailorIndices,
+      bulletKeywords: activePlan.keywords?.weave?.length
+        ? activePlan.keywords.weave
+        : activePlan.keywords?.honest || atsKws,
+    });
+    data.resume = pushed.resume;
+    if (data.preserved_snapshot) {
+      data.resume = restorePreservedEmployers(data.resume, data.preserved_snapshot);
+    }
+    data.jd_alignment_score = pushed.alignment.score;
+    data.jd_alignment_matched = pushed.alignment.matched;
+    data.jd_alignment_missing = pushed.alignment.missing;
+    console.log(
+      `🎯 JD keyword coverage after push: ${pushed.alignment.score}% (target ${JD_ALIGNMENT_TARGET}+, passes=${pushed.passes})`,
+    );
+    if (pushed.alignment.score < JD_ALIGNMENT_TARGET) {
+      console.warn(
+        `⚠ JD coverage ${pushed.alignment.score}% still below ${JD_ALIGNMENT_TARGET}%. Missing: ${(pushed.alignment.missing || []).slice(0, 12).join(', ')}`,
+      );
+    }
+  }
+
   // Generate the JD-tailored resume even when coverage is below the floor.
   // Shortfalls are warnings — never block the deliverable the user asked for.
   if (alignment.verdict !== 'PASS') {
@@ -2168,7 +2204,8 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
           ADD COLUMN IF NOT EXISTS cover_letter_pdf_key TEXT,
           ADD COLUMN IF NOT EXISTS canonical_url TEXT,
           ADD COLUMN IF NOT EXISTS jd_text TEXT,
-          ADD COLUMN IF NOT EXISTS ats_content_score INTEGER;
+          ADD COLUMN IF NOT EXISTS ats_content_score INTEGER,
+          ADD COLUMN IF NOT EXISTS jd_alignment_score INTEGER;
       `;
       
       // Job title for DB (same as filename role segment)
@@ -2216,7 +2253,8 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
             cover_letter_html = ${clHtml},
             canonical_url = COALESCE(${canonicalUrl}, canonical_url),
             jd_text = COALESCE(${String(jdText || '').slice(0, 25000)}, jd_text),
-            ats_content_score = COALESCE(${result.ats_content_score ?? null}, ats_content_score)
+            ats_content_score = COALESCE(${result.ats_content_score ?? null}, ats_content_score),
+            jd_alignment_score = COALESCE(${result.jd_alignment_score ?? null}, jd_alignment_score)
           WHERE id = ${entry.id} AND user_id = ${userId}
         `;
         console.log(`💾 HTML assets persisted to database for job ID ${entry.id}. You can view/print them from the dashboard!`);

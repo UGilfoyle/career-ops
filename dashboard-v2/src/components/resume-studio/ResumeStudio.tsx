@@ -32,6 +32,7 @@ type ResumeStudioProps = {
     title?: string;
     score?: string | number | null;
     ats_content_score?: number | null;
+    jd_alignment_score?: number | null;
     has_resume_html?: boolean;
     has_resume_pdf?: boolean;
     has_cover_letter_html?: boolean;
@@ -420,6 +421,7 @@ export default function ResumeStudio({
                     title={reviewJob.title}
                     pipelineScore={reviewJob.score}
                     atsContentScore={reviewJob.ats_content_score}
+                    jdAlignmentScore={reviewJob.jd_alignment_score}
                     hasResumeHtml={reviewJob.has_resume_html}
                     hasResumePdf={reviewJob.has_resume_pdf}
                     hasCoverHtml={reviewJob.has_cover_letter_html}

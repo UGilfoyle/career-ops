@@ -134,9 +134,14 @@ export function LivePreview({
         <div className="flex items-center gap-1.5 sm:gap-2">
           <span
             className="rounded-full bg-[#1C1C1E] px-2 py-0.5 font-mono text-[9px] text-white sm:px-2.5 sm:py-1 sm:text-[10px]"
-            title={externalAtsSource === 'jd' ? 'Honest JD keyword coverage' : 'Profile completeness estimate'}
+            title={
+              externalAtsSource === 'jd'
+                ? 'JD keywords present in resume text (target 94%+)'
+                : 'Profile completeness estimate'
+            }
           >
-            {atsLabel} ~{atsScore}/100
+            {atsLabel} {atsScore}
+            {externalAtsSource === 'jd' ? '%' : '/100'}
           </span>
           {competencyScores.length > 0 ? (
             <button
@@ -163,8 +168,9 @@ export function LivePreview({
                     ? 'bg-[#1C1C1E] text-white'
                     : 'border border-[#E5E5E0] bg-white text-[#6B6B6B] hover:text-[#1C1C1E]'
                 }`}
+                title={`Preview zoom ${z}%`}
               >
-                {z}%
+                Zoom {z}%
               </button>
             ))}
           </div>

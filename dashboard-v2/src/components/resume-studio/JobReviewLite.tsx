@@ -15,6 +15,8 @@ type JobReviewLiteProps = {
   title?: string;
   pipelineScore?: string | number | null;
   atsContentScore?: number | null;
+  /** JD keyword coverage on tailored resume (primary). */
+  jdAlignmentScore?: number | null;
   hasResumeHtml?: boolean;
   hasResumePdf?: boolean;
   hasCoverHtml?: boolean;
@@ -93,6 +95,7 @@ export function JobReviewLite({
   title,
   pipelineScore,
   atsContentScore,
+  jdAlignmentScore,
   hasResumeHtml,
   hasResumePdf,
   hasCoverHtml,
@@ -205,9 +208,25 @@ export function JobReviewLite({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <AiScoreBadge score={pipelineScore} />
-          {atsContentScore != null ? (
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-mono text-[10px] font-bold text-emerald-800">
-              ATS {atsContentScore}/100
+          {jdAlignmentScore != null ? (
+            <span
+              className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-bold ${
+                jdAlignmentScore >= 94
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : jdAlignmentScore >= 75
+                    ? 'border-amber-200 bg-amber-50 text-amber-800'
+                    : 'border-red-200 bg-red-50 text-red-800'
+              }`}
+              title="JD keywords present in tailored resume (target 94%+)"
+            >
+              JD ATS {jdAlignmentScore}%
+            </span>
+          ) : atsContentScore != null ? (
+            <span
+              className="rounded-full border border-[#E5E5E0] bg-white px-2.5 py-1 font-mono text-[10px] font-bold text-[#6B6B6B]"
+              title="Writing polish only — not JD keyword coverage"
+            >
+              Polish {atsContentScore}/100
             </span>
           ) : null}
           {onClose ? (

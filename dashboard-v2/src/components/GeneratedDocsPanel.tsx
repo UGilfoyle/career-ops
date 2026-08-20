@@ -20,6 +20,8 @@ export type GeneratedDoc = {
   url?: string;
   mtime?: string;
   ats_content_score?: number | null;
+  /** JD keyword coverage in the tailored resume (primary ATS signal). */
+  jd_alignment_score?: number | null;
   has_resume_pdf?: boolean;
   has_cover_letter_pdf?: boolean;
   has_resume_html?: boolean;
@@ -268,7 +270,8 @@ export default function GeneratedDocsPanel({
             const isResume = card.kind === 'resume';
             const pdfUrl = pdfDownloadUrl(card);
             const canPreview = !!previewUrl(card);
-            const ats = card.ats_content_score;
+            const jdAts = card.jd_alignment_score;
+            const polish = card.ats_content_score;
 
             return (
               <article
@@ -303,9 +306,23 @@ export default function GeneratedDocsPanel({
                       >
                         {isResume ? 'Resume' : 'Cover Letter'}
                       </span>
-                      {isResume && typeof ats === 'number' && ats > 0 && (
-                        <span className="text-xs font-semibold text-[#10B981]">ATS {ats}/100</span>
-                      )}
+                      {isResume && typeof jdAts === 'number' && jdAts > 0 ? (
+                        <span
+                          className={`text-xs font-semibold ${
+                            jdAts >= 94 ? 'text-[#10B981]' : jdAts >= 75 ? 'text-[#D97706]' : 'text-[#DC2626]'
+                          }`}
+                          title="JD keywords present in this resume (target 94%+)"
+                        >
+                          JD ATS {jdAts}%
+                        </span>
+                      ) : isResume && typeof polish === 'number' && polish > 0 ? (
+                        <span
+                          className="text-xs font-semibold text-[#6B6B6B]"
+                          title="Writing polish only — not JD keyword coverage"
+                        >
+                          Polish {polish}/100
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -333,6 +350,7 @@ export default function GeneratedDocsPanel({
                           company: card.company,
                           title: card.title,
                           ats_content_score: card.ats_content_score,
+                          jd_alignment_score: card.jd_alignment_score,
                           has_resume_html: card.has_resume_html,
                           has_resume_pdf: card.has_resume_pdf,
                           has_cover_letter_html: card.has_cover_letter_html,

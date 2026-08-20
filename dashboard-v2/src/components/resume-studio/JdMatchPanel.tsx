@@ -140,14 +140,28 @@ export function JdMatchPanel({
         return;
       }
 
-      const coveragePct = Number(matchJson.coveragePct) || 0;
+      const coverageFromAts =
+        typeof atsJson.score === 'number' && atsJson.source === 'jd'
+          ? atsJson.score
+          : null;
+      const coveragePct =
+        coverageFromAts != null ? coverageFromAts : Number(matchJson.coveragePct) || 0;
       const atsScore =
         typeof atsJson.score === 'number'
           ? atsJson.score
           : coveragePct || null;
 
-      // Build suggestions from gaps
-      const rawGaps = Array.isArray(matchJson.gaps) ? (matchJson.gaps as string[]) : [];
+      // Build suggestions from gaps (prefer resume-text missing when available)
+      const rawGaps = Array.isArray(atsJson.missing) && atsJson.missing.length
+        ? (atsJson.missing as string[])
+        : Array.isArray(matchJson.gaps)
+          ? (matchJson.gaps as string[])
+          : [];
+      const honest = Array.isArray(atsJson.matched) && atsJson.matched.length
+        ? (atsJson.matched as string[])
+        : Array.isArray(matchJson.honest)
+          ? (matchJson.honest as string[])
+          : [];
       const suggestions: Suggestion[] = rawGaps.slice(0, 4).map((g) => ({
         text: `Add ${g} experience to relevant section`,
         section: 'experience',
@@ -156,7 +170,7 @@ export function JdMatchPanel({
       setState({
         loading: false,
         error: null,
-        honest: Array.isArray(matchJson.honest) ? (matchJson.honest as string[]) : [],
+        honest,
         gaps: rawGaps,
         partial: Array.isArray(matchJson.partial) ? (matchJson.partial as string[]) : [],
         coveragePct,
@@ -467,10 +481,12 @@ export function JdMatchPanel({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="rounded-full bg-[#1C1C1E] px-2.5 py-0.5 font-mono text-[10px] text-white">
-                  ATS {state.atsScore ?? '—'}/100
+                  JD ATS {state.atsScore ?? '—'}%
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
-                  {state.atsSource === 'jd' ? 'JD keyword coverage' : 'Profile completeness'}
+                  {state.atsSource === 'jd'
+                    ? 'Keywords in resume (target 94%+)'
+                    : 'Profile completeness'}
                 </span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-[#E5E5E0] overflow-hidden">

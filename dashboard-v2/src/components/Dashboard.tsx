@@ -300,6 +300,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     title?: string;
     score?: string | number | null;
     ats_content_score?: number | null;
+    jd_alignment_score?: number | null;
     has_resume_html?: boolean;
     has_resume_pdf?: boolean;
     has_cover_letter_html?: boolean;
@@ -475,6 +476,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     title?: string;
     score?: string | number | null;
     ats_content_score?: number | null;
+    jd_alignment_score?: number | null;
     has_resume_html?: boolean;
     has_resume_pdf?: boolean;
     has_cover_letter_html?: boolean;
@@ -3025,6 +3027,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   title: job.title,
                                   score: job.score,
                                   ats_content_score: job.ats_content_score ?? null,
+                                  jd_alignment_score: job.jd_alignment_score ?? null,
                                   has_resume_html: Boolean(job.has_resume_html),
                                   has_resume_pdf: Boolean(job.has_resume_pdf || job.is_tailored),
                                 })
@@ -3172,6 +3175,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   title: doc.title,
                   score: null,
                   ats_content_score: doc.ats_content_score ?? null,
+                  jd_alignment_score: doc.jd_alignment_score ?? null,
                   has_resume_html: doc.has_resume_html,
                   has_resume_pdf: doc.has_resume_pdf,
                   has_cover_letter_html: doc.has_cover_letter_html,
@@ -4742,6 +4746,7 @@ Career-Ops terminal`}
                         title: jobDetails.title,
                         score: jobDetails.score,
                         ats_content_score: jobDetails.ats_content_score ?? null,
+                        jd_alignment_score: jobDetails.jd_alignment_score ?? null,
                         has_resume_html: Boolean(jobDetails.has_resume_html),
                         has_resume_pdf: Boolean(jobDetails.has_resume_pdf),
                       });

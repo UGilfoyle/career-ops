@@ -12,6 +12,8 @@ import {
   alignResumeToJd,
   measureJdAlignment,
   cleanSkillToken,
+  forceJdKeywordCoverage,
+  JD_ALIGNMENT_TARGET,
 } from './jd-keyword-align.mjs';
 import {
   analyzeJdProfileFit,
@@ -267,6 +269,54 @@ assert(
 assert(
   spreetailKw.some((k) => /event-driven|distributed systems|aws|observability/.test(k)),
   'extract keeps real skills'
+);
+
+console.log('\nforceJdKeywordCoverage target 94+\n');
+assert(JD_ALIGNMENT_TARGET === 94, 'JD_ALIGNMENT_TARGET is 94');
+const thinResume = {
+  summary: 'Software engineer with shipping experience.',
+  core_competencies: ['JavaScript'],
+  experience: {
+    '0': ['Built APIs for product teams.'],
+  },
+};
+const jdKws = [
+  'JavaScript',
+  'TypeScript',
+  'React',
+  'Node.js',
+  'PostgreSQL',
+  'AWS',
+  'Docker',
+  'Kubernetes',
+  'GraphQL',
+  'Redis',
+  'CI/CD',
+  'microservices',
+  'REST API',
+  'MongoDB',
+  'Apache Kafka',
+  'Terraform',
+  'Python',
+  'Golang',
+  'observability',
+  'event-driven architecture',
+];
+const before = measureJdAlignment(thinResume, jdKws);
+assert(before.score < 94, `thin resume starts below 94 (got ${before.score})`);
+const neededMinComps = Math.ceil((JD_ALIGNMENT_TARGET / 100) * jdKws.length) - 2;
+const pushed = forceJdKeywordCoverage(thinResume, jdKws, { target: JD_ALIGNMENT_TARGET });
+assert(
+  pushed.alignment.score >= JD_ALIGNMENT_TARGET,
+  `forceJdKeywordCoverage reaches ${JD_ALIGNMENT_TARGET}+ (got ${pushed.alignment.score})`
+);
+assert(
+  pushed.alignment.score <= 98,
+  `stops near target instead of perfect 100 (got ${pushed.alignment.score})`
+);
+assert(
+  (pushed.resume.core_competencies || []).length >= neededMinComps,
+  'competencies mirror enough JD keywords for target'
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

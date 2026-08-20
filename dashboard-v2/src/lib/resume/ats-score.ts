@@ -1,5 +1,6 @@
 import type { ResumeContext } from './types';
 import { masterSummaryText } from './fill-template';
+import { getCompetencies } from './types';
 import { runJdMatch, type JdMatchResult } from './jd-match';
 
 export type AtsScoreResult = {
@@ -33,8 +34,39 @@ export function structureAtsScore(profile: ResumeContext): AtsScoreResult {
   };
 }
 
+function profileToResumeShape(profile: ResumeContext) {
+  const experience: Record<string, string[]> = {};
+  (profile.experience || []).forEach((role, i) => {
+    experience[String(i)] = Array.isArray(role.bullets) ? role.bullets.map(String) : [];
+  });
+  return {
+    summary: masterSummaryText(profile),
+    core_competencies: getCompetencies(profile),
+    experience,
+  };
+}
+
+async function importJdKeywordAlign() {
+  const { pathToFileURL } = await import('url');
+  const { join } = await import('path');
+  const candidates = [
+    join(/* turbopackIgnore: true */ process.cwd(), '..', 'jd-keyword-align.mjs'),
+    join(/* turbopackIgnore: true */ process.cwd(), 'runtime-assets', '..', '..', 'jd-keyword-align.mjs'),
+  ];
+  let lastErr: unknown;
+  for (const file of candidates) {
+    try {
+      return await import(/* webpackIgnore: true */ pathToFileURL(file).href);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('jd-keyword-align.mjs not found');
+}
+
 /**
- * Real ATS-style score vs JD: honest keyword coverage from jd-profile-match.
+ * JD ATS score = % of JD keywords present in the resume draft text
+ * (summary + competencies + bullets) — same idea as tailor jd_alignment_score.
  */
 export async function scoreMasterAgainstJd(
   profile: ResumeContext,
@@ -44,12 +76,45 @@ export async function scoreMasterAgainstJd(
     return structureAtsScore(profile);
   }
   const jdMatch = await runJdMatch(profile, jdText);
-  return {
-    score: jdMatch.coveragePct,
-    matched: jdMatch.honest,
-    missing: jdMatch.gaps,
-    total: jdMatch.jdKeywords.length,
-    source: 'jd',
-    jdMatch,
-  };
+  const keywords = jdMatch.jdKeywords || [];
+  if (!keywords.length) {
+    return {
+      score: 0,
+      matched: [],
+      missing: [],
+      total: 0,
+      source: 'jd',
+      jdMatch,
+    };
+  }
+
+  try {
+    const mod = await importJdKeywordAlign();
+    const measured = mod.measureJdAlignment(profileToResumeShape(profile), keywords) as {
+      score: number;
+      matched: string[];
+      missing: string[];
+    };
+    return {
+      score: measured.score,
+      matched: measured.matched,
+      missing: measured.missing,
+      total: keywords.length,
+      source: 'jd',
+      jdMatch: {
+        ...jdMatch,
+        // Keep profile honest/gaps for chips, but primary score is resume-text coverage
+        coveragePct: measured.score,
+      },
+    };
+  } catch {
+    return {
+      score: jdMatch.coveragePct,
+      matched: jdMatch.honest,
+      missing: jdMatch.gaps,
+      total: keywords.length,
+      source: 'jd',
+      jdMatch,
+    };
+  }
 }
