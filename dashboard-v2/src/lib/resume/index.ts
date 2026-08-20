@@ -14,6 +14,7 @@ export {
 export { runJdMatch, type JdMatchResult } from './jd-match';
 export {
   scoreMasterAgainstJd,
+  mirrorJdKeywordsIntoProfile,
   structureAtsScore,
   type AtsScoreResult,
 } from './ats-score';

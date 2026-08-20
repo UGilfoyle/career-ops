@@ -24,12 +24,15 @@ type JdMatchPanelProps = {
   onSelectJob: (id: number | null) => void;
   onTailor?: (jobId: number) => void;
   onAtsUpdate?: (score: number | null, source: 'jd' | 'structure') => void;
+  /** Apply mirrored skills/summary/bullets into Live Preview draft. */
+  onApplyMirroredProfile?: (profile: ResumeContext) => void;
   hasGeneratedResume?: boolean;
 };
 
 type Suggestion = {
   text: string;
   section: string;
+  keyword?: string;
 };
 
 type MatchState = {
@@ -62,7 +65,7 @@ function draftMatchKey(draft: ResumeContext): string {
 
 async function runMatchApis(
   draft: ResumeContext,
-  payload: { jobId?: number; jdText?: string },
+  payload: { jobId?: number; jdText?: string; mirror?: boolean; preferTailored?: boolean },
 ): Promise<{ matchJson: Record<string, unknown>; atsJson: Record<string, unknown>; matchOk: boolean }> {
   const body = { resume_context: draft, ...payload };
   const [matchRes, atsRes] = await Promise.all([
@@ -82,6 +85,8 @@ async function runMatchApis(
   return { matchJson, atsJson, matchOk: matchRes.ok };
 }
 
+const JD_ATS_TARGET = 94;
+
 export function JdMatchPanel({
   draft,
   pipeline,
@@ -89,6 +94,7 @@ export function JdMatchPanel({
   onSelectJob,
   onTailor,
   onAtsUpdate,
+  onApplyMirroredProfile,
   hasGeneratedResume = false,
 }: JdMatchPanelProps) {
   const [mode, setMode] = useState<JdMode>('paste');
@@ -96,7 +102,9 @@ export function JdMatchPanel({
   const [pasteJobId, setPasteJobId] = useState<number | null>(null);
   const [ingesting, setIngesting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [mirroring, setMirroring] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const autoMirrorKeyRef = useRef<string | null>(null);
 
   const [state, setState] = useState<MatchState>({
     loading: false,
@@ -151,7 +159,6 @@ export function JdMatchPanel({
           ? atsJson.score
           : coveragePct || null;
 
-      // Build suggestions from gaps (prefer resume-text missing when available)
       const rawGaps = Array.isArray(atsJson.missing) && atsJson.missing.length
         ? (atsJson.missing as string[])
         : Array.isArray(matchJson.gaps)
@@ -162,9 +169,10 @@ export function JdMatchPanel({
         : Array.isArray(matchJson.honest)
           ? (matchJson.honest as string[])
           : [];
-      const suggestions: Suggestion[] = rawGaps.slice(0, 4).map((g) => ({
-        text: `Add ${g} experience to relevant section`,
-        section: 'experience',
+      const suggestions: Suggestion[] = rawGaps.slice(0, 6).map((g) => ({
+        text: `Add ${g} to skills / experience`,
+        section: 'competencies',
+        keyword: g,
       }));
 
       setState({
@@ -182,6 +190,53 @@ export function JdMatchPanel({
       onAtsUpdate?.(atsScore, (atsJson.source as 'jd' | 'structure') || 'jd');
     },
     [onAtsUpdate],
+  );
+
+  const fillGapsToTarget = useCallback(
+    async (opts?: { jobId?: number; jdText?: string; force?: boolean }) => {
+      if (!onApplyMirroredProfile) return false;
+      const key =
+        opts?.jobId != null
+          ? `job:${opts.jobId}`
+          : opts?.jdText
+            ? `paste:${opts.jdText.slice(0, 80)}`
+            : null;
+      if (!opts?.force && key && autoMirrorKeyRef.current === key) return false;
+
+      setMirroring(true);
+      try {
+        const atsRes = await fetch('/api/resume/ats-score', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resume_context: draft,
+            jobId: opts?.jobId,
+            jdText: opts?.jdText,
+            mirror: true,
+          }),
+        });
+        const atsJson = (await atsRes.json().catch(() => ({}))) as Record<string, unknown>;
+        if (!atsRes.ok) throw new Error(String(atsJson.error || 'Mirror failed'));
+
+        const aligned = atsJson.alignedProfile as ResumeContext | undefined;
+        if (aligned) {
+          if (key) autoMirrorKeyRef.current = key;
+          onApplyMirroredProfile(aligned);
+        }
+        applyMatchResult({ ok: true, coveragePct: atsJson.score }, atsJson, true);
+        return true;
+      } catch (e: unknown) {
+        setState((s) => ({
+          ...s,
+          loading: false,
+          error: e instanceof Error ? e.message : 'Could not fill JD gaps',
+        }));
+        return false;
+      } finally {
+        setMirroring(false);
+      }
+    },
+    [draft, onApplyMirroredProfile, applyMatchResult],
   );
 
   useEffect(() => {
@@ -209,9 +264,23 @@ export function JdMatchPanel({
 
       setState((s) => ({ ...s, loading: true, error: null }));
       try {
-        const { matchJson, atsJson, matchOk } = await runMatchApis(draft, { jobId: selectedJobId });
+        // Score Live Preview draft (not just tailored HTML) so gaps match what user sees.
+        const { matchJson, atsJson, matchOk } = await runMatchApis(draft, {
+          jobId: selectedJobId,
+        });
         if (cancelled) return;
         applyMatchResult(matchJson, atsJson, matchOk);
+
+        const score = typeof atsJson.score === 'number' ? atsJson.score : 0;
+        if (
+          !cancelled
+          && matchOk
+          && onApplyMirroredProfile
+          && atsJson.source === 'jd'
+          && score < JD_ATS_TARGET
+        ) {
+          await fillGapsToTarget({ jobId: selectedJobId });
+        }
       } catch (e: unknown) {
         if (cancelled) return;
         setState((s) => ({
@@ -226,7 +295,20 @@ export function JdMatchPanel({
     return () => {
       cancelled = true;
     };
-  }, [mode, selectedJobId, matchDraftKey, draft, applyMatchResult, onAtsUpdate]);
+  }, [
+    mode,
+    selectedJobId,
+    matchDraftKey,
+    draft,
+    applyMatchResult,
+    onAtsUpdate,
+    onApplyMirroredProfile,
+    fillGapsToTarget,
+  ]);
+
+  useEffect(() => {
+    autoMirrorKeyRef.current = null;
+  }, [selectedJobId, mode]);
 
   useEffect(() => {
     if (mode !== 'paste') return undefined;
@@ -253,11 +335,14 @@ export function JdMatchPanel({
     const timer = window.setTimeout(async () => {
       setState((s) => ({ ...s, loading: true, error: null }));
       try {
-        const { matchJson, atsJson, matchOk } = await runMatchApis(draft, {
-          jdText: pastedJd.trim(),
-        });
+        const jdText = pastedJd.trim();
+        const { matchJson, atsJson, matchOk } = await runMatchApis(draft, { jdText });
         if (cancelled) return;
         applyMatchResult(matchJson, atsJson, matchOk);
+        const score = typeof atsJson.score === 'number' ? atsJson.score : 0;
+        if (matchOk && onApplyMirroredProfile && atsJson.source === 'jd' && score < JD_ATS_TARGET) {
+          await fillGapsToTarget({ jdText });
+        }
       } catch (e: unknown) {
         if (cancelled) return;
         setState((s) => ({
@@ -272,7 +357,17 @@ export function JdMatchPanel({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [mode, pastedJd, pastedReady, matchDraftKey, draft, applyMatchResult, onAtsUpdate]);
+  }, [
+    mode,
+    pastedJd,
+    pastedReady,
+    matchDraftKey,
+    draft,
+    applyMatchResult,
+    onAtsUpdate,
+    onApplyMirroredProfile,
+    fillGapsToTarget,
+  ]);
 
   const options = (pipeline || []).slice(0, 40);
   const selectedJob = options.find((j) => Number(j.pipeline_id ?? j.id) === selectedJobId);
@@ -534,7 +629,7 @@ export function JdMatchPanel({
                 <span
                   key={`g-${k}`}
                   className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700 transition-colors hover:bg-rose-100"
-                  title="Missing from profile — do not claim"
+                  title="Missing from Live Preview — will be mirrored into skills"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
                   {k}
@@ -550,6 +645,24 @@ export function JdMatchPanel({
               <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Missing</span>
             </div>
           </div>
+
+          {state.hasJd && (state.atsScore ?? 0) < JD_ATS_TARGET && onApplyMirroredProfile ? (
+            <button
+              type="button"
+              disabled={mirroring || state.loading}
+              onClick={() =>
+                void fillGapsToTarget({
+                  force: true,
+                  jobId: mode === 'pipeline' ? selectedJobId || undefined : pasteJobId || undefined,
+                  jdText: mode === 'paste' ? pastedJd.trim() : undefined,
+                })
+              }
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+            >
+              {mirroring ? <Loader2 size={14} className="animate-spin" /> : <Target size={14} />}
+              Fill gaps to {JD_ATS_TARGET}%+ in Live Preview
+            </button>
+          ) : null}
 
           {/* ── Suggested Improvements ── */}
           {state.suggestions.length > 0 ? (
@@ -568,8 +681,22 @@ export function JdMatchPanel({
                   <p className="flex-1 text-xs font-medium text-[#1C1C1E]">{s.text}</p>
                   <button
                     type="button"
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#E5E5E0] bg-[#FAFAF8] text-[#9CA3AF] transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
-                    title="Add to resume"
+                    disabled={!onApplyMirroredProfile || !s.keyword}
+                    onClick={() => {
+                      if (!onApplyMirroredProfile || !s.keyword) return;
+                      const tags = getCompetencies(draft);
+                      if (tags.some((t) => t.toLowerCase() === s.keyword!.toLowerCase())) return;
+                      onApplyMirroredProfile({
+                        ...draft,
+                        narrative: {
+                          ...(draft.narrative || {}),
+                          superpowers: [s.keyword, ...tags].slice(0, 22),
+                        },
+                      });
+                      autoMirrorKeyRef.current = null;
+                    }}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#E5E5E0] bg-[#FAFAF8] text-[#9CA3AF] transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                    title="Add keyword to skills"
                   >
                     <Plus size={12} />
                   </button>

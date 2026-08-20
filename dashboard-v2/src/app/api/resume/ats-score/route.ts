@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import sql from '@/lib/db';
-import { scoreMasterAgainstJd, structureAtsScore } from '@/lib/resume/ats-score';
+import {
+  mirrorJdKeywordsIntoProfile,
+  scoreMasterAgainstJd,
+  structureAtsScore,
+} from '@/lib/resume/ats-score';
 import type { ResumeContext } from '@/lib/resume/types';
 import { assertProAccess } from '@/lib/billing/entitlements';
 import { countryFromRequest } from '@/lib/billing/geo';
@@ -16,19 +20,58 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
-    const proBlock = await assertProAccess(userId, session.user.email, countryFromRequest(req), session.user.githubLogin);
+    const proBlock = await assertProAccess(
+      userId,
+      session.user.email,
+      countryFromRequest(req),
+      session.user.githubLogin,
+    );
     if (proBlock) return proBlock;
     const body = await req.json().catch(() => ({}));
     let jdText = String(body.jdText || body.jd_text || '').trim();
     const jobId = body.jobId != null ? Number(body.jobId) : null;
+    const mirror = Boolean(body.mirror || body.applyMirror);
+    const preferTailored = Boolean(body.preferTailored);
+
+    let resumeHtml: string | null = null;
+    let storedJdAlign: number | null = null;
 
     if (!jdText && Number.isFinite(jobId)) {
-      const rows = await sql`
-        SELECT jd_text, ats_content_score FROM jobs
-        WHERE id = ${jobId} AND user_id = ${userId}
-        LIMIT 1
-      `;
-      jdText = String(rows[0]?.jd_text || '').trim();
+      try {
+        const rows = await sql`
+          SELECT jd_text, resume_html, jd_alignment_score
+          FROM jobs
+          WHERE id = ${jobId} AND user_id = ${userId}
+          LIMIT 1
+        `;
+        jdText = String(rows[0]?.jd_text || '').trim();
+        resumeHtml = rows[0]?.resume_html ? String(rows[0].resume_html) : null;
+        storedJdAlign =
+          rows[0]?.jd_alignment_score != null ? Number(rows[0].jd_alignment_score) : null;
+      } catch {
+        const rows = await sql`
+          SELECT jd_text, resume_html
+          FROM jobs
+          WHERE id = ${jobId} AND user_id = ${userId}
+          LIMIT 1
+        `;
+        jdText = String(rows[0]?.jd_text || '').trim();
+        resumeHtml = rows[0]?.resume_html ? String(rows[0].resume_html) : null;
+      }
+    } else if (Number.isFinite(jobId) && preferTailored) {
+      try {
+        const rows = await sql`
+          SELECT resume_html, jd_alignment_score
+          FROM jobs
+          WHERE id = ${jobId} AND user_id = ${userId}
+          LIMIT 1
+        `;
+        resumeHtml = rows[0]?.resume_html ? String(rows[0].resume_html) : null;
+        storedJdAlign =
+          rows[0]?.jd_alignment_score != null ? Number(rows[0].jd_alignment_score) : null;
+      } catch {
+        /* column may be missing on older DBs */
+      }
     }
 
     let profile = (body.resume_context || body.profile) as ResumeContext | undefined;
@@ -47,10 +90,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const result = await scoreMasterAgainstJd(profile, jdText);
+    if (mirror) {
+      const result = await mirrorJdKeywordsIntoProfile(profile, jdText);
+      return NextResponse.json({
+        ok: true,
+        jobId: Number.isFinite(jobId) ? jobId : null,
+        mirrored: true,
+        ...result,
+      });
+    }
+
+    const result = await scoreMasterAgainstJd(profile, jdText, {
+      resumeHtml: preferTailored ? resumeHtml : null,
+    });
+
     return NextResponse.json({
       ok: true,
       jobId: Number.isFinite(jobId) ? jobId : null,
+      stored_jd_alignment_score: storedJdAlign,
       ...result,
     });
   } catch (e: unknown) {

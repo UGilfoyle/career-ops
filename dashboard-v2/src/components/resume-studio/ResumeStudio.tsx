@@ -405,6 +405,21 @@ export default function ResumeStudio({
                   }}
                   onTailor={onTailorJob}
                   onAtsUpdate={onAtsUpdate}
+                  onApplyMirroredProfile={(aligned) => {
+                    if (Array.isArray(aligned.narrative?.superpowers)) {
+                      updateCompetencies(aligned.narrative.superpowers.map(String));
+                    }
+                    if (aligned.narrative) {
+                      updateNarrative({
+                        headline: aligned.narrative.headline,
+                        exit_story: aligned.narrative.exit_story,
+                      });
+                    }
+                    if (Array.isArray(aligned.experience) && aligned.experience.length) {
+                      updateExperience(aligned.experience);
+                    }
+                    setBanner(`JD keywords mirrored into Live Preview (target ${94}%+). Save if you want this kept.`);
+                  }}
                   hasGeneratedResume={Boolean(
                     reviewJob?.has_resume_html
                     || reviewJob?.has_resume_pdf

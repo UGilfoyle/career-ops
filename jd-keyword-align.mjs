@@ -1101,8 +1101,8 @@ export function forceJdKeywordCoverage(resume, jdKeywords, opts = {}) {
       if (added >= stillNeeded) break;
       const raw = String(kw || '').trim();
       if (!raw || isJunkKeyword(raw) || isEmployerBrandKeyword(raw)) continue;
-      // ATS skills mirror: approved skill phrases + weavable noun phrases from the JD
-      if (!isApprovedSkillPhrase(raw) && !isWeaveableNounPhrase(raw)) continue;
+      // Skills section = ATS mirror: any real JD term (not only "approved" weave forms).
+      // Bullet weave still stays conservative via alignResumeToJd / isWeaveableNounPhrase.
       if (compLower.some((c) => c.includes(raw.toLowerCase()) || raw.toLowerCase().includes(c))) continue;
       comps.unshift(raw);
       compLower.unshift(raw.toLowerCase());

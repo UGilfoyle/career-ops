@@ -1,6 +1,6 @@
 import type { ResumeContext } from './types';
 import { masterSummaryText } from './fill-template';
-import { getCompetencies } from './types';
+import { getCompetencies, setCompetencies } from './types';
 import { runJdMatch, type JdMatchResult } from './jd-match';
 
 export type AtsScoreResult = {
@@ -10,6 +10,9 @@ export type AtsScoreResult = {
   total: number;
   source: 'jd' | 'structure';
   jdMatch?: JdMatchResult;
+  /** When mirror ran — updated master profile (skills + summary). */
+  alignedProfile?: ResumeContext;
+  scoredFrom?: 'draft' | 'tailored' | 'structure';
 };
 
 /** Structure completeness (no JD) — kept for empty-job state. */
@@ -31,6 +34,7 @@ export function structureAtsScore(profile: ResumeContext): AtsScoreResult {
     missing: [],
     total: 0,
     source: 'structure',
+    scoredFrom: 'structure',
   };
 }
 
@@ -44,6 +48,44 @@ function profileToResumeShape(profile: ResumeContext) {
     core_competencies: getCompetencies(profile),
     experience,
   };
+}
+
+function applyAlignedResumeToProfile(
+  profile: ResumeContext,
+  aligned: { summary?: string; core_competencies?: string[] },
+): ResumeContext {
+  let next = setCompetencies(
+    profile,
+    Array.isArray(aligned.core_competencies) ? aligned.core_competencies.map(String) : getCompetencies(profile),
+  );
+  const summary = String(aligned.summary || '').trim();
+  if (summary) {
+    const headline = String(next.narrative?.headline || '').trim();
+    // Prefer keeping headline; park full ATS summary in exit_story.
+    next = {
+      ...next,
+      narrative: {
+        ...(next.narrative || {}),
+        exit_story: headline && summary.startsWith(headline)
+          ? summary.slice(headline.length).trim() || summary
+          : summary,
+      },
+    };
+  }
+  return next;
+}
+
+export function htmlToPlainText(html: string): string {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 async function importJdKeywordAlign() {
@@ -70,7 +112,8 @@ async function importJdKeywordAlign() {
  */
 export async function scoreMasterAgainstJd(
   profile: ResumeContext,
-  jdText: string
+  jdText: string,
+  opts?: { resumeHtml?: string | null },
 ): Promise<AtsScoreResult> {
   if (!jdText || jdText.trim().length < 40) {
     return structureAtsScore(profile);
@@ -85,11 +128,29 @@ export async function scoreMasterAgainstJd(
       total: 0,
       source: 'jd',
       jdMatch,
+      scoredFrom: 'draft',
     };
   }
 
   try {
     const mod = await importJdKeywordAlign();
+    const tailoredText = opts?.resumeHtml ? htmlToPlainText(opts.resumeHtml) : '';
+    if (tailoredText.length > 80) {
+      const tailoredMeasured = mod.measureJdAlignment(
+        { summary: tailoredText, core_competencies: [], experience: {} },
+        keywords,
+      ) as { score: number; matched: string[]; missing: string[] };
+      return {
+        score: tailoredMeasured.score,
+        matched: tailoredMeasured.matched,
+        missing: tailoredMeasured.missing,
+        total: keywords.length,
+        source: 'jd',
+        scoredFrom: 'tailored',
+        jdMatch: { ...jdMatch, coveragePct: tailoredMeasured.score },
+      };
+    }
+
     const measured = mod.measureJdAlignment(profileToResumeShape(profile), keywords) as {
       score: number;
       matched: string[];
@@ -101,9 +162,9 @@ export async function scoreMasterAgainstJd(
       missing: measured.missing,
       total: keywords.length,
       source: 'jd',
+      scoredFrom: 'draft',
       jdMatch: {
         ...jdMatch,
-        // Keep profile honest/gaps for chips, but primary score is resume-text coverage
         coveragePct: measured.score,
       },
     };
@@ -114,7 +175,68 @@ export async function scoreMasterAgainstJd(
       missing: jdMatch.gaps,
       total: keywords.length,
       source: 'jd',
+      scoredFrom: 'draft',
       jdMatch,
     };
   }
+}
+
+/**
+ * Push JD keywords into master profile skills/summary until ≥94% coverage.
+ * This is what Studio Live Preview must do — scoring alone does not change the resume.
+ */
+export async function mirrorJdKeywordsIntoProfile(
+  profile: ResumeContext,
+  jdText: string,
+): Promise<AtsScoreResult> {
+  if (!jdText || jdText.trim().length < 40) {
+    return structureAtsScore(profile);
+  }
+  const jdMatch = await runJdMatch(profile, jdText);
+  const keywords = jdMatch.jdKeywords || [];
+  if (!keywords.length) {
+    return {
+      score: 0,
+      matched: [],
+      missing: [],
+      total: 0,
+      source: 'jd',
+      scoredFrom: 'draft',
+      alignedProfile: profile,
+      jdMatch,
+    };
+  }
+
+  const mod = await importJdKeywordAlign();
+  const target = Number(mod.JD_ALIGNMENT_TARGET) || 94;
+  const pushed = mod.forceJdKeywordCoverage(profileToResumeShape(profile), keywords, {
+    target,
+    maxPasses: 5,
+    sourceExperience: profile.experience || [],
+  }) as {
+    resume: { summary?: string; core_competencies?: string[]; experience?: Record<string, string[]> };
+    alignment: { score: number; matched: string[]; missing: string[] };
+  };
+
+  const alignedProfile = applyAlignedResumeToProfile(profile, pushed.resume);
+  // Also fold weaved bullets back onto experience when shape matches
+  const expMap = pushed.resume.experience;
+  if (expMap && typeof expMap === 'object' && Array.isArray(alignedProfile.experience)) {
+    alignedProfile.experience = alignedProfile.experience.map((role, i) => {
+      const bullets = expMap[String(i)];
+      if (!Array.isArray(bullets) || !bullets.length) return role;
+      return { ...role, bullets: bullets.map(String) };
+    });
+  }
+
+  return {
+    score: pushed.alignment.score,
+    matched: pushed.alignment.matched,
+    missing: pushed.alignment.missing,
+    total: keywords.length,
+    source: 'jd',
+    scoredFrom: 'draft',
+    alignedProfile,
+    jdMatch: { ...jdMatch, coveragePct: pushed.alignment.score },
+  };
 }
