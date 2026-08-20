@@ -110,6 +110,8 @@ export default function ResumeStudio({
   useEffect(() => {
     if (reviewJob?.docKind === 'cover') {
       setLeftTab('cover');
+    } else if (reviewJob?.docKind === 'resume') {
+      setLeftTab('jd');
     }
   }, [reviewJob?.jobId, reviewJob?.docKind]);
 
@@ -333,46 +335,48 @@ export default function ResumeStudio({
         <div className="min-h-0 overflow-y-auto border-b border-[#E5E5E0] lg:border-b-0 lg:border-r">
           <div className="space-y-3 p-4">
             {/* ── Left Pane Sub-Navigation ── */}
-            <div className="flex rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-0.5">
-              {reviewJob?.docKind === 'cover' ? (
+            <div className="flex flex-wrap rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-0.5 gap-0.5">
+              <button
+                type="button"
+                onClick={() => setLeftTab('jd')}
+                className={`min-w-0 flex-1 rounded-lg py-2 px-2 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  leftTab === 'jd'
+                    ? 'bg-[#1C1C1E] text-white shadow-sm'
+                    : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                }`}
+              >
+                <Sparkles size={13} />
+                <span className="truncate">JD Match</span>
+              </button>
+              {reviewJob && (reviewJob.has_cover_letter_html || reviewJob.has_cover_letter_pdf || reviewJob.docKind === 'cover') ? (
                 <button
                   type="button"
                   onClick={() => setLeftTab('cover')}
-                  className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`min-w-0 flex-1 rounded-lg py-2 px-2 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     leftTab === 'cover'
                       ? 'bg-[#1C1C1E] text-white shadow-sm'
                       : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
                   }`}
                 >
-                  <Files size={13} /> Edit Cover Letter
+                  <Files size={13} />
+                  <span className="truncate">Cover Letter</span>
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setLeftTab('jd')}
-                  className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    leftTab === 'jd'
-                      ? 'bg-[#1C1C1E] text-white shadow-sm'
-                      : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
-                  }`}
-                >
-                  <Sparkles size={13} /> JD Match Inspector
-                </button>
-              )}
+              ) : null}
               <button
                 type="button"
                 onClick={() => setLeftTab('editor')}
-                className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`min-w-0 flex-1 rounded-lg py-2 px-2 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   leftTab === 'editor'
                     ? 'bg-[#1C1C1E] text-white shadow-sm'
                     : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
                 }`}
               >
-                <Files size={13} /> Edit Master Resume
+                <Files size={13} />
+                <span className="truncate">Master Resume</span>
               </button>
             </div>
 
-            {leftTab === 'cover' && reviewJob?.docKind === 'cover' ? (
+            {leftTab === 'cover' && reviewJob ? (
               <CoverLetterEditor
                 jobId={reviewJob.jobId}
                 profileName={draft.candidate?.full_name || ''}
@@ -520,7 +524,7 @@ export default function ResumeStudio({
         </div>
 
         <div className="min-h-[320px] lg:min-h-0">
-          {reviewJob?.docKind === 'cover' &&
+          {leftTab === 'cover' && reviewJob &&
           (coverPreviewHtml || reviewJob.has_cover_letter_html || reviewJob.has_cover_letter_pdf) ? (
             <div className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white lg:min-h-0">
               <div className="flex items-center justify-between border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3">
