@@ -1,7 +1,7 @@
 {
   "name": "career-ops",
   "version": "1.12.0",
-  "description": "AI-powered job search pipeline — works with any AI coding CLI (Claude Code, OpenCode, Gemini, Codex, Qwen)",
+  "description": "Job search command center — evaluate offers, ATS resume tailoring, portal scanning, application tracking",
   "private": true,
   "engines": {
     "node": "22.x"
