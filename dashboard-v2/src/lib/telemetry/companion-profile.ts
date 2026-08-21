@@ -45,6 +45,30 @@ export type CompanionProfile = {
   summary: string | null;
 };
 
+/**
+ * Strip JD-keyword weave crumbs from companion copy so recruiters don't see
+ * "(WebSockets, Jenkins) (CI/CD) (GCP)…" spam on the stealth landing page.
+ */
+export function cleanCompanionSummary(text: string | null | undefined): string | null {
+  let s = String(text || '').trim();
+  if (!s) return null;
+  // Leading stacks of parenthetical skill lists: "(A, B) (C/D) (E). Bio…"
+  s = s.replace(/^(\s*\([^)]{2,90}\)\s*)+/g, '').trim();
+  s = s.replace(/^[.\u2026]+\s*/, '').trim();
+  // Trailing skill-only paren crumbs (allows spaces inside tokens e.g. "REST API")
+  s = s
+    .replace(
+      /\s*\((?:[A-Za-z0-9.+#/\-]+(?:\s+[A-Za-z0-9.+#/\-]+)*(?:,\s*)?){2,}\)\.?\s*$/g,
+      '',
+    )
+    .trim();
+  s = s.replace(/^[▸►▶•▪︎]\s*/gm, '');
+  s = s.replace(/\s*[▸►▶➢➤⇒➔➜]\s*/g, ' ');
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  if (!s || s.length < 24) return null;
+  return s.length > 420 ? `${s.slice(0, 417)}…` : s;
+}
+
 export async function loadCompanionProfile(
   sql: postgres.Sql,
   userId: string | number
@@ -107,11 +131,7 @@ export async function loadCompanionProfile(
 
   const headline = String(narrative.headline || '').trim();
   const exitStory = String(narrative.exit_story || '').trim();
-  const summary = exitStory
-    ? exitStory.length > 420
-      ? `${exitStory.slice(0, 417)}…`
-      : exitStory
-    : null;
+  const summary = cleanCompanionSummary(exitStory);
 
   return {
     name: name || 'Candidate',
