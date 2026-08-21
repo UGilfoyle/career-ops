@@ -513,8 +513,8 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
     } in ${lead}.`,
   );
 
-  // Line 2 — JD-family framing (prefer Azure Data / ETL when present)
-  if (/\b(databricks|pyspark|azure data factory|\badf\b|snowflake|redshift|bigquery|data modeling)\b/i.test(jdLower)) {
+  // Line 2 — JD-family framing (only real Azure/data-warehouse stacks — NOT bare "data modeling")
+  if (/\b(databricks|pyspark|azure data factory|\badf\b|snowflake|redshift|bigquery)\b/i.test(jdLower)) {
     lines.push(
       'Own Azure data platforms end-to-end: Databricks/PySpark transforms, ADF pipelines, SQL-backed models, and warehouse loads (Snowflake/Redshift/BigQuery) with reliable ETL/ELT.',
     );

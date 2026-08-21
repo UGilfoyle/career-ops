@@ -1554,6 +1554,14 @@ export function stripUnsolicitedAiFromResume(resume, jdText) {
       .map(keepLine)
       .filter(Boolean)
       .join('\n');
+    // Never paste Azure/Databricks warehouse boilerplate onto pure AWS JDs
+    const jd = String(jdText || '').toLowerCase();
+    if (/\baws\b/.test(jd) && !/\bazure\b/.test(jd) && !/\bdatabricks\b/.test(jd)) {
+      out.summary = out.summary
+        .split(/\n+/)
+        .filter((line) => !/\b(azure data platforms|databricks|pyspark|\badf\b|snowflake\/redshift)\b/i.test(line))
+        .join('\n');
+    }
   }
 
   if (Array.isArray(out.core_competencies)) {

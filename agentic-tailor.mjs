@@ -345,15 +345,20 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     }
     const tenureMonths = parseTenureMonths(job.period);
     const budget = roleBulletBudget(idx, { tenureMonths, maxPages });
+    // Never fall back to profile AI/LLM invent when JD is not a core AI role.
+    const sourceSafe = stripUnsolicitedAiFromResume(
+      { experience: { '0': job.bullets || [] } },
+      jdText,
+    ).experience?.['0'] || [];
     const candidates = (roleBullets
       ? roleBullets.slice(0, budget + 2)
-      : (job.bullets || []).slice(0, budget + 2)
+      : sourceSafe.slice(0, budget + 2)
     );
     // Merge orphan fragments; if tailored output is thin/broken, prefer profile source facts.
     // Company-aware tone: senior LinkedIn bar only for Quest / Glidewell / INTVERSE / Srijan;
     // mid-level professional polish for KOCO / Rubico / Artisanssoft (and other older roles).
     const employerToneKey = `${job.company || ''} ${job.role || ''}`;
-    const normalizedBullets = preferSourceIfThin(candidates, job.bullets || [], {
+    const normalizedBullets = preferSourceIfThin(candidates, sourceSafe, {
       minCount: Math.min(3, budget),
       maxBullets: budget,
       company: employerToneKey,
@@ -361,6 +366,11 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       .filter((b) => !isEmbeddedJobHeader(b))
       .map((b) => normalizeBulletText(elevateBulletForEmployer(String(b || ''), employerToneKey), employerToneKey))
       .filter((b) => b.length >= 20 && !isIncompleteBullet(b));
+    // Final AI scrub after preferSourceIfThin (defense in depth)
+    const aiSafeBullets = stripUnsolicitedAiFromResume(
+      { experience: { '0': normalizedBullets } },
+      jdText,
+    ).experience?.['0'] || normalizedBullets;
 
     let role = (job.role || '').trim();
     let company = (job.company || '').trim();
@@ -419,7 +429,7 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
         <div class="job-dates">${dates}</div>
       </div>
       <ul>
-        ${normalizedBullets.map(b => `<li>${formatBulletHtml(b)}</li>`).join('')}
+        ${aiSafeBullets.map(b => `<li>${formatBulletHtml(b)}</li>`).join('')}
       </ul>
     </div>
   `}).join('');
@@ -2001,7 +2011,17 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     }
     const canonicalUrl = canonicalizeUrl(entry.url);
     const result = await tailorPackage(jdText, profile, entry.company, entry.company_type);
-    const tailoring = result.resume;
+    let tailoring = stripUnsolicitedAiFromResume(result.resume, jdText);
+    result.resume = tailoring;
+    if (Array.isArray(profile.experience)) {
+      profile.experience = profile.experience.map((role) => {
+        const cleaned = stripUnsolicitedAiFromResume(
+          { experience: { '0': role.bullets || [] } },
+          jdText,
+        ).experience?.['0'] || [];
+        return { ...role, bullets: cleaned };
+      });
+    }
 
     // Debug: Log tailored bullets
     // Debug: Log tailored bullets (handles both flat array and multi-role object)
