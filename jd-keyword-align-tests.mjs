@@ -320,6 +320,24 @@ assert(
 );
 assert(isJunkKeyword('AI-assisted coding'), 'AI-assisted coding is junk');
 assert(isJunkKeyword('agentic development techniques'), 'agentic development techniques is junk');
+assert(isJunkKeyword('days'), 'bare days is junk');
+assert(isJunkKeyword('current'), 'bare current is junk');
+assert(isJunkKeyword('product'), 'bare product is junk');
+assert(isJunkKeyword('code'), 'bare code is junk');
+assert(isJunkKeyword('management'), 'bare management is junk');
+assert(isJunkKeyword('AWS-based'), 'AWS-based is junk');
+const kaseyaLike = `
+Senior Software Engineer
+5+ years of experience. Must manage product and code in current days.
+Requirements: C#, .NET, Jenkins, CI/CD, WebSockets, Linux, Jira, AWS, observability, distributed systems, agile.
+`;
+const kaseyaKw = extractJdKeywords(kaseyaLike, 25).map((k) => k.toLowerCase());
+assert(!kaseyaKw.includes('days'), 'extract drops days');
+assert(!kaseyaKw.includes('current'), 'extract drops current');
+assert(!kaseyaKw.includes('product'), 'extract drops product');
+assert(!kaseyaKw.includes('code'), 'extract drops code');
+assert(!kaseyaKw.includes('management'), 'extract drops management');
+assert(kaseyaKw.some((k) => k.includes('jenkins') || k === 'c#' || k.includes('.net')), 'keeps real stack');
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

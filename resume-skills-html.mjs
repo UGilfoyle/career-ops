@@ -26,7 +26,13 @@ const UNPROVEN_LANGUAGE_RE =
 
 export function isAwsServiceCrumb(text) {
   const k = cleanSkillToken(text).toLowerCase();
-  return AWS_SERVICE_CRUMBS.has(k);
+  if (AWS_SERVICE_CRUMBS.has(k)) return true;
+  // Phrase crumbs when top-level AWS is already listed
+  if (/^aws[-\s]?based$/i.test(k)) return true;
+  if (/^aws\s+serverless(\s+architectures?)?$/i.test(k)) return true;
+  if (/^aws\s+cloud\s+infrastructure$/i.test(k)) return true;
+  if (/^aws\s+services?$/i.test(k)) return true;
+  return false;
 }
 
 export function isUnprovenLanguageSkill(text) {
@@ -158,9 +164,16 @@ function escapeHtml(s) {
 }
 
 function collapseAwsCrumbs(items) {
-  const hasAws = items.some((s) => /^aws\b/i.test(String(s)));
-  if (!hasAws) return items;
-  return items.filter((s) => !isAwsServiceCrumb(s));
+  const list = (items || []).map(String);
+  const hasAws = list.some((s) => /^aws$/i.test(cleanSkillToken(s)) || /^amazon web services$/i.test(s));
+  if (!hasAws) {
+    // Still normalize phrase crumbs to bare AWS when nothing else is present
+    return list.map((s) => {
+      if (isAwsServiceCrumb(s) && /^aws\b/i.test(s)) return 'AWS';
+      return s;
+    });
+  }
+  return list.filter((s) => !isAwsServiceCrumb(s) && !/^aws\b.+/i.test(cleanSkillToken(s)));
 }
 
 function skillsCategoryLines(items) {

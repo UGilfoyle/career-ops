@@ -481,6 +481,9 @@ export function isJunkKeyword(kw) {
   if (/^(ai[-\s]?assisted(\s+coding)?|agentic(\s+development)?(\s+techniques)?|github copilot|cursor ai)$/i.test(k)) {
     return true;
   }
+  // Junk AWS phrase crumbs (never skills)
+  if (/^aws[-\s]?based$/i.test(k) || /^aws\s+serverless(\s+architectures?)?$/i.test(k)) return true;
+  if (/^aws\s+cloud\s+infrastructure$/i.test(k)) return true;
   if (isEmployerBrandKeyword(k)) return true;
   // Bare version fragments split from model names ("3-large" from text-embedding-3-large)
   if (/^\d+-[a-z0-9-]+$/.test(k)) return true;
@@ -669,8 +672,16 @@ export function weaveSuffixForm(kw) {
   return null;
 }
 
-/** Bare abbreviations that read as junk on an ATS skills line. */
-const WEAK_SKILL_TOKENS = new Set(['ml', 'ai', 'it', 'go']);
+/** Bare abbreviations / filler nouns that read as junk on an ATS skills line. */
+const WEAK_SKILL_TOKENS = new Set([
+  'ml', 'ai', 'it', 'go',
+  // Frequent JD English that inflated "JD ATS %" without being skills
+  'days', 'day', 'current', 'product', 'code', 'codes', 'management', 'operations',
+  'using', 'with', 'from', 'into', 'over', 'under', 'about', 'team', 'teams',
+  'work', 'works', 'role', 'roles', 'year', 'years', 'experience', 'strong',
+  'ability', 'skills', 'knowledge', 'understanding', 'excellent', 'good',
+  'based', 'related', 'driven', 'oriented', 'native',
+]);
 
 /** True only when the JD clearly means Go-the-language, not "go-to" prose. */
 function jdMeansGoLanguage(text) {
@@ -839,12 +850,13 @@ export function extractJdKeywords(jdText, limit = 20) {
     }
   }
 
-  // 3. Frequent meaningful tokens (4+ chars) in JD
+  // 3. Frequent meaningful tokens — ONLY known tech / approved skills (never "days"/"product"/"code")
   const lower = text.toLowerCase();
   const freq = {};
   for (const m of lower.matchAll(/\b[a-z][a-z0-9+#.]{3,}\b/g)) {
     const w = m[0];
     if (STOPWORDS.has(w)) continue;
+    if (WEAK_SKILL_TOKENS.has(w)) continue;
     freq[w] = (freq[w] || 0) + 1;
   }
   const frequent = Object.entries(freq)
@@ -855,6 +867,13 @@ export function extractJdKeywords(jdText, limit = 20) {
       const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
       const match = text.match(re);
       return match ? match[0] : w;
+    })
+    .filter((w) => {
+      if (isJunkKeyword(w)) return false;
+      // Frequency alone never promotes bare English nouns into ATS skills
+      if (findKnownTechInText(normalizeJdTechAliases(w)).length > 0) return true;
+      if (isApprovedSkillPhrase(w)) return true;
+      return false;
     });
 
   found.push(...suppressFalsePositiveLanguages(frequent, text));

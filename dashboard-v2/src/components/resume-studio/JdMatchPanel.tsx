@@ -580,7 +580,7 @@ export function JdMatchPanel({
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
                   {state.atsSource === 'jd'
-                    ? 'Keywords in resume (target 94%+)'
+                    ? 'JD keywords in resume (not Enhancv content score)'
                     : 'Profile completeness'}
                 </span>
               </div>
