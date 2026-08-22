@@ -74,8 +74,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const scoreTailoredHtml =
-      preferTailored && resumeHtml && resumeHtml.length > 80;
+    const scoreTailoredHtml = Boolean(
+      preferTailored && resumeHtml && resumeHtml.length > 80,
+    );
 
     let profile = (body.resume_context || body.profile) as ResumeContext | undefined;
     if (!profile) {
