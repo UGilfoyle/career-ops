@@ -109,7 +109,10 @@ export function classifyRoleFamily(jdText) {
   if (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && !/\bback[-\s]?end\b|\bfull[-\s]?stack\b/.test(t)) {
     return 'frontend';
   }
-  if (/\bdevops\b|\bsite reliability\b|\bsre\b/.test(t)) return 'devops_sre';
+  if (/\bdevops\b|\bsite reliability\b|\bsre\b|\baws platform engineer\b/.test(t)) return 'devops_sre';
+  if (/\bplatform engineer\b/.test(t) && /\b(aws|terraform|cloudformation|iam|vpc)\b/.test(t)) {
+    return 'devops_sre';
+  }
   if (/\bback[-\s]?end\b|\bplatform engineer\b|\bapi engineer\b/.test(t)) return 'backend_platform';
   return 'unknown';
 }
@@ -203,7 +206,7 @@ export function buildTailoringPlan(jdText, profile, opts = {}) {
         .slice(0, 6),
     },
     // Gaps allowed only when they are real tech tools (NestJS/Azure) — prose never lands in skills
-    competencies: { min: 10, max: 16, includeGaps: true },
+    competencies: { min: 10, max: 20, includeGaps: true },
     coverLetter: {
       maxWords: 150,
       jdHooks: [...new Set([...domain, ...jdTech, ...(fit.honest || [])])].slice(0, 5),
@@ -303,7 +306,7 @@ export function selectWeaveKeywords(plan, profile) {
  * in-place mention upgrades, tool parentheticals, or "in a/an X" clauses.
  * Keywords without a natural home in a role are skipped for that role.
  */
-export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerRole = 2) {
+export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerRole = 2, profile = null) {
   if (!resume?.experience || !plan?.tailorIndices?.length || !weaveKeywords?.length) return resume;
   const copy = JSON.parse(JSON.stringify(resume));
   const kws = weaveKeywords.filter((k) => isWeaveableNounPhrase(k));
@@ -338,6 +341,8 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
     for (let n = 0; n < kws.length && added < maxPerRole; n++) {
       const kw = kws[(cursor + n) % kws.length];
       if (keywordCoveredInText(roleText(), kw)) continue;
+      const sourceDigest = (profile?.experience?.[idx]?.bullets || []).join('\n');
+      if (sourceDigest && !keywordCoveredInText(sourceDigest, kw)) continue;
 
       // Rank candidate bullets: skip metric tails and saturated bullets, prefer
       // upgradeable partial mentions, then bullets adjacent to the keyword.
@@ -523,7 +528,7 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     summary: buildHonestSummary(
       opts.llmSummary || profile?.narrative?.exit_story || '',
       years,
-      jdLead,
+      bulletKeywords,
       jdText,
     ),
     core_competencies: buildJdMatchedCompetencies(
@@ -538,7 +543,7 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
   // Align mutable roles + summary with FULL JD keyword set
   const { resume: aligned } = alignResumeToJd(resume, atsKeywords, profile?.experience || [], {
     bulletKeywords,
-    summaryKeywords: jdLead,
+    summaryKeywords: bulletKeywords,
     weaveRoleIndices: plan.tailorIndices,
   });
   resume = aligned;
@@ -567,7 +572,7 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
 
   // Final freeze + honest weave only (gaps stay in competencies)
   let finalResume = restorePreservedEmployers(polished, preserved);
-  finalResume = injectWeaveIntoMutableRoles(finalResume, plan, bulletKeywords, 2);
+  finalResume = injectWeaveIntoMutableRoles(finalResume, plan, bulletKeywords, 2, profile);
   finalResume = scrubGapToolsFromMutableRoles(finalResume, plan, profile);
   finalResume = restorePreservedEmployers(finalResume, preserved);
 
@@ -624,7 +629,7 @@ export function repairTailoredResume(resume, plan, profile, jdText) {
   // Patch summary / competencies with full JD stack
   const { resume: aligned } = alignResumeToJd(copy, ats, profile?.experience || [], {
     bulletKeywords,
-    summaryKeywords: jdLead,
+    summaryKeywords: bulletKeywords,
     weaveRoleIndices: plan.tailorIndices,
     weaveEveryBullet: false,
   });
@@ -644,7 +649,7 @@ export function repairTailoredResume(resume, plan, profile, jdText) {
     }
   }
 
-  const repaired = injectWeaveIntoMutableRoles(aligned, plan, bulletKeywords, 2);
+  const repaired = injectWeaveIntoMutableRoles(aligned, plan, bulletKeywords, 2, profile);
   const scrubbed = scrubGapToolsFromMutableRoles(repaired, plan, profile);
   // Rebuild summary when top JD weave phrases are absent
   const topDomain = bulletKeywords

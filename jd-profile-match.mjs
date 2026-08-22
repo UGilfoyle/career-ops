@@ -37,6 +37,12 @@ const PROFILE_TECH_PATTERNS = [
   /\bMongoDB\b/gi,
   /\bRedis\b/gi,
   /\bAWS\b/gi,
+  /\bTerraform\b/gi,
+  /\bCloudFormation\b/gi,
+  /\bCloudWatch\b/gi,
+  /\bBoto3\b/gi,
+  /\bIAM\b/gi,
+  /\bVPC\b/gi,
   /\bDocker\b/gi,
   /\bKubernetes\b/gi,
   /\bCI\/CD\b/gi,
@@ -257,6 +263,11 @@ function enhanceBulletHonest(bullet, honestKeywords, company = '') {
 export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   const t = String(jdText || '').toLowerCase();
   const y = Number(yearsExp) || 0;
+  if (/\baws platform engineer\b/.test(t) || (/\bplatform engineer\b/.test(t) && /\baws\b/.test(t))) {
+    return /\bprincipal\b/.test(t)
+      ? 'AWS Platform Engineer Principal'
+      : 'Senior AWS Platform Engineer';
+  }
   if (/\bstaff\s+(software\s+)?engineer\b|\bprincipal\s+(software\s+)?engineer\b/.test(t)) {
     return y >= 8 ? 'Staff Software Engineer' : 'Senior Software Engineer';
   }
@@ -353,7 +364,9 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     if (isEditorIdeTool(raw)) return;
     // Skills row = real tech / seeded domain only — never JD prose crumbs
     if (!isApprovedSkillPhrase(raw)) return;
-    if (isAwsServiceCrumb(raw) && comps.some((c) => /^aws\b/i.test(c))) return;
+    if (isAwsServiceCrumb(raw) && comps.some((c) => /^aws\b/i.test(c))) {
+      if (!jdLower.includes(normalizeKey(raw))) return;
+    }
     const k = normalizeKey(raw);
     if (!k || seen.has(k)) return;
     seen.add(k);
@@ -485,13 +498,13 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
  */
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
   const y = Number(yearsExp) || 0;
-  // JD-first lead stack: all real JD tech (gaps included) — never Indeed chrome
+  // Proven stack only — never dump JD-gap tools (.NET, DynamoDB) into the summary
   const leadList = (honestKeywords || []).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k) && !isEditorIdeTool(k));
-  const jdTech = extractJdTechKeywords(jdText, 12).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k) && !isEditorIdeTool(k));
-  const leadPool = [...leadList, ...jdTech]
+  const leadPool = leadList
     .filter((k) => {
       if (FRAGMENT_BLOCKLIST.has(normalizeKey(k)) || !isWeavableKeyword(k)) return false;
       if (isJunkKeyword(k)) return false;
+      if (isUnprovenLanguageSkill(k)) return false;
       if (/^(unit testing|agile|scrum|full[-\s]?stack experience)$/i.test(String(k))) return false;
       return true;
     });
@@ -529,6 +542,8 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
     lines.push('Lead LLM-backed features and AI-assisted delivery with production-grade API reliability and validation loops.');
   } else if (/\bevent-driven|microservice|kafka|message queue\b/i.test(jdLower)) {
     lines.push('Drive monolith-to-microservices work and event-driven service boundaries with reliable messaging and clear ownership.');
+  } else if (/\baws platform|infrastructure as code|terraform|cloudformation|devsecops|capacity planning\b/i.test(jdLower)) {
+    lines.push('Own AWS platform work: infrastructure as code, CI/CD, CloudWatch monitoring, IAM/VPC networking, and incident response.');
   } else if (/\bci\/cd|devops|kubernetes|docker\b/i.test(jdLower)) {
     lines.push('Own CI/CD-backed releases, containerized deployments, and automated quality gates that cut operational toil.');
   } else if (/\breact|typescript|front-?end|frontend\b/i.test(jdLower) && /\b(node|\.net|api|backend|full-?stack)\b/i.test(jdLower)) {
@@ -542,6 +557,8 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
   // Line 3 — senior operating model: architecture + reliability + SDLC (never soft "collaborate")
   if (/\bobservability|high-traffic|latency|sre|incident\b/i.test(jdLower)) {
     lines.push('Hold the line on reliability: observability, incident response, latency tuning, and production hardening.');
+  } else if (/\bl3|l4|root cause|capacity planning|principal\b/i.test(jdLower)) {
+    lines.push('Lead L3/L4 incident RCA, architecture reviews, and capacity planning so platforms stay stable under load.');
   } else if (/\bmentor|tech lead|staff|principal|cross-functional\b/i.test(jdLower)) {
     lines.push('Set engineering bar through design ownership, peer review, and mentoring: from architecture decisions through launch.');
   } else if (/\bdata engineer|databricks|pyspark|etl|adf\b/i.test(jdLower)) {

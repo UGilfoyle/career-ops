@@ -297,5 +297,25 @@ function profileCorpusTextSafe(p) {
   return parts.join('\n').toLowerCase();
 }
 
+console.log('\n12. Cummins AWS platform — no fake stack / no parenthetical dumps\n');
+const CUMMINS_JD = fs.existsSync('jds/cummins-aws-platform-engineer-principal.txt')
+  ? fs.readFileSync('jds/cummins-aws-platform-engineer-principal.txt', 'utf8')
+  : 'AWS Platform Engineer Principal. Terraform, CloudFormation, IAM, VPC, CloudWatch, Jenkins.';
+const planC = buildTailoringPlan(CUMMINS_JD, profile);
+assert(planC.family === 'devops_sre', `Cummins family is devops_sre (got ${planC.family})`);
+assert(/aws platform engineer/i.test(planC.displayTitle), `Cummins title is AWS platform (got ${planC.displayTitle})`);
+const pkgC = executeTailoringPlan(planC, profile, { jdText: CUMMINS_JD, companyName: 'Cummins' });
+const summaryC = String(pkgC.resume.summary || '');
+const expC = Object.values(pkgC.resume.experience || {}).flat().join('\n');
+assert(!/\(\s*WebSockets|\(\s*\.NET|\(\s*DynamoDB|\(\s*GCP\s*\)/i.test(summaryC), 'summary has no parenthetical keyword dump');
+assert(!/\b\.NET\b/i.test(summaryC + expC) || /dotnet|\.net/.test(profileCorpusTextSafe(profile)), 'does not invent .NET');
+assert(!/\bDynamoDB\b/i.test(expC), 'does not invent DynamoDB into experience');
+assert(!/\bFastAPI\b/i.test(expC), 'does not invent FastAPI into experience');
+assert(!/\bOracle\b/i.test(expC) || /\boracle\b/i.test(profileCorpusTextSafe(profile)), 'does not invent Oracle into experience');
+assert(!/\bspearhead/i.test(summaryC + expC), 'no spearhead cliché');
+assert(/terraform|cloudformation|cloudwatch|iam|vpc|jenkins/i.test(summaryC + expC), 'Cummins resume surfaces proven AWS platform tools');
+const compsC = (pkgC.resume.core_competencies || []).join(' ');
+assert(/Terraform|CloudWatch|CloudFormation|AWS/i.test(compsC), 'Cummins competencies keep proven AWS stack ahead of JD-gap crumbs');
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

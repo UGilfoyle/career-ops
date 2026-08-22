@@ -10,6 +10,8 @@ const KNOWN_TECH = [
   'ECS', 'Lambda', 'S3', 'EC2', 'CloudFormation', 'IAM', 'VPC', 'SQS', 'SNS',
   'Kafka', 'RabbitMQ', 'GraphQL', 'REST API', 'RESTful API', 'gRPC',
   'Jenkins', 'GitHub Actions', 'GitLab CI', 'Prometheus', 'Grafana', 'Datadog',
+  'Terraform', 'CloudFormation', 'CDK', 'Boto3', 'CloudWatch', 'CloudTrail',
+  'CodePipeline', 'CodeBuild', 'Secrets Manager', 'GuardDuty', 'Route 53',
   'Jest', 'Cypress', 'Playwright', 'Puppeteer', 'Cheerio', 'Selenium',
   'WebSockets', 'WebSocket', 'ORM', 'TypeORM', 'Prisma', 'Sequelize',
   'Message Brokers', 'Web Scraping',
@@ -93,6 +95,11 @@ const DOMAIN_PHRASES = [
   'continuous delivery',
   'container orchestration',
   'auto-scaling',
+  'capacity planning',
+  'cost optimization',
+  'Well-Architected',
+  'DevSecOps',
+  'RTO/RPO',
   // AI / LLM
   'retrieval augmented generation',
   'prompt engineering',
@@ -968,7 +975,7 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   let text = String(summary || '').trim();
   if (!text) return text;
   const lower = text.toLowerCase();
-  // JD-first: inject missing known-tech terms (up to 4)
+  // Only proven, weavable tools — never parenthetical dumps like "(WebSockets, .NET)"
   const toAdd = keywords
     .filter((kw) => {
       if (!isWeavableKeyword(kw)) return false;
@@ -980,14 +987,11 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
 
   const lines = text.split('\n').filter(Boolean);
   if (lines.length === 0) lines.push(text);
+  if (lines.some((l) => /\([^)]{8,}\)/.test(l))) return text;
 
   const inject = toAdd.join(', ');
-  if (lines.length >= 2 && lines[1].length < 180) {
-    lines[1] = `${lines[1].replace(/\.$/, '')} (${inject}).`;
-  } else if (lines[0].length < 160) {
-    lines[0] = `${lines[0].replace(/\.$/, '')} (${inject}).`;
-  } else if (lines.length < 4) {
-    lines.push(`Core stack: ${inject}.`);
+  if (lines.length < 4) {
+    lines.push(`Production stack: ${inject}.`);
   }
   return lines.slice(0, 4).join('\n');
 }
@@ -1029,7 +1033,7 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
     }
   }
   copy.core_competencies = uniqueCasePreserved(
-    [...newComps, ...comps].filter((c) => {
+    [...comps, ...newComps].filter((c) => {
       if (isEmployerBrandKeyword(c) || isJunkKeyword(c)) return false;
       if (isApprovedSkillPhrase(c)) return true;
       const hits = suppressFalsePositiveLanguages(
@@ -1038,7 +1042,7 @@ export function alignResumeToJd(resume, jdKeywords, sourceExperience = [], opts 
       );
       return hits.length > 0;
     }),
-  ).slice(0, 16);
+  ).slice(0, 22);
 
   // Summary: weave top missing keywords (prefer opts.summaryKeywords to avoid gap-tool stuffing)
   const summaryKws = (opts.summaryKeywords || cleanKws).filter((kw) => isWeavableKeyword(kw));
@@ -1132,8 +1136,8 @@ export function forceJdKeywordCoverage(resume, jdKeywords, opts = {}) {
       // Skills section = ATS mirror: any real JD term (not only "approved" weave forms).
       // Bullet weave still stays conservative via alignResumeToJd / isWeaveableNounPhrase.
       if (compLower.some((c) => c.includes(raw.toLowerCase()) || raw.toLowerCase().includes(c))) continue;
-      comps.unshift(raw);
-      compLower.unshift(raw.toLowerCase());
+      comps.push(raw);
+      compLower.push(raw.toLowerCase());
       justAdded.push(raw);
       added += 1;
     }

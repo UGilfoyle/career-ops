@@ -53,4 +53,16 @@ assert(!/\bIAM\b/.test(broken), 'IAM crumb dropped when AWS present');
 assert(!/\bLambda\b/.test(broken), 'Lambda crumb dropped when AWS present');
 assert(!/\bAurora\b/.test(broken), 'Aurora crumb dropped when AWS present');
 
+const awsJd = 'AWS Platform Engineer. Must have IAM, VPC, CloudWatch, CloudFormation, Terraform, Jenkins.';
+const awsHtml = renderCategorizedSkills(
+  ['Event-driven microservices & high-throughput APIs', 'Bun / Node.js runtime performance for telemetry'],
+  ['Terraform', 'CloudWatch', 'IAM', 'VPC', 'AWS', 'Jenkins', 'Python', 'CloudFormation'],
+  awsJd,
+);
+assert(/Terraform/i.test(awsHtml), 'JD-named Terraform stays in skills');
+assert(/CloudWatch/i.test(awsHtml), 'JD-named CloudWatch stays in skills');
+assert(/IAM/i.test(awsHtml), 'JD-named IAM stays when AWS is present');
+assert(/Jenkins/i.test(awsHtml), 'JD-named Jenkins stays in skills');
+assert(/Cloud:/.test(awsHtml), 'AWS platform tools land in Cloud');
+
 console.log('resume-skills-editor-block-tests: ok');

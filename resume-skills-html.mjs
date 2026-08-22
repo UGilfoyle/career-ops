@@ -43,8 +43,8 @@ const TECH_PATTERNS = [
   /\b(java(?:script)?|python|typescript|go(?:lang)?|rust|ruby|c\+\+|c#|\.net|kotlin|swift|scala|php|perl|elixir|haskell|dart|r\b|sql|graphql|html|css|sass|less)\b/i,
   /\b(react|angular|vue|svelte|next\.?js|nuxt|nest\.?js|express|fastapi|flask|django|spring|rails|laravel|gin|echo|fiber|fastify|hono|remix|gatsby|astro|node\.?js|deno|bun)\b/i,
   /\b(postgres|postgresql|mysql|mariadb|mongo(?:db)?|redis|dynamodb|aurora|cockroach|cassandra|elastic|opensearch|sqlite|supabase|neon|firebase|firestore|couchdb|neo4j|memcached|influxdb)\b/i,
-  /\b(aws|gcp|azure|cloudflare|vercel|heroku|digital\s?ocean|ecs|ec2|lambda|fargate|s3|cloudfront|route\s?53|iam|vpc|sqs|sns|step\s?functions|api\s?gateway|cloud\s?run|cloud\s?functions|bigquery|pubsub|terraform|pulumi|cdk|cloudformation|ansible)\b/i,
-  /\b(docker|kubernetes|k8s|helm|istio|envoy|nginx|haproxy|traefik|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|circle\s?ci|argo\s?cd|flux|buildkite|drone|prometheus|grafana|datadog|new\s?relic|pagerduty|splunk|elk|loki|jaeger|opentelemetry)\b/i,
+  /\b(aws|gcp|azure|cloudflare|vercel|heroku|digital\s?ocean|ecs|ec2|lambda|fargate|s3|cloudfront|route\s?53|iam|vpc|sqs|sns|step\s?functions|api\s?gateway|cloud\s?run|cloud\s?functions|bigquery|pubsub|terraform|pulumi|cdk|cloudformation|cloudwatch|cloudtrail|boto3|ansible)\b/i,
+  /\b(docker|kubernetes|k8s|helm|istio|envoy|nginx|haproxy|traefik|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|circle\s?ci|argo\s?cd|flux|buildkite|drone|prometheus|grafana|datadog|new\s?relic|pagerduty|splunk|elk|loki|jaeger|opentelemetry|codepipeline|codebuild|secrets\s?manager|guardduty)\b/i,
   /\b(kafka|rabbitmq|nats|pulsar|flink|spark|pyspark|airflow|dbt|snowflake|redshift|bigquery|databricks|azure\s?data\s?factory|\badf\b|mlflow|sagemaker|pytorch|tensorflow|langchain|openai|hugging\s?face|llm|rag|vector\s?db|pinecone|weaviate|qdrant|milvus|chromadb)\b/i,
   /\b(jest|mocha|pytest|cypress|playwright|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack)\b/i,
   /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet)\b/i,
@@ -163,8 +163,9 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
-function collapseAwsCrumbs(items) {
+function collapseAwsCrumbs(items, jdText = '') {
   const list = (items || []).map(String);
+  const jd = String(jdText || '').toLowerCase();
   const hasAws = list.some((s) => /^aws$/i.test(cleanSkillToken(s)) || /^amazon web services$/i.test(s));
   if (!hasAws) {
     // Still normalize phrase crumbs to bare AWS when nothing else is present
@@ -173,13 +174,19 @@ function collapseAwsCrumbs(items) {
       return s;
     });
   }
-  return list.filter((s) => !isAwsServiceCrumb(s) && !/^aws\b.+/i.test(cleanSkillToken(s)));
+  return list.filter((s) => {
+    const token = cleanSkillToken(s);
+    const isCrumb = isAwsServiceCrumb(s) || /^aws\b.+/i.test(token);
+    if (!isCrumb) return true;
+    const k = token.toLowerCase();
+    return k.length >= 3 && jd.includes(k);
+  });
 }
 
-function skillsCategoryLines(items) {
+function skillsCategoryLines(items, jdText = '') {
   const seen = new Set();
   const unique = [];
-  for (const raw of collapseAwsCrumbs(items)) {
+  for (const raw of collapseAwsCrumbs(items, jdText)) {
     const label = normalizeSkillLabel(raw);
     if (!label || isNarrativeSuperpower(label)) continue;
     if (/[()[\]{}]/.test(label) && ((label.match(/[([{]/g) || []).length !== (label.match(/[)\]}]/g) || []).length)) {
@@ -233,8 +240,8 @@ function skillCategory(label) {
     return 'Databases';
   }
   if (
-    /^(aws|gcp|azure|docker|kubernetes|k8s|terraform|linux|ci\/cd|ecs|ec2|lambda)$/i.test(k)
-    || /^(aws|azure|gcp|docker|kubernetes)\b/.test(k)
+    /^(aws|gcp|azure|docker|kubernetes|k8s|terraform|cloudformation|cloudwatch|iam|vpc|boto3|jenkins|linux|ci\/cd|ecs|ec2|lambda|s3)$/i.test(k)
+    || /^(aws|azure|gcp|docker|kubernetes|terraform|cloudformation|cloudwatch)\b/.test(k)
   ) {
     return 'Cloud';
   }
@@ -311,9 +318,10 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
     }
   }
 
-  const uniqueTech = sanitizeCompetencyList([...fromProfile, ...competencies], jdText).slice(0, 18);
-  if (uniqueTech.length) return skillsCategoryLines(uniqueTech);
+  // JD competencies first so Technical Skills match the posting, not a generic backend blob
+  const uniqueTech = sanitizeCompetencyList([...competencies, ...fromProfile], jdText).slice(0, 22);
+  if (uniqueTech.length) return skillsCategoryLines(uniqueTech, jdText);
 
-  const fallback = sanitizeCompetencyList([...fromProfile, ...competencies, ...superpowers], jdText).slice(0, 18);
-  return skillsCategoryLines(fallback);
+  const fallback = sanitizeCompetencyList([...competencies, ...fromProfile, ...superpowers], jdText).slice(0, 18);
+  return skillsCategoryLines(fallback, jdText);
 }

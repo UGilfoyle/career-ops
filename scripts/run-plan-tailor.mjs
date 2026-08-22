@@ -83,8 +83,8 @@ function renderExperience(profile, resume) {
   }).join('\n');
 }
 
-function renderSkillsLines(profileSuperpowers, tailoredCompetencies) {
-  return renderCategorizedSkills(profileSuperpowers, tailoredCompetencies);
+function renderSkillsLines(profileSuperpowers, tailoredCompetencies, jdText = '') {
+  return renderCategorizedSkills(profileSuperpowers, tailoredCompetencies, jdText);
 }
 
 const jdPath = arg('--jd');
@@ -202,7 +202,11 @@ const linkParts = [];
 if (linkedinRaw) linkParts.push(`<a href="https://${escapeHtml(linkedinRaw)}">${escapeHtml(linkedinRaw)}</a>`);
 if (githubRaw) linkParts.push(`<a href="https://${escapeHtml(githubRaw)}">${escapeHtml(githubRaw.replace(/^github\.com\//i, ''))}</a>`);
 
-const skillsLines = renderSkillsLines(profile.narrative?.superpowers || [], executed.resume.core_competencies || []);
+const skillsLines = renderSkillsLines(
+  profile.narrative?.superpowers || [],
+  executed.resume.core_competencies || [],
+  jdText,
+);
 const hasExperience = Array.isArray(profile.experience) && profile.experience.length > 0;
 const hasEducation = Array.isArray(profile.education) && profile.education.length > 0;
 const hasAchievements = Array.isArray(profile.narrative?.proof_points) && profile.narrative.proof_points.length > 0;
