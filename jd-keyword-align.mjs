@@ -919,6 +919,36 @@ function collectExperienceArrays(experience) {
   return [];
 }
 
+/** Honest alias hints — JD phrase satisfied when proven stack term appears in corpus. */
+const JD_MATCH_ALIAS_HINTS = [
+  ['infrastructure as code', ['terraform', 'cloudformation', 'cdk', 'pulumi', 'iac']],
+  ['infrastructure-as-code', ['terraform', 'cloudformation', 'cdk', 'pulumi', 'iac']],
+  ['devsecops', ['devops', 'security', 'ci/cd', 'jenkins', 'pipeline', 'github actions']],
+  ['rto/rpo', ['disaster recovery', 'backup', 'business continuity', 'recovery point', 'recovery time']],
+  ['rto', ['recovery time', 'disaster recovery', 'failover']],
+  ['rpo', ['recovery point', 'backup', 'replication']],
+  ['capacity planning', ['autoscaling', 'auto-scaling', 'scaling', 'right-sizing', 'right sizing', 'peak load', 'telemetry', 'load']],
+  ['well-architected', ['aws', 'cloudformation', 'terraform', 'well architected']],
+  ['well architected', ['aws', 'cloudformation', 'terraform']],
+  ['cost optimization', ['cost', 'right-sizing', 'autoscaling', 'reserved instance']],
+  ['observability', ['cloudwatch', 'prometheus', 'grafana', 'monitoring', 'datadog']],
+  ['incident response', ['on-call', 'oncall', 'rca', 'root cause', 'l3', 'l4']],
+  ['rto/rpo', ['disaster recovery', 'backup', 'business continuity', 'recovery point', 'recovery time', 'failover', 'replication', 'uptime', 'availability']],
+];
+
+export function keywordMatchedInCorpus(corpus, kw) {
+  const text = String(corpus || '');
+  if (!text.trim()) return false;
+  if (keywordCoveredInText(text, kw)) return true;
+  const k = normalizeKeyword(kw).toLowerCase();
+  if (!k) return true;
+  for (const [phrase, hints] of JD_MATCH_ALIAS_HINTS) {
+    if (!k.includes(phrase) && !phrase.includes(k)) continue;
+    if (hints.some((hint) => keywordCoveredInText(text, hint))) return true;
+  }
+  return false;
+}
+
 /**
  * Measure how many JD keywords appear in resume content.
  */
@@ -931,8 +961,7 @@ export function measureJdAlignment(resume, jdKeywords) {
   const missing = [];
 
   for (const kw of jdKeywords) {
-    const k = String(kw).toLowerCase();
-    if (corpus.includes(k)) matched.push(kw);
+    if (keywordMatchedInCorpus(corpus, kw)) matched.push(kw);
     else missing.push(kw);
   }
 

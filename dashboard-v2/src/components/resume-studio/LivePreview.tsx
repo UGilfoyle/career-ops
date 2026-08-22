@@ -53,6 +53,10 @@ export function LivePreview({
   onOpenTemplates,
   externalAtsScore,
   externalAtsSource,
+  previewMode = 'master',
+  onPreviewModeChange,
+  tailoredPreviewUrl = null,
+  showTailoredToggle = false,
 }: {
   draft: ResumeContext;
   zoom: number;
@@ -60,6 +64,10 @@ export function LivePreview({
   onOpenTemplates?: () => void;
   externalAtsScore?: number | null;
   externalAtsSource?: 'jd' | 'structure' | null;
+  previewMode?: 'master' | 'tailored';
+  onPreviewModeChange?: (mode: 'master' | 'tailored') => void;
+  tailoredPreviewUrl?: string | null;
+  showTailoredToggle?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -69,6 +77,7 @@ export function LivePreview({
   const deferredDraft = useDeferredValue(draft);
   const html = useMemo(() => fillAtsTemplate(deferredDraft), [deferredDraft]);
   const syncing = deferredDraft !== draft;
+  const showTailored = previewMode === 'tailored' && Boolean(tailoredPreviewUrl);
 
   const structureScore = useMemo(() => estimateMasterAtsScore(draft), [draft]);
   const atsScore = externalAtsScore != null ? externalAtsScore : structureScore;
@@ -125,10 +134,34 @@ export function LivePreview({
           >
             {templateMeta.name}
           </button>
-          {syncing ? (
+          {showTailoredToggle ? (
+            <div className="flex rounded-lg border border-[#E5E5E0] bg-white p-0.5">
+              <button
+                type="button"
+                onClick={() => onPreviewModeChange?.('tailored')}
+                className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                  showTailored ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                }`}
+              >
+                Tailored
+              </button>
+              <button
+                type="button"
+                onClick={() => onPreviewModeChange?.('master')}
+                className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                  !showTailored ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                }`}
+              >
+                Master
+              </button>
+            </div>
+          ) : null}
+          {syncing && !showTailored ? (
             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Syncing…</span>
-          ) : (
+          ) : !showTailored ? (
             <span className="hidden text-[10px] font-bold uppercase tracking-widest text-emerald-700 sm:inline">Synced</span>
+          ) : (
+            <span className="hidden text-[10px] font-bold uppercase tracking-widest text-emerald-700 sm:inline">Saved tailor</span>
           )}
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2">
@@ -212,7 +245,8 @@ export function LivePreview({
             <iframe
               ref={iframeRef}
               title="Resume preview"
-              srcDoc={html}
+              src={showTailored ? tailoredPreviewUrl || undefined : undefined}
+              srcDoc={showTailored ? undefined : html}
               onLoad={measureIframe}
               className="block w-full border-0 bg-white"
               style={{ width: `${PAGE_WIDTH_PX}px`, height: `${contentHeight}px`, minHeight: `${PAGE_HEIGHT_PX}px` }}

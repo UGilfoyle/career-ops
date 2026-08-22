@@ -264,9 +264,17 @@ export function JdMatchPanel({
 
       setState((s) => ({ ...s, loading: true, error: null }));
       try {
-        // Score Live Preview draft (not just tailored HTML) so gaps match what user sees.
+        const jobHasSavedDoc =
+          hasGeneratedResume
+          || Boolean(
+            (pipeline || []).find((j) => Number(j.pipeline_id ?? j.id) === selectedJobId)
+              ?.has_resume_html
+            || (pipeline || []).find((j) => Number(j.pipeline_id ?? j.id) === selectedJobId)
+              ?.has_resume_pdf,
+          );
         const { matchJson, atsJson, matchOk } = await runMatchApis(draft, {
           jobId: selectedJobId,
+          preferTailored: jobHasSavedDoc,
         });
         if (cancelled) return;
         applyMatchResult(matchJson, atsJson, matchOk);
@@ -278,6 +286,7 @@ export function JdMatchPanel({
           && onApplyMirroredProfile
           && atsJson.source === 'jd'
           && score < JD_ATS_TARGET
+          && !jobHasSavedDoc
         ) {
           await fillGapsToTarget({ jobId: selectedJobId });
         }
@@ -300,6 +309,8 @@ export function JdMatchPanel({
     selectedJobId,
     matchDraftKey,
     draft,
+    pipeline,
+    hasGeneratedResume,
     applyMatchResult,
     onAtsUpdate,
     onApplyMirroredProfile,
@@ -336,11 +347,26 @@ export function JdMatchPanel({
       setState((s) => ({ ...s, loading: true, error: null }));
       try {
         const jdText = pastedJd.trim();
-        const { matchJson, atsJson, matchOk } = await runMatchApis(draft, { jdText });
+        const pasteHasDoc = Boolean(
+          pasteJobId
+          && (pipeline || []).find((j) => Number(j.pipeline_id ?? j.id) === pasteJobId)
+            ?.has_resume_html,
+        );
+        const { matchJson, atsJson, matchOk } = await runMatchApis(draft, {
+          jdText,
+          jobId: pasteJobId || undefined,
+          preferTailored: pasteHasDoc,
+        });
         if (cancelled) return;
         applyMatchResult(matchJson, atsJson, matchOk);
         const score = typeof atsJson.score === 'number' ? atsJson.score : 0;
-        if (matchOk && onApplyMirroredProfile && atsJson.source === 'jd' && score < JD_ATS_TARGET) {
+        if (
+          matchOk
+          && onApplyMirroredProfile
+          && atsJson.source === 'jd'
+          && score < JD_ATS_TARGET
+          && !pasteHasDoc
+        ) {
           await fillGapsToTarget({ jdText });
         }
       } catch (e: unknown) {
@@ -367,6 +393,7 @@ export function JdMatchPanel({
     onAtsUpdate,
     onApplyMirroredProfile,
     fillGapsToTarget,
+    pipeline,
   ]);
 
   const options = (pipeline || []).slice(0, 40);
@@ -560,6 +587,12 @@ export function JdMatchPanel({
       {state.error ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
           {state.error}
+        </p>
+      ) : null}
+
+      {showResults && jobHasDoc ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">
+          Scoring your saved tailored resume (same metric as the card). Master draft auto-mirror is off — re-tailor to refresh.
         </p>
       ) : null}
 

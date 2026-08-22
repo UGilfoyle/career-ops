@@ -89,6 +89,29 @@ export default function ResumeStudio({
     score: null,
     source: 'structure',
   });
+  const [previewMode, setPreviewMode] = useState<'master' | 'tailored'>('master');
+
+  const selectedPipelineJob = useMemo(
+    () => pipeline.find((j) => Number(j.pipeline_id ?? j.id) === selectedJobId) ?? null,
+    [pipeline, selectedJobId],
+  );
+
+  const hasTailoredForJob = Boolean(
+    selectedPipelineJob?.has_resume_html
+    || selectedPipelineJob?.has_resume_pdf
+    || (reviewJob?.jobId && selectedJobId === reviewJob.jobId
+      && (reviewJob.has_resume_html || reviewJob.has_resume_pdf)),
+  );
+
+  const tailoredPreviewUrl = useMemo(() => {
+    const id = selectedJobId ?? reviewJob?.jobId ?? null;
+    if (!id || !hasTailoredForJob) return null;
+    return `/api/view/${id}`;
+  }, [selectedJobId, reviewJob?.jobId, hasTailoredForJob]);
+
+  useEffect(() => {
+    if (hasTailoredForJob) setPreviewMode('tailored');
+  }, [selectedJobId, hasTailoredForJob]);
 
   // Derive job context for toolbar breadcrumb
   const jobContext = useMemo(() => {
@@ -420,12 +443,7 @@ export default function ResumeStudio({
                     }
                     setBanner(`JD keywords mirrored into Live Preview (target ${95}%+). Save if you want this kept.`);
                   }}
-                  hasGeneratedResume={Boolean(
-                    reviewJob?.has_resume_html
-                    || reviewJob?.has_resume_pdf
-                    || (reviewJob?.jobId && selectedJobId === reviewJob.jobId
-                      && (reviewJob.has_resume_html || reviewJob.has_resume_pdf))
-                  )}
+                  hasGeneratedResume={hasTailoredForJob}
                 />
 
                 {reviewJob ? (
@@ -589,6 +607,10 @@ export default function ResumeStudio({
               onOpenTemplates={() => setGalleryOpen(true)}
               externalAtsScore={liveAts.score}
               externalAtsSource={liveAts.source}
+              previewMode={previewMode}
+              onPreviewModeChange={setPreviewMode}
+              tailoredPreviewUrl={tailoredPreviewUrl}
+              showTailoredToggle={hasTailoredForJob}
             />
           )}
         </div>

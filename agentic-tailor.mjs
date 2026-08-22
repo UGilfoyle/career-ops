@@ -2283,8 +2283,8 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
             cover_letter_html = ${clHtml},
             canonical_url = COALESCE(${canonicalUrl}, canonical_url),
             jd_text = COALESCE(${String(jdText || '').slice(0, 25000)}, jd_text),
-            ats_content_score = COALESCE(${result.ats_content_score ?? null}, ats_content_score),
-            jd_alignment_score = COALESCE(${result.jd_alignment_score ?? null}, jd_alignment_score)
+            ats_content_score = ${result.ats_content_score ?? null},
+            jd_alignment_score = ${result.jd_alignment_score ?? null}
           WHERE id = ${entry.id} AND user_id = ${userId}
         `;
         console.log(`💾 HTML assets persisted to database for job ID ${entry.id}. You can view/print them from the dashboard!`);

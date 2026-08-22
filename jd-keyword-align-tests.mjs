@@ -11,6 +11,7 @@ import {
   isWeavableKeyword,
   alignResumeToJd,
   measureJdAlignment,
+  keywordMatchedInCorpus,
   cleanSkillToken,
   forceJdKeywordCoverage,
   JD_ALIGNMENT_TARGET,
@@ -338,6 +339,25 @@ assert(!kaseyaKw.includes('product'), 'extract drops product');
 assert(!kaseyaKw.includes('code'), 'extract drops code');
 assert(!kaseyaKw.includes('management'), 'extract drops management');
 assert(kaseyaKw.some((k) => k.includes('jenkins') || k === 'c#' || k.includes('.net')), 'keeps real stack');
+
+console.log('\n14. JD alias matching (IaC / DevSecOps / RTO-RPO)\n');
+assert(
+  keywordMatchedInCorpus('owned terraform and cloudformation pipelines', 'infrastructure as code'),
+  'IaC alias via Terraform/CloudFormation',
+);
+assert(
+  keywordMatchedInCorpus('jenkins ci/cd pipelines on aws', 'DevSecOps'),
+  'DevSecOps alias via CI/CD stack',
+);
+const awsAlign = measureJdAlignment(
+  {
+    summary: 'AWS platform engineer with Terraform, CloudWatch, IAM, VPC, Jenkins CI/CD.',
+    core_competencies: ['AWS', 'Terraform', 'CloudFormation', 'CloudWatch'],
+    experience: { '0': ['Owned Terraform/CloudFormation for SKF cloud with capacity planning under peak load and 99.9% uptime.'] },
+  },
+  ['AWS', 'Terraform', 'CloudFormation', 'CloudWatch', 'infrastructure as code', 'DevSecOps', 'CI/CD', 'capacity planning', 'RTO/RPO'],
+);
+assert(awsAlign.score >= 94, `AWS platform alias alignment ≥94% (got ${awsAlign.score}%)`);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

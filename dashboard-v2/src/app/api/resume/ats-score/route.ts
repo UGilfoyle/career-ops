@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     let jdText = String(body.jdText || body.jd_text || '').trim();
     const jobId = body.jobId != null ? Number(body.jobId) : null;
     const mirror = Boolean(body.mirror || body.applyMirror);
-    const preferTailored = Boolean(body.preferTailored);
+    const preferTailored = body.preferTailored !== false;
 
     let resumeHtml: string | null = null;
     let storedJdAlign: number | null = null;
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
         jdText = String(rows[0]?.jd_text || '').trim();
         resumeHtml = rows[0]?.resume_html ? String(rows[0].resume_html) : null;
       }
-    } else if (Number.isFinite(jobId) && preferTailored) {
+    } else if (Number.isFinite(jobId)) {
       try {
         const rows = await sql`
           SELECT resume_html, jd_alignment_score
@@ -73,6 +73,9 @@ export async function POST(req: NextRequest) {
         /* column may be missing on older DBs */
       }
     }
+
+    const scoreTailoredHtml =
+      preferTailored && resumeHtml && resumeHtml.length > 80;
 
     let profile = (body.resume_context || body.profile) as ResumeContext | undefined;
     if (!profile) {
@@ -101,13 +104,15 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await scoreMasterAgainstJd(profile, jdText, {
-      resumeHtml: preferTailored ? resumeHtml : null,
+      resumeHtml: scoreTailoredHtml ? resumeHtml : null,
+      preferTailored: scoreTailoredHtml,
     });
 
     return NextResponse.json({
       ok: true,
       jobId: Number.isFinite(jobId) ? jobId : null,
       stored_jd_alignment_score: storedJdAlign,
+      scored_document: scoreTailoredHtml ? 'tailored' : 'draft',
       ...result,
     });
   } catch (e: unknown) {

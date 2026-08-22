@@ -23,6 +23,12 @@ fs.mkdirSync(runtimeRoot, { recursive: true });
 
 copyFileIfExists(path.join(repoRoot, 'portals.yml'), path.join(runtimeRoot, 'portals.yml'));
 copyDirIfExists(path.join(repoRoot, 'portals', 'scrapers'), path.join(runtimeRoot, 'portals', 'scrapers'));
+copyFileIfExists(path.join(repoRoot, 'jd-keyword-align.mjs'), path.join(runtimeRoot, 'jd-keyword-align.mjs'));
+copyFileIfExists(path.join(repoRoot, 'jd-profile-match.mjs'), path.join(runtimeRoot, 'jd-profile-match.mjs'));
+copyFileIfExists(path.join(repoRoot, 'resume-tailoring-plan.mjs'), path.join(runtimeRoot, 'resume-tailoring-plan.mjs'));
+copyFileIfExists(path.join(repoRoot, 'resume-quality.mjs'), path.join(runtimeRoot, 'resume-quality.mjs'));
+copyFileIfExists(path.join(repoRoot, 'resume-skills-html.mjs'), path.join(runtimeRoot, 'resume-skills-html.mjs'));
+copyFileIfExists(path.join(repoRoot, 'profile-hydrate.mjs'), path.join(runtimeRoot, 'profile-hydrate.mjs'));
 copyFileIfExists(path.join(repoRoot, 'generate-pdf.mjs'), path.join(runtimeRoot, 'generate-pdf.mjs'));
 copyDirIfExists(
   path.join(repoRoot, 'templates'),

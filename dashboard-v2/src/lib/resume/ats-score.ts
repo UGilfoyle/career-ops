@@ -2,6 +2,7 @@ import type { ResumeContext } from './types';
 import { masterSummaryText } from './fill-template';
 import { getCompetencies, setCompetencies } from './types';
 import { runJdMatch, type JdMatchResult } from './jd-match';
+import { extractTailorAtsKeywords } from './tailor-keywords';
 
 export type AtsScoreResult = {
   score: number;
@@ -113,13 +114,14 @@ async function importJdKeywordAlign() {
 export async function scoreMasterAgainstJd(
   profile: ResumeContext,
   jdText: string,
-  opts?: { resumeHtml?: string | null },
+  opts?: { resumeHtml?: string | null; preferTailored?: boolean },
 ): Promise<AtsScoreResult> {
   if (!jdText || jdText.trim().length < 40) {
     return structureAtsScore(profile);
   }
   const jdMatch = await runJdMatch(profile, jdText);
-  const keywords = jdMatch.jdKeywords || [];
+  const tailorKeywords = await extractTailorAtsKeywords(jdText, profile);
+  const keywords = tailorKeywords.length ? tailorKeywords : (jdMatch.jdKeywords || []);
   if (!keywords.length) {
     return {
       score: 0,
@@ -135,7 +137,8 @@ export async function scoreMasterAgainstJd(
   try {
     const mod = await importJdKeywordAlign();
     const tailoredText = opts?.resumeHtml ? htmlToPlainText(opts.resumeHtml) : '';
-    if (tailoredText.length > 80) {
+    const useTailoredHtml = Boolean(opts?.preferTailored && tailoredText.length > 80);
+    if (useTailoredHtml) {
       const tailoredMeasured = mod.measureJdAlignment(
         { summary: tailoredText, core_competencies: [], experience: {} },
         keywords,
