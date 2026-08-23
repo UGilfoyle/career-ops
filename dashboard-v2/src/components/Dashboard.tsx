@@ -231,6 +231,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [stealthCopyAppId, setStealthCopyAppId] = useState<number | null>(null);
   const [stealthBusyAppId, setStealthBusyAppId] = useState<number | null>(null);
+  const [stealthBusyJobId, setStealthBusyJobId] = useState<number | null>(null);
+  const [stealthCopiedJobId, setStealthCopiedJobId] = useState<number | null>(null);
 
   // Auto-dismiss toast after 4 seconds
   useEffect(() => {
@@ -1686,6 +1688,39 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       setTimeout(() => setToast({ show: false, message: '' }), 4000);
     } finally {
       setStealthBusyAppId(null);
+    }
+  };
+
+  /** Pre-apply: create EVALUATED app + stealth link from Generated Docs (job id). */
+  const copyStealthLinkForJob = async (jobId: number) => {
+    if (!Number.isFinite(jobId) || jobId <= 0) return;
+    setStealthBusyJobId(jobId);
+    try {
+      const res = await fetch(`/api/job/${jobId}/stealth-link`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to create stealth link');
+      const url = String(json.url || '');
+      if (!url) throw new Error('No URL returned');
+      await navigator.clipboard.writeText(url);
+      setStealthCopiedJobId(jobId);
+      setTimeout(() => setStealthCopiedJobId((cur) => (cur === jobId ? null : cur)), 2500);
+
+      const refreshRes = await fetch('/api/data');
+      if (refreshRes.ok) {
+        const fresh = await refreshRes.json();
+        setData(fresh);
+      }
+
+      setToast({
+        show: true,
+        message: 'Track link copied — paste as Portfolio/Website on the apply form (before you submit)',
+      });
+      setTimeout(() => setToast({ show: false, message: '' }), 4500);
+    } catch (err: any) {
+      setToast({ show: true, message: err?.message || 'Could not copy stealth link' });
+      setTimeout(() => setToast({ show: false, message: '' }), 4000);
+    } finally {
+      setStealthBusyJobId(null);
     }
   };
 
@@ -3168,6 +3203,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               docs={data?.pdfs || []}
               onDelete={openDeleteConfirm}
               onOpenPipeline={() => setActiveTab('pipeline')}
+              onCopyStealthLink={(jobId) => void copyStealthLinkForJob(jobId)}
+              stealthBusyJobId={stealthBusyJobId}
+              stealthCopiedJobId={stealthCopiedJobId}
               onOpenInStudio={(doc) =>
                 openInStudio({
                   jobId: Number(doc.id),

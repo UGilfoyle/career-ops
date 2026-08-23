@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     }
 
     const appStatus = (status || 'APPLIED').toUpperCase();
+    const marksApplied = !['EVALUATED', 'PENDING', 'SKIP', 'DISCARDED'].includes(appStatus);
 
     // Check if the application already exists
     const existing = await sql`
@@ -27,14 +28,21 @@ export async function POST(req: Request) {
     `;
 
     if (existing.length > 0) {
-      const rows = await sql`
-        UPDATE applications
-        SET
-          status = ${appStatus},
-          applied_at = COALESCE(applied_at, CURRENT_TIMESTAMP)
-        WHERE id = ${existing[0].id} AND user_id = ${userId}
-        RETURNING id, status, applied_at
-      `;
+      const rows = marksApplied
+        ? await sql`
+            UPDATE applications
+            SET
+              status = ${appStatus},
+              applied_at = COALESCE(applied_at, CURRENT_TIMESTAMP)
+            WHERE id = ${existing[0].id} AND user_id = ${userId}
+            RETURNING id, status, applied_at
+          `
+        : await sql`
+            UPDATE applications
+            SET status = ${appStatus}
+            WHERE id = ${existing[0].id} AND user_id = ${userId}
+            RETURNING id, status, applied_at
+          `;
       return NextResponse.json({
         success: true,
         alreadyExists: true,
@@ -43,12 +51,18 @@ export async function POST(req: Request) {
       });
     }
 
-    // Insert new application record
-    const rows = await sql`
-      INSERT INTO applications (job_id, user_id, status, applied_at)
-      VALUES (${jobId}, ${userId}, ${appStatus}, CURRENT_TIMESTAMP)
-      RETURNING id, status
-    `;
+    // Insert new application — only stamp applied_at when actually applying
+    const rows = marksApplied
+      ? await sql`
+          INSERT INTO applications (job_id, user_id, status, applied_at)
+          VALUES (${jobId}, ${userId}, ${appStatus}, CURRENT_TIMESTAMP)
+          RETURNING id, status
+        `
+      : await sql`
+          INSERT INTO applications (job_id, user_id, status)
+          VALUES (${jobId}, ${userId}, ${appStatus})
+          RETURNING id, status
+        `;
 
     return NextResponse.json({
       success: true,

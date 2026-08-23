@@ -11,6 +11,8 @@ import {
   X,
   Sparkles,
   Loader2,
+  Link2,
+  CheckCircle2,
 } from 'lucide-react';
 
 export type GeneratedDoc = {
@@ -44,6 +46,10 @@ type GeneratedDocsPanelProps = {
   onDelete: (id: number, company: string, title: string) => void;
   onOpenPipeline: () => void;
   onOpenInStudio?: (doc: GeneratedDoc) => void;
+  /** Copy stealth track link for this job (works before Applied). */
+  onCopyStealthLink?: (jobId: number) => void | Promise<void>;
+  stealthBusyJobId?: number | null;
+  stealthCopiedJobId?: number | null;
 };
 
 function formatDocDate(value?: string) {
@@ -113,6 +119,9 @@ export default function GeneratedDocsPanel({
   onDelete,
   onOpenPipeline,
   onOpenInStudio,
+  onCopyStealthLink,
+  stealthBusyJobId = null,
+  stealthCopiedJobId = null,
 }: GeneratedDocsPanelProps) {
   const [filter, setFilter] = useState<DocFilter>('all');
   const [query, setQuery] = useState('');
@@ -199,6 +208,11 @@ export default function GeneratedDocsPanel({
         <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] px-5 py-4 text-sm text-[#6B6B6B]">
           <span className="font-semibold text-[#1C1C1E]">{weekCount}</span> job
           {weekCount === 1 ? '' : 's'} with new documents this week
+          {onCopyStealthLink ? (
+            <span className="mt-1 block text-xs text-[#8A8A84]">
+              Before you apply: hit the link icon on a resume card → paste as Portfolio / Website on the form.
+            </span>
+          ) : null}
         </div>
       )}
 
@@ -391,6 +405,24 @@ export default function GeneratedDocsPanel({
                       PDF
                     </span>
                   )}
+                  {isResume && onCopyStealthLink ? (
+                    <button
+                      type="button"
+                      disabled={stealthBusyJobId === id}
+                      onClick={() => void onCopyStealthLink(id)}
+                      title="Copy stealth track link — paste as Portfolio/Website BEFORE you apply"
+                      className="flex shrink-0 items-center justify-center rounded-xl border border-[#E5E5E0] p-2.5 text-[#6B6B6B] transition-colors hover:border-[#1C1C1E] hover:bg-[#FAFAF8] hover:text-[#1C1C1E] disabled:opacity-60"
+                      aria-label="Copy stealth track link"
+                    >
+                      {stealthBusyJobId === id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : stealthCopiedJobId === id ? (
+                        <CheckCircle2 size={14} className="text-emerald-600" />
+                      ) : (
+                        <Link2 size={14} />
+                      )}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => onDelete(id, company, title)}
