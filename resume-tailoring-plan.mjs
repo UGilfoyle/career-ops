@@ -25,6 +25,7 @@ import {
   weaveSuffixForm,
   bulletHasTechContext,
   weaveAdjacencyScore,
+  keywordAppearsInJd,
   DOMAIN_EVIDENCE_STEMS,
 } from './jd-keyword-align.mjs';
 import {
@@ -33,6 +34,7 @@ import {
   buildHonestSummary,
   buildJdMatchedCompetencies,
   inferRoleTitleFromJd,
+  isEmbeddedSystemsJd,
 } from './jd-profile-match.mjs';
 import {
   polishTailoredResume,
@@ -119,6 +121,8 @@ export function classifyRoleFamily(jdText) {
   if (/\b(llm|ai agent|generative ai|langchain|rag)\b/.test(t) && /\bengineer\b/.test(t)) {
     return 'ai_llm';
   }
+  // C++ / Linux / satellite / real-time must beat incidental CI/CD or "software engineer"
+  if (isEmbeddedSystemsJd(jdText)) return 'embedded_systems';
   if (/\bfull[-\s]?stack\b/.test(t)) return 'fullstack';
   if (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && !/\bback[-\s]?end\b|\bfull[-\s]?stack\b/.test(t)) {
     return 'frontend';
@@ -140,8 +144,9 @@ export function buildTailoringPlan(jdText, profile, opts = {}) {
   const jdTech = extractJdTechKeywords(jdText, 28);
   const domain = extractJdDomainPhrases(jdText, 16);
   const tiers = extractMustHavePreferred(jdText);
+  const yearsForTitle = Number(profile?.candidate?.years_experience) || estimateYears(profile?.experience) || 0;
   const family = classifyRoleFamily(jdText);
-  const title = inferRoleTitleFromJd(jdText, Number(profile?.candidate?.years_experience) || 0);
+  const title = inferRoleTitleFromJd(jdText, yearsForTitle);
 
   const atsMirror = [...new Set([
     ...jdTech,
@@ -195,6 +200,7 @@ export function buildTailoringPlan(jdText, profile, opts = {}) {
     version: '1.0',
     family,
     displayTitle: title,
+    jdText: String(jdText || ''),
     parsed: {
       mustHave: tiers.mustHave,
       preferred: tiers.preferred,
@@ -291,6 +297,7 @@ export function selectWeaveKeywords(plan, profile) {
   const gapKeys = new Set((plan?.keywords?.gaps || []).map((g) => normalizeKey(g)).filter(Boolean));
   const corpus = profileCorpusText(profile);
   const honest = plan?.keywords?.honest || [];
+  const jdBlob = String(plan?.jdText || '');
   const push = (kw) => {
     const raw = String(kw || '').trim();
     if (!raw || isJunkKeyword(raw)) return;
@@ -298,6 +305,8 @@ export function selectWeaveKeywords(plan, profile) {
     if (!isApprovedSkillPhrase(raw) && !isWeavableKeyword(raw)) return;
     const key = normalizeKey(raw);
     if (!key || seen.has(key) || gapKeys.has(key)) return;
+    // Never weave profile-only stack (TypeScript) into a C++/Linux posting
+    if (jdBlob.length >= 40 && !keywordAppearsInJd(raw, jdBlob)) return;
     seen.add(key);
     out.push(raw);
   };
@@ -387,6 +396,7 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
         if (!form) continue;
         if (form.startsWith('(')) {
           if (!bulletHasTechContext(base)) continue;
+          if (/\([^)]{1,48}\)\s*$/.test(base)) continue;
           bullets[target] = `${base} ${form}.`;
         } else {
           if (/\b(with|in|across|via|on)\s+[^,.]{2,40}$/i.test(base) || base.length > 190) continue;
@@ -628,19 +638,42 @@ export function buildDeterministicCoverLetter(plan, profile, companyName, jdText
 }
 
 /**
- * JD-specific cover letter — 3 tight paragraphs, no date, mirrors tailored resume + posting.
+ * JD-specific cover letter — 3 tight paragraphs, no date, no em-dash, mirrors the posting.
  */
+export function stripCoverLetterDates(text) {
+  let s = String(text || '');
+  if (!s) return '';
+  s = s.replace(
+    /\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}\b/gi,
+    '',
+  );
+  s = s.replace(
+    /\b\d{1,2}\s+(?:january|february|march|april|may|june|july|august|september|october|november|december),?\s+\d{4}\b/gi,
+    '',
+  );
+  s = s.replace(/\b\d{4}-\d{2}-\d{2}\b/g, '');
+  s = s.replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, '');
+  s = s.replace(/^\s*date\s*:\s*.+$/gim, '');
+  s = s.replace(/\s*—\s*/g, ', ');
+  s = s.replace(/\s{2,}/g, ' ').replace(/\n[ \t]+/g, '\n').trim();
+  return s;
+}
+
 export function buildJdAlignedCoverLetter(plan, profile, companyName, jdText = '', resume = null) {
   const company = String(companyName || '').trim() || 'your organization';
-  const role = plan.displayTitle || inferRoleTitleFromJd(jdText) || 'the open role';
-  const honest = (plan.keywords.honest || []).filter((k) => isWeavableKeyword(k)).slice(0, 4);
+  const family = plan?.family || classifyRoleFamily(jdText);
+  const role = plan?.displayTitle || inferRoleTitleFromJd(jdText) || 'the open role';
+  const jdBlob = String(jdText || plan?.jdText || '');
+  const honest = (plan?.keywords?.honest || [])
+    .filter((k) => isWeavableKeyword(k) && (!jdBlob || keywordAppearsInJd(k, jdBlob)))
+    .slice(0, 5);
   const hooks = honest.length
     ? honest.join(', ')
-    : (plan.keywords.atsMirror || []).slice(0, 3).join(', ') || 'the technical requirements in your posting';
+    : (plan?.keywords?.atsMirror || []).slice(0, 4).join(', ') || 'the technical requirements in your posting';
   const years = Number(profile?.candidate?.years_experience) || estimateYears(profile?.experience) || 7;
   const recent = (profile?.experience || [])[0] || {};
   const recentCo = String(recent.company || 'my current employer').trim();
-  const recentRole = String(recent.role || recent.title || 'Senior Backend Engineer').trim();
+  const recentRole = String(recent.role || recent.title || 'Software Engineer').trim();
 
   const digest = [
     ...(profile?.experience || []).flatMap((e) => e?.bullets || []),
@@ -648,26 +681,31 @@ export function buildJdAlignedCoverLetter(plan, profile, companyName, jdText = '
   ].join(' ');
   const metric = (digest.match(/\b\d+(?:\.\d+)?%|\bp99\b|\bp95\b|\b99\.\d+%\b/i) || [])[0];
   const metricBit = metric
-    ? ` Recent work includes measurable outcomes such as ${metric} improvements in production.`
+    ? ` Recent work includes measurable outcomes such as ${metric} in production.`
     : '';
 
-  const summaryHook = scrubSummaryKeywordParenSpam(String(resume?.summary || ''))
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)[0];
-  // Prefer a short ownership sentence over dumping the full multi-line summary into para 2.
-  const stackLine = summaryHook && summaryHook.length > 40 && summaryHook.length < 220
-    ? summaryHook.replace(/\.$/, '')
-    : `I bring ${years}+ years owning backend platforms, APIs, and cloud delivery`;
+  let para1 = `I am applying for the ${role} position at ${company}. Your posting emphasizes ${hooks}, which matches the production systems I have designed, tested, and operated.`;
+  let para2 = `I bring ${years}+ years owning backend platforms, APIs, and cloud delivery.${metricBit} In my recent role as ${recentRole} at ${recentCo}, I owned architecture, reliability, CI/CD, and mentoring mapped to the stack in your posting.`;
 
-  return [
-    `I am applying for the ${role} position at ${company}. Your posting emphasizes ${hooks}, which aligns with the production systems I have designed and operated.`,
-    `${stackLine}.${metricBit} In my recent role as ${recentRole} at ${recentCo}, I owned end-to-end delivery — architecture, reliability, and CI/CD — mapped to the stack in your posting.`,
-    `I would welcome the opportunity to discuss how I can contribute from day one. Thank you for your consideration.`,
-  ].join('\n\n');
+  if (family === 'embedded_systems') {
+    para1 = `I am applying for the ${role} position at ${company}. The posting calls for Linux-based, multi-threaded and multi-process software, C++, networking (TCP/IP and sockets), and satellite communications work inside an Agile Scrum team.`;
+    para2 = `I bring ${years}+ years shipping production software on Linux, with Python, Jenkins CI/CD, AWS/Azure, automated tests, and structured design reviews.${metricBit} As ${recentRole} at ${recentCo}, I own troubleshooting, release quality, and mentoring. That is the overlap I bring: Linux services, SDLC discipline, and collaborative delivery.`;
+  } else if (family === 'data_etl') {
+    para1 = `I am applying for the ${role} position at ${company}. Your posting emphasizes ${hooks} across warehouse, validation, and pipeline reliability.`;
+    para2 = `I bring ${years}+ years owning Python/SQL data platforms, CI/CD for data jobs, and production troubleshooting.${metricBit} As ${recentRole} at ${recentCo}, I owned delivery from design through test and release.`;
+  } else if (family === 'devops_sre') {
+    para1 = `I am applying for the ${role} position at ${company}. Your posting emphasizes ${hooks} for platform reliability and cloud operations.`;
+    para2 = `I bring ${years}+ years owning AWS platform work, CI/CD, infrastructure as code, and production reliability.${metricBit} As ${recentRole} at ${recentCo}, I owned architecture, incident response, and mentoring.`;
+  } else if (family === 'scraping_js') {
+    para1 = `I am applying for the ${role} position at ${company}. Your posting emphasizes ${hooks} for JavaScript services and data extraction.`;
+    para2 = `I bring ${years}+ years shipping JavaScript services, production APIs, and cloud delivery.${metricBit} As ${recentRole} at ${recentCo}, I owned design, tests, and release quality.`;
+  }
+
+  const para3 = 'I would welcome the opportunity to discuss how I can contribute from day one. Thank you for your consideration.';
+  return stripCoverLetterDates([para1, para2, para3].join('\n\n'));
 }
 
-/** Prefer deterministic JD letter when LLM output is generic, polluted, or off-JD. */
+/** Prefer deterministic JD letter when LLM output is generic, polluted, dated, or off-JD. */
 export function finalizeCoverLetter(opts = {}) {
   const {
     llmText = '',
@@ -678,24 +716,21 @@ export function finalizeCoverLetter(opts = {}) {
     resume = null,
   } = opts;
   const built = buildJdAlignedCoverLetter(plan, profile, companyName, jdText, resume);
-  let raw = String(llmText || '').trim();
+  let raw = stripCoverLetterDates(String(llmText || '').trim());
   if (!raw || raw.length < 80) return built;
 
   raw = raw
     .replace(/^dear\s+hiring manager[,:\s]*/i, '')
     .replace(/\bsincerely[,:\s]*[\s\S]*$/i, '')
-    .replace(
-      /\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}\b/gi,
-      '',
-    )
     .trim();
+  raw = stripCoverLetterDates(raw);
 
   if (isWeakCoverLetter(raw)) return built;
 
   const paras = raw.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   if (paras.length < 2 || paras.length > 4) return built;
 
-  const hooks = (plan.keywords.honest || plan.keywords.atsMirror || []).slice(0, 6);
+  const hooks = (plan?.keywords?.honest || plan?.keywords?.atsMirror || []).slice(0, 6);
   const body = paras.join(' ').toLowerCase();
   const mentionsJd = !hooks.length || hooks.some((h) => {
     const k = String(h).toLowerCase().slice(0, Math.min(8, String(h).length));
@@ -703,7 +738,12 @@ export function finalizeCoverLetter(opts = {}) {
   });
   if (!mentionsJd) return built;
 
-  return paras.slice(0, 3).join('\n\n');
+  const family = plan?.family || classifyRoleFamily(jdText);
+  if (family === 'embedded_systems' && /\btypescript\b|\breact\.?js\b|\bfull[-\s]?stack\b/i.test(body) && !/\blinux\b|\bc\+\+\b|\bjenkins\b/i.test(body)) {
+    return built;
+  }
+
+  return stripCoverLetterDates(paras.slice(0, 3).join('\n\n'));
 }
 
 function isWeakCoverLetter(text) {

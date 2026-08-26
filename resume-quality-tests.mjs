@@ -221,6 +221,13 @@ console.log('resume-quality tests\n');
 }
 
 {
+  const stacked = scrubResumeArtifacts(
+    'Built FastAPI services with Pydantic (TypeScript)(Python).'
+  );
+  assert(!/\(TypeScript\)\s*\(Python\)/i.test(stacked), 'strips stacked (TypeScript)(Python) dumps');
+}
+
+{
   const polluted =
     '(WebSockets, Jenkins) (CI/CD) 7+ years building production-grade distributed systems for consumer and enterprise platforms, with measurable P95 latency gains (DynamoDB, REST API, Azure).';
   const clean = scrubSummaryKeywordParenSpam(polluted);

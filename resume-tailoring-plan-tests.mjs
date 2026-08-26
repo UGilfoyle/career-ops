@@ -16,6 +16,8 @@ import {
   measureMutableRoleCoverage,
   selectWeaveKeywords,
   scrubGapToolsFromMutableRoles,
+  stripCoverLetterDates,
+  finalizeCoverLetter,
   DEFAULT_FULL_TAILOR,
   DEFAULT_PRESERVE_VERBATIM,
 } from './resume-tailoring-plan.mjs';
@@ -335,6 +337,58 @@ pollutedProfile.narrative = {
 const pkgNoExit = executeTailoringPlan(planC, pollutedProfile, { jdText: CUMMINS_JD, companyName: 'Cummins' });
 assert(!/WebSockets/i.test(String(pkgNoExit.resume.summary || '')), 'exit_story paren spam does not leak into summary');
 assert(!/\(DynamoDB/i.test(String(pkgNoExit.resume.summary || '')), 'exit_story trailing paren dump does not leak');
+
+console.log('\n14. iDirect C++/Linux/satellite — JD-shaped resume, not TypeScript dump\n');
+const IDIRECT_JD = `
+We are in search for an Software Engineer at ST Engineering iDirect.
+Technical Requirements
+Hands-on experience developing, designing, and testing multi-threaded and multi-process applications on Linux, with strong working knowledge of C++
+Proven experience with solving real-time embedded issues, including threading, optimization, memory management, interrupt handling
+Knowledge of networking protocols (TCP/IP), Sockets programming
+Understanding of 3GPP standards, 5G architecture desired
+Experience with cloud technologies (AWS/Azure) desired
+Working experience with tools such as GDB and Valgrind
+Experience with Jira and Jenkins desired
+Scripting using shell scripting or Python desired
+Experience/ knowledge in satellite/ terrestrial communications systems is desired
+Experience developing unit tests, integration tests, including CI/CD pipeline desired
+`;
+const planId = buildTailoringPlan(IDIRECT_JD, profile);
+assert(planId.family === 'embedded_systems', `iDirect family is embedded_systems (got ${planId.family})`);
+assert(!/full[-\s]?stack/i.test(planId.displayTitle), `iDirect title is not Full-Stack (got ${planId.displayTitle})`);
+const cppExtract = extractJdTechKeywords(IDIRECT_JD, 24).join(' ');
+assert(/c\+\+/i.test(cppExtract), `C++ extracted from iDirect JD (got ${cppExtract})`);
+const pkgId = executeTailoringPlan(planId, profile, { jdText: IDIRECT_JD, companyName: 'ST Engineering iDirect' });
+const summaryId = String(pkgId.resume.summary || '');
+const expId = Object.values(pkgId.resume.experience || {}).flat().join('\n');
+const compsId = (pkgId.resume.core_competencies || []).join(' ');
+const letterId = String(pkgId.cover_letter || '');
+assert(!/\bTypeScript\b/i.test(summaryId), `iDirect summary is not TypeScript-led (got ${summaryId.slice(0, 180)})`);
+assert(!/\(TypeScript\)|\(Python\)\(TypeScript\)|\(TypeScript\)\(Python\)/i.test(expId), 'no stacked TypeScript/Python paren dumps');
+assert(/Linux|Python|Jenkins|AWS|Azure|CI\/CD/i.test(summaryId), 'iDirect summary names honest overlap stack');
+assert(/c\+\+/i.test(compsId), `C++ listed in skills for ATS (got ${compsId})`);
+assert(/Linux|Jenkins|Python/i.test(compsId), 'skills keep Linux/Jenkins/Python overlap');
+assert(!/\bc\+\+\b/i.test(expId), 'does not invent C++ into experience bullets');
+assert(!/\bGDB\b/i.test(expId) || /\bgdb\b/i.test(profileCorpusTextSafe(profile)), 'does not invent GDB into experience');
+assert(!/\bValgrind\b/i.test(expId), 'does not invent Valgrind into experience');
+assert(/linux|python|jenkins|ci\/cd|aws|azure/i.test(letterId), 'cover letter maps honest overlap');
+assert(/idirect|satellite|linux|c\+\+/i.test(letterId), 'cover letter is about this posting');
+assert(!/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}/i.test(letterId), 'iDirect cover letter has no date');
+assert(!/—/.test(letterId), 'cover letter has no em-dash');
+assert(!/\btypescript\b|\breact\.?js\b/i.test(letterId), 'cover letter is not a TypeScript/React letter');
+
+const datedLlm = `August 26, 2026\n\nI am a TypeScript React full-stack engineer.\n\nI ship Next.js dashboards.\n\nThanks.`;
+const professional = finalizeCoverLetter({
+  llmText: datedLlm,
+  plan: planId,
+  profile,
+  companyName: 'ST Engineering iDirect',
+  jdText: IDIRECT_JD,
+  resume: pkgId.resume,
+});
+assert(!/august/i.test(professional), 'dated LLM letter is stripped or replaced');
+assert(!/\btypescript\b/i.test(professional), 'off-JD TypeScript LLM letter is rejected for embedded JD');
+assert(stripCoverLetterDates('August 26, 2026\nHello') === 'Hello', 'stripCoverLetterDates removes calendar date');
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

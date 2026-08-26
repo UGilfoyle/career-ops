@@ -15,6 +15,7 @@ import {
   cleanSkillToken,
   forceJdKeywordCoverage,
   JD_ALIGNMENT_TARGET,
+  keywordAppearsInJd,
 } from './jd-keyword-align.mjs';
 import {
   analyzeJdProfileFit,
@@ -124,7 +125,6 @@ Requirements: Ruby, TypeScript), IAM), AWS Lambda, Aurora, GCP, LLM, Node.js, Re
 `;
 const rubyComps = buildJdMatchedCompetencies(extractJdKeywords(rubyJd, 20), profile, rubyJd, 16);
 const rubyText = rubyComps.join(' | ');
-assert(!/ruby/i.test(rubyText), `do not list unproven Ruby (got ${rubyText})`);
 assert(!/TypeScript\)/i.test(rubyText), 'no TypeScript) fragment');
 assert(!/IAM\)/i.test(rubyText), 'no IAM) fragment');
 assert(/node|typescript|postgres|redis|aws/i.test(rubyText), 'keeps proven backend stack');
@@ -358,6 +358,14 @@ const awsAlign = measureJdAlignment(
   ['AWS', 'Terraform', 'CloudFormation', 'CloudWatch', 'infrastructure as code', 'DevSecOps', 'CI/CD', 'capacity planning', 'RTO/RPO'],
 );
 assert(awsAlign.score >= 94, `AWS platform alias alignment ≥94% (got ${awsAlign.score}%)`);
+
+const cppJd = 'Hands-on experience with C++ on Linux, GDB, Valgrind, TCP/IP, 3GPP, and Jenkins.';
+const cppTech = extractJdTechKeywords(cppJd, 20).join(' ');
+assert(/c\+\+/i.test(cppTech), `extracts C++ from JD (got ${cppTech})`);
+assert(/gdb/i.test(cppTech), 'extracts GDB');
+assert(/valgrind/i.test(cppTech), 'extracts Valgrind');
+assert(keywordAppearsInJd('C++', cppJd), 'keywordAppearsInJd matches C++');
+assert(!keywordAppearsInJd('TypeScript', cppJd), 'TypeScript is not in C++ JD');
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

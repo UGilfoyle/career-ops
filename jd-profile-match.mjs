@@ -11,6 +11,7 @@ import {
   isApprovedSkillPhrase,
   isEditorIdeTool,
   cleanSkillToken,
+  keywordAppearsInJd,
 } from './jd-keyword-align.mjs';
 import { isAwsServiceCrumb, isUnprovenLanguageSkill } from './resume-skills-html.mjs';
 import {
@@ -46,6 +47,11 @@ const PROFILE_TECH_PATTERNS = [
   /\bDocker\b/gi,
   /\bKubernetes\b/gi,
   /\bCI\/CD\b/gi,
+  /\bLinux\b/gi,
+  /\bJenkins\b/gi,
+  /\bAzure\b/gi,
+  /\bGit\b/gi,
+  /\bJIRA\b/gi,
   /\bREST(?:ful)?\s+APIs?\b/gi,
   /\bLLM\b/gi,
   /\bRAG\b/gi,
@@ -185,10 +191,20 @@ const JD_THEME_TERMS = [
   'end-to-end', 'observability', 'experimentation', 'data pipeline', 'analytics', 'full-stack',
   'code review', 'design review', 'incident', 'resilience', 'scalable', 'high-traffic',
   'llm', 'ai agent', 'machine learning', 'typescript', 'react', 'javascript', 'redux',
-  // ETL / data quality themes — rank source bullets that already prove related work
   'etl', 'reconcil', 'validat', 'warehouse', 'oracle', 'sql', 'pandas', 'schema',
   'data integrity', 'migration', 'staging', 'scd', 'window function',
+  'linux', 'python', 'jenkins', 'embedded', 'satellite', 'socket', 'gdb', 'valgrind',
+  'multi-thread', 'multi-process', 'agile', 'scrum', 'c++',
 ];
+
+function themeInText(hay, theme) {
+  const h = String(hay || '').toLowerCase();
+  const th = String(theme || '').toLowerCase();
+  if (!h || !th) return false;
+  if (th === 'c++') return /c\+\+/.test(h);
+  if (th.length <= 3) return new RegExp(`\\b${escapeRe(th)}\\b`, 'i').test(h);
+  return h.includes(th);
+}
 
 function scoreBulletForJd(bullet, jdText, honestKeywords) {
   const t = stripMarkdown(bullet).toLowerCase();
@@ -198,10 +214,19 @@ function scoreBulletForJd(bullet, jdText, honestKeywords) {
     if (t.includes(normalizeKey(kw))) score += 4;
   }
   for (const theme of JD_THEME_TERMS) {
-    if (jdLower.includes(theme) && t.includes(theme)) score += 2;
-    if (t.includes(theme)) score += 1;
+    if (themeInText(jdLower, theme) && themeInText(t, theme)) score += 3;
+  }
+  const offJdLangs = [
+    ['typescript', /\btypescript\b/i],
+    ['react', /\breact(?:\.js)?\b/i],
+    ['node.js', /\bnode\.?js\b/i],
+    ['javascript', /\bjavascript\b/i],
+  ];
+  for (const [name, re] of offJdLangs) {
+    if (re.test(t) && !keywordAppearsInJd(name, jdText)) score -= 5;
   }
   if (/\d+%|\d+\+|p\d+|latency|throughput|concurrent|monthly|daily/i.test(t)) score += 2;
+  if (/\blinux\b/i.test(t) && /\blinux\b/i.test(jdLower)) score += 4;
   return score;
 }
 
@@ -260,6 +285,13 @@ function enhanceBulletHonest(bullet, honestKeywords, company = '') {
 }
 
 /** Infer a senior role title from JD language for summary framing. */
+export function isEmbeddedSystemsJd(jdText) {
+  const t = String(jdText || '').toLowerCase();
+  const cpp = /c\+\+/.test(t);
+  const embedded = /\bembedded\b|\binterrupt handling\b|\bvalgrind\b|\bgdb\b|\b3gpp\b|\b5g architecture\b|\bsatellite\b|\bmulti-threaded\b|\bmulti-process\b|\bsockets programming\b/.test(t);
+  return cpp && embedded;
+}
+
 export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   const t = String(jdText || '').toLowerCase();
   const y = Number(yearsExp) || 0;
@@ -267,6 +299,9 @@ export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
     return /\bprincipal\b/.test(t)
       ? 'AWS Platform Engineer Principal'
       : 'Senior AWS Platform Engineer';
+  }
+  if (isEmbeddedSystemsJd(jdText)) {
+    return y > 0 ? 'Senior Software Engineer' : 'Software Engineer';
   }
   if (/\bstaff\s+(software\s+)?engineer\b|\bprincipal\s+(software\s+)?engineer\b/.test(t)) {
     return y >= 8 ? 'Staff Software Engineer' : 'Senior Software Engineer';
@@ -384,19 +419,23 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     if (!isUnprovenLanguageSkill(kw)) return true;
     const k = normalizeKey(cleanSkillToken(kw));
     if (honestKeys.has(k)) return true;
-    return (profileTech || []).some((t) => normalizeKey(t) === k);
+    if ((profileTech || []).some((t) => normalizeKey(t) === k)) return true;
+    // ATS: list JD-required languages (C++) even when not in the digest
+    return keywordAppearsInJd(kw, jdText);
   };
 
-  // Proven stack first so Node/TS/Redis/Postgres lead — not JD-only Ruby/LLM crumbs.
-  for (const t of profileTech || []) add(t);
-  for (const kw of honest) add(kw);
+  // JD stack first so a C++/Linux posting is not led by TypeScript/React from the master CV
   for (const kw of jdTech) {
-    if (!isProvenLanguage(kw)) continue;
+    if (!isProvenLanguage(kw) && isUnprovenLanguageSkill(kw) && !keywordAppearsInJd(kw, jdText)) continue;
     add(kw);
   }
+  for (const kw of honest) add(kw);
   for (const kw of gaps) {
-    if (!isProvenLanguage(kw)) continue;
+    if (!isProvenLanguage(kw) && !keywordAppearsInJd(kw, jdText)) continue;
     if (isApprovedSkillPhrase(kw)) add(kw);
+  }
+  for (const t of profileTech || []) {
+    if (keywordAppearsInJd(t, jdText)) add(t);
   }
 
   const transfers = [
@@ -430,7 +469,13 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     ['window function', 'SQL Window Functions'],
     ['jira', 'JIRA'],
     ['unix', 'Unix/Linux Shell'],
-    ['linux', 'Unix/Linux Shell'],
+    ['linux', 'Linux'],
+    ['gdb', 'GDB'],
+    ['valgrind', 'Valgrind'],
+    ['3gpp', '3GPP'],
+    ['tcp/ip', 'TCP/IP'],
+    ['uml', 'UML'],
+    ['c++', 'C++'],
     ['orm', 'ORM'],
     ['message broker', 'Message Brokers'],
     ['react', 'React / TypeScript Frontend'],
@@ -474,16 +519,14 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
   }
 
   for (const s of profile?.narrative?.superpowers || []) {
-    if (isEditorIdeTool(s)) continue; // never inject Cursor/Copilot/Claude from profile into competencies
-    // Only inject real tech tokens from superpowers — never narrative blobs
+    if (isEditorIdeTool(s)) continue;
     const cleaned = String(s || '').replace(/\s*\([^)]*\)\s*/g, '').trim();
     if (!cleaned || !isApprovedSkillPhrase(cleaned)) continue;
-    if (jdLower.split(/\W+/).some((w) => w.length > 4 && cleaned.toLowerCase().includes(w))) add(cleaned);
-    // Also unpack parenthetical tech: "AWS platform engineering (ECS, Lambda)"
+    if (keywordAppearsInJd(cleaned, jdText)) add(cleaned);
     const paren = String(s).match(/\(([^)]+)\)/);
     if (paren) {
       for (const part of paren[1].split(',').map((x) => x.trim()).filter(Boolean)) {
-        if (isApprovedSkillPhrase(part)) add(part);
+        if (isApprovedSkillPhrase(part) && keywordAppearsInJd(part, jdText)) add(part);
       }
     }
   }
@@ -498,7 +541,6 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
  */
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
   const y = Number(yearsExp) || 0;
-  // Proven stack only — never dump JD-gap tools (.NET, DynamoDB) into the summary
   const leadList = (honestKeywords || []).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k) && !isEditorIdeTool(k));
   const leadPool = leadList
     .filter((k) => {
@@ -508,31 +550,35 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
       if (/^(unit testing|agile|scrum|full[-\s]?stack experience)$/i.test(String(k))) return false;
       return true;
     });
-  const leadTerms = [...new Set(leadPool.map((k) => String(k).trim()))].slice(0, 8);
+  const jdLead = leadPool.filter((k) => !jdText || keywordAppearsInJd(k, jdText));
+  const leadTerms = [...new Set((jdLead.length ? jdLead : leadPool).map((k) => String(k).trim()))].slice(0, 8);
+  const embedded = isEmbeddedSystemsJd(jdText);
   const lead = leadTerms.length
     ? leadTerms.join(', ')
-    : 'Python, Node.js, AWS, and React';
+    : (embedded ? 'Linux, Python, Jenkins, AWS, and Azure' : 'Python, Node.js, AWS, and React');
   const jdLower = String(jdText || '').toLowerCase();
   const title = inferRoleTitleFromJd(jdText, y);
   const yearsLabel = y > 0 ? `${y}+ years` : 'years';
   const lines = [];
 
-  // Line 1 — senior identity + ownership scope + named stack
   lines.push(
     `${title} with ${yearsLabel} owning production ${
       /\bdata engineer|databricks|pyspark|data factory|snowflake\b/i.test(jdLower)
         ? 'data platforms, pipelines, and cloud analytics systems'
-        : 'backends, cloud platforms, and API systems'
+        : embedded
+          ? 'Linux services, multi-process systems, and communications software'
+          : 'backends, cloud platforms, and API systems'
     } in ${lead}.`,
   );
 
-  // Line 2 — JD-family framing (only real Azure/data-warehouse stacks — NOT bare "data modeling")
   if (/\b(databricks|pyspark|azure data factory|\badf\b|snowflake|redshift|bigquery)\b/i.test(jdLower)) {
     lines.push(
       'Own Azure data platforms end-to-end: Databricks/PySpark transforms, ADF pipelines, SQL-backed models, and warehouse loads (Snowflake/Redshift/BigQuery) with reliable ETL/ELT.',
     );
   } else if (/\b(etl testing|source-to-target|data reconcil|data warehouse|scd)\b/i.test(jdLower)) {
     lines.push('Own Python-based ETL validation, source-to-target checks, and SQL-backed data reconciliation across warehouse layers.');
+  } else if (embedded) {
+    lines.push('Design and ship Linux services in Agile/Scrum: multi-process applications, Jenkins CI/CD, automated tests, and production troubleshooting, with AWS/Azure where the platform needs it.');
   } else if (/\b(web scrap|scraping|puppeteer|playwright|cheerio|selenium)\b/i.test(jdLower)) {
     lines.push('Ship JavaScript services for data extraction and browser automation with solid REST APIs, Postgres, and cloud delivery.');
   } else if (

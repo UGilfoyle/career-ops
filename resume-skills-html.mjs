@@ -10,6 +10,7 @@ import {
   isEmployerBrandKeyword,
   isJunkKeyword,
   isWeavableKeyword,
+  keywordAppearsInJd,
 } from './jd-keyword-align.mjs';
 
 export { cleanSkillToken };
@@ -46,8 +47,8 @@ const TECH_PATTERNS = [
   /\b(aws|gcp|azure|cloudflare|vercel|heroku|digital\s?ocean|ecs|ec2|lambda|fargate|s3|cloudfront|route\s?53|iam|vpc|sqs|sns|step\s?functions|api\s?gateway|cloud\s?run|cloud\s?functions|bigquery|pubsub|terraform|pulumi|cdk|cloudformation|cloudwatch|cloudtrail|boto3|ansible)\b/i,
   /\b(docker|kubernetes|k8s|helm|istio|envoy|nginx|haproxy|traefik|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|circle\s?ci|argo\s?cd|flux|buildkite|drone|prometheus|grafana|datadog|new\s?relic|pagerduty|splunk|elk|loki|jaeger|opentelemetry|codepipeline|codebuild|secrets\s?manager|guardduty)\b/i,
   /\b(kafka|rabbitmq|nats|pulsar|flink|spark|pyspark|airflow|dbt|snowflake|redshift|bigquery|databricks|azure\s?data\s?factory|\badf\b|mlflow|sagemaker|pytorch|tensorflow|langchain|openai|hugging\s?face|llm|rag|vector\s?db|pinecone|weaviate|qdrant|milvus|chromadb)\b/i,
-  /\b(jest|mocha|pytest|cypress|playwright|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack)\b/i,
-  /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet)\b/i,
+  /\b(jest|mocha|pytest|cypress|playwright|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack|gdb|valgrind|uml|3gpp)\b/i,
+  /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet|tcp\/ip)\b/i,
   /\b(microservices?|system\s?design|event-?driven(?:\s+architecture)?|distributed\s+systems|observability|ci\/cd|devops|sre|etl|orm|scd|unit\s+testing|integration\s+testing)\b/i,
 ];
 
@@ -103,7 +104,9 @@ const SKILL_CANONICAL = new Map([
   ['.net', '.NET'],
   ['kotlin', 'Kotlin'],
   ['java', 'Java'],
-  ['python', 'Python'],
+  ['c++', 'C++'],
+  ['gdb', 'GDB'],
+  ['valgrind', 'Valgrind'],
   ['redis', 'Redis'],
   ['kafka', 'Kafka'],
   ['microservices', 'Microservices'],
@@ -144,8 +147,8 @@ export function isTechStackSkill(text) {
   // Company chrome falsely matching Express inside "American Express"
   if (/\bamerican\s+express\b/i.test(t)) return false;
   if (/^express$/i.test(t) === false && /\bexpress\b/i.test(t) && /\bamerican\b/i.test(t)) return false;
-  // .NET / C# — leading punctuation breaks \b in TECH_PATTERNS
-  if (/^\.?net(?:\s*core)?$/i.test(t) || /^c#$/i.test(t)) return true;
+  // .NET / C# / C++ — leading punctuation breaks \\b in TECH_PATTERNS
+  if (/^\.?net(?:\s*core)?$/i.test(t) || /^c#$/i.test(t) || /^c\+\+$/i.test(t)) return true;
   if (t.length > 42 && /\b(transition|optimization|optimisation|integration|ownership|design)\b/i.test(t)) {
     return false;
   }
@@ -298,6 +301,7 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
     if (parenMatch) {
       for (const tech of parenMatch[1].split(',').map((t) => t.trim()).filter(Boolean)) {
         if (isEditorIdeTool(tech) || isJunkKeyword(tech) || isEmployerBrandKeyword(tech, jdText)) continue;
+        if (jdText && !keywordAppearsInJd(tech, jdText)) continue;
         if (!existingLower.has(tech.toLowerCase()) && isTechStackSkill(tech)) {
           fromProfile.push(tech);
           existingLower.add(tech.toLowerCase());
@@ -312,6 +316,7 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
       && !existingLower.has(cleanedSp.toLowerCase())
       && !/^ai-?native tool integration$/i.test(cleanedSp)
       && isTechStackSkill(cleanedSp)
+      && (!jdText || keywordAppearsInJd(cleanedSp, jdText))
     ) {
       fromProfile.push(cleanedSp);
       existingLower.add(cleanedSp.toLowerCase());

@@ -3,7 +3,7 @@
  */
 
 const KNOWN_TECH = [
-  'JavaScript', 'TypeScript', 'Python', 'Java', 'Go', 'Golang', 'Rust', 'C#', '.NET', 'Ruby', 'PHP', 'Kotlin', 'Swift', 'Scala',
+  'JavaScript', 'TypeScript', 'Python', 'Java', 'Go', 'Golang', 'Rust', 'C++', 'C#', '.NET', 'Ruby', 'PHP', 'Kotlin', 'Swift', 'Scala',
   'React', 'React.js', 'Redux', 'Angular', 'Vue.js', 'Next.js', 'NestJS', 'Express', 'FastAPI', 'Django', 'Spring Boot', 'Node.js', 'Bun',
   'PostgreSQL', 'Postgres', 'MySQL', 'MongoDB', 'Redis', 'DynamoDB', 'Elasticsearch', 'Aurora',
   'AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD',
@@ -17,6 +17,7 @@ const KNOWN_TECH = [
   'Message Brokers', 'Web Scraping',
   'Webpack', 'Vite', 'Material UI', 'HTML5', 'CSS3',
   'Git', 'Agile', 'Scrum', 'Microservices', 'System Design', 'Unit Testing', 'Integration Testing',
+  'GDB', 'Valgrind', '3GPP', 'TCP/IP', 'UML', 'Sockets',
   'Machine Learning', 'ML', 'LLM', 'RAG', 'LangChain', 'PyTorch', 'TensorFlow',
   // NOTE: never list Cursor / Copilot / ChatGPT / Claude Code here — IDE assistants are not tech-stack skills
   '.NET Core', '.NET', 'C#',
@@ -551,6 +552,7 @@ export const DOMAIN_EVIDENCE_STEMS = [
   { match: /restful|api design|high-throughput|low-latency|rate limit/i, stems: ['api', 'rest', 'fastapi', 'express', 'throughput', 'latency', 'node'] },
   { match: /state management|component librar|responsive design|react|typescript/i, stems: ['react', 'typescript', 'redux', 'frontend', 'ui'] },
   { match: /vector|embedding|rag|prompt engineering|agentic|langchain|llm/i, stems: ['llm', 'embedding', 'rag', 'openai', 'langchain', 'vector', 'chromadb'] },
+  { match: /embedded|satellite|3gpp|gdb|valgrind|multi-threaded|multi-process|interrupt handling|sockets programming/i, stems: ['linux', 'python', 'jenkins', 'ci/cd', 'aws', 'azure', 'thread', 'process', 'socket'] },
 ];
 
 /** Outcome/problem prose — what the JD wants reduced, never a candidate skill. */
@@ -771,6 +773,35 @@ function normalizeKeyword(kw) {
   return cleanSkillToken(kw);
 }
 
+/**
+ * True when a skill/tool token actually appears in the JD (not just the profile).
+ * C++ cannot use \\b after '+', so it gets an explicit matcher.
+ */
+export function keywordAppearsInJd(kw, jdText) {
+  const raw = String(kw || '').trim();
+  const t = String(jdText || '');
+  if (!raw || !t) return false;
+  const k = normalizeKeyword(raw);
+  if (!k) return false;
+  if (k === 'c++' || k === 'cpp') return /c\+\+/i.test(t);
+  if (k === 'node.js' || k === 'nodejs') return /\bnode\.?js\b/i.test(t);
+  if (k === 'ci/cd') return /\bci\s*\/\s*cd\b|\bcontinuous integration\b|\bcontinuous delivery\b/i.test(t);
+  if (k === 'rest api' || k === 'restful api' || k === 'restful apis') {
+    return /\brest(?:ful)?\s*apis?\b/i.test(t);
+  }
+  const hits = findKnownTechInText(normalizeJdTechAliases(t));
+  if (hits.some((x) => normalizeKeyword(x) === k)) return true;
+  try {
+    const escaped = escapeRe(k);
+    if (/[+#./]/.test(k)) {
+      return new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, 'i').test(t);
+    }
+    return new RegExp(`\\b${escaped}\\b`, 'i').test(t);
+  } catch {
+    return t.toLowerCase().includes(k);
+  }
+}
+
 function escapeRe(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -784,7 +815,7 @@ function findKnownTechInText(text) {
     const escaped = escapeRe(tech);
     const pattern = tech.includes(' ') || tech.includes('/')
       ? escaped
-      : /[#.]/.test(tech)
+      : /[#.+]/.test(tech)
         ? `(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`
         : `\\b${escaped}\\b`;
     const re = new RegExp(pattern, 'gi');
@@ -992,6 +1023,8 @@ function weaveKeywordIntoBullet(bullet, keyword) {
   if (form.startsWith('(')) {
     // Tool parenthetical only where real stack context exists
     if (!bulletHasTechContext(base)) return b;
+    // Never stack (TypeScript)(Python) dumps onto a bullet that already has a tool paren
+    if (/\([^)]{1,48}\)\s*$/.test(base)) return b;
     return `${base} ${form}.`;
   }
   // Clause forms must not stack onto a trailing prepositional phrase

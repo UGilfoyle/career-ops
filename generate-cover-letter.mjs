@@ -72,9 +72,9 @@ function buildCredentialsBlock(candidate) {
   return `<div class="credentials">${credentials.map(escapeHtml).join(" &nbsp;|&nbsp; ")}</div>`;
 }
 
-function buildDateline(letter) {
-  const parts = [letter.company, letter.city].filter(Boolean).map(escapeHtml);
-  return parts.join(' &nbsp;&nbsp; ');
+function buildDateline(_letter) {
+  // Cover letters never carry a calendar date (user rule).
+  return '';
 }
 
 function buildAchievementsBlock(achievements) {

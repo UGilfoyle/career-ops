@@ -567,6 +567,9 @@ export function scrubResumeArtifacts(text) {
   t = t.replace(/\s{2,}/g, ' ');
   t = t.replace(/,\s*,/g, ',');
 
+  // Stacked single-tool parens: (TypeScript)(Python) — ATS spam
+  t = t.replace(/(\s*\([A-Za-z][A-Za-z0-9.+#/\-]{0,28}\))(?:\s*\([A-Za-z][A-Za-z0-9.+#/\-]{0,28}\))+/g, '');
+
   // Do NOT run scrubSummaryKeywordParenSpam here — its trailing-paren pattern can
   // catastrophically backtrack on long experience bullets and hang the tailor engine.
   return t.replace(/\s{2,}/g, ' ').replace(/\.\s*\./g, '.').trim();
