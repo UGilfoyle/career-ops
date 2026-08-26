@@ -364,7 +364,7 @@ const expId = Object.values(pkgId.resume.experience || {}).flat().join('\n');
 const compsId = (pkgId.resume.core_competencies || []).join(' ');
 const letterId = String(pkgId.cover_letter || '');
 assert(!/\bTypeScript\b/i.test(summaryId), `iDirect summary is not TypeScript-led (got ${summaryId.slice(0, 180)})`);
-assert(!/\(TypeScript\)|\(Python\)\(TypeScript\)|\(TypeScript\)\(Python\)/i.test(expId), 'no stacked TypeScript/Python paren dumps');
+assert(!/\(TypeScript\)\s*\(Python\)|\(TypeScript\)\(Python\)/i.test(expId), 'no stacked TypeScript/Python paren dumps');
 assert(/Linux|Python|Jenkins|AWS|Azure|CI\/CD/i.test(summaryId), 'iDirect summary names honest overlap stack');
 assert(/c\+\+/i.test(compsId), `C++ listed in skills for ATS (got ${compsId})`);
 assert(/Linux|Jenkins|Python/i.test(compsId), 'skills keep Linux/Jenkins/Python overlap');

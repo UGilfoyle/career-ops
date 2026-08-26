@@ -3,6 +3,8 @@
  * quantified impact, global verb variety, and no repeated words within sentences.
  */
 
+import { mergeStackedToolParens } from './jd-keyword-align.mjs';
+
 const ATS_TARGET_SCORE = 90;
 
 /** @type {Record<string, string[]>} */
@@ -567,8 +569,8 @@ export function scrubResumeArtifacts(text) {
   t = t.replace(/\s{2,}/g, ' ');
   t = t.replace(/,\s*,/g, ',');
 
-  // Stacked single-tool parens: (TypeScript)(Python) — ATS spam
-  t = t.replace(/(\s*\([A-Za-z][A-Za-z0-9.+#/\-]{0,28}\))(?:\s*\([A-Za-z][A-Za-z0-9.+#/\-]{0,28}\))+/g, '');
+  // (WebSockets) (GitHub Actions) (RESTful API) → (WebSockets, GitHub Actions, RESTful API)
+  t = mergeStackedToolParens(t);
 
   // Do NOT run scrubSummaryKeywordParenSpam here — its trailing-paren pattern can
   // catastrophically backtrack on long experience bullets and hang the tailor engine.

@@ -26,6 +26,8 @@ import {
   bulletHasTechContext,
   weaveAdjacencyScore,
   keywordAppearsInJd,
+  appendToolToTrailingParen,
+  mergeStackedToolParens,
   DOMAIN_EVIDENCE_STEMS,
 } from './jd-keyword-align.mjs';
 import {
@@ -333,20 +335,14 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
   if (!resume?.experience || !plan?.tailorIndices?.length || !weaveKeywords?.length) return resume;
   const copy = JSON.parse(JSON.stringify(resume));
   const kws = weaveKeywords.filter((k) => isWeaveableNounPhrase(k));
-  const kwKeys = new Set(kws.map((k) => normalizeKey(k)));
 
   const stripInjectNoise = (raw) => {
     let b = String(raw || '').trim();
     b = b
       .replace(/(?:\s+(?:covering|aligned to|supporting|for)\s+[A-Za-z0-9][A-Za-z0-9+./#\s-]{1,60})+\.?$/gi, '.')
-      .replace(/\s+\(([^)]{2,60})\)\.?$/gi, (m, inner) => {
-        if (/\d/.test(inner)) return m;
-        const ik = normalizeKey(inner);
-        if (kwKeys.has(ik) || [...kwKeys].some((k) => ik.includes(k) || k.includes(ik))) return '.';
-        return m;
-      })
       .replace(/\.\s*\./g, '.')
       .trim();
+    b = mergeStackedToolParens(b);
     if (b && !/[.!?]$/.test(b)) b += '.';
     return b;
   };
@@ -396,8 +392,7 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
         if (!form) continue;
         if (form.startsWith('(')) {
           if (!bulletHasTechContext(base)) continue;
-          if (/\([^)]{1,48}\)\s*$/.test(base)) continue;
-          bullets[target] = `${base} ${form}.`;
+          bullets[target] = `${appendToolToTrailingParen(base, kw)}.`;
         } else {
           if (/\b(with|in|across|via|on)\s+[^,.]{2,40}$/i.test(base) || base.length > 190) continue;
           bullets[target] = `${base}, ${form}.`;
@@ -407,7 +402,11 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
       added += 1;
     }
     cursor += Math.max(1, added);
-    copy.experience[key] = bullets;
+    copy.experience[key] = bullets.map((b) => {
+      const merged = mergeStackedToolParens(String(b || ''));
+      if (merged && !/[.!?]$/.test(merged)) return `${merged}.`;
+      return merged;
+    });
   }
   return copy;
 }

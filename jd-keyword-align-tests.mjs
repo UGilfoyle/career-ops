@@ -16,6 +16,8 @@ import {
   forceJdKeywordCoverage,
   JD_ALIGNMENT_TARGET,
   keywordAppearsInJd,
+  mergeStackedToolParens,
+  appendToolToTrailingParen,
 } from './jd-keyword-align.mjs';
 import {
   analyzeJdProfileFit,
@@ -366,6 +368,20 @@ assert(/gdb/i.test(cppTech), 'extracts GDB');
 assert(/valgrind/i.test(cppTech), 'extracts Valgrind');
 assert(keywordAppearsInJd('C++', cppJd), 'keywordAppearsInJd matches C++');
 assert(!keywordAppearsInJd('TypeScript', cppJd), 'TypeScript is not in C++ JD');
+
+const mergedParens = mergeStackedToolParens(
+  'Shipped services (WebSockets) (GitHub Actions) (RESTful API).',
+);
+assert(
+  /\(WebSockets, GitHub Actions, RESTful API\)/.test(mergedParens),
+  `merges stacked braces into one list (got ${mergedParens})`,
+);
+assert(!/\(WebSockets\)\s*\(GitHub Actions\)/.test(mergedParens), 'no leftover adjacent braces');
+const appended = appendToolToTrailingParen('Owned Linux services (Jenkins)', 'GitHub Actions');
+assert(
+  /\(Jenkins, GitHub Actions\)/.test(appended),
+  `appends into existing paren (got ${appended})`,
+);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

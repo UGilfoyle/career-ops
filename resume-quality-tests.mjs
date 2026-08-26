@@ -224,7 +224,19 @@ console.log('resume-quality tests\n');
   const stacked = scrubResumeArtifacts(
     'Built FastAPI services with Pydantic (TypeScript)(Python).'
   );
-  assert(!/\(TypeScript\)\s*\(Python\)/i.test(stacked), 'strips stacked (TypeScript)(Python) dumps');
+  assert(!/\(TypeScript\)\s*\(Python\)/i.test(stacked), 'does not leave stacked (TypeScript)(Python)');
+  assert(/\(TypeScript, Python\)/i.test(stacked), 'merges stacked parens into one comma list');
+}
+
+{
+  const listed = scrubResumeArtifacts(
+    'Shipped production services (WebSockets) (GitHub Actions) (RESTful API).'
+  );
+  assert(
+    /\(WebSockets, GitHub Actions, RESTful API\)/i.test(listed),
+    `comma-list paren form (got ${listed})`,
+  );
+  assert(!/\(WebSockets\)\s*\(GitHub Actions\)/i.test(listed), 'no adjacent single-tool braces');
 }
 
 {

@@ -681,6 +681,76 @@ export function weaveSuffixForm(kw) {
   return null;
 }
 
+function isToolParenInner(inner) {
+  const s = String(inner || '').trim();
+  if (!s || s.length > 90) return false;
+  if (/\d{4}|\d+%|\bp\d{2}\b|present|current|contract|freelance/i.test(s)) return false;
+  if (/^(find|apply|search|sign|join|save|share|view|click|report)$/i.test(s)) return false;
+  const parts = s.split(/\s*,\s*/).map((p) => p.trim()).filter(Boolean);
+  if (!parts.length || parts.length > 6) return false;
+  return parts.every((p) => (
+    p.length >= 2
+    && p.length <= 32
+    && /^[A-Za-z][A-Za-z0-9.+#/\-]*(?:\s+[A-Za-z][A-Za-z0-9.+#/\-]*){0,3}$/.test(p)
+  ));
+}
+
+function splitToolParenItems(inner) {
+  return String(inner || '')
+    .split(/\s*,\s*/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+function uniqueToolItems(items) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of items) {
+    const key = normalizeKeyword(raw);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(raw);
+  }
+  return out;
+}
+
+/**
+ * Collapse stacked tool braces into one list:
+ * (WebSockets) (GitHub Actions) (RESTful API) → (WebSockets, GitHub Actions, RESTful API)
+ */
+export function mergeStackedToolParens(text) {
+  let t = String(text || '');
+  if (!t) return '';
+  for (let i = 0; i < 10; i++) {
+    let merged = false;
+    t = t.replace(/\(([^)]{1,80})\)(?:\s*,\s*|\s*)\(([^)]{1,80})\)/g, (full, a, b) => {
+      if (!isToolParenInner(a) || !isToolParenInner(b)) return full;
+      merged = true;
+      const items = uniqueToolItems([...splitToolParenItems(a), ...splitToolParenItems(b)]).slice(0, 4);
+      return `(${items.join(', ')})`;
+    });
+    if (!merged) break;
+  }
+  return t;
+}
+
+/**
+ * Add a tool inside an existing trailing (A) or (A, B) instead of a second brace pair.
+ */
+export function appendToolToTrailingParen(base, kw) {
+  const raw = String(base || '').replace(/\.$/, '').trim();
+  const k = String(kw || '').trim();
+  if (!raw || !k) return raw;
+  const m = raw.match(/^(.*?)\s*\(([^)]{1,90})\)\s*$/);
+  if (!m || !isToolParenInner(m[2])) {
+    return `${raw} (${k})`;
+  }
+  const items = uniqueToolItems([...splitToolParenItems(m[2]), k]);
+  if (items.length > 4) items.length = 4;
+  const lead = String(m[1] || '').trim();
+  return lead ? `${lead} (${items.join(', ')})` : `(${items.join(', ')})`;
+}
+
 /** Bare abbreviations / filler nouns that read as junk on an ATS skills line. */
 const WEAK_SKILL_TOKENS = new Set([
   'ml', 'ai', 'it', 'go',
@@ -1023,9 +1093,7 @@ function weaveKeywordIntoBullet(bullet, keyword) {
   if (form.startsWith('(')) {
     // Tool parenthetical only where real stack context exists
     if (!bulletHasTechContext(base)) return b;
-    // Never stack (TypeScript)(Python) dumps onto a bullet that already has a tool paren
-    if (/\([^)]{1,48}\)\s*$/.test(base)) return b;
-    return `${base} ${form}.`;
+    return `${mergeStackedToolParens(appendToolToTrailingParen(base, kw))}.`;
   }
   // Clause forms must not stack onto a trailing prepositional phrase
   if (/\b(with|in|across|via|on)\s+[^,.]{2,40}$/i.test(base)) return b;
