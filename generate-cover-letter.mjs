@@ -73,8 +73,8 @@ function buildCredentialsBlock(candidate) {
 }
 
 function buildDateline(letter) {
-  const parts = [letter.company, letter.city, letter.date].filter(Boolean).map(escapeHtml);
-  return parts.join(" &nbsp;&nbsp; ");
+  const parts = [letter.company, letter.city].filter(Boolean).map(escapeHtml);
+  return parts.join(' &nbsp;&nbsp; ');
 }
 
 function buildAchievementsBlock(achievements) {

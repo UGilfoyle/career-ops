@@ -567,7 +567,27 @@ export function scrubResumeArtifacts(text) {
   t = t.replace(/\s{2,}/g, ' ');
   t = t.replace(/,\s*,/g, ',');
 
+  // Do NOT run scrubSummaryKeywordParenSpam here — its trailing-paren pattern can
+  // catastrophically backtrack on long experience bullets and hang the tailor engine.
   return t.replace(/\s{2,}/g, ' ').replace(/\.\s*\./g, '.').trim();
+}
+
+/**
+ * Strip JD-keyword weave crumbs from summaries only: leading "(WebSockets)(CI/CD)"
+ * stacks and trailing multi-tool paren tails. Linear-time; safe on short summary lines.
+ * Never call from scrubResumeArtifacts (bullets) — use on summary/cover paths only.
+ */
+export function scrubSummaryKeywordParenSpam(text) {
+  let s = String(text || '').trim();
+  if (!s) return '';
+  // Leading paren dumps: "(A, B) (C) rest…"
+  s = s.replace(/^(\s*\([^)]{2,90}\)\s*)+/g, '').trim();
+  s = s.replace(/^[.\u2026]+\s*/, '').trim();
+  // Trailing multi-token tool list only — require a comma so we don't thrash on
+  // legitimate single parentheticals like "(ECS)" and avoid nested * backtracking.
+  s = s.replace(/\s*\([A-Za-z0-9.+#/\-][A-Za-z0-9.+#/\-\s]{0,40},\s*[^)]{1,80}\)\.?\s*$/g, '').trim();
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  return s;
 }
 
 /**

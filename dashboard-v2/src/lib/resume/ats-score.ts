@@ -186,7 +186,8 @@ export async function scoreMasterAgainstJd(
 
 /**
  * Push JD keywords into master profile skills/summary until ≥94% coverage.
- * This is what Studio Live Preview must do — scoring alone does not change the resume.
+ * Prefers the same executeTailoringPlan engine as `tailor --deep` so Studio
+ * JD paste and agentic tailor stay aligned (no exit_story paren spam).
  */
 export async function mirrorJdKeywordsIntoProfile(
   profile: ResumeContext,
@@ -196,7 +197,8 @@ export async function mirrorJdKeywordsIntoProfile(
     return structureAtsScore(profile);
   }
   const jdMatch = await runJdMatch(profile, jdText);
-  const keywords = jdMatch.jdKeywords || [];
+  const tailorKeywords = await extractTailorAtsKeywords(jdText, profile);
+  const keywords = tailorKeywords.length ? tailorKeywords : (jdMatch.jdKeywords || []);
   if (!keywords.length) {
     return {
       score: 0,
@@ -210,9 +212,98 @@ export async function mirrorJdKeywordsIntoProfile(
     };
   }
 
+  // Primary path: full deterministic tailor plan (same as agentic-tailor).
+  try {
+    const { pathToFileURL } = await import('url');
+    const { join } = await import('path');
+    const planPath = join(/* turbopackIgnore: true */ process.cwd(), '..', 'resume-tailoring-plan.mjs');
+    const planMod = await import(/* webpackIgnore: true */ pathToFileURL(planPath).href);
+    const plan = planMod.buildTailoringPlan(jdText, profile);
+    const executed = planMod.executeTailoringPlan(plan, profile, {
+      jdText,
+      companyName: '',
+    }) as {
+      resume: { summary?: string; core_competencies?: string[]; experience?: Record<string, string[]> };
+      jd_alignment_score?: number;
+    };
+    let alignedProfile = applyAlignedResumeToProfile(profile, executed.resume);
+    const expMap = executed.resume?.experience;
+    if (expMap && typeof expMap === 'object' && Array.isArray(alignedProfile.experience)) {
+      alignedProfile.experience = alignedProfile.experience.map((role, i) => {
+        const bullets = expMap[String(i)];
+        if (!Array.isArray(bullets) || !bullets.length) return role;
+        return { ...role, bullets: bullets.map(String) };
+      });
+    }
+    const rqPath = join(/* turbopackIgnore: true */ process.cwd(), '..', 'resume-quality.mjs');
+    const rq = await import(/* webpackIgnore: true */ pathToFileURL(rqPath).href);
+    const cleaned = rq.stripUnsolicitedAiFromResume(
+      {
+        summary: String(executed.resume?.summary || ''),
+        core_competencies: executed.resume?.core_competencies || getCompetencies(alignedProfile),
+        experience: profileToResumeShape(alignedProfile).experience,
+      },
+      jdText,
+    );
+    if (typeof cleaned.summary === 'string' && typeof rq.scrubSummaryKeywordParenSpam === 'function') {
+      cleaned.summary = rq.scrubSummaryKeywordParenSpam(cleaned.summary);
+    }
+    alignedProfile = applyAlignedResumeToProfile(alignedProfile, cleaned);
+    if (cleaned.experience && Array.isArray(alignedProfile.experience)) {
+      alignedProfile.experience = alignedProfile.experience.map((role, i) => {
+        const bullets = cleaned.experience[String(i)];
+        if (!Array.isArray(bullets)) return role;
+        return { ...role, bullets: bullets.map(String) };
+      });
+    }
+    const mod = await importJdKeywordAlign();
+    const remeasured = mod.measureJdAlignment(
+      {
+        summary: String(cleaned.summary || masterSummaryText(alignedProfile)),
+        core_competencies: getCompetencies(alignedProfile),
+        experience: profileToResumeShape(alignedProfile).experience,
+      },
+      keywords,
+    ) as { score: number; matched: string[]; missing: string[] };
+    return {
+      score: remeasured.score,
+      matched: remeasured.matched,
+      missing: remeasured.missing,
+      total: keywords.length,
+      source: 'jd',
+      scoredFrom: 'draft',
+      alignedProfile,
+      jdMatch: { ...jdMatch, coveragePct: remeasured.score },
+    };
+  } catch {
+    /* fall through to legacy keyword push */
+  }
+
   const mod = await importJdKeywordAlign();
   const target = Number(mod.JD_ALIGNMENT_TARGET) || 95;
-  const pushed = mod.forceJdKeywordCoverage(profileToResumeShape(profile), keywords, {
+  // Seed from honest JD summary — never raw exit_story (paren keyword spam).
+  let seedShape = profileToResumeShape(profile);
+  try {
+    const { pathToFileURL } = await import('url');
+    const { join } = await import('path');
+    const matchPath = join(/* turbopackIgnore: true */ process.cwd(), '..', 'jd-profile-match.mjs');
+    const matchMod = await import(/* webpackIgnore: true */ pathToFileURL(matchPath).href);
+    const years = Number(profile?.candidate?.years_experience) || 7;
+    const fit = matchMod.analyzeJdProfileFit(jdText, profile);
+    seedShape = {
+      ...seedShape,
+      summary: matchMod.buildHonestSummary('', years, fit.honest || [], jdText),
+      core_competencies: matchMod.buildJdMatchedCompetencies(
+        keywords,
+        profile,
+        jdText,
+        16,
+      ),
+    };
+  } catch {
+    /* keep master summary */
+  }
+  const pushed = mod.forceJdKeywordCoverage(seedShape, keywords, {
     target,
     maxPasses: 5,
     sourceExperience: profile.experience || [],
@@ -240,12 +331,15 @@ export async function mirrorJdKeywordsIntoProfile(
     const rq = await import(/* webpackIgnore: true */ pathToFileURL(rqPath).href);
     const cleaned = rq.stripUnsolicitedAiFromResume(
       {
-        summary: masterSummaryText(alignedProfile),
+        summary: String(pushed.resume.summary || masterSummaryText(alignedProfile)),
         core_competencies: getCompetencies(alignedProfile),
         experience: profileToResumeShape(alignedProfile).experience,
       },
       jdText,
     );
+    if (typeof cleaned.summary === 'string' && typeof rq.scrubSummaryKeywordParenSpam === 'function') {
+      cleaned.summary = rq.scrubSummaryKeywordParenSpam(cleaned.summary);
+    }
     alignedProfile = applyAlignedResumeToProfile(alignedProfile, cleaned);
     if (cleaned.experience && Array.isArray(alignedProfile.experience)) {
       alignedProfile.experience = alignedProfile.experience.map((role, i) => {
@@ -256,7 +350,7 @@ export async function mirrorJdKeywordsIntoProfile(
     }
     const remeasured = mod.measureJdAlignment(
       {
-        summary: masterSummaryText(alignedProfile),
+        summary: String(cleaned.summary || masterSummaryText(alignedProfile)),
         core_competencies: getCompetencies(alignedProfile),
         experience: profileToResumeShape(alignedProfile).experience,
       },

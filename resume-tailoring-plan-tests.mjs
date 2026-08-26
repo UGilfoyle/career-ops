@@ -317,5 +317,24 @@ assert(/terraform|cloudformation|cloudwatch|iam|vpc|jenkins/i.test(summaryC + ex
 const compsC = (pkgC.resume.core_competencies || []).join(' ');
 assert(/Terraform|CloudWatch|CloudFormation|AWS/i.test(compsC), 'Cummins competencies keep proven AWS stack ahead of JD-gap crumbs');
 
+console.log('\n13. Cover letter finalize — JD-aligned, no date, no paren spam\n');
+const letterC = String(pkgC.cover_letter || '');
+assert(letterC.length > 120, 'cover letter has substance');
+assert(!/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}/i.test(letterC), 'cover letter has no date line');
+assert(!/\(\s*WebSockets|\(\s*DynamoDB/i.test(letterC), 'cover letter has no paren keyword spam');
+assert(/cummins|aws|terraform|cloudwatch|platform/i.test(letterC), 'cover letter mentions JD/company stack');
+assert(!/quest, intverse, glidewell, and srijan maps directly/i.test(letterC), 'cover letter is not the old generic template');
+
+// exit_story must not seed summaries when LLM summary is empty
+const pollutedProfile = JSON.parse(JSON.stringify(profile));
+pollutedProfile.narrative = {
+  ...(pollutedProfile.narrative || {}),
+  exit_story:
+    '(WebSockets, Jenkins) (CI/CD) 7+ years building production-grade distributed systems (DynamoDB, REST API, Azure).',
+};
+const pkgNoExit = executeTailoringPlan(planC, pollutedProfile, { jdText: CUMMINS_JD, companyName: 'Cummins' });
+assert(!/WebSockets/i.test(String(pkgNoExit.resume.summary || '')), 'exit_story paren spam does not leak into summary');
+assert(!/\(DynamoDB/i.test(String(pkgNoExit.resume.summary || '')), 'exit_story trailing paren dump does not leak');
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

@@ -26,6 +26,8 @@ import {
   auditResumeQuality,
   estimateAtsContentScore,
   polishTailoredResume,
+  parseTenureMonths,
+  scrubSummaryKeywordParenSpam,
 } from './resume-quality.mjs';
 import {
   buildTailoringPlan,
@@ -95,12 +97,35 @@ export function buildSourceResumeFromProfile(profile, jdText = '') {
   (profile?.experience || []).slice(0, 7).forEach((role, i) => {
     experience[String(i)] = (role?.bullets || []).slice(0, 5).map(String);
   });
+
+  const jd = String(jdText || '').trim();
+  let years = Number(profile?.candidate?.years_experience) || 0;
+  if (!years && Array.isArray(profile?.experience)) {
+    let months = 0;
+    for (const e of profile.experience) months += parseTenureMonths(e?.period) || 0;
+    years = Math.max(1, Math.round(months / 12));
+  }
+
+  let summary = '';
+  if (jd.length >= 40) {
+    const fit = analyzeJdProfileFit(jd, profile);
+    summary = buildHonestSummary('', years, fit.honest || [], jd);
+  } else {
+    summary = String(profile?.narrative?.headline || profile?.narrative?.exit_story || '').trim();
+  }
+
+  const competencies = jd.length >= 40
+    ? buildJdMatchedCompetencies(
+        extractJdKeywords(jd, 25),
+        profile,
+        jd,
+        14,
+      )
+    : (profile?.narrative?.superpowers || []).slice(0, 12).map(String);
+
   return {
-    summary:
-      profile?.narrative?.exit_story
-      || profile?.narrative?.headline
-      || '',
-    core_competencies: (profile?.narrative?.superpowers || []).slice(0, 12).map(String),
+    summary: scrubSummaryKeywordParenSpam(String(summary || '')),
+    core_competencies: competencies,
     experience,
   };
 }

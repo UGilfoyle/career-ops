@@ -41,7 +41,21 @@ import {
   elevateBulletForEmployer,
   normalizeBulletText,
   isSeniorToneEmployer,
+  scrubSummaryKeywordParenSpam,
+  scrubResumeArtifacts,
 } from './resume-quality.mjs';
+
+/** LLM summary seed only — never exit_story; strip paren-keyword spam. */
+function scrubSummaryFromOpts(llmSummary) {
+  const raw = String(llmSummary || '').trim();
+  if (!raw) return '';
+  // Reject exit_story-shaped dumps that are mostly parenthetical keyword stacks
+  if (/^(\s*\([^)]{2,90}\)\s*){2,}/.test(raw)) return '';
+  if (/\(DynamoDB|WebSockets|\.NET|REST API,\s*Azure\)/i.test(raw) && raw.split('(').length >= 3) {
+    return '';
+  }
+  return scrubSummaryKeywordParenSpam(scrubResumeArtifacts(raw));
+}
 
 export const DEFAULT_FULL_TAILOR = [
   'Quest Global',
@@ -524,9 +538,12 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
     }
   }
 
+  // Summary is JD + proven stack only. Never seed from exit_story (paren-spam pollution).
+  // Optional LLM draft is honesty-scrubbed; empty base → full deterministic rebuild.
+  const llmSummaryClean = scrubSummaryFromOpts(opts.llmSummary);
   let resume = {
     summary: buildHonestSummary(
-      opts.llmSummary || profile?.narrative?.exit_story || '',
+      llmSummaryClean,
       years,
       bulletKeywords,
       jdText,
@@ -575,9 +592,18 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
   finalResume = injectWeaveIntoMutableRoles(finalResume, plan, bulletKeywords, 2, profile);
   finalResume = scrubGapToolsFromMutableRoles(finalResume, plan, profile);
   finalResume = restorePreservedEmployers(finalResume, preserved);
+  if (typeof finalResume.summary === 'string') {
+    finalResume.summary = scrubSummaryKeywordParenSpam(scrubResumeArtifacts(finalResume.summary));
+  }
 
-  const coverLetter = opts.llmCoverLetter
-    || buildDeterministicCoverLetter(plan, profile, opts.companyName || '');
+  const coverLetter = finalizeCoverLetter({
+    llmText: opts.llmCoverLetter,
+    plan,
+    profile,
+    companyName: opts.companyName || '',
+    jdText,
+    resume: finalResume,
+  });
 
   return {
     resume: finalResume,
@@ -597,17 +623,99 @@ function estimateYears(experience) {
   return Math.max(1, Math.round(months / 12));
 }
 
-export function buildDeterministicCoverLetter(plan, profile, companyName) {
-  const company = companyName || 'your team';
-  const hooks = (plan.coverLetter?.jdHooks || plan.keywords.atsMirror || [])
-    .slice(0, 3)
-    .join(', ') || 'the technical requirements in the posting';
+export function buildDeterministicCoverLetter(plan, profile, companyName, jdText = '', resume = null) {
+  return buildJdAlignedCoverLetter(plan, profile, companyName, jdText, resume);
+}
+
+/**
+ * JD-specific cover letter — 3 tight paragraphs, no date, mirrors tailored resume + posting.
+ */
+export function buildJdAlignedCoverLetter(plan, profile, companyName, jdText = '', resume = null) {
+  const company = String(companyName || '').trim() || 'your organization';
+  const role = plan.displayTitle || inferRoleTitleFromJd(jdText) || 'the open role';
+  const honest = (plan.keywords.honest || []).filter((k) => isWeavableKeyword(k)).slice(0, 4);
+  const hooks = honest.length
+    ? honest.join(', ')
+    : (plan.keywords.atsMirror || []).slice(0, 3).join(', ') || 'the technical requirements in your posting';
   const years = Number(profile?.candidate?.years_experience) || estimateYears(profile?.experience) || 7;
+  const recent = (profile?.experience || [])[0] || {};
+  const recentCo = String(recent.company || 'my current employer').trim();
+  const recentRole = String(recent.role || recent.title || 'Senior Backend Engineer').trim();
+
+  const digest = [
+    ...(profile?.experience || []).flatMap((e) => e?.bullets || []),
+    resume?.summary || '',
+  ].join(' ');
+  const metric = (digest.match(/\b\d+(?:\.\d+)?%|\bp99\b|\bp95\b|\b99\.\d+%\b/i) || [])[0];
+  const metricBit = metric
+    ? ` Recent work includes measurable outcomes such as ${metric} improvements in production.`
+    : '';
+
+  const summaryHook = scrubSummaryKeywordParenSpam(String(resume?.summary || ''))
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)[0];
+  // Prefer a short ownership sentence over dumping the full multi-line summary into para 2.
+  const stackLine = summaryHook && summaryHook.length > 40 && summaryHook.length < 220
+    ? summaryHook.replace(/\.$/, '')
+    : `I bring ${years}+ years owning backend platforms, APIs, and cloud delivery`;
+
   return [
-    `I am writing to apply for the ${plan.displayTitle || 'open role'} at ${company}. The posting emphasizes ${hooks}, which matches the production work I have owned across recent roles.`,
-    `With ${years}+ years building and operating backend systems, I bring hands-on depth in the same problem space: reliable data and API delivery, SQL-backed validation, and CI/CD discipline. Recent work at Quest, INTVERSE, Glidewell, and Srijan maps directly to the requirements above.`,
-    `I would welcome the chance to walk through a short technical demo or discuss how I can contribute on day one.`,
+    `I am applying for the ${role} position at ${company}. Your posting emphasizes ${hooks}, which aligns with the production systems I have designed and operated.`,
+    `${stackLine}.${metricBit} In my recent role as ${recentRole} at ${recentCo}, I owned end-to-end delivery — architecture, reliability, and CI/CD — mapped to the stack in your posting.`,
+    `I would welcome the opportunity to discuss how I can contribute from day one. Thank you for your consideration.`,
   ].join('\n\n');
+}
+
+/** Prefer deterministic JD letter when LLM output is generic, polluted, or off-JD. */
+export function finalizeCoverLetter(opts = {}) {
+  const {
+    llmText = '',
+    plan,
+    profile,
+    companyName = '',
+    jdText = '',
+    resume = null,
+  } = opts;
+  const built = buildJdAlignedCoverLetter(plan, profile, companyName, jdText, resume);
+  let raw = String(llmText || '').trim();
+  if (!raw || raw.length < 80) return built;
+
+  raw = raw
+    .replace(/^dear\s+hiring manager[,:\s]*/i, '')
+    .replace(/\bsincerely[,:\s]*[\s\S]*$/i, '')
+    .replace(
+      /\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}\b/gi,
+      '',
+    )
+    .trim();
+
+  if (isWeakCoverLetter(raw)) return built;
+
+  const paras = raw.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  if (paras.length < 2 || paras.length > 4) return built;
+
+  const hooks = (plan.keywords.honest || plan.keywords.atsMirror || []).slice(0, 6);
+  const body = paras.join(' ').toLowerCase();
+  const mentionsJd = !hooks.length || hooks.some((h) => {
+    const k = String(h).toLowerCase().slice(0, Math.min(8, String(h).length));
+    return k.length >= 3 && body.includes(k);
+  });
+  if (!mentionsJd) return built;
+
+  return paras.slice(0, 3).join('\n\n');
+}
+
+function isWeakCoverLetter(text) {
+  const t = String(text || '');
+  if (/\(\s*[^)]{2,},\s*[^)]+\)/.test(t)) return true;
+  if (/production-grade distributed systems for consumer and enterprise/i.test(t)) return true;
+  if (/quest, intverse, glidewell, and srijan maps directly/i.test(t)) return true;
+  if (/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}\b/i.test(t)) {
+    return true;
+  }
+  if (/exit_story|superpowers/i.test(t)) return true;
+  return false;
 }
 
 /**

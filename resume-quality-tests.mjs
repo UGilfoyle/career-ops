@@ -17,6 +17,7 @@ import {
   isBulletContinuationFragment,
   explodeWallOfTextBullets,
   scrubResumeArtifacts,
+  scrubSummaryKeywordParenSpam,
   preferSourceIfThin,
   isEmbeddedJobHeader,
   sanitizeExperienceEntries,
@@ -217,6 +218,28 @@ console.log('resume-quality tests\n');
   assert(/800ms/.test(scrubbed), 'scrub normalizes Ms → ms');
   assert(!/By 45%/i.test(scrubbed), 'scrub removes duplicate By 45%');
   assert(/ and /i.test(scrubbed), 'scrub lowercases mid-sentence And');
+}
+
+{
+  const polluted =
+    '(WebSockets, Jenkins) (CI/CD) 7+ years building production-grade distributed systems for consumer and enterprise platforms, with measurable P95 latency gains (DynamoDB, REST API, Azure).';
+  const clean = scrubSummaryKeywordParenSpam(polluted);
+  assert(clean.startsWith('7+ years'), 'paren spam stripped from summary lead');
+  assert(!/WebSockets/i.test(clean), 'no leading skill paren dump');
+  assert(!/DynamoDB/i.test(clean), 'no trailing skill paren dump');
+}
+
+{
+  // Regression: scrubResumeArtifacts must stay linear on long bullets (no paren-spam regex hang).
+  const longBullet =
+    'Engineered event-driven microservices across Node.js TypeScript PostgreSQL Redis AWS ECS Lambda '
+    + 'with CI/CD observability Grafana Prometheus and Kafka consumers delivering p95 latency under 120ms '
+    + 'for high-throughput APIs used by enterprise platforms without any trailing paren dump.';
+  const t0 = Date.now();
+  const scrubbedLong = scrubResumeArtifacts(longBullet);
+  const elapsed = Date.now() - t0;
+  assert(elapsed < 500, `scrubResumeArtifacts on long bullet finishes fast (got ${elapsed}ms)`);
+  assert(/Engineered/i.test(scrubbedLong), 'long bullet still readable after scrub');
 }
 
 {

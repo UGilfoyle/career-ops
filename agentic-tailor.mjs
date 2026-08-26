@@ -24,6 +24,7 @@ import {
   isSeniorToneEmployer,
   removeSplicedFragments,
   scrubResumeArtifacts,
+  scrubSummaryKeywordParenSpam,
   stripUnsolicitedAiFromResume,
 } from './resume-quality.mjs';
 import {
@@ -84,6 +85,7 @@ import {
   assertPreservedEquality,
   restorePreservedEmployers,
   scrubGapToolsFromMutableRoles,
+  finalizeCoverLetter,
 } from './resume-tailoring-plan.mjs';
 
 let hf = null;
@@ -1363,8 +1365,7 @@ Candidate email: ${candidateEmail}
 Candidate phone: ${candidatePhone}
 
 Headline: ${profile?.narrative?.headline || ''}
-Positioning (from profile): ${profile?.narrative?.exit_story || ''}
-Superpowers / keywords: ${(profile?.narrative?.superpowers || []).join(', ')}
+Do NOT copy exit_story verbatim if it contains parenthetical keyword lists — use the role digest below as the only fact base.
 
 Recent roles — fact base for what you worked on (paraphrase; do not fabricate employers or metrics):
 ${experienceDigest}`;
@@ -1829,8 +1830,17 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
   // Never inject AI/LLM/RAG fluff into non-AI JDs; strip decorative arrows (AI tells).
   data.resume = stripUnsolicitedAiFromResume(data.resume, jd);
   if (typeof data.resume?.summary === 'string') {
-    data.resume.summary = scrubResumeArtifacts(data.resume.summary);
+    data.resume.summary = scrubSummaryKeywordParenSpam(scrubResumeArtifacts(data.resume.summary));
   }
+
+  data.cover_letter = finalizeCoverLetter({
+    llmText: data.cover_letter,
+    plan: activePlan,
+    profile,
+    companyName,
+    jdText: jd,
+    resume: data.resume,
+  });
 
   // Generate the JD-tailored resume even when coverage is below the floor.
   // Shortfalls are warnings — never block the deliverable the user asked for.
@@ -2107,7 +2117,7 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
       LINKEDIN_DISPLAY: linkedinRaw || '',
       PORTFOLIO_URL: githubRaw ? `https://${githubRaw}` : '#',
       PORTFOLIO_DISPLAY: githubRaw || '',
-      DATE: (profile?.cover_letter?.show_date !== false) ? new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '',
+      DATE: '',
       COMPANY_NAME: entry.company,
       JOB_TITLE: entry.title || 'Open role',
       LANG: 'en',
