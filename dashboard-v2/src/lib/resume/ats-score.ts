@@ -1,5 +1,5 @@
 import type { ResumeContext } from './types';
-import { masterSummaryText } from './fill-template';
+import { calculateYearsOfExperience, masterSummaryText } from './fill-template';
 import { getCompetencies, setCompetencies } from './types';
 import { runJdMatch, type JdMatchResult } from './jd-match';
 import { extractTailorAtsKeywords } from './tailor-keywords';
@@ -288,7 +288,7 @@ export async function mirrorJdKeywordsIntoProfile(
     const { join } = await import('path');
     const matchPath = join(/* turbopackIgnore: true */ process.cwd(), '..', 'jd-profile-match.mjs');
     const matchMod = await import(/* webpackIgnore: true */ pathToFileURL(matchPath).href);
-    const years = Number(profile?.candidate?.years_experience) || 7;
+    const years = calculateYearsOfExperience(profile?.experience) || 7;
     const fit = matchMod.analyzeJdProfileFit(jdText, profile);
     seedShape = {
       ...seedShape,
