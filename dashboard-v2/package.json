@@ -23,7 +23,7 @@
     "@aws-sdk/client-s3": "^3.1042.0",
     "@getbrevo/brevo": "^5.0.4",
     "@huggingface/inference": "^4.13.15",
-    "@sparticuz/chromium-min": "^138.0.2",
+    "@sparticuz/chromium-min": "^149.0.0",
     "@types/pg": "^8.20.0",
     "antd": "^6.6.2",
     "bcryptjs": "^3.0.3",
