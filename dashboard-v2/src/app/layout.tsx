@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { ConfigProvider, App as AntdApp } from "antd";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 import VisitorTracker from "@/components/VisitorTracker";
+import { antdTheme } from "@/theme/themeConfig";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -54,11 +57,15 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        <VisitorTracker />
-        <AuthSessionProvider>{children}</AuthSessionProvider>
+        <AntdRegistry>
+          <ConfigProvider theme={antdTheme}>
+            <AntdApp>
+              <VisitorTracker />
+              <AuthSessionProvider>{children}</AuthSessionProvider>
+            </AntdApp>
+          </ConfigProvider>
+        </AntdRegistry>
       </body>
     </html>
   );
 }
-
-

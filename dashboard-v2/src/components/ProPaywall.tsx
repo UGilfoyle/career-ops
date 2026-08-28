@@ -1,7 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Lock, Sparkles, Bot, Loader2, Clock, RefreshCw, GraduationCap } from 'lucide-react';
+import { Button, Card, Alert, Tag, Space, Typography } from 'antd';
+import {
+  LockOutlined,
+  ThunderboltOutlined,
+  RobotOutlined,
+  ReadOutlined,
+  SyncOutlined,
+  ClockCircleOutlined,
+} from '@ant-design/icons';
+
+const { Text, Title, Paragraph } = Typography;
 
 export type PendingPayment = {
   provider?: string;
@@ -39,18 +49,24 @@ export default function ProPaywall({
     feature === 'resume-studio'
       ? 'Resume Studio is Pro'
       : feature === 'practice'
-        ? 'Interview Practice limit reached'
-        : 'Copilot limit reached';
+      ? 'Interview Practice limit reached'
+      : 'Copilot limit reached';
 
   const desc =
     feature === 'resume-studio'
       ? 'Edit your master resume, live ATS preview, PDF export, and JD match (included with Pro).'
       : feature === 'practice'
-        ? 'Free plan: 1 JD practice pack every 7 days. Upgrade for unlimited coding, system design, and STAR packs tailored to each role.'
-        : `Free plan: 10 Copilot messages every 2 hours${copilotRemaining != null ? ` (${copilotRemaining} left)` : ''}. Upgrade for unlimited coaching synced to your profile.`;
+      ? 'Free plan: 1 JD practice pack every 7 days. Upgrade for unlimited coding, system design, and STAR packs tailored to each role.'
+      : `Free plan: 10 Copilot messages every 2 hours${
+          copilotRemaining != null ? ` (${copilotRemaining} left)` : ''
+        }. Upgrade for unlimited coaching synced to your profile.`;
 
-  const Icon =
-    feature === 'resume-studio' ? Sparkles : feature === 'practice' ? GraduationCap : Bot;
+  const FeatureIcon =
+    feature === 'resume-studio'
+      ? ThunderboltOutlined
+      : feature === 'practice'
+      ? ReadOutlined
+      : RobotOutlined;
 
   async function startCheckout() {
     setLoading(true);
@@ -95,66 +111,74 @@ export default function ProPaywall({
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[420px] px-6 py-12 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-[#1C1C1E] text-white flex items-center justify-center mb-5 shadow-sm">
-        <Icon size={26} />
+      {/* Icon */}
+      <div className="w-14 h-14 rounded-2xl bg-zinc-900 text-white flex items-center justify-center mb-4 shadow-sm text-2xl">
+        <FeatureIcon />
       </div>
-      <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B] mb-2">
-        <Lock size={12} /> Pro
-      </div>
-      <h2 className="text-xl font-bold text-[#1C1C1E] tracking-tight mb-2">{title}</h2>
-      <p className="text-sm text-[#6B6B6B] max-w-md leading-relaxed mb-6">{desc}</p>
-      <div className="bg-white border border-[#E5E5E0] rounded-2xl px-8 py-5 mb-6 shadow-sm">
-        <div className="text-3xl font-bold text-[#1C1C1E] tracking-tight">{planDisplay}</div>
-        <div className="text-xs text-[#6B6B6B] mt-1">{planSubtitle}</div>
-      </div>
-      {error && <p className="text-sm text-red-600 mb-3 max-w-sm">{error}</p>}
+
+      <Tag icon={<LockOutlined />} color="default" className="font-bold uppercase tracking-wider text-[10px] mb-2">
+        PRO FEATURE
+      </Tag>
+
+      <h2 className="text-xl font-bold text-zinc-900 tracking-tight mb-2">{title}</h2>
+      <p className="text-sm text-zinc-500 max-w-md leading-relaxed mb-6">{desc}</p>
+
+      {/* Pricing Pill Card */}
+      <Card className="mb-6 border-zinc-200 shadow-xs px-6 py-1">
+        <div className="text-3xl font-extrabold text-zinc-900 tracking-tight">{planDisplay}</div>
+        <div className="text-xs text-zinc-500 mt-0.5">{planSubtitle}</div>
+      </Card>
+
+      {error && <Alert type="error" message={error} className="mb-4 max-w-sm" showIcon />}
 
       {awaitingReview ? (
-        <>
-          <div className="flex items-start gap-3 text-left bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 max-w-sm mb-5">
-            <Clock size={18} className="text-amber-700 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-amber-900">Payment under verification</p>
-              <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                {pendingPayment?.message ||
-                  'We received your payment. Pro activates once we confirm it.'}
-              </p>
-              {pendingPayment?.utr && (
-                <p className="text-[11px] font-mono text-amber-900/70 mt-2">UTR {pendingPayment.utr}</p>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
+        <div className="max-w-sm w-full space-y-4">
+          <Alert
+            type="warning"
+            showIcon
+            icon={<ClockCircleOutlined />}
+            message={<span className="font-bold">Payment under verification</span>}
+            description={
+              <div className="text-xs space-y-1 mt-1">
+                <div>{pendingPayment?.message || 'We received your payment. Pro activates once confirmed.'}</div>
+                {pendingPayment?.utr && (
+                  <div className="font-mono text-zinc-600">UTR: {pendingPayment.utr}</div>
+                )}
+              </div>
+            }
+          />
+          <Button
+            icon={<SyncOutlined spin={checking} />}
+            loading={checking}
             onClick={() => void refreshStatus()}
-            disabled={checking}
-            className="inline-flex items-center gap-2 border border-[#E5E5E0] bg-white text-[#1C1C1E] font-semibold text-sm px-6 py-3 rounded-xl hover:bg-[#FAFAF8] transition disabled:opacity-60"
+            block
+            size="large"
           >
-            {checking ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-            Check verification status
-          </button>
-          <p className="text-[11px] text-[#9CA3AF] mt-4 max-w-xs">
+            Check Verification Status
+          </Button>
+          <p className="text-[11px] text-zinc-400">
             No need to pay again: one payment per account is tracked until it is approved.
           </p>
-        </>
+        </div>
       ) : (
-        <>
-          <button
-            type="button"
+        <div className="max-w-sm w-full space-y-3">
+          <Button
+            type="primary"
+            size="large"
+            block
+            loading={loading}
+            icon={<ThunderboltOutlined />}
             onClick={() => {
               onUpgrade?.();
               void startCheckout();
             }}
-            disabled={loading}
-            className="inline-flex items-center gap-2 bg-[#1C1C1E] text-white font-semibold text-sm px-6 py-3 rounded-xl hover:bg-black transition disabled:opacity-60"
           >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : null}
             Upgrade to Pro (Pay via UPI)
-          </button>
-          <p className="text-[11px] text-[#9CA3AF] mt-4 max-w-xs">
+          </Button>
+          <p className="text-[11px] text-zinc-400">
             Pay {planDisplay} → submit payment details → we verify → Pro access email lands in your inbox.
           </p>
-        </>
+        </div>
       )}
     </div>
   );

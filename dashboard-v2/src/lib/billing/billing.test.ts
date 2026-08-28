@@ -118,11 +118,11 @@ function run() {
   assert.equal(isLifetimeProEmail('akashk96official@gmail.com'), true); // Gmail dots ignored
   assert.equal(isLifetimeProEmail('someone@else.com'), false);
 
-  // Interview Practice beta: Akash-only by default (narrower than lifetime Pro).
+  // Interview Practice beta: Akash & admin access by default.
   assert.equal(canAccessPracticeBeta('akash.k96.official@gmail.com'), true);
   assert.equal(canAccessPracticeBeta('akash.k96.official+dev@gmail.com'), true);
-  assert.equal(canAccessPracticeBeta('akashkaintura.ak@gmail.com'), false);
-  assert.equal(canAccessPracticeBeta('someone@else.com'), false);
+  assert.equal(canAccessPracticeBeta('akashkaintura.ak@gmail.com'), true);
+  assert.equal(canAccessPracticeBeta('someone@else.com'), process.env.NODE_ENV !== 'production');
 
   const prevVpa = process.env.UPI_VPA;
   const prevStripeFlag = process.env.BILLING_STRIPE_ENABLED;

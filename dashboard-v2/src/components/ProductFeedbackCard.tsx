@@ -1,10 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Heart, Loader2, MessageSquare } from 'lucide-react';
+import { Card, Rate, Input, Button, Alert, Spin, Typography } from 'antd';
+import { HeartOutlined, MessageOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { FEEDBACK_SCORE_LABELS } from '@/lib/feedback/validate';
-
-const SCORES = [1, 2, 3, 4, 5] as const;
 
 type FeedbackState = {
   submitted: boolean;
@@ -54,7 +53,7 @@ export default function ProductFeedbackCard({ context = 'settings' }: { context?
 
   async function submit() {
     if (score == null) {
-      setError('Pick a rating first.');
+      setError('Please pick a rating first.');
       return;
     }
     setSaving(true);
@@ -83,80 +82,73 @@ export default function ProductFeedbackCard({ context = 'settings' }: { context?
   }
 
   return (
-    <div className="break-inside-avoid mb-5">
-      <div className="bg-white border border-[#E5E5E0] rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-1">
-          <Heart size={18} className="text-[#1C1C1E]" />
-          <h3 className="text-sm font-bold text-[#1C1C1E] uppercase tracking-wider">
+    <Card
+      size="small"
+      className="border-zinc-200 shadow-xs mb-5"
+      title={
+        <div className="flex items-center gap-2">
+          <HeartOutlined className="text-zinc-900" />
+          <span className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
             Rate Career-Ops
-          </h3>
+          </span>
         </div>
-        <p className="text-xs text-[#6B6B6B] mb-4 leading-relaxed">
-          Optional — helps us improve Resume Studio, tailoring, and Copilot. Takes 10 seconds.
-        </p>
+      }
+    >
+      <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+        Optional — helps us improve Resume Studio, tailoring, and Copilot. Takes 10 seconds.
+      </p>
 
-        {loading ? (
-          <div className="flex justify-center py-6">
-            <Loader2 className="animate-spin text-[#9CA3AF]" size={20} />
+      {loading ? (
+        <div className="py-6 text-center">
+          <Spin size="small" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Rate
+              value={score || 0}
+              onChange={(val) => setScore(val)}
+              style={{ fontSize: 22 }}
+            />
+            {score && (
+              <span className="text-xs font-semibold text-zinc-700">
+                {FEEDBACK_SCORE_LABELS[score as 1 | 2 | 3 | 4 | 5]}
+              </span>
+            )}
           </div>
-        ) : (
-          <>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {SCORES.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setScore(n)}
-                  className={`flex flex-col items-center min-w-[3.25rem] px-2 py-2 rounded-xl border text-xs font-bold transition ${
-                    score === n
-                      ? 'bg-[#1C1C1E] text-white border-[#1C1C1E]'
-                      : 'bg-[#FAFAF8] text-[#6B6B6B] border-[#E5E5E0] hover:border-[#1C1C1E]'
-                  }`}
-                  aria-label={`${n} — ${FEEDBACK_SCORE_LABELS[n]}`}
-                >
-                  <span className="text-base leading-none mb-0.5">{n === 5 ? '★' : n}</span>
-                  <span className="text-[9px] font-semibold normal-case tracking-normal opacity-90">
-                    {FEEDBACK_SCORE_LABELS[n]}
-                  </span>
-                </button>
-              ))}
-            </div>
 
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] mb-1.5">
-              <MessageSquare size={11} className="inline mr-1 -mt-0.5" />
-              Comment (optional)
-            </label>
-            <textarea
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+              <MessageOutlined className="mr-1" /> Comments (Optional)
+            </div>
+            <Input.TextArea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={3}
               maxLength={2000}
-              placeholder="What’s working? What should we fix?"
-              className="w-full rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2 text-sm text-[#1C1C1E] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#1C1C1E] resize-none"
+              placeholder="What’s working well? What should we improve?"
             />
+          </div>
 
-            {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
-            {thanks && (
-              <p className="text-xs text-emerald-700 mt-2 font-semibold">Thanks — we read every response.</p>
-            )}
-            {state.submitted && !thanks && state.updatedAt && (
-              <p className="text-[10px] text-[#9CA3AF] mt-2">
-                Last saved {new Date(state.updatedAt).toLocaleString('en-IN')}
-              </p>
-            )}
+          {error && <Alert type="error" message={error} showIcon />}
+          {thanks && (
+            <Alert
+              type="success"
+              message="Thanks for your feedback — we review every submission."
+              showIcon
+            />
+          )}
 
-            <button
-              type="button"
-              disabled={saving || score == null}
-              onClick={() => void submit()}
-              className="mt-4 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-5 py-2.5 text-xs font-bold text-white disabled:opacity-40"
-            >
-              {saving ? <Loader2 size={14} className="animate-spin" /> : null}
-              {state.submitted ? 'Update feedback' : 'Submit feedback'}
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+          <Button
+            type="primary"
+            loading={saving}
+            disabled={score == null}
+            onClick={() => void submit()}
+          >
+            {state.submitted ? 'Update Feedback' : 'Submit Feedback'}
+          </Button>
+        </div>
+      )}
+    </Card>
   );
 }

@@ -1,18 +1,31 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
-  Target,
-  Plus,
-  Trash2,
-  CheckCircle2,
-  Circle,
-  Mail,
-  MessageSquare,
-  UserPlus,
-  Calendar,
-} from 'lucide-react';
+  Card,
+  Button,
+  Tag,
+  Input,
+  InputNumber,
+  Checkbox,
+  Space,
+  Statistic,
+  Popconfirm,
+  Badge,
+} from 'antd';
+import {
+  AimOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  CheckCircleOutlined,
+  CalendarOutlined,
+  UserAddOutlined,
+  MailOutlined,
+  ThunderboltOutlined,
+  EditOutlined,
+  CheckOutlined,
+  SaveOutlined,
+} from '@ant-design/icons';
 import { PageSectionHeader, AiScoreBadge } from './PageSectionHeader';
 import { JobAvatar } from './JobAvatar';
 import type { GccCampaign, GccTarget } from './gcc-campaign';
@@ -129,188 +142,187 @@ export function GccCampaignPanel({
   );
 
   return (
-    <motion.div key="gcc" className="w-full max-w-6xl space-y-8">
+    <div className="w-full max-w-6xl space-y-6">
       <PageSectionHeader
         title="GCC Campaign"
         subtitle="30-day break-in system: connections, curated outreach, and interview tracking"
         actions={
-                 <div className="flex flex-wrap items-center gap-3">
-                   {onImportAllGcc && pipelineGccJobs.length > 0 && (
-                     <button
-                       type="button"
-                       onClick={onImportAllGcc}
-                       className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 transition-all hover:bg-emerald-100"
-                     >
-                       <Target size={14} />
-                       Import {pipelineGccJobs.length} to outreach
-                     </button>
-                   )}
-                   {onImportHighValue && highValueCount > 0 && (
-                     <button
-                       type="button"
-                       onClick={onImportHighValue}
-                       className="flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs font-bold text-violet-800 transition-all hover:bg-violet-100"
-                     >
-                       <Target size={14} />
-                       Import {highValueCount} high-value
-                     </button>
-                   )}
-                   <button
-            type="button"
-            onClick={onSave}
-            disabled={isSaving}
-            className={`flex items-center gap-3 rounded-xl px-6 py-3 text-sm font-bold transition-all shadow-sm ${
-              saveStatus === 'success' ? 'bg-emerald-500 text-white' : 'bg-[#1C1C1E] text-white hover:bg-[#27272a]'
-            }`}
-          >
-            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'success' ? <><CheckCircle2 size={18} /> Saved</> : 'Save Campaign'}
-          </button>
-                 </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {onImportAllGcc && pipelineGccJobs.length > 0 && (
+              <Button
+                icon={<AimOutlined />}
+                onClick={onImportAllGcc}
+              >
+                Import {pipelineGccJobs.length} to Outreach
+              </Button>
+            )}
+            {onImportHighValue && highValueCount > 0 && (
+              <Button
+                icon={<AimOutlined />}
+                onClick={onImportHighValue}
+              >
+                Import {highValueCount} High-Value
+              </Button>
+            )}
+            <Button
+              type="primary"
+              icon={saveStatus === 'success' ? <CheckCircleOutlined /> : <SaveOutlined />}
+              onClick={onSave}
+              loading={isSaving}
+            >
+              {saveStatus === 'saving'
+                ? 'Saving...'
+                : saveStatus === 'success'
+                ? 'Saved'
+                : 'Save Campaign'}
+            </Button>
+          </div>
         }
       />
 
+      {/* Top 3 Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-[#E5E5E0] rounded-2xl p-5">
-          <div className="flex items-center gap-2 text-[#9CA3AF] text-[10px] font-bold uppercase tracking-widest mb-2">
-            <Calendar size={14} /> Day {dayNumber} / 30
+        <Card size="small" className="border-zinc-200 shadow-xs">
+          <Statistic
+            title={
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                <CalendarOutlined className="mr-1" /> DAY {dayNumber} / 30
+              </span>
+            }
+            value={`Day ${dayNumber}`}
+            valueStyle={{ fontSize: 18, fontWeight: 700 }}
+          />
+          <div className="text-xs text-zinc-500 mt-1">Started {campaign.started_at}</div>
+        </Card>
+
+        <Card size="small" className="border-zinc-200 shadow-xs">
+          <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2.5">
+            Today&apos;s Targets
           </div>
-          <p className="text-sm text-[#6B6B6B]">Started {campaign.started_at}</p>
-        </div>
-        <div className="bg-white border border-[#E5E5E0] rounded-2xl p-5">
-          <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-3">Today&apos;s goals</p>
-          <div className="space-y-3">
-            <label className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2"><UserPlus size={14} /> Connections (target 10)</span>
-              <input
-                type="number"
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-zinc-700">
+                <UserAddOutlined /> Connections (Goal: 10)
+              </span>
+              <InputNumber
                 min={0}
                 max={99}
+                size="small"
                 value={daily.connections}
-                onChange={(e) => updateDaily({ connections: Number(e.target.value) || 0 })}
-                className="w-16 border border-[#E5E5E0] rounded-lg px-2 py-1 text-center text-sm"
+                onChange={(val) => updateDaily({ connections: Number(val) || 0 })}
+                style={{ width: 60 }}
               />
-            </label>
-            <label className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2"><Mail size={14} /> Curated apps (target 3–5)</span>
-              <input
-                type="number"
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-zinc-700">
+                <MailOutlined /> Curated Apps (Goal: 3–5)
+              </span>
+              <InputNumber
                 min={0}
                 max={99}
+                size="small"
                 value={daily.applications}
-                onChange={(e) => updateDaily({ applications: Number(e.target.value) || 0 })}
-                className="w-16 border border-[#E5E5E0] rounded-lg px-2 py-1 text-center text-sm"
+                onChange={(val) => updateDaily({ applications: Number(val) || 0 })}
+                style={{ width: 60 }}
               />
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
+            </div>
+            <div className="pt-1">
+              <Checkbox
                 checked={daily.mock_interview}
                 onChange={(e) => updateDaily({ mock_interview: e.target.checked })}
-                className="rounded"
-              />
-              Mock interview done this week
-            </label>
+              >
+                <span className="text-xs text-zinc-700">Mock interview completed this week</span>
+              </Checkbox>
+            </div>
           </div>
-        </div>
-        <div className="bg-[#1C1C1E] text-white rounded-2xl p-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-white/60 mb-2">Signal engine</p>
-          <p className="text-sm text-white/90 leading-relaxed">
-            Score targets 3+ on: expansion news, hiring velocity, platform language, leadership hires, future domains.
+        </Card>
+
+        <Card size="small" className="bg-zinc-900 text-white border-zinc-900 shadow-xs">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5">
+            Signal Engine
+          </div>
+          <p className="text-xs text-zinc-300 leading-relaxed m-0">
+            Score targets 3+ on: expansion news, hiring velocity, platform language, leadership hires, and future captive tech domains.
           </p>
-        </div>
+        </Card>
       </div>
 
-      <div className="bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-[#F5F5F0] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+      {/* Discovered GCC Roles */}
+      <Card
+        size="small"
+        className="border-zinc-200 shadow-xs overflow-hidden"
+        title={
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              <h3 className="font-bold text-[#1C1C1E]">Discovered GCC roles</h3>
-              <span className="rounded-full bg-[#1C1C1E] px-2 py-0.5 font-mono text-[10px] font-bold text-white">
+              <span className="text-xs font-bold text-zinc-900">Discovered GCC Roles</span>
+              <Tag color="blue" className="font-mono text-[10px]">
                 {pipelineGccJobs.length}
-              </span>
+              </Tag>
             </div>
-            <p className="mt-1 text-xs text-[#6B6B6B]">
-              From <code className="text-[#57534e]">gcc-scan --deep</code> (also visible in Job Pipeline with a GCC badge).
-            </p>
+            {onOpenPipeline && pipelineGccJobs.length > 0 && (
+              <Button size="small" onClick={onOpenPipeline}>
+                Open Job Pipeline
+              </Button>
+            )}
           </div>
-          {onOpenPipeline && pipelineGccJobs.length > 0 && (
-            <button
-              type="button"
-              onClick={onOpenPipeline}
-              className="rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-4 py-2 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-white"
-            >
-              Open Job Pipeline
-            </button>
-          )}
-        </div>
-
+        }
+      >
         {pipelineGccJobs.length === 0 ? (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm font-semibold text-[#1C1C1E]">No GCC roles in pipeline yet</p>
-            {lastGccScanAt && lastGccScanAdded != null ? (
-              <p className="mt-2 text-xs text-amber-700 max-w-md mx-auto">
-                Last scan ({new Date(lastGccScanAt).toLocaleString()}): <strong>{lastGccScanAdded} role(s) added</strong>.
-                {lastGccScanAdded === 0
-                  ? ' DuckDuckGo/board APIs found nothing matching your keywords. Broaden positive keywords in Settings.'
-                  : ' Data may still be syncing. Refresh in ~10s or open Job Pipeline.'}
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-[#9CA3AF] max-w-md mx-auto">
-                Run <code className="text-[#6B6B6B]">gcc-scan --deep</code> in Terminal. Uses Greenhouse + Lever APIs first, then job boards.
-              </p>
-            )}
-            {gccPipelineTotal > 0 && pipelineGccJobs.length === 0 && (
-              <p className="mt-2 text-xs text-[#6B6B6B]">{gccPipelineTotal} GCC role(s) in database (reload dashboard if stale).</p>
-            )}
+          <div className="py-8 text-center text-xs text-zinc-400">
+            No GCC captive roles detected in pipeline yet. Run{' '}
+            <code className="text-zinc-700 bg-zinc-100 px-1 py-0.5 rounded">gcc-scan --deep</code> in
+            Terminal.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead className="bg-[#FAFAF8] text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+            <table className="w-full text-xs">
+              <thead className="bg-zinc-50 text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-100">
                 <tr>
-                  <th className="w-12 px-4 py-3 text-left">#</th>
-                  <th className="px-4 py-3 text-left">Company</th>
-                  <th className="px-4 py-3 text-left">Role</th>
-                  <th className="px-4 py-3 text-left">Signal</th>
-                  <th className="px-4 py-3 text-left">Score</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="py-2.5 px-3 text-left">Company</th>
+                  <th className="py-2.5 px-3 text-left">Role</th>
+                  <th className="py-2.5 px-3 text-left">Signal</th>
+                  <th className="py-2.5 px-3 text-left">Score</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F5F5F0]">
+              <tbody className="divide-y divide-zinc-50">
                 {pipelineGccJobs.map((job, i) => (
-                  <tr key={job.pipeline_id ?? i} className="hover:bg-[#FAFAF8]/80 transition-colors">
-                    <td className="px-4 py-3 font-mono text-[11px] font-bold tabular-nums text-[#C4C4BE]">
-                      {String(i + 1).padStart(2, '0')}
-                    </td>
-                    <td className="px-4 py-3">
+                  <tr key={job.pipeline_id ?? i} className="hover:bg-zinc-50 transition-colors">
+                    <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
-                        <JobAvatar company={job.company} url={job.url} source={job.source} logoUrl={job.logo_url} portalKey={job.portal_key} logoSource={job.logo_source} size="sm" />
-                        <span className="font-bold text-[#1C1C1E]">{job.company}</span>
+                        <JobAvatar company={job.company} size="sm" />
+                        <span className="font-bold text-zinc-900">{job.company}</span>
                         {job.gcc_high_value && (
-                          <span className="rounded-md border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-violet-800">
+                          <Tag color="purple" className="text-[9px] font-bold">
                             High
-                          </span>
+                          </Tag>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-[#6B6B6B] font-medium max-w-[14rem] truncate">{job.title}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-[#57534e]">{job.gcc_signal_score ?? '—'}/5</td>
-                    <td className="px-4 py-3"><AiScoreBadge score={job.score} /></td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="py-2.5 px-3 text-zinc-600 font-medium max-w-[200px] truncate">
+                      {job.title}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-zinc-600">
+                      {job.gcc_signal_score ?? '—'}/5
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <AiScoreBadge score={job.score} />
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      <Space size="small">
                         {onAddToOutreach && (
-                          <button
-                            type="button"
-                            onClick={() => onAddToOutreach(String(job.company || ''), String(job.title || ''))}
-                            className="rounded-lg border border-[#E5E5E0] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#1C1C1E] hover:bg-[#FAFAF8]"
+                          <Button
+                            size="small"
+                            onClick={() =>
+                              onAddToOutreach(String(job.company || ''), String(job.title || ''))
+                            }
                           >
                             Track
-                          </button>
+                          </Button>
                         )}
                         {onResearchDraft && (
-                          <button
-                            type="button"
+                          <Button
+                            size="small"
                             onClick={() =>
                               onResearchDraft({
                                 jobId: job.pipeline_id,
@@ -319,21 +331,21 @@ export function GccCampaignPanel({
                                 url: job.url,
                               })
                             }
-                            className="rounded-lg border border-[#E5E5E0] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#1C1C1E] hover:bg-[#FAFAF8]"
                           >
                             Draft
-                          </button>
+                          </Button>
                         )}
                         {onTailorJob && job.pipeline_id != null && (
-                          <button
-                            type="button"
+                          <Button
+                            type="primary"
+                            size="small"
+                            icon={<ThunderboltOutlined />}
                             onClick={() => onTailorJob(Number(job.pipeline_id))}
-                            className="rounded-lg bg-[#1C1C1E] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#27272a]"
                           >
                             Tailor
-                          </button>
+                          </Button>
                         )}
-                      </div>
+                      </Space>
                     </td>
                   </tr>
                 ))}
@@ -341,117 +353,124 @@ export function GccCampaignPanel({
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
-      <div className="bg-white border border-[#E5E5E0] rounded-[2rem] overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#F5F5F0]">
-          <div className="flex items-center gap-2">
-            <Target size={18} className="text-[#1C1C1E]" />
-            <h3 className="font-bold text-[#1C1C1E]">Outreach tracker</h3>
+      {/* Outreach Tracker Table */}
+      <Card
+        size="small"
+        className="border-zinc-200 shadow-xs"
+        title={
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AimOutlined className="text-zinc-900" />
+              <span className="text-xs font-bold text-zinc-900">Outreach Tracker</span>
+            </div>
+            <Button size="small" icon={<PlusOutlined />} onClick={addTarget}>
+              Add Company
+            </Button>
           </div>
-          <button
-            type="button"
-            onClick={addTarget}
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl border border-[#E5E5E0] hover:bg-[#FAFAF8]"
-          >
-            <Plus size={14} /> Add company
-          </button>
-        </div>
-
+        }
+      >
         {campaign.targets.length === 0 ? (
-          <div className="p-10 text-center text-[#9CA3AF] text-sm">
-            <p className="font-semibold text-[#6B6B6B]">Outreach tracker is empty</p>
-            <p className="mt-2 max-w-md mx-auto">
-              Import roles from <strong className="text-[#57534e]">Discovered GCC roles</strong> above, or add companies manually to log DMs, emails, and follow-ups.
-            </p>
+          <div className="p-8 text-center text-xs text-zinc-400">
+            Outreach tracker is empty. Import roles from Discovered GCC roles above or add companies manually.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-[#FAFAF8] text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+            <table className="w-full text-xs">
+              <thead className="bg-zinc-50 text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-100">
                 <tr>
-                  <th className="px-4 py-3 text-left">Company</th>
-                  <th className="px-4 py-3 text-left">Role</th>
-                  <th className="px-4 py-3 text-center" title="LinkedIn connection"><UserPlus size={14} className="inline" /></th>
-                  <th className="px-4 py-3 text-center" title="Value DM"><MessageSquare size={14} className="inline" /></th>
-                  <th className="px-4 py-3 text-center" title="Curated email"><Mail size={14} className="inline" /></th>
-                  <th className="px-4 py-3 text-left">PAR story</th>
-                  <th className="px-4 py-3 text-center">Interview</th>
-                  <th className="px-4 py-3 text-left">Follow-up</th>
-                  <th className="px-4 py-3" />
+                  <th className="py-2.5 px-3 text-left">Company</th>
+                  <th className="py-2.5 px-3 text-left">Role</th>
+                  <th className="py-2.5 px-2 text-center">Connected</th>
+                  <th className="py-2.5 px-2 text-center">DM Sent</th>
+                  <th className="py-2.5 px-2 text-center">Email Sent</th>
+                  <th className="py-2.5 px-3 text-left">PAR Story</th>
+                  <th className="py-2.5 px-2 text-center">Interview</th>
+                  <th className="py-2.5 px-3 text-left">Follow-up</th>
+                  <th className="py-2.5 px-2 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F5F5F0]">
+              <tbody className="divide-y divide-zinc-50">
                 {campaign.targets.map((t) => (
-                  <tr key={t.id} className="hover:bg-[#FAFAF8]/80">
-                    <td className="px-4 py-3">
-                      <input
+                  <tr key={t.id} className="hover:bg-zinc-50">
+                    <td className="py-2 px-3">
+                      <Input
+                        size="small"
                         value={t.company}
                         onChange={(e) => updateTarget(t.id, { company: e.target.value })}
-                        placeholder="e.g. Shark Ninja"
-                        className="w-full min-w-[8rem] border border-[#E5E5E0] rounded-lg px-2 py-1.5 text-sm font-medium"
+                        placeholder="e.g. Acme Corp"
+                        className="w-28 text-xs font-semibold"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
+                    <td className="py-2 px-3">
+                      <Input
+                        size="small"
                         value={t.role}
                         onChange={(e) => updateTarget(t.id, { role: e.target.value })}
                         placeholder="Role"
-                        className="w-full min-w-[8rem] border border-[#E5E5E0] rounded-lg px-2 py-1.5 text-sm"
+                        className="w-28 text-xs"
                       />
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <button type="button" onClick={() => updateTarget(t.id, { connection_sent: !t.connection_sent })} className="p-1">
-                        {t.connection_sent ? <CheckCircle2 size={18} className="text-emerald-600" /> : <Circle size={18} className="text-[#D4D4CE]" />}
-                      </button>
+                    <td className="py-2 px-2 text-center">
+                      <Checkbox
+                        checked={t.connection_sent}
+                        onChange={(e) => updateTarget(t.id, { connection_sent: e.target.checked })}
+                      />
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <button type="button" onClick={() => updateTarget(t.id, { dm_sent: !t.dm_sent })} className="p-1">
-                        {t.dm_sent ? <CheckCircle2 size={18} className="text-emerald-600" /> : <Circle size={18} className="text-[#D4D4CE]" />}
-                      </button>
+                    <td className="py-2 px-2 text-center">
+                      <Checkbox
+                        checked={t.dm_sent}
+                        onChange={(e) => updateTarget(t.id, { dm_sent: e.target.checked })}
+                      />
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <button type="button" onClick={() => updateTarget(t.id, { email_sent: !t.email_sent })} className="p-1">
-                        {t.email_sent ? <CheckCircle2 size={18} className="text-emerald-600" /> : <Circle size={18} className="text-[#D4D4CE]" />}
-                      </button>
+                    <td className="py-2 px-2 text-center">
+                      <Checkbox
+                        checked={t.email_sent}
+                        onChange={(e) => updateTarget(t.id, { email_sent: e.target.checked })}
+                      />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
+                    <td className="py-2 px-3">
+                      <Input
+                        size="small"
                         value={t.story_used}
                         onChange={(e) => updateTarget(t.id, { story_used: e.target.value })}
                         placeholder="PAR story used"
-                        className="w-full min-w-[10rem] border border-[#E5E5E0] rounded-lg px-2 py-1.5 text-xs"
+                        className="w-32 text-xs"
                       />
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <button type="button" onClick={() => updateTarget(t.id, { interview: !t.interview })} className="p-1">
-                        {t.interview ? <CheckCircle2 size={18} className="text-indigo-600" /> : <Circle size={18} className="text-[#D4D4CE]" />}
-                      </button>
+                    <td className="py-2 px-2 text-center">
+                      <Checkbox
+                        checked={t.interview}
+                        onChange={(e) => updateTarget(t.id, { interview: e.target.checked })}
+                      />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
+                    <td className="py-2 px-3">
+                      <Input
+                        size="small"
                         value={t.follow_up}
                         onChange={(e) => updateTarget(t.id, { follow_up: e.target.value })}
                         placeholder="Next follow-up"
-                        className="w-full min-w-[8rem] border border-[#E5E5E0] rounded-lg px-2 py-1.5 text-xs"
+                        className="w-28 text-xs"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="py-2 px-2 text-right">
+                      <Space size="small">
                         {onResearchDraft && (
-                          <button
-                            type="button"
+                          <Button
+                            size="small"
                             onClick={() => onResearchDraft({ company: t.company, role: t.role })}
-                            className="rounded-lg border border-[#E5E5E0] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#1C1C1E] hover:bg-[#FAFAF8]"
-                            title="Research company and draft email"
                           >
                             Draft
-                          </button>
+                          </Button>
                         )}
-                        <button type="button" onClick={() => removeTarget(t.id)} className="p-2 text-[#9CA3AF] hover:text-rose-600">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                        <Button
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => removeTarget(t.id)}
+                        />
+                      </Space>
                     </td>
                   </tr>
                 ))}
@@ -459,11 +478,7 @@ export function GccCampaignPanel({
             </table>
           </div>
         )}
-      </div>
-
-      <p className="text-xs text-[#9CA3AF]">
-        Tip: Run <code className="text-[#6B6B6B]">gcc-scan --deep</code> for captive employers, tailor with PAR bullets, then log outreach here instead of blind Apply Now buttons.
-      </p>
-    </motion.div>
+      </Card>
+    </div>
   );
 }
