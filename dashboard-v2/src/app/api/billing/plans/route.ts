@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { countryFromRequest } from '@/lib/billing/geo';
 import { resolvePlanForCountry, planSubtitle } from '@/lib/billing/plans';
 import { upiConfigFromEnv } from '@/lib/billing/upi';
+import { stripeBillingEnabled } from '@/lib/billing/provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
     subtitle: planSubtitle(plan),
     providers: {
       upi: Boolean(upiConfigFromEnv()),
-      stripe: Boolean(process.env.STRIPE_SECRET_KEY),
+      stripe: stripeBillingEnabled(),
     },
   });
 }

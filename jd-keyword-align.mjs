@@ -28,6 +28,7 @@ const KNOWN_TECH = [
   'SCD', 'Mainframe', 'Data Modeling',
   // Microsoft / Azure full-stack (Interra-style JDs)
   'SQL Server', 'Microsoft SQL Server', 'Telerik', 'DevExpress', 'jQuery', 'MVC',
+  'ASP.NET', 'Azure Functions', 'Azure Service Bus', 'Event Hub', 'MQTT', 'OAuth2', 'OIDC', 'SAML', '.NET Aspire',
 ];
 
 /**
@@ -665,6 +666,16 @@ export function upgradePartialMention(base, kw) {
 }
 
 /**
+ * Methodology / process phrases — valid in skills, never a tool paren on a bullet.
+ * "system design" in a JD is a discussion topic, not (system design) after every line.
+ */
+export function isMethodologySkillPhrase(kw) {
+  const k = normalizeKeyword(kw).toLowerCase();
+  if (!k) return false;
+  return /^(system design|distributed systems|event-driven(?: architecture)?|observability|unit testing|integration testing|agile|scrum|microservices?)$/i.test(k);
+}
+
+/**
  * Grammatical weave suffix for a keyword, or null when none reads naturally.
  * Tools/short tech → parenthetical; "X architecture" → "in a/an X".
  * Everything else must be handled by upgradePartialMention or skipped.
@@ -672,13 +683,19 @@ export function upgradePartialMention(base, kw) {
 export function weaveSuffixForm(kw) {
   const k = normalizeKeyword(kw);
   if (!k) return null;
+  if (isMethodologySkillPhrase(k) && !/\barchitecture$/i.test(k)) return null;
   if (findKnownTechInText(normalizeJdTechAliases(k)).length > 0 && k.split(/\s+/).length <= 2) {
+    if (isMethodologySkillPhrase(k)) return null;
     return `(${k})`;
   }
   if (/\barchitecture$/i.test(k)) {
     return `in ${/^[aeiou]/i.test(k) ? 'an' : 'a'} ${k}`;
   }
   return null;
+}
+
+export function listKnownTechInText(text) {
+  return uniqueCasePreserved(findKnownTechInText(normalizeJdTechAliases(String(text || ''))));
 }
 
 function isToolParenInner(inner) {
@@ -714,6 +731,20 @@ function uniqueToolItems(items) {
   return out;
 }
 
+function filterParenToolItems(items) {
+  return uniqueToolItems(items).filter((p) => !isMethodologySkillPhrase(p));
+}
+
+/** Drop (system design) / strip methodology tokens from (Kafka, system design). */
+export function rewriteToolParens(text) {
+  return String(text || '').replace(/\s*\(([^)]{1,80})\)/g, (full, inner) => {
+    if (!isToolParenInner(inner)) return full;
+    const items = filterParenToolItems(splitToolParenItems(inner)).slice(0, 4);
+    if (!items.length) return '';
+    return ` (${items.join(', ')})`;
+  });
+}
+
 /**
  * Collapse stacked tool braces into one list:
  * (WebSockets) (GitHub Actions) (RESTful API) → (WebSockets, GitHub Actions, RESTful API)
@@ -726,12 +757,13 @@ export function mergeStackedToolParens(text) {
     t = t.replace(/\(([^)]{1,80})\)(?:\s*,\s*|\s*)\(([^)]{1,80})\)/g, (full, a, b) => {
       if (!isToolParenInner(a) || !isToolParenInner(b)) return full;
       merged = true;
-      const items = uniqueToolItems([...splitToolParenItems(a), ...splitToolParenItems(b)]).slice(0, 4);
+      const items = filterParenToolItems([...splitToolParenItems(a), ...splitToolParenItems(b)]).slice(0, 4);
+      if (!items.length) return '';
       return `(${items.join(', ')})`;
     });
     if (!merged) break;
   }
-  return t;
+  return rewriteToolParens(t);
 }
 
 /**
@@ -741,12 +773,14 @@ export function appendToolToTrailingParen(base, kw) {
   const raw = String(base || '').replace(/\.$/, '').trim();
   const k = String(kw || '').trim();
   if (!raw || !k) return raw;
+  if (isMethodologySkillPhrase(k)) return raw;
   const m = raw.match(/^(.*?)\s*\(([^)]{1,90})\)\s*$/);
   if (!m || !isToolParenInner(m[2])) {
     return `${raw} (${k})`;
   }
-  const items = uniqueToolItems([...splitToolParenItems(m[2]), k]);
+  const items = filterParenToolItems([...splitToolParenItems(m[2]), k]);
   if (items.length > 4) items.length = 4;
+  if (!items.length) return String(m[1] || '').trim() || raw;
   const lead = String(m[1] || '').trim();
   return lead ? `${lead} (${items.join(', ')})` : `(${items.join(', ')})`;
 }
@@ -1109,6 +1143,7 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   const toAdd = keywords
     .filter((kw) => {
       if (!isWeavableKeyword(kw)) return false;
+      if (isMethodologySkillPhrase(kw)) return false;
       if (findKnownTechInText(normalizeJdTechAliases(String(kw))).length === 0) return false;
       return !lower.includes(String(kw).toLowerCase());
     })

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { resolvePlanForCountry, planSubtitle, COPILOT_FREE_LIMIT, COPILOT_FREE_WINDOW_MS } from './plans';
 import { buildUpiPayUri, upiTransactionRef, qrCodeImageUrl, maskVpa } from './upi';
+import { stripeBillingEnabled, shouldUseUpiCheckout } from './provider';
 import { createProApproveToken, UPI_APPROVE_TTL_MS, verifyProApproveToken } from './upi-approve-token';
 import { blocksNewPayment, decideClaimSubmission, normalizeUtr } from './claims';
 import {
@@ -122,6 +123,31 @@ function run() {
   assert.equal(canAccessPracticeBeta('akash.k96.official+dev@gmail.com'), true);
   assert.equal(canAccessPracticeBeta('akashkaintura.ak@gmail.com'), false);
   assert.equal(canAccessPracticeBeta('someone@else.com'), false);
+
+  const prevVpa = process.env.UPI_VPA;
+  const prevStripeFlag = process.env.BILLING_STRIPE_ENABLED;
+  const prevStripeKey = process.env.STRIPE_SECRET_KEY;
+  const prevUpiGlobal = process.env.BILLING_UPI_GLOBAL;
+  process.env.UPI_VPA = 'merchant@okicici';
+  process.env.BILLING_UPI_ENABLED = '1';
+  process.env.STRIPE_SECRET_KEY = 'sk_test_fake';
+  delete process.env.BILLING_STRIPE_ENABLED;
+  delete process.env.BILLING_UPI_GLOBAL;
+  assert.equal(shouldUseUpiCheckout('IN'), true);
+  assert.equal(shouldUseUpiCheckout('US'), false);
+  assert.equal(stripeBillingEnabled(), false, 'UPI configured → Stripe off by default');
+  process.env.BILLING_STRIPE_ENABLED = '1';
+  assert.equal(stripeBillingEnabled(), true, 'explicit opt-in enables Stripe');
+  process.env.BILLING_STRIPE_ENABLED = '0';
+  assert.equal(stripeBillingEnabled(), false);
+  if (prevVpa === undefined) delete process.env.UPI_VPA;
+  else process.env.UPI_VPA = prevVpa;
+  if (prevStripeFlag === undefined) delete process.env.BILLING_STRIPE_ENABLED;
+  else process.env.BILLING_STRIPE_ENABLED = prevStripeFlag;
+  if (prevStripeKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+  else process.env.STRIPE_SECRET_KEY = prevStripeKey;
+  if (prevUpiGlobal === undefined) delete process.env.BILLING_UPI_GLOBAL;
+  else process.env.BILLING_UPI_GLOBAL = prevUpiGlobal;
 
   console.log('billing TS unit tests passed');
 }

@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import { appBaseUrl } from '@/lib/newsletter';
 import { countryFromRequest } from '@/lib/billing/geo';
 import { resolvePlanForCountry } from '@/lib/billing/plans';
-import { upiConfigFromEnv } from '@/lib/billing/upi';
+import { shouldUseUpiCheckout, stripeBillingEnabled } from '@/lib/billing/provider';
 import { getLatestUpiClaim, hasProAccess } from '@/lib/billing/entitlements';
 import { blocksNewPayment, claimMessage } from '@/lib/billing/claims';
 
@@ -37,18 +37,16 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // India: direct UPI to your VPA — zero fees, link never expires (skip CIT-style short-lived pages).
-  const upiConfig = upiConfigFromEnv();
-  if (country === 'IN' && upiConfig) {
+  // Path 1: direct UPI — zero fees, link never expires (skip CIT-style short-lived pages).
+  if (shouldUseUpiCheckout(country)) {
     return NextResponse.json({
       provider: 'upi',
       url: `${base}/billing/upi`,
     });
   }
 
-  const stripeKey = process.env.STRIPE_SECRET_KEY?.trim();
-
-  if (stripeKey) {
+  if (stripeBillingEnabled()) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY!.trim();
     const params = new URLSearchParams();
     params.set('mode', 'subscription');
     params.set('customer_email', email);
@@ -100,9 +98,10 @@ export async function POST(req: NextRequest) {
     country,
     upiVpaPresent: Boolean(process.env.UPI_VPA),
     upiEnabled: process.env.BILLING_UPI_ENABLED !== '0',
-    stripeKeyPresent: Boolean(stripeKey),
+    stripeEnabled: stripeBillingEnabled(),
+    stripeKeyPresent: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
     stripePriceIdPresent: Boolean(plan.stripePriceId),
-    hint: 'Set UPI_VPA for India or STRIPE_SECRET_KEY for international localized checkout.',
+    hint: 'Set UPI_VPA for India (Path 1). Stripe only when BILLING_STRIPE_ENABLED=1.',
   });
 
   return NextResponse.json({ error: 'billing_not_configured', message }, { status: 503 });

@@ -29,6 +29,8 @@ import {
   appendToolToTrailingParen,
   mergeStackedToolParens,
   DOMAIN_EVIDENCE_STEMS,
+  isMethodologySkillPhrase,
+  listKnownTechInText,
 } from './jd-keyword-align.mjs';
 import {
   analyzeJdProfileFit,
@@ -37,6 +39,8 @@ import {
   buildJdMatchedCompetencies,
   inferRoleTitleFromJd,
   isEmbeddedSystemsJd,
+  isDotnetAzureJd,
+  extractJdPostedTitle,
 } from './jd-profile-match.mjs';
 import {
   polishTailoredResume,
@@ -125,6 +129,7 @@ export function classifyRoleFamily(jdText) {
   }
   // C++ / Linux / satellite / real-time must beat incidental CI/CD or "software engineer"
   if (isEmbeddedSystemsJd(jdText)) return 'embedded_systems';
+  if (isDotnetAzureJd(jdText)) return 'azure_dotnet';
   if (/\bfull[-\s]?stack\b/.test(t)) return 'fullstack';
   if (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && !/\bback[-\s]?end\b|\bfull[-\s]?stack\b/.test(t)) {
     return 'frontend';
@@ -202,6 +207,7 @@ export function buildTailoringPlan(jdText, profile, opts = {}) {
     version: '1.0',
     family,
     displayTitle: title,
+    postedTitle: extractJdPostedTitle(jdText),
     jdText: String(jdText || ''),
     parsed: {
       mustHave: tiers.mustHave,
@@ -224,7 +230,7 @@ export function buildTailoringPlan(jdText, profile, opts = {}) {
     summary: {
       lines: 4,
       leadKeywords: [...new Set([...jdTech, ...domain, ...(fit.honest || [])])]
-        .filter((k) => isWeavableKeyword(k))
+        .filter((k) => isWeavableKeyword(k) && !isMethodologySkillPhrase(k))
         .slice(0, 6),
     },
     // Gaps allowed only when they are real tech tools (NestJS/Azure) — prose never lands in skills
@@ -290,13 +296,13 @@ function domainPhraseTransferable(phrase, corpus, honest = []) {
 }
 
 /**
- * Keywords to weave into mutable-role bullets — proven profile tools only.
- * Gap JD tools (Angular, NestJS, Azure) stay in competencies, never bullets.
+ * Keywords to weave into mutable-role bullets.
+ * THIS posting's stack (including gap languages like C# / Angular) goes into bullets.
+ * Profile-only stack that is not in the JD (TypeScript on a .NET role) does not.
  */
 export function selectWeaveKeywords(plan, profile) {
   const out = [];
   const seen = new Set();
-  const gapKeys = new Set((plan?.keywords?.gaps || []).map((g) => normalizeKey(g)).filter(Boolean));
   const corpus = profileCorpusText(profile);
   const honest = plan?.keywords?.honest || [];
   const jdBlob = String(plan?.jdText || '');
@@ -304,24 +310,25 @@ export function selectWeaveKeywords(plan, profile) {
     const raw = String(kw || '').trim();
     if (!raw || isJunkKeyword(raw)) return;
     if (!isWeaveableNounPhrase(raw) && !isApprovedSkillPhrase(raw)) return;
+    if (isMethodologySkillPhrase(raw)) return;
     if (!isApprovedSkillPhrase(raw) && !isWeavableKeyword(raw)) return;
     const key = normalizeKey(raw);
-    if (!key || seen.has(key) || gapKeys.has(key)) return;
-    // Never weave profile-only stack (TypeScript) into a C++/Linux posting
+    if (!key || seen.has(key)) return;
     if (jdBlob.length >= 40 && !keywordAppearsInJd(raw, jdBlob)) return;
     seen.add(key);
     out.push(raw);
   };
 
+  for (const kw of [
+    ...(plan?.parsed?.jdTech || []),
+    ...(plan?.keywords?.mustHave || []),
+    ...(plan?.keywords?.atsMirror || []),
+  ]) {
+    push(kw);
+  }
   for (const kw of honest) push(kw);
   for (const kw of plan?.keywords?.domain || []) {
     if (domainPhraseTransferable(kw, corpus, honest)) push(kw);
-  }
-  for (const kw of [
-    ...(plan?.keywords?.atsMirror || []),
-    ...(plan?.keywords?.mustHave || []),
-  ]) {
-    if (keywordLikelyProven(kw, plan?.fit) || corpus.includes(normalizeKey(kw))) push(kw);
   }
   return out.slice(0, 20);
 }
@@ -361,7 +368,9 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
       const kw = kws[(cursor + n) % kws.length];
       if (keywordCoveredInText(roleText(), kw)) continue;
       const sourceDigest = (profile?.experience?.[idx]?.bullets || []).join('\n');
-      if (sourceDigest && !keywordCoveredInText(sourceDigest, kw)) continue;
+      const jdBlob = String(plan?.jdText || '');
+      const jdOwnsKw = jdBlob.length >= 40 && keywordAppearsInJd(kw, jdBlob);
+      if (sourceDigest && !keywordCoveredInText(sourceDigest, kw) && !jdOwnsKw) continue;
 
       // Rank candidate bullets: skip metric tails and saturated bullets, prefer
       // upgradeable partial mentions, then bullets adjacent to the keyword.
@@ -417,9 +426,23 @@ function escapeGapRegex(s) {
 
 function stripGapMention(bullet, gap) {
   const raw = String(gap || '').trim();
-  if (!raw || raw.length < 3) return bullet;
-  const escaped = escapeGapRegex(raw).replace(/\\\./g, '\\.?');
+  if (!raw || raw.length < 2) return bullet;
   let t = String(bullet || '');
+  const compact = raw.toLowerCase().replace(/\s+/g, '');
+  if (
+    compact === 'c#'
+    || compact === '.net'
+    || compact === 'asp.net'
+    || compact === 'aspnet'
+    || /asp\.net/i.test(raw)
+  ) {
+    t = t.replace(/\bASP\.?\s*NET(?:\s+Core)?\b/gi, '');
+    t = t.replace(/\bASP\s+APIs?\b/gi, 'APIs');
+    if (compact !== 'c#') t = t.replace(/\b\.NET(?:\s+Core)?\b/gi, '');
+    if (compact === 'c#' || /asp\.net/i.test(raw)) t = t.replace(/\bC#\b/g, '');
+    return t.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/,\s*,/g, ',').replace(/\s+\./g, '.').trim();
+  }
+  const escaped = escapeGapRegex(raw).replace(/\\\./g, '\\.?');
   t = t.replace(new RegExp(`\\s*\\(${escaped}\\)`, 'gi'), '');
   t = t.replace(new RegExp(`(?:\\s*(?:,|/|and|&))?\\s*\\b${escaped}\\b`, 'gi'), '');
   return t.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/,\s*,/g, ',').replace(/\s+\./g, '.').trim();
@@ -432,7 +455,7 @@ function stripGapMention(bullet, gap) {
 export function scrubGapToolsFromMutableRoles(resume, plan, profile) {
   const gaps = (plan?.keywords?.gaps || []).filter(
     (g) => g && (isApprovedSkillPhrase(g) || isWeavableKeyword(g)),
-  );
+  ).sort((a, b) => String(b).length - String(a).length);
   if (!gaps.length || !resume?.experience || !plan?.tailorIndices?.length) return resume;
   const copy = JSON.parse(JSON.stringify(resume));
   for (const idx of plan.tailorIndices) {
@@ -443,10 +466,51 @@ export function scrubGapToolsFromMutableRoles(resume, plan, profile) {
       .map((b) => {
         let t = String(b || '');
         for (const gap of gaps) {
+          if (plan?.jdText && keywordAppearsInJd(gap, plan.jdText)) continue;
           if (keywordCoveredInText(source, gap)) continue;
           if (!keywordCoveredInText(t, gap)) continue;
           t = stripGapMention(t, gap);
         }
+        return t;
+      })
+      .filter((b) => String(b).replace(/[.\s]/g, '').length > 24);
+  }
+  return copy;
+}
+
+const OFF_JD_COMPETE = [
+  'FastAPI', 'TypeScript', 'React', 'React.js', 'Next.js', 'NestJS',
+  'Angular', 'Bun', 'Node.js', 'JavaScript', 'C#', '.NET', 'ASP.NET', '.NET Core',
+  'C++', 'GDB', 'Valgrind', 'Java', 'Python', 'Spring Boot', 'GraphQL',
+];
+
+/**
+ * Drop competing languages/frameworks that THIS posting did not ask for.
+ * JD-required stack (C# on a .NET role, Angular on an Angular role) stays.
+ */
+export function scrubInventedStackFromMutableRoles(resume, plan, profile) {
+  if (!resume?.experience || !plan?.tailorIndices?.length) return resume;
+  const jd = String(plan?.jdText || '');
+  const copy = JSON.parse(JSON.stringify(resume));
+  for (const idx of plan.tailorIndices) {
+    const key = String(idx);
+    const bullets = Array.isArray(copy.experience[key]) ? copy.experience[key] : [];
+    copy.experience[key] = bullets
+      .map((b) => {
+        let t = String(b || '');
+        const extra = listKnownTechInText(t).filter((tech) => (
+          OFF_JD_COMPETE.some((s) => normalizeKey(s) === normalizeKey(tech))
+        ));
+        const toStrip = [...OFF_JD_COMPETE, ...extra]
+          .sort((a, c) => String(c).length - String(a).length);
+        for (const tech of toStrip) {
+          if (jd && keywordAppearsInJd(tech, jd)) continue;
+          if (!keywordCoveredInText(t, tech) && !new RegExp(tech.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(t)) {
+            continue;
+          }
+          t = stripGapMention(t, tech);
+        }
+        t = mergeStackedToolParens(t);
         return t;
       })
       .filter((b) => String(b).replace(/[.\s]/g, '').length > 24);
@@ -598,8 +662,9 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
 
   // Final freeze + honest weave only (gaps stay in competencies)
   let finalResume = restorePreservedEmployers(polished, preserved);
-  finalResume = injectWeaveIntoMutableRoles(finalResume, plan, bulletKeywords, 2, profile);
+  finalResume = injectWeaveIntoMutableRoles(finalResume, plan, bulletKeywords, 3, profile);
   finalResume = scrubGapToolsFromMutableRoles(finalResume, plan, profile);
+  finalResume = scrubInventedStackFromMutableRoles(finalResume, plan, profile);
   finalResume = restorePreservedEmployers(finalResume, preserved);
   if (typeof finalResume.summary === 'string') {
     finalResume.summary = scrubSummaryKeywordParenSpam(scrubResumeArtifacts(finalResume.summary));
@@ -654,7 +719,7 @@ export function stripCoverLetterDates(text) {
   s = s.replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, '');
   s = s.replace(/^\s*date\s*:\s*.+$/gim, '');
   s = s.replace(/\s*—\s*/g, ', ');
-  s = s.replace(/\s{2,}/g, ' ').replace(/\n[ \t]+/g, '\n').trim();
+  s = s.replace(/[^\S\n]{2,}/g, ' ').replace(/\n[ \t]+/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   return s;
 }
 
@@ -663,9 +728,12 @@ export function buildJdAlignedCoverLetter(plan, profile, companyName, jdText = '
   const family = plan?.family || classifyRoleFamily(jdText);
   const role = plan?.displayTitle || inferRoleTitleFromJd(jdText) || 'the open role';
   const jdBlob = String(jdText || plan?.jdText || '');
-  const honest = (plan?.keywords?.honest || [])
-    .filter((k) => isWeavableKeyword(k) && (!jdBlob || keywordAppearsInJd(k, jdBlob)))
-    .slice(0, 5);
+  const honest = [
+    ...(plan?.parsed?.jdTech || []),
+    ...(plan?.keywords?.honest || []),
+  ]
+    .filter((k) => isWeavableKeyword(k) && !isMethodologySkillPhrase(k) && (!jdBlob || keywordAppearsInJd(k, jdBlob)))
+    .slice(0, 6);
   const hooks = honest.length
     ? honest.join(', ')
     : (plan?.keywords?.atsMirror || []).slice(0, 4).join(', ') || 'the technical requirements in your posting';
@@ -687,8 +755,11 @@ export function buildJdAlignedCoverLetter(plan, profile, companyName, jdText = '
   let para2 = `I bring ${years}+ years owning backend platforms, APIs, and cloud delivery.${metricBit} In my recent role as ${recentRole} at ${recentCo}, I owned architecture, reliability, CI/CD, and mentoring mapped to the stack in your posting.`;
 
   if (family === 'embedded_systems') {
-    para1 = `I am applying for the ${role} position at ${company}. The posting calls for Linux-based, multi-threaded and multi-process software, C++, networking (TCP/IP and sockets), and satellite communications work inside an Agile Scrum team.`;
+    para1 = `I am applying for the ${role} position at ${company}. The posting emphasizes ${hooks}.`;
     para2 = `I bring ${years}+ years shipping production software on Linux, with Python, Jenkins CI/CD, AWS/Azure, automated tests, and structured design reviews.${metricBit} As ${recentRole} at ${recentCo}, I own troubleshooting, release quality, and mentoring. That is the overlap I bring: Linux services, SDLC discipline, and collaborative delivery.`;
+  } else if (family === 'azure_dotnet') {
+    para1 = `I am applying for the ${role} position at ${company}. The posting emphasizes ${hooks} on a .NET and Azure integration stack.`;
+    para2 = `I bring ${years}+ years shipping event-driven services, third-party API integrations, Kafka, PostgreSQL, and containerized cloud workloads.${metricBit} As ${recentRole} at ${recentCo}, I own API reliability, messaging, and production operations. That is the overlap I bring.`;
   } else if (family === 'data_etl') {
     para1 = `I am applying for the ${role} position at ${company}. Your posting emphasizes ${hooks} across warehouse, validation, and pipeline reliability.`;
     para2 = `I bring ${years}+ years owning Python/SQL data platforms, CI/CD for data jobs, and production troubleshooting.${metricBit} As ${recentRole} at ${recentCo}, I owned delivery from design through test and release.`;
@@ -739,6 +810,9 @@ export function finalizeCoverLetter(opts = {}) {
 
   const family = plan?.family || classifyRoleFamily(jdText);
   if (family === 'embedded_systems' && /\btypescript\b|\breact\.?js\b|\bfull[-\s]?stack\b/i.test(body) && !/\blinux\b|\bc\+\+\b|\bjenkins\b/i.test(body)) {
+    return built;
+  }
+  if (family === 'azure_dotnet' && /\btypescript\b|\breact\.?js\b|\bfastapi\b/i.test(body) && !/\bazure\b|\bkafka\b|\btelemetry\b|\.net\b|\bintegrat/i.test(body)) {
     return built;
   }
 
@@ -796,8 +870,12 @@ export function repairTailoredResume(resume, plan, profile, jdText) {
     }
   }
 
-  const repaired = injectWeaveIntoMutableRoles(aligned, plan, bulletKeywords, 2, profile);
-  const scrubbed = scrubGapToolsFromMutableRoles(repaired, plan, profile);
+  const repaired = injectWeaveIntoMutableRoles(aligned, plan, bulletKeywords, 3, profile);
+  const scrubbed = scrubInventedStackFromMutableRoles(
+    scrubGapToolsFromMutableRoles(repaired, plan, profile),
+    plan,
+    profile,
+  );
   // Rebuild summary when top JD weave phrases are absent
   const topDomain = bulletKeywords
     .filter((k) => String(k).split(/\s+/).length >= 2 || /-/.test(k))

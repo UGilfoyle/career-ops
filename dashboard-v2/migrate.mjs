@@ -259,7 +259,28 @@ async function migrate() {
       console.warn('Skipped application_tracking FK SET NULL:', e.message);
     }
 
-    console.log('Migration successful: billing, practice, background, page_views, master_pdf, user_profiles, jobs/apps indexes, application telemetry.');
+    await sql`
+      CREATE TABLE IF NOT EXISTS product_feedback (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL UNIQUE,
+        user_email TEXT NOT NULL,
+        score SMALLINT NOT NULL CHECK (score >= 1 AND score <= 5),
+        comment TEXT,
+        context TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS product_feedback_score_idx
+      ON product_feedback (score)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS product_feedback_created_idx
+      ON product_feedback (created_at DESC)
+    `;
+
+    console.log('Migration successful: billing, practice, feedback, background, page_views, master_pdf, user_profiles, jobs/apps indexes, application telemetry.');
   } catch (error) {
     console.error('Migration failed:', error);
   } finally {

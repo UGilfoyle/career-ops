@@ -85,6 +85,7 @@ import {
   assertPreservedEquality,
   restorePreservedEmployers,
   scrubGapToolsFromMutableRoles,
+  scrubInventedStackFromMutableRoles,
   finalizeCoverLetter,
 } from './resume-tailoring-plan.mjs';
 
@@ -110,6 +111,10 @@ const TEMPLATE_FILES = {
 };
 const TEMPLATE = TEMPLATE_FILES['ats-professional'];
 const require = createRequire(import.meta.url);
+
+function debugLog(...args) {
+  if (process.env.CAREER_OPS_DEBUG === '1') console.log(...args);
+}
 
 function resolveTemplatePath(profile) {
   const id = profile?.studio?.template_id || 'ats-professional';
@@ -312,11 +317,11 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
         tailoredJobIndex = idx;
       }
     });
-    console.log(`[DEBUG] Selected job #${tailoredJobIndex + 1} (${exp[tailoredJobIndex]?.role} at ${exp[tailoredJobIndex]?.company}) for tailored bullets`);
+    debugLog(`[DEBUG] Selected job #${tailoredJobIndex + 1} (${exp[tailoredJobIndex]?.role} at ${exp[tailoredJobIndex]?.company}) for tailored bullets`);
   } else if (!isMultiRole) {
-    console.log(`[DEBUG] No tailored bullets or JD provided. Using original bullets for all jobs.`);
+    debugLog(`[DEBUG] No tailored bullets or JD provided. Using original bullets for all jobs.`);
   } else {
-    console.log(`[DEBUG] Multi-role tailoring: ${Object.keys(tailoredBullets).length} roles received tailored bullets`);
+    debugLog(`[DEBUG] Multi-role tailoring: ${Object.keys(tailoredBullets).length} roles received tailored bullets`);
   }
 
   // Date patterns to aggressively strip from company/role
@@ -340,10 +345,10 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     let roleBullets = null;
     if (isMultiRole && tailoredBullets[String(idx)]) {
       roleBullets = tailoredBullets[String(idx)];
-      console.log(`[DEBUG] Applying ${roleBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
+      debugLog(`[DEBUG] Applying ${roleBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
     } else if (flatBullets && flatBullets.length > 0 && idx === tailoredJobIndex) {
       roleBullets = flatBullets;
-      console.log(`[DEBUG] Applying ${roleBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
+      debugLog(`[DEBUG] Applying ${roleBullets.length} tailored bullets to job #${idx + 1} (${job.role})`);
     }
     const tenureMonths = parseTenureMonths(job.period);
     const budget = roleBulletBudget(idx, { tenureMonths, maxPages });
@@ -1406,14 +1411,15 @@ GLOBAL RULES:
 - NO buzzwords: passion, leveraging, synergies, robust, seamless, cutting-edge, proven track record
 - NO AI-sounding phrases
 - Individual Ownership (I, not We): Position all technical achievements, summaries, and cover letters as direct personal contributions. Never use team-oriented language like "we", "our", "us", "assisted with", "participated in", or "worked in a team to". Use first-person singular "I" or strong active verbs (e.g. "I built...", "I engineered...", "Architected...", "Designed...") to show individual ownership of the work.
-- 100% JD-Alignment (ATS-FIRST): Mirror honest JD tech in Summary and Core Competencies using exact JD wording (Angular, Node.js, TypeScript, Docker, Kubernetes, PostgreSQL, AWS). Experience bullets stay on tools proven in THAT role's digest. Never rewrite Quest/INTVERSE/etc. as if they shipped a JD-only stack (no FastAPI/Angular/Nest on a Node/Redis role). Gap tools belong in competencies only, never invented into bullets. Still never invent employers or fake percentage metrics that are not in the digest.
+- JD-FIRST (non-negotiable): Detected family=${plan.family}; title=${plan.displayTitle}. Summary, skills, AND experience bullets must use THIS JD's stack (exact wording). If the JD is .NET/C#/Azure, the resume must read .NET/C#/Azure — not TypeScript/FastAPI. If the JD is C++/Linux, lead with C++/Linux. Off-JD languages get dropped. Cover letter maps this posting — no calendar date.
+- 100% JD-Alignment (ATS-FIRST): Mirror THIS posting's tech in Summary, Core Competencies, and tailored experience using exact JD wording. Do not default to a Node/TS dump. Still never invent employers or fake percentage metrics that are not in the digest.
 - JD ONLY: If this JD is AWS/backend/platform and does NOT require LLM/RAG/ML as a core skill, do NOT add ChromaDB, embeddings, Claude/GPT/Llama, "LLM-parsed", or AI-feature bullets. "AI-assisted coding" as a nice-to-have is NOT permission to rewrite the resume as AI engineering.
 - NO decorative arrows (▸ → ⇒) anywhere in resume text — plain sentences only.
 - Use short sentences, active voice, specific numbers where they appear in the digest
 - Lead with substance, not filler${companyTypeRule}
 - Highlight Applied AI & GenAI/LLM: Only if THIS posting's own requirements mention AI/LLM/RAG (ignore Naukri "Similar jobs" chrome). Then weave digest-proven AI work into summary/competencies. Never paste FastAPI/SSE/LLM onto a role whose digest does not contain that work.
 - Freelance / Contract / Temporary Role Adaptation: If the JD indicates a freelance, contract, or temporary role, adapt the summary and cover letter to emphasize high autonomy, rapid team integration, immediate contribution, and deliverables-oriented execution. DO NOT change the candidate's existing job titles on the resume to "Freelance" or "Contractor". Keep professional titles (e.g., "Senior Software Engineer") as-is. Avoid adding clunky "doing freelancing" or "freelancing work" phrasing.
-- CRITICAL ATS OPTIMIZATION (90+ ATS Score Target): Maximize exact keyword matching in Summary and Core Competencies using JD wording (PostgreSQL not Postgres). Experience bullets may use a JD term only when that same tool already appears in THAT role's digest. Never invent Angular/Nest/FastAPI/Azure into a Node/Redis/AWS role.
+- CRITICAL ATS OPTIMIZATION (90+ ATS Score Target): Maximize exact keyword matching using JD wording (PostgreSQL not Postgres). Experience bullets should carry THIS JD's stack terms. Do not keep TypeScript/React/FastAPI on a posting that did not ask for them.
 - CRITICAL — QUANTIFIED IMPACT (90+ target): Enforce strong quantification. Wherever a metric is present in the candidate's experience digest (%, dollar amounts, latency, throughput, CPU reduction, uptime, speedups), preserve and highlight it in the rewritten bullets. Never invent or fabricate metrics.
 - CRITICAL — VERB VARIETY: Start each bullet with a unique, strong action verb (e.g., architected, engineered, streamlined, deployed, accelerated). Avoid repeating the same verb in consecutive bullet points.
 
@@ -1427,7 +1433,8 @@ TASK:
       - Line 2: Architecture / systems depth mapped to JD (microservices, cloud, APIs, AI if relevant) with hard outcomes from digest.
       - Line 3: Reliability + SDLC ownership (reviews, tests, CI, mentoring) — NEVER weak lines like "collaborate with product partners".
       - Line 4 (optional): concrete stack closer or measurable impact bias.
-      - Example: if JD says "React, Node.js, PostgreSQL" → summary MUST mention React, Node.js, PostgreSQL.
+      - Example: if THIS JD says ".NET, C#, Azure Functions" → summary names honest overlap (Kafka, telemetry, APIs, PostgreSQL) and skills list the JD stack. If THIS JD says "React, Node.js, PostgreSQL" → summary MUST mention React, Node.js, PostgreSQL.
+      - Do NOT write a TypeScript/FastAPI/React summary for a C++ or .NET posting.
       - Total under ~90 words. No bullet characters. No clichés (passionate, results-oriented, leveraged, spearheaded).
 
    b) **Core competencies** (resume.core_competencies): 10-14 items — NEVER sparse.
@@ -1600,9 +1607,9 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
   if (data?.resume?.experience) {
     const exp = data.resume.experience;
     if (typeof exp === 'object' && !Array.isArray(exp)) {
-      console.log(`[DEBUG] AI returned multi-role experience: ${Object.keys(exp).length} roles`);
+      debugLog(`[DEBUG] AI returned multi-role experience: ${Object.keys(exp).length} roles`);
     } else if (Array.isArray(exp)) {
-      console.log(`[DEBUG] AI returned flat experience array: ${exp.length} bullets (legacy single-role)`);
+      debugLog(`[DEBUG] AI returned flat experience array: ${exp.length} bullets (legacy single-role)`);
     }
   }
 
@@ -1647,6 +1654,7 @@ OUTPUT FORMAT (JSON ONLY — no markdown fences):
         executed.resume = restorePreservedEmployers(rePolished, executed.preservedSnapshot);
       }
       executed.resume = scrubGapToolsFromMutableRoles(executed.resume, plan, profile);
+      executed.resume = scrubInventedStackFromMutableRoles(executed.resume, plan, profile);
       executed.resume = restorePreservedEmployers(executed.resume, executed.preservedSnapshot);
     }
 
@@ -1814,6 +1822,11 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     if (data.preserved_snapshot) {
       data.resume = restorePreservedEmployers(data.resume, data.preserved_snapshot);
     }
+    data.resume = scrubGapToolsFromMutableRoles(data.resume, activePlan, profile);
+    data.resume = scrubInventedStackFromMutableRoles(data.resume, activePlan, profile);
+    if (data.preserved_snapshot) {
+      data.resume = restorePreservedEmployers(data.resume, data.preserved_snapshot);
+    }
     data.jd_alignment_score = pushed.alignment.score;
     data.jd_alignment_matched = pushed.alignment.matched;
     data.jd_alignment_missing = pushed.alignment.missing;
@@ -1951,7 +1964,7 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     }
 
     // Debug: log what we have
-    console.log(`[DEBUG] Entry resolved: id=${entry?.id}, company=${entry?.company}`);
+    debugLog(`[DEBUG] Entry resolved: id=${entry?.id}, company=${entry?.company}`);
 
     const [profileRow] = await sql`SELECT resume_context, hf_token FROM user_profiles WHERE user_id = ${userId}`;
     if (!profileRow) throw new Error(`Profile not configured for user ${userId}. Please setup via the Dashboard Settings.`);
@@ -1983,8 +1996,8 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     }
 
     // Debug profile data
-    console.log(`[DEBUG] Profile loaded: hasExperience=${Array.isArray(profile?.experience)}, expCount=${profile?.experience?.length || 0}, hasEducation=${Array.isArray(profile?.education)}, eduCount=${profile?.education?.length || 0}`);
-    console.log(`[DEBUG] Profile narrative: headline="${profile?.narrative?.headline || 'N/A'}", hasSuperpowers=${Array.isArray(profile?.narrative?.superpowers)}, superpowersCount=${profile?.narrative?.superpowers?.length || 0}`);
+    debugLog(`[DEBUG] Profile loaded: hasExperience=${Array.isArray(profile?.experience)}, expCount=${profile?.experience?.length || 0}, hasEducation=${Array.isArray(profile?.education)}, eduCount=${profile?.education?.length || 0}`);
+    debugLog(`[DEBUG] Profile narrative: headline="${profile?.narrative?.headline || 'N/A'}", hasSuperpowers=${Array.isArray(profile?.narrative?.superpowers)}, superpowersCount=${profile?.narrative?.superpowers?.length || 0}`);
     if (!Array.isArray(profile?.experience) || profile.experience.length === 0) {
       throw new Error(
         `Profile incomplete for user ${userId}: no experience entries were found after normalization. `
@@ -2040,7 +2053,7 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
       // Multi-role object: {"0": [...], "1": [...], ...}
       const roleKeys = Object.keys(expData);
       const totalBullets = roleKeys.reduce((sum, k) => sum + (Array.isArray(expData[k]) ? expData[k].length : 0), 0);
-      console.log(`[DEBUG] AI generated ${totalBullets} tailored bullets across ${roleKeys.length} roles:`);
+      debugLog(`[DEBUG] AI generated ${totalBullets} tailored bullets across ${roleKeys.length} roles:`);
       roleKeys.forEach(k => {
         const bullets = expData[k] || [];
         console.log(`  Role ${k}: ${bullets.length} bullets`);
@@ -2048,10 +2061,10 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
       });
     } else if (Array.isArray(expData)) {
       // Legacy flat array
-      console.log(`[DEBUG] AI generated ${expData.length} tailored bullets:`);
+      debugLog(`[DEBUG] AI generated ${expData.length} tailored bullets:`);
       expData.forEach((b, i) => console.log(`  ${i + 1}. ${String(b || '').substring(0, 60)}...`));
     } else {
-      console.log(`[DEBUG] No tailored experience bullets returned by AI.`);
+      debugLog(`[DEBUG] No tailored experience bullets returned by AI.`);
     }
 
     // Calculate ATS Score

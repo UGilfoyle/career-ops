@@ -16,6 +16,7 @@ import {
   measureMutableRoleCoverage,
   selectWeaveKeywords,
   scrubGapToolsFromMutableRoles,
+  scrubInventedStackFromMutableRoles,
   stripCoverLetterDates,
   finalizeCoverLetter,
   DEFAULT_FULL_TAILOR,
@@ -199,9 +200,10 @@ const compsB = (pkgB.resume.core_competencies || []).join(' ').toLowerCase();
 assert(/node|kafka|redis|postgres|aws|typescript|observ/i.test(compsB), 'generic JD competencies carry stack');
 assert(/kafka|event|api|observ|node|aws|postgres/i.test(pkgB.resume.summary), 'generic JD summary carries framing');
 
-console.log('\n8. Engine is company-agnostic (no Deloitte hardcode path)\n');
+console.log('\n8. Engine is company-agnostic (no Deloitte / Accurant hardcode path)\n');
 const planSrc = fs.readFileSync('resume-tailoring-plan.mjs', 'utf8');
 assert(!/deloitte/i.test(planSrc), 'resume-tailoring-plan.mjs has no Deloitte hardcode');
+assert(!/accurant|flexenergi|\bDER\b/i.test(planSrc), 'resume-tailoring-plan.mjs has no Accurant/DER hardcode');
 assert(!/if \(plan\?\.family === 'data_etl'/.test(planSrc), 'no data_etl-only weave hardcode');
 
 console.log('\n9. Frozen-restore evaluation — LLM draft missing frozen roles\n');
@@ -227,7 +229,7 @@ assert(
   `no false frozen-employer FAIL when LLM draft drops frozen roles (got ${(restoredEval.reasons || []).join('; ')})`,
 );
 
-console.log('\n10. BMW-style fullstack JD — Angular is a gap, not a Quest bullet\n');
+console.log('\n10. BMW-style fullstack JD — Angular weaves because THIS JD asks for it\n');
 const BMW_JD = `
 Job Title: Fullstack Software Developer
 BMW Techworks India — Pune — 7 to 10 years
@@ -238,7 +240,7 @@ JavaScript, TypeScript, Angular, Node.js, PostgreSQL, Docker, Kubernetes, AWS EC
 `;
 const planBmw = buildTailoringPlan(BMW_JD, profile);
 const weaveBmw = selectWeaveKeywords(planBmw, profile).join(' ').toLowerCase();
-assert(!/\bangular\b/.test(weaveBmw), `Angular stays out of bullet weave (got ${weaveBmw})`);
+assert(/\bangular\b/.test(weaveBmw), `Angular weaves when THIS JD requires it (got ${weaveBmw})`);
 assert(
   (planBmw.keywords.gaps || []).some((k) => /angular/i.test(k))
     || !(profileCorpusTextSafe(profile).includes('angular')),
@@ -251,9 +253,9 @@ const pkgBmw = executeTailoringPlan(planBmw, profile, {
 const mutableBmw = planBmw.tailorIndices
   .map((i) => (pkgBmw.resume.experience?.[String(i)] || []).join('\n'))
   .join('\n');
-assert(!/\bAngular\b/i.test(mutableBmw), 'mutable bullets do not invent Angular');
-assert(!/\bNestJS\b/i.test(mutableBmw), 'mutable bullets do not invent NestJS from similar-jobs chrome');
 const compsBmw = (pkgBmw.resume.core_competencies || []).join(' ');
+assert(/\bAngular\b/i.test(mutableBmw + compsBmw), 'Angular lands on the resume because THIS JD asks for it');
+assert(!/\bNestJS\b/i.test(mutableBmw), 'mutable bullets do not invent NestJS from similar-jobs chrome');
 assert(/\bNode\.?js\b/i.test(compsBmw) || /\bTypeScript\b/i.test(compsBmw), 'BMW competencies keep honest stack');
 assert(
   /\bAngular\b/i.test(compsBmw) || (planBmw.keywords.gaps || []).some((k) => /angular/i.test(k)),
@@ -278,17 +280,17 @@ const mutableClean = planClean.tailorIndices
   .join('\n');
 assert(!/\bNestJS\b/i.test(mutableClean), 'stripped Naukri JD does not NestJS-stuff Quest');
 assert(!/\bNext\.js\b/i.test(mutableClean), 'stripped Naukri JD does not Next.js-stuff Quest');
-assert(!/\bAngular\b/i.test(mutableClean), 'stripped Naukri JD still does not invent Angular in bullets');
+assert(/\bAngular\b/i.test(mutableClean) || /\bAngular\b/i.test((pkgClean.resume.core_competencies || []).join(' ')), 'BMW JD still surfaces Angular after chrome strip');
 
 const lied = JSON.parse(JSON.stringify(pkgBmw.resume));
 const qKey = String(planBmw.tailorIndices[0] || 0);
 lied.experience[qKey] = [
-  'Architected Angular dashboards for the BMW stack.',
+  'Architected NestJS dashboards for the BMW stack.',
   ...(lied.experience[qKey] || []),
 ];
-const scrubbedLie = scrubGapToolsFromMutableRoles(lied, planBmw, profile);
+const scrubbedLie = scrubInventedStackFromMutableRoles(lied, planBmw, profile);
 const scrubbedQuest = (scrubbedLie.experience[qKey] || []).join('\n');
-assert(!/\bAngular\b/i.test(scrubbedQuest), 'scrub strips invented Angular from Quest');
+assert(!/\bNestJS\b/i.test(scrubbedQuest), 'scrub strips off-JD NestJS from Quest');
 
 function profileCorpusTextSafe(p) {
   const parts = [];
@@ -368,10 +370,8 @@ assert(!/\(TypeScript\)\s*\(Python\)|\(TypeScript\)\(Python\)/i.test(expId), 'no
 assert(/Linux|Python|Jenkins|AWS|Azure|CI\/CD/i.test(summaryId), 'iDirect summary names honest overlap stack');
 assert(/c\+\+/i.test(compsId), `C++ listed in skills for ATS (got ${compsId})`);
 assert(/Linux|Jenkins|Python/i.test(compsId), 'skills keep Linux/Jenkins/Python overlap');
-assert(!/\bc\+\+\b/i.test(expId), 'does not invent C++ into experience bullets');
-assert(!/\bGDB\b/i.test(expId) || /\bgdb\b/i.test(profileCorpusTextSafe(profile)), 'does not invent GDB into experience');
-assert(!/\bValgrind\b/i.test(expId), 'does not invent Valgrind into experience');
-assert(/linux|python|jenkins|ci\/cd|aws|azure/i.test(letterId), 'cover letter maps honest overlap');
+assert(/c\+\+|linux|jenkins/i.test(summaryId + expId), 'iDirect resume carries C++/Linux posting stack');
+assert(/linux|python|jenkins|ci\/cd|aws|azure|c\+\+/i.test(letterId), 'cover letter maps this posting');
 assert(/idirect|satellite|linux|c\+\+/i.test(letterId), 'cover letter is about this posting');
 assert(!/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}/i.test(letterId), 'iDirect cover letter has no date');
 assert(!/—/.test(letterId), 'cover letter has no em-dash');
@@ -389,6 +389,79 @@ const professional = finalizeCoverLetter({
 assert(!/august/i.test(professional), 'dated LLM letter is stripped or replaced');
 assert(!/\btypescript\b/i.test(professional), 'off-JD TypeScript LLM letter is rejected for embedded JD');
 assert(stripCoverLetterDates('August 26, 2026\nHello') === 'Hello', 'stripCoverLetterDates removes calendar date');
+
+console.log('\n15. Accurant / FlexEnergi .NET Azure IoT — JD-shaped, no FastAPI dump\n');
+const ACCURANT_JD = `
+Job Title: Software Engineer - DER Integration (IoT / Energy Systems)
+Hiring Entity: FlexEnergi, a Subsidiary of Accurant International
+We are hiring .NET Software Engineers (Junior to Senior) to build and scale integrations between FlexEnergi's DERMS platform and third-party devices, OEM APIs, building systems, and utility protocols.
+Design, build, and maintain integrations between DERMS and third-party devices, platforms, and grid standards
+Develop services using ASP.NET APIs, Console Workers, and Azure Functions
+Build integrations with OEM APIs (thermostats, batteries, EV chargers)
+Work with Azure Service Bus, Event Hub, Streaming Analytics, and containerized workloads
+Work with containerized .NET services running in Azure (Container Apps / Kubernetes)
+2-6 years of software engineering experience (backend-focused)
+Strong experience with .NET (C#) — familiarity with .NET 6+
+Experience building distributed systems and event-driven architectures
+Experience integrating with 3rd-party APIs, webhooks, or message-based systems
+Experience with Azure or another major cloud platform
+Familiarity with authentication concepts: OAuth2, OIDC, SAML
+Preferred: Azure Service Bus, Event Hub, Kafka, MQTT, or RabbitMQ
+Preferred: Azure Postgres Hyperscale
+Contribute to engineering standards, code quality, and system design discussions
+`;
+const planAcc = buildTailoringPlan(ACCURANT_JD, profile);
+assert(planAcc.family === 'azure_dotnet', `Accurant family is azure_dotnet (got ${planAcc.family})`);
+assert(!/full[-\s]?stack/i.test(planAcc.displayTitle), `Accurant title is not Full-Stack (got ${planAcc.displayTitle})`);
+assert(!/backend engineer/i.test(planAcc.displayTitle), `Accurant title is not generic Backend Engineer (got ${planAcc.displayTitle})`);
+const pkgAcc = executeTailoringPlan(planAcc, profile, {
+  jdText: ACCURANT_JD,
+  companyName: 'Accurant International',
+});
+const summaryAcc = String(pkgAcc.resume.summary || '');
+const expAcc = Object.values(pkgAcc.resume.experience || {}).flat().join('\n');
+const compsAcc = (pkgAcc.resume.core_competencies || []).join(' ');
+const letterAcc = String(pkgAcc.cover_letter || '');
+assert(!/\bTypeScript\b/i.test(summaryAcc), `Accurant summary is not TypeScript-led (got ${summaryAcc.slice(0, 220)})`);
+assert(!/\bFastAPI\b/i.test(summaryAcc), 'Accurant summary does not lead with FastAPI');
+assert(!/system design/i.test(summaryAcc), `Accurant summary does not dump system design as stack (got ${summaryAcc})`);
+assert(/kafka|postgresql|kubernetes|linux|telemetry|event-driven|\.net|c#/i.test(summaryAcc), 'Accurant summary names THIS JD stack');
+assert(/c#|\.net|asp\.net/i.test(compsAcc), `Accurant skills list .NET/C# for ATS (got ${compsAcc})`);
+assert(/\.net|c#|asp\.net|azure functions|azure service bus/i.test(summaryAcc + expAcc), 'experience/summary carry .NET/Azure terms from THIS JD');
+assert(!/\bASP\s+APIs\b/i.test(expAcc), 'does not leave leftover ASP APIs after .NET weave');
+assert(!/\bFastAPI\b/i.test(expAcc), 'does not keep FastAPI on a .NET posting');
+assert(!/\(TypeScript\)|\(system design\)/i.test(expAcc), 'no TypeScript or system design tool parens');
+assert(/telemetry|kafka|event-driven|azure|integrat|\.net/i.test(letterAcc), 'cover letter is about this posting');
+assert(!/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}/i.test(letterAcc), 'Accurant cover letter has no date');
+assert(!/\btypescript\b|\breact\.?js\b|\bfastapi\b/i.test(letterAcc), 'cover letter is not a TypeScript/React letter');
+
+const liedAsp = JSON.parse(JSON.stringify(pkgAcc.resume));
+const qAcc = String(planAcc.tailorIndices[0] || 0);
+liedAsp.experience[qAcc] = ['Delivered ASP.NET APIs for backend services.'];
+const scrubbedAsp = scrubGapToolsFromMutableRoles(liedAsp, planAcc, profile);
+const scrubbedAspText = (scrubbedAsp.experience[qAcc] || []).join('\n');
+assert(!/\basp\.net\b/i.test(scrubbedAspText) || /\basp\.net\b/i.test(ACCURANT_JD), 'ASP.NET follows THIS JD, not a leftover ASP APIs fragment');
+assert(!/\bASP\s+APIs\b/i.test(scrubbedAspText), 'scrub does not leave ASP APIs');
+
+console.log('\n16. Java/Spring JD — same engine, not a TypeScript dump\n');
+const JAVA_JD = `
+Job Title: Senior Java Backend Engineer
+Requirements:
+- Strong experience with Java and Spring Boot
+- Event-driven microservices with Kafka
+- PostgreSQL, Kubernetes, REST APIs
+- Backend-focused, 5+ years
+`;
+const planJava = buildTailoringPlan(JAVA_JD, profile);
+assert(planJava.family !== 'fullstack', `Java JD is not fullstack (got ${planJava.family})`);
+assert(/java/i.test(planJava.displayTitle), `Java JD uses posted title (got ${planJava.displayTitle})`);
+const pkgJava = executeTailoringPlan(planJava, profile, { jdText: JAVA_JD, companyName: 'Acme Java' });
+const summaryJava = String(pkgJava.resume.summary || '');
+const expJava = Object.values(pkgJava.resume.experience || {}).flat().join('\n');
+const compsJava = (pkgJava.resume.core_competencies || []).join(' ');
+assert(!/\bTypeScript\b/i.test(summaryJava), `Java summary is not TypeScript-led (got ${summaryJava.slice(0, 180)})`);
+assert(!/\bFastAPI\b/i.test(summaryJava + expJava), 'Java resume does not keep FastAPI');
+assert(/java|spring/i.test(summaryJava + compsJava), 'Java/Spring from THIS JD land on summary or skills');
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

@@ -112,6 +112,21 @@ const AdminPaymentsPanel = dynamic(() => import('./AdminPaymentsPanel'), {
   ssr: false,
   loading: TabLoading,
 });
+const AdminSubscriptionsPanel = dynamic(() => import('./AdminSubscriptionsPanel'), {
+  ssr: false,
+  loading: TabLoading,
+});
+const AdminFeedbackPanel = dynamic(() => import('./AdminFeedbackPanel'), {
+  ssr: false,
+  loading: TabLoading,
+});
+const ProductFeedbackCard = dynamic(() => import('./ProductFeedbackCard'), {
+  ssr: false,
+  loading: TabLoading,
+});
+const ProductFeedbackNudge = dynamic(() => import('./ProductFeedbackNudge'), {
+  ssr: false,
+});
 const GccCampaignPanel = dynamic(
   () => import('./GccCampaignPanel').then((m) => ({ default: m.GccCampaignPanel })),
   { ssr: false, loading: TabLoading }
@@ -3396,6 +3411,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 onRefresh={() => { void loadAdminData(); }}
               />
 
+              <AdminSubscriptionsPanel />
+
+              <AdminFeedbackPanel />
+
               <AdminPaymentsPanel />
 
               <AdminUsersPanel
@@ -3892,6 +3911,8 @@ Career-Ops terminal`}
                      </div>
                    </div>
                  </ConfigSection>
+
+                 <ProductFeedbackCard context="settings" />
 
                  <ConfigSection title="Candidate Identity" icon={<LayoutDashboard size={18} className="text-[#1C1C1E]" />}>
                    {/* Profile Completion Indicator */}
@@ -4688,6 +4709,7 @@ Career-Ops terminal`}
         </AnimatePresence>
         </div>
         </div>
+        <ProductFeedbackNudge onOpenSettings={() => goTab('settings')} />
       </main>
 
       {/* Job Details Modal */}

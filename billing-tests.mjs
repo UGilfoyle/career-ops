@@ -406,6 +406,35 @@ test('checkout short-circuits for Pro users and pending claims', () => {
   assert.ok(proGuard > -1 && proGuard < stripeCall, 'Pro guard must run before any provider call');
 });
 
+test('UPI is Path 1 — Stripe opt-in when UPI_VPA is set', () => {
+  const src = readFileSync(join(ROOT, 'dashboard-v2/src/lib/billing/provider.ts'), 'utf8');
+  assert.ok(src.includes('stripeBillingEnabled'));
+  assert.ok(src.includes('shouldUseUpiCheckout'));
+  assert.ok(src.includes('BILLING_STRIPE_ENABLED'));
+  const checkout = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/checkout/route.ts'), 'utf8');
+  assert.ok(checkout.includes('shouldUseUpiCheckout'));
+  assert.ok(checkout.includes('stripeBillingEnabled'));
+});
+
+test('admin subscriptions API + panel wired', () => {
+  assert.ok(existsSync(join(ROOT, 'dashboard-v2/src/app/api/admin/subscriptions/route.ts')));
+  const dash = readFileSync(join(ROOT, 'dashboard-v2/src/components/Dashboard.tsx'), 'utf8');
+  assert.ok(dash.includes('AdminSubscriptionsPanel'));
+  const api = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/admin/subscriptions/route.ts'), 'utf8');
+  assert.ok(api.includes('user_subscriptions'));
+  assert.ok(api.includes('upi_payment_claims'));
+  assert.ok(api.includes('isAdminEmail'));
+});
+
+test('claim + approve email hooks unchanged', () => {
+  const claim = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/upi/claim/route.ts'), 'utf8');
+  assert.ok(claim.includes('sendUpiClaimAdminEmail'));
+  assert.ok(claim.includes('adminEmails()'));
+  const approve = readFileSync(join(ROOT, 'dashboard-v2/src/app/api/billing/upi/approve/route.ts'), 'utf8');
+  assert.ok(approve.includes('sendProAccessEmail'));
+  assert.ok(approve.includes('activateProSubscription'));
+});
+
 test('paywall renders a verification state instead of a pay button', () => {
   const src = readFileSync(join(ROOT, 'dashboard-v2/src/components/ProPaywall.tsx'), 'utf8');
   assert.ok(src.includes('pendingPayment'));

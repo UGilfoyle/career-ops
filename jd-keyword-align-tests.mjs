@@ -18,6 +18,8 @@ import {
   keywordAppearsInJd,
   mergeStackedToolParens,
   appendToolToTrailingParen,
+  weaveSuffixForm,
+  isMethodologySkillPhrase,
 } from './jd-keyword-align.mjs';
 import {
   analyzeJdProfileFit,
@@ -382,6 +384,11 @@ assert(
   /\(Jenkins, GitHub Actions\)/.test(appended),
   `appends into existing paren (got ${appended})`,
 );
+assert(weaveSuffixForm('System Design') == null, 'system design is not a tool paren');
+assert(isMethodologySkillPhrase('distributed systems'), 'distributed systems is methodology');
+const methodParens = mergeStackedToolParens('Shipped APIs (Kafka) (system design).');
+assert(/\(Kafka\)/.test(methodParens), `keeps Kafka paren (got ${methodParens})`);
+assert(!/system design/i.test(methodParens), `drops system design from parens (got ${methodParens})`);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

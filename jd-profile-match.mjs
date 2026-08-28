@@ -12,6 +12,7 @@ import {
   isEditorIdeTool,
   cleanSkillToken,
   keywordAppearsInJd,
+  isMethodologySkillPhrase,
 } from './jd-keyword-align.mjs';
 import { isAwsServiceCrumb, isUnprovenLanguageSkill } from './resume-skills-html.mjs';
 import {
@@ -195,6 +196,7 @@ const JD_THEME_TERMS = [
   'data integrity', 'migration', 'staging', 'scd', 'window function',
   'linux', 'python', 'jenkins', 'embedded', 'satellite', 'socket', 'gdb', 'valgrind',
   'multi-thread', 'multi-process', 'agile', 'scrum', 'c++',
+  'azure', 'kafka', 'telemetry', 'iot', 'webhook', 'oauth', 'kubernetes', 'integration',
 ];
 
 function themeInText(hay, theme) {
@@ -221,12 +223,30 @@ function scoreBulletForJd(bullet, jdText, honestKeywords) {
     ['react', /\breact(?:\.js)?\b/i],
     ['node.js', /\bnode\.?js\b/i],
     ['javascript', /\bjavascript\b/i],
+    ['fastapi', /\bfastapi\b/i],
+    ['bun', /\bbun\b/i],
+    ['graphql', /\bgraphql\b/i],
+    ['next.js', /\bnext\.?js\b/i],
+    ['python', /\bpython\b/i],
   ];
   for (const [name, re] of offJdLangs) {
     if (re.test(t) && !keywordAppearsInJd(name, jdText)) score -= 5;
   }
+  const jdBoosts = [
+    ['kafka', /\bkafka\b/i],
+    ['azure', /\bazure\b/i],
+    ['telemetry', /\btelemetry\b/i],
+    ['iot', /\biot\b/i],
+    ['webhook', /\bwebhook/i],
+    ['kubernetes', /\bkubernetes\b|\bk8s\b/i],
+    ['postgres', /\bpostgres/i],
+    ['oauth', /\boauth/i],
+    ['linux', /\blinux\b/i],
+  ];
+  for (const [name, re] of jdBoosts) {
+    if (re.test(t) && themeInText(jdLower, name === 'postgres' ? 'postgres' : name)) score += 4;
+  }
   if (/\d+%|\d+\+|p\d+|latency|throughput|concurrent|monthly|daily/i.test(t)) score += 2;
-  if (/\blinux\b/i.test(t) && /\blinux\b/i.test(jdLower)) score += 4;
   return score;
 }
 
@@ -292,6 +312,57 @@ export function isEmbeddedSystemsJd(jdText) {
   return cpp && embedded;
 }
 
+/** .NET / C# / ASP.NET plus Azure (Functions, Service Bus, Event Hub, containers). */
+export function isDotnetAzureJd(jdText) {
+  const t = String(jdText || '').toLowerCase();
+  const net = /\b\.net\b|\bc#\b|\basp\.net\b/.test(t);
+  const azure = /\bazure\b/.test(t);
+  return net && (azure || /\basp\.net\b|\bazure functions?\b|\bservice bus\b/.test(t));
+}
+
+/** Posted "Job Title:" when present — the most accurate title for any JD. */
+export function extractJdPostedTitle(jdText) {
+  const t = String(jdText || '');
+  const m = t.match(/(?:job\s*title|position title)\s*[:\-–]\s*([^\n]{8,90})/i);
+  if (!m) return '';
+  let title = String(m[1] || '').replace(/\s+/g, ' ').trim();
+  title = title.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  title = title.replace(/[|].*$/, '').trim();
+  if (title.length < 8 || title.length > 70) return '';
+  if (/\b(we are|hiring entity|requirements|responsibilities|about us|salary range)\b/i.test(title)) return '';
+  if (/https?:\/\//i.test(title)) return '';
+  return title;
+}
+
+function seniorizePostedTitle(title, years) {
+  const t = String(title || '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  if (/\b(senior|staff|principal|lead|junior|associate|intern)\b/i.test(t)) return t;
+  if ((Number(years) || 0) >= 5 && /^software engineer\b/i.test(t)) {
+    return t.replace(/^software engineer/i, 'Senior Software Engineer');
+  }
+  return t;
+}
+
+/**
+ * JD-noun work shape for summary line 2 — IoT/integration JDs without a new family.
+ */
+export function inferJdWorkShapeLine(jdText) {
+  const t = String(jdText || '').toLowerCase();
+  if (!t.trim()) return '';
+  const bits = [];
+  if (/\bintegrat|\boem\b|\bthird[-\s]?party\b/.test(t)) bits.push('third-party API integrations');
+  if (/\biot\b|\btelemetry\b|\bdevice\b|\bderms?\b/.test(t)) bits.push('device telemetry');
+  if (/\bevent[-\s]?driven\b|\bkafka\b|\bservice bus\b|\bevent hub\b|\bmessage[-\s]?based\b|\bwebhook/.test(t)) {
+    bits.push('message-driven cloud services');
+  }
+  const unique = [...new Set(bits)].slice(0, 3);
+  if (unique.length >= 2) {
+    return `Build ${unique.join(', ')} with observability and production troubleshooting.`;
+  }
+  return '';
+}
+
 export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   const t = String(jdText || '').toLowerCase();
   const y = Number(yearsExp) || 0;
@@ -302,6 +373,10 @@ export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   }
   if (isEmbeddedSystemsJd(jdText)) {
     return y > 0 ? 'Senior Software Engineer' : 'Software Engineer';
+  }
+  if (isDotnetAzureJd(jdText)) {
+    return seniorizePostedTitle(extractJdPostedTitle(jdText), y)
+      || (y > 0 ? 'Senior Software Engineer' : 'Software Engineer');
   }
   if (/\bstaff\s+(software\s+)?engineer\b|\bprincipal\s+(software\s+)?engineer\b/.test(t)) {
     return y >= 8 ? 'Staff Software Engineer' : 'Senior Software Engineer';
@@ -319,6 +394,8 @@ export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   if (/\b(web scrap|scraping)\b/.test(t) && /\bjavascript|js\b|node/.test(t)) {
     return 'Senior JavaScript Developer';
   }
+  const posted = seniorizePostedTitle(extractJdPostedTitle(jdText), y);
+  if (posted) return posted;
   if (/\bfull[-\s]?stack\b/.test(t)) return 'Senior Full-Stack Engineer';
   if (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && !/\bback[-\s]?end\b|\bfull[-\s]?stack\b|\.net\b|\bnode\.?js\b/.test(t)) {
     return 'Senior Frontend Engineer';
@@ -356,7 +433,9 @@ export function reframeExperienceFromProfile(profileExperience, jdText, honestKe
     const ranked = [...bullets].sort(
       (a, b) => scoreBulletForJd(b, jdText, honestKeywords) - scoreBulletForJd(a, jdText, honestKeywords)
     );
-    const top = ranked.slice(0, bulletCap);
+    const positive = ranked.filter((b) => scoreBulletForJd(b, jdText, honestKeywords) >= 0);
+    const pool = positive.length >= Math.min(3, bulletCap) ? positive : ranked;
+    const top = pool.slice(0, bulletCap);
     let framed = top.map((b) => enhanceBulletHonest(b, honestKeywords, company));
     while (framed.length < bulletCap && ranked.length > 0) {
       const next = ranked[framed.length % ranked.length];
@@ -541,24 +620,34 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
  */
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
   const y = Number(yearsExp) || 0;
+  const jdTechLead = extractJdTechKeywords(jdText, 18)
+    .filter((k) => {
+      if (!k || isJunkKeyword(k) || isEditorIdeTool(k)) return false;
+      if (isMethodologySkillPhrase(k)) return false;
+      if (FRAGMENT_BLOCKLIST.has(normalizeKey(k))) return false;
+      return isWeavableKeyword(k) || isApprovedSkillPhrase(k);
+    });
   const leadList = (honestKeywords || []).filter((k) => isWeavableKeyword(k) && !isJunkKeyword(k) && !isEditorIdeTool(k));
   const leadPool = leadList
     .filter((k) => {
       if (FRAGMENT_BLOCKLIST.has(normalizeKey(k)) || !isWeavableKeyword(k)) return false;
       if (isJunkKeyword(k)) return false;
-      if (isUnprovenLanguageSkill(k)) return false;
-      if (/^(unit testing|agile|scrum|full[-\s]?stack experience)$/i.test(String(k))) return false;
+      if (isMethodologySkillPhrase(k)) return false;
+      if (/^(unit testing|agile|scrum|full[-\s]?stack experience|microservices?)$/i.test(String(k))) return false;
       return true;
     });
   const jdLead = leadPool.filter((k) => !jdText || keywordAppearsInJd(k, jdText));
-  const leadTerms = [...new Set((jdLead.length ? jdLead : leadPool).map((k) => String(k).trim()))].slice(0, 8);
+  const leadTerms = [...new Set([...jdTechLead, ...jdLead].map((k) => String(k).trim()))].slice(0, 8);
   const embedded = isEmbeddedSystemsJd(jdText);
+  const dotnetAzure = isDotnetAzureJd(jdText);
+  const workShape = inferJdWorkShapeLine(jdText);
   const lead = leadTerms.length
     ? leadTerms.join(', ')
-    : (embedded ? 'Linux, Python, Jenkins, AWS, and Azure' : 'Python, Node.js, AWS, and React');
+    : (embedded ? 'Linux, Python, Jenkins, AWS, and Azure' : 'APIs, cloud platforms, and production services');
   const jdLower = String(jdText || '').toLowerCase();
   const title = inferRoleTitleFromJd(jdText, y);
   const yearsLabel = y > 0 ? `${y}+ years` : 'years';
+  const iotShape = /\biot\b|\btelemetry\b|\bderms?\b/i.test(jdLower);
   const lines = [];
 
   lines.push(
@@ -567,7 +656,11 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
         ? 'data platforms, pipelines, and cloud analytics systems'
         : embedded
           ? 'Linux services, multi-process systems, and communications software'
-          : 'backends, cloud platforms, and API systems'
+          : iotShape
+            ? 'event-driven integrations, IoT telemetry pipelines, and cloud APIs'
+            : dotnetAzure
+              ? 'event-driven integrations, cloud APIs, and message-driven services'
+              : 'backends, cloud platforms, and API systems'
     } in ${lead}.`,
   );
 
@@ -579,6 +672,8 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
     lines.push('Own Python-based ETL validation, source-to-target checks, and SQL-backed data reconciliation across warehouse layers.');
   } else if (embedded) {
     lines.push('Design and ship Linux services in Agile/Scrum: multi-process applications, Jenkins CI/CD, automated tests, and production troubleshooting, with AWS/Azure where the platform needs it.');
+  } else if (workShape) {
+    lines.push(workShape);
   } else if (/\b(web scrap|scraping|puppeteer|playwright|cheerio|selenium)\b/i.test(jdLower)) {
     lines.push('Ship JavaScript services for data extraction and browser automation with solid REST APIs, Postgres, and cloud delivery.');
   } else if (
