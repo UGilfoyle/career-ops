@@ -52,6 +52,14 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
+import {
+  Modal as AntdModal,
+  Drawer as AntdDrawer,
+  Tag as AntdTag,
+  Badge as AntdBadge,
+  Button as AntdButton,
+  Tooltip as AntdTooltip,
+} from 'antd';
 import { PageSectionHeader, AiScoreBadge } from './PageSectionHeader';
 import { JobAvatar } from './JobAvatar';
 import ProPaywall, { type PendingPayment } from './ProPaywall';
@@ -63,6 +71,7 @@ import {
 } from './EngagementIntelModal';
 import { PipelineStudioView } from './PipelineStudioView';
 import { CommandPaletteModal } from './CommandPaletteModal';
+import { MultiTerminalPanel } from './MultiTerminalPanel';
 import { MarkdownMessage } from './MarkdownMessage';
 import { ONBOARDING_STORAGE_KEY, DASHBOARD_TOUR_STEPS } from '@/lib/onboarding-flow';
 import {
@@ -219,6 +228,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [cmdInput, setCmdInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [externalTerminalCommand, setExternalTerminalCommand] = useState<{ command: string; id: number } | null>(null);
   const [profileFormData, setProfileFormData] = useState<any>({
     candidate: { full_name: '', location: '', email: '', phone: '', linkedin: '', github: '' },
     narrative: { headline: '', exit_story: '', superpowers: [] },
@@ -799,86 +809,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     const cmd =
       (command && command.trim())
       || (isUrl ? `tailor ${target} --deep` : `tailor ${id} --deep`);
-    if (staleTailorChecking || isExecuting) return;
 
-    setStaleTailorChecking(true);
     setActiveTab('terminal');
-    setLogs((prev) => [
-      ...prev,
-      {
-        type: 'stdout',
-        content: `\n${terminalPrompt} ${cmd}\n📅 Running job posting check before resume…\n`,
-      },
-    ]);
-    try {
-      const res = await fetch(
-        isUrl
-          ? `/api/job/posting-check?url=${encodeURIComponent(target)}`
-          : `/api/job/${id}?refresh=1`,
-      );
-      if (!res.ok) {
-        setLogs((prev) => [
-          ...prev,
-          {
-            type: 'stderr',
-            content: `⚠ Posting check failed (HTTP ${res.status}) — not starting tailor. Fix URL/auth and retry.\n`,
-          },
-        ]);
-        return;
-      }
-      const job = await res.json();
-      const analysis = (job?.posting_analysis || null) as JobPostingAnalysis | null;
-      const gateMessage = String(job?.posting_gate_message || '').trim();
-      if (gateMessage) {
-        setLogs((prev) => [...prev, { type: 'stdout', content: `\n${gateMessage}\n` }]);
-      } else {
-        setLogs((prev) => [
-          ...prev,
-          { type: 'stdout', content: 'ℹ Posting check returned no message.\n' },
-        ]);
-      }
-
-      const needsConfirm = Boolean(analysis?.needs_confirm);
-      if (needsConfirm) {
-        const postedAt = analysis?.posted_at ?? job?.posted_at ?? null;
-        // Bash/zsh-style blocking prompt — answer on the input line below
-        setLogs((prev) => [
-          ...prev,
-          {
-            type: 'stdout',
-            content:
-              '\n'
-              + 'Continue with resume generation? [Yes/No]:\n'
-              + '(same as shell: type yes or no, then Enter — Ctrl+C to cancel)\n',
-          },
-        ]);
-        setStaleTailorTarget({
-          target: isUrl ? target : String(id),
-          command: cmd,
-          company: String(job?.company || 'Unknown company'),
-          title: String(job?.title || 'Role'),
-          posted_at: postedAt ? String(postedAt) : null,
-          ageDays: analysis?.age_days ?? daysSincePosted(postedAt),
-          analysis,
-          gateMessage,
-        });
-        setCmdInput('');
-        setTimeout(() => cmdInputRef.current?.focus(), 50);
-        return;
-      }
-      setLogs((prev) => [
-        ...prev,
-        { type: 'stdout', content: '✓ Posting looks OK — starting tailor…\n' },
-      ]);
-      runCommand(cmd);
-    } catch {
-      setLogs((prev) => [
-        ...prev,
-        { type: 'stderr', content: '⚠ Posting check errored — tailor not started. Retry.\n' },
-      ]);
-    } finally {
-      setStaleTailorChecking(false);
-    }
+    setExternalTerminalCommand({ command: cmd, id: Date.now() });
   };
 
   const confirmStaleTailor = () => {
@@ -3715,91 +3648,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
 
           {activeTab === 'terminal' && (
-            <motion.div key="terminal" className="flex min-h-0 flex-1 flex-col space-y-4 sm:space-y-6">
-              <PageSectionHeader
-                title="Terminal"
-                subtitle="Run scan, rank, tailor, and apply commands"
+            <motion.div key="terminal" className="flex min-h-0 flex-1 flex-col">
+              <MultiTerminalPanel
+                terminalPrompt={terminalPrompt}
+                onToast={(msg) => setToast({ show: true, message: msg })}
+                externalCommand={externalTerminalCommand}
               />
-            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.25rem] sm:rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
-              <div className="p-5 border-b border-[#E5E5E0] flex justify-between items-center bg-[#F5F5F0]">
-                 <div className="flex items-center gap-3">
-                    <div className="h-3 w-3 bg-[#f59e0b] rounded-full" />
-                    <span className="text-[10px] font-mono text-[#57534e] uppercase tracking-[0.2em] font-bold">Terminal</span>
-                 </div>
-                 <button onClick={() => setLogs([])} className="text-[10px] text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors uppercase tracking-widest font-bold">Clear</button>
-              </div>
-              <div id="terminal-logs" className="flex-1 min-h-0 p-4 sm:p-6 md:p-8 font-mono text-sm overflow-y-auto whitespace-pre-wrap bg-white text-[#292524] scroll-smooth leading-relaxed select-text cursor-text">
-                 {logs.length === 0 && !isExecuting ? (
-                   <div className="select-text">
-                     <pre className="font-mono text-[10px] sm:text-xs text-[#1C1C1E] mb-6 leading-tight font-bold">
-{`   _____                           ____            
-  / ___/___ _________  ___  _____ / __ \\____  _____
- / /__ / __ \`/ ___/ _ \\/ _ \\/ ___// / / / __ \\/ ___/
-/ /___/ /_/ / /  /  __/  __/ /   / /_/ / /_/ (__  ) 
-\\____/\\__,_/_/   \\___/\\___/_/    \\____/ .___/____/  
-                                     /_/            
-Career-Ops terminal`}
-                     </pre>
-                     <div className="text-[#6B6B6B] space-y-2 mb-4">
-                       <p><strong className="text-[#57534e]">1. gcc-scan --deep</strong> <span className="text-[#9CA3AF]">→</span> GCC/captive employers (India hubs)</p>
-                       <p><strong className="text-[#57534e]">2. scan --deep</strong> <span className="text-[#9CA3AF]">→</span> Broad job-board discovery</p>
-                       <p><strong className="text-[#57534e]">3. rank --deep</strong> <span className="text-[#9CA3AF]">→</span> Score and rank discovered roles</p>
-                       <p><strong className="text-[#57534e]">4. tailor &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Generate tailored resume & cover letter</p>
-                       <p><strong className="text-[#57534e]">5. apply &lt;id&gt; --deep</strong> <span className="text-[#9CA3AF]">→</span> Automatically apply to role</p>
-                       <p><strong className="text-[#57534e]">6. add &lt;url&gt;</strong> <span className="text-[#9CA3AF]">→</span> Scrape & add job to pipeline</p>
-                       <br/>
-                       <p><strong className="text-[#57534e]">help</strong>        <span className="text-[#9CA3AF]">→</span> View full command reference</p>
-                       <br/>
-                       <p className="text-[#9CA3AF]"><kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">↑</kbd> <kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">↓</kbd> History • <kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">Ctrl+C</kbd> Clear line</p>
-                     </div>
-                     <div className="text-[#9CA3AF] italic mt-4">Awaiting input...</div>
-                   </div>
-                 ) : (
-                   <div className="space-y-1">
-                     {logs.map((log, i) => (
-                      <div key={i} className={`select-text ${log.type === 'stderr' ? 'text-rose-700' : 'text-[#1C1C1E]'}`}>
-                          {log.content}
-                       </div>
-                     ))}
-                     {isExecuting && (
-                        <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.8, repeat: Infinity }} className="inline-block w-2 h-5 bg-[#1C1C1E] ml-1" />
-                     )}
-                   </div>
-                 )}
-              </div>
-
-              <div className="p-5 bg-[#F5F5F0] border-t border-[#E5E5E0]">
-                 <div className="flex items-center gap-3">
-                    <span className={`font-bold font-mono ${awaitingPostingConfirm ? 'text-amber-700' : 'text-[#1C1C1E]'}`}>
-                      {awaitingPostingConfirm
-                        ? 'Continue with resume generation? [Yes/No]:'
-                        : `${terminalPrompt}`}
-                    </span>
-                    <form onSubmit={handleCommandSubmit} className="flex-1">
-                       <input
-                         ref={cmdInputRef}
-                         type="text"
-                         value={cmdInput}
-                         onChange={(e) => setCmdInput(e.target.value)}
-                         onKeyDown={handleKeyDown}
-                         placeholder={
-                           awaitingPostingConfirm
-                             ? 'yes  or  no'
-                             : 'scan / apply <id> / help (Ctrl+C to clear)'
-                         }
-                         disabled={isExecuting || staleTailorChecking}
-                         className="w-full bg-transparent outline-none border-none text-[#1C1C1E] font-mono placeholder:text-[#6B6B6B] caret-[#1C1C1E] select-text"
-                         autoFocus
-                       />
-                    </form>
-                 </div>
-                 {awaitingPostingConfirm && (
-                   <p className="mt-2 text-[10px] font-mono text-amber-700/80">
-                     Waiting for answer (like bash) — type yes/no + Enter · Ctrl+C cancel
-                   </p>
-                 )}
-              </div>
-            </div>
             </motion.div>
           )}
 
@@ -4713,349 +4567,227 @@ Career-Ops terminal`}
       </main>
 
       {/* Job Details Modal */}
-      <AnimatePresence>
-        {jobDetailsOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[90] flex items-center justify-center p-3 sm:p-6"
-            onClick={() => setJobDetailsOpen(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.98 }}
-              className="w-full max-w-4xl bg-white rounded-[2rem] border border-[#E5E5E0] shadow-2xl overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6 border-b border-[#E5E5E0] flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="text-xs font-mono text-[#9CA3AF] uppercase tracking-[0.2em]">Job details</div>
-                  <div className="text-xl font-bold text-[#1C1C1E] mt-1 truncate">
-                    {jobDetails?.company ? `${jobDetails.company} · ${jobDetails.title}` : 'Loading…'}
-                  </div>
-                  {jobDetails?.url && (
-                    <a
-                      href={jobDetails.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-[#1C1C1E] underline underline-offset-4"
-                    >
-                      <ExternalLink size={14} />
-                      Open posting
-                    </a>
-                  )}
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-mono text-[#9CA3AF]">
-                    {jobIsApplied(jobDetails) && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                        <CheckCircle2 size={11} />
-                        {String(jobDetails.application_status || 'APPLIED')}
-                        {jobDetails.applied_at ? ` · ${formatRelativeTime(jobDetails.applied_at)}` : ''}
-                      </span>
-                    )}
-                    {jobDetails?.posted_at ? (
-                      <span>
-                        Posted {formatRelativeTime(jobDetails.posted_at)}
-                        {jobDetails.posted_confidence ? ` (${jobDetails.posted_confidence})` : ''}
-                      </span>
-                    ) : jobDetails && !jobDetailsLoading ? (
-                      <span>Posted date unknown{jobDetails.posted_reason ? ` · ${jobDetails.posted_reason}` : ''}</span>
-                    ) : null}
-                    {jobDetails?.created_at && (
-                      <span>Added {formatRelativeTime(jobDetails.created_at)}</span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setJobDetailsOpen(false)}
-                  className="p-2 rounded-xl hover:bg-[#F5F5F0] transition-colors"
-                  aria-label="Close"
+      <AntdModal
+        open={jobDetailsOpen}
+        onCancel={() => setJobDetailsOpen(false)}
+        width={820}
+        destroyOnClose
+        centered
+        title={
+          <div>
+            <div className="text-base font-bold text-zinc-900 truncate">
+              {jobDetails?.company ? `${jobDetails.company} · ${jobDetails.title}` : 'Job Details'}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              {jobDetails?.url && (
+                <a
+                  href={jobDetails.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-700 hover:text-zinc-900"
                 >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="p-6 max-h-[70vh] overflow-y-auto">
-                {jobDetailsLoading && (
-                  <div className="text-sm font-medium text-[#6B6B6B]">Loading job description…</div>
-                )}
-                {jobDetailsError && (
-                  <div className="text-sm font-bold text-rose-700">Error: {jobDetailsError}</div>
-                )}
-                {!jobDetailsLoading && !jobDetailsError && (
-                  <>
-                    <div className="text-[10px] font-mono text-[#9CA3AF] uppercase tracking-[0.2em] mb-3">
-                      Job description
-                    </div>
-                    <pre className="whitespace-pre-wrap text-sm leading-relaxed text-[#1C1C1E]">
-                      {formatJdForDisplay(jobDetails?.jd_text)}
-                    </pre>
-                  </>
-                )}
-              </div>
-
-              {!jobDetailsLoading && !jobDetailsError && jobDetails && (
-                <div className="p-6 bg-[#FAFAF8] border-t border-[#E5E5E0] flex items-center justify-end gap-3">
-                  <button
-                    onClick={() => {
-                      setJobDetailsOpen(false);
-                      openInStudio({
-                        jobId: Number(jobDetails.id),
-                        company: jobDetails.company,
-                        title: jobDetails.title,
-                        score: jobDetails.score,
-                        ats_content_score: jobDetails.ats_content_score ?? null,
-                        jd_alignment_score: jobDetails.jd_alignment_score ?? null,
-                        has_resume_html: Boolean(jobDetails.has_resume_html),
-                        has_resume_pdf: Boolean(jobDetails.has_resume_pdf),
-                      });
-                    }}
-                    className="px-5 py-2.5 bg-white border border-[#E5E5E0] text-[#1C1C1E] rounded-xl font-bold text-xs hover:bg-[#F5F5F0] transition-all inline-flex items-center gap-2"
-                  >
-                    <Sparkles size={14} />
-                    Open in Studio
-                  </button>
-                  <button
-                    type="button"
-                    disabled={jobIsApplied(jobDetails)}
-                    onClick={() => {
-                      if (jobIsApplied(jobDetails)) return;
-                      setJobDetailsOpen(false);
-                      setActiveTab('terminal');
-                      void requestTailor(jobDetails.id);
-                    }}
-                    title={jobIsApplied(jobDetails) ? 'Already applied — Tailor disabled' : 'Tailor resume for this role'}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
-                      jobIsApplied(jobDetails)
-                        ? 'bg-[#E5E5E0] text-[#9CA3AF] cursor-not-allowed'
-                        : 'bg-[#1C1C1E] text-white hover:bg-[#27272a]'
-                    }`}
-                  >
-                    Tailor
-                  </button>
-                  <button
-                    type="button"
-                    disabled={jobIsApplied(jobDetails)}
-                    onClick={() => {
-                      if (jobIsApplied(jobDetails)) return;
-                      setJobDetailsOpen(false);
-                      setActiveTab('terminal');
-                      runCommand(`apply ${jobDetails.id} --deep`);
-                    }}
-                    title={jobIsApplied(jobDetails) ? 'Already applied — Apply disabled' : 'Auto-fill application'}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all border ${
-                      jobIsApplied(jobDetails)
-                        ? 'bg-[#F5F5F0] border-[#E5E5E0] text-[#9CA3AF] cursor-not-allowed'
-                        : 'bg-white border-[#E5E5E0] text-[#1C1C1E] hover:bg-[#F5F5F0]'
-                    }`}
-                  >
-                    Apply (Auto)
-                  </button>
-                  {jobIsApplied(jobDetails) ? (
-                    <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-bold text-xs">
-                      <CheckCircle2 size={14} />
-                      Already applied
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => handleMarkApplied(Number(jobDetails.id), { keepModalOpen: true })}
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all"
-                    >
-                      Mark Applied
-                    </button>
-                  )}
-                </div>
+                  <ExternalLink size={12} />
+                  Open Posting
+                </a>
               )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {jobIsApplied(jobDetails) && (
+                <AntdTag color="success" className="text-[10px] font-bold uppercase">
+                  {String(jobDetails.application_status || 'APPLIED')}
+                  {jobDetails.applied_at ? ` · ${formatRelativeTime(jobDetails.applied_at)}` : ''}
+                </AntdTag>
+              )}
+              {jobDetails?.posted_at && (
+                <AntdTag color="default" className="text-[10px]">
+                  Posted {formatRelativeTime(jobDetails.posted_at)}
+                </AntdTag>
+              )}
+            </div>
+          </div>
+        }
+        footer={
+          !jobDetailsLoading && !jobDetailsError && jobDetails ? (
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <AntdButton
+                onClick={() => {
+                  setJobDetailsOpen(false);
+                  openInStudio({
+                    jobId: Number(jobDetails.id),
+                    company: jobDetails.company,
+                    title: jobDetails.title,
+                    score: jobDetails.score,
+                    ats_content_score: jobDetails.ats_content_score ?? null,
+                    jd_alignment_score: jobDetails.jd_alignment_score ?? null,
+                    has_resume_html: Boolean(jobDetails.has_resume_html),
+                    has_resume_pdf: Boolean(jobDetails.has_resume_pdf),
+                  });
+                }}
+              >
+                Open in Studio
+              </AntdButton>
+              <AntdButton
+                disabled={jobIsApplied(jobDetails)}
+                onClick={() => {
+                  if (jobIsApplied(jobDetails)) return;
+                  setJobDetailsOpen(false);
+                  setActiveTab('terminal');
+                  void requestTailor(jobDetails.id);
+                }}
+              >
+                Tailor
+              </AntdButton>
+              <AntdButton
+                disabled={jobIsApplied(jobDetails)}
+                onClick={() => {
+                  if (jobIsApplied(jobDetails)) return;
+                  setJobDetailsOpen(false);
+                  setActiveTab('terminal');
+                  runCommand(`apply ${jobDetails.id} --deep`);
+                }}
+              >
+                Apply (Auto)
+              </AntdButton>
+              {!jobIsApplied(jobDetails) && (
+                <AntdButton
+                  type="primary"
+                  onClick={() => handleMarkApplied(Number(jobDetails.id), { keepModalOpen: true })}
+                >
+                  Mark Applied
+                </AntdButton>
+              )}
+            </div>
+          ) : null
+        }
+      >
+        <div className="py-2 max-h-[60vh] overflow-y-auto">
+          {jobDetailsLoading && (
+            <div className="text-xs font-medium text-zinc-500 py-6 text-center">Loading job description…</div>
+          )}
+          {jobDetailsError && (
+            <div className="text-xs font-bold text-red-600 py-4">Error: {jobDetailsError}</div>
+          )}
+          {!jobDetailsLoading && !jobDetailsError && (
+            <div>
+              <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest mb-2">
+                Job Description
+              </div>
+              <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-zinc-800 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                {formatJdForDisplay(jobDetails?.jd_text)}
+              </pre>
+            </div>
+          )}
+        </div>
+      </AntdModal>
 
       {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteConfirmOpen && deleteTarget && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[95] flex items-center justify-center p-4 sm:p-6"
-            onClick={() => !deleteLoading && setDeleteConfirmOpen(false)}
+      <AntdModal
+        open={deleteConfirmOpen && Boolean(deleteTarget)}
+        onCancel={() => !deleteLoading && setDeleteConfirmOpen(false)}
+        title="Delete Job?"
+        centered
+        width={440}
+        footer={[
+          <AntdButton
+            key="cancel"
+            disabled={deleteLoading}
+            onClick={() => setDeleteConfirmOpen(false)}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-md bg-white rounded-3xl border border-rose-200 shadow-2xl overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="p-6 bg-gradient-to-r from-rose-50 to-white border-b border-rose-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-rose-100 rounded-2xl flex items-center justify-center">
-                    <AlertTriangle size={24} className="text-rose-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-[#1C1C1E] text-lg">Delete Job?</h3>
-                    <p className="text-xs text-[#6B6B6B]">This action cannot be undone</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-6">
-                <p className="text-sm text-[#6B6B6B] mb-4">
-                  You are about to delete:
-                </p>
-                <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
-                  <div className="font-bold text-[#1C1C1E] mb-1">{deleteTarget.company}</div>
-                  <div className="text-xs text-[#6B6B6B]">{deleteTarget.title}</div>
-                </div>
-                <p className="text-xs text-[#9CA3AF] mt-4">
-                  This deletes the job record (and application row, if present) plus any stored resumes, cover letters, and job description for this posting.
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="p-4 border-t border-[#E5E5E0] flex gap-3">
-                <button
-                  onClick={() => setDeleteConfirmOpen(false)}
-                  disabled={deleteLoading}
-                  className="flex-1 px-4 py-3 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] font-bold text-sm hover:bg-[#F5F5F0] transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteJob}
-                  disabled={deleteLoading}
-                  className="flex-1 px-4 py-3 rounded-xl bg-rose-600 text-white font-bold text-sm hover:bg-rose-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {deleteLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Deleting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={16} />
-                      <span>Delete</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+            Cancel
+          </AntdButton>,
+          <AntdButton
+            key="delete"
+            danger
+            type="primary"
+            loading={deleteLoading}
+            onClick={handleDeleteJob}
+          >
+            Delete
+          </AntdButton>,
+        ]}
+      >
+        {deleteTarget && (
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-zinc-600 m-0">You are about to delete:</p>
+            <div className="bg-zinc-50 rounded-xl p-3 border border-zinc-200">
+              <div className="font-bold text-xs text-zinc-900">{deleteTarget.company}</div>
+              <div className="text-[11px] text-zinc-500">{deleteTarget.title}</div>
+            </div>
+            <p className="text-[11px] text-zinc-400 m-0 leading-normal">
+              This deletes the job record, application rows, and any stored tailored assets.
+            </p>
+          </div>
         )}
-      </AnimatePresence>
+      </AntdModal>
 
       {/* Clear entire pipeline (bulk delete) */}
-      <AnimatePresence>
-        {clearPipelineOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[95] flex items-center justify-center p-4 sm:p-6"
-            onClick={() => !clearPipelineLoading && setClearPipelineOpen(false)}
+      <AntdModal
+        open={clearPipelineOpen}
+        onCancel={() => !clearPipelineLoading && setClearPipelineOpen(false)}
+        title="Clear Job Pipeline"
+        centered
+        width={460}
+        footer={[
+          <AntdButton
+            key="cancel"
+            disabled={clearPipelineLoading}
+            onClick={() => setClearPipelineOpen(false)}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-md bg-white rounded-3xl border border-rose-200 shadow-2xl overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6 bg-gradient-to-r from-rose-50 to-white border-b border-rose-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-rose-100 rounded-2xl flex items-center justify-center">
-                    <Trash2 size={22} className="text-rose-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-[#1C1C1E] text-lg">Clear pipeline</h3>
-                    <p className="text-xs text-[#6B6B6B]">One request — removes jobs from the database</p>
-                  </div>
+            Cancel
+          </AntdButton>,
+          <AntdButton
+            key="clear"
+            danger
+            type="primary"
+            loading={clearPipelineLoading}
+            onClick={handleClearPipeline}
+          >
+            Clear Pipeline
+          </AntdButton>,
+        ]}
+      >
+        <div className="space-y-3 py-2">
+          <p className="text-xs text-zinc-600 m-0">
+            Choose what to remove. Application-tracked jobs will never be deleted.
+          </p>
+          {pipelineFilterActive ? (
+            <div className="space-y-2 text-xs">
+              <label className="flex items-start gap-2 cursor-pointer p-2.5 rounded-lg border border-zinc-200 hover:bg-zinc-50">
+                <input
+                  type="radio"
+                  name="clear-pipeline-scope"
+                  className="mt-0.5"
+                  checked={clearPipelineScope === 'visible'}
+                  onChange={() => setClearPipelineScope('visible')}
+                />
+                <div>
+                  <span className="font-bold text-zinc-900">Visible rows only</span>
+                  <span className="block text-[11px] text-zinc-500">
+                    Delete {pipelineFiltered} job{pipelineFiltered === 1 ? '' : 's'} matching search.
+                  </span>
                 </div>
-              </div>
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-[#6B6B6B]">
-                  Choose what to remove. Application-tracked jobs are never included.
-                </p>
-                {pipelineFilterActive ? (
-                  <div className="space-y-3">
-                    <label className="flex items-start gap-3 cursor-pointer rounded-2xl border border-[#E5E5E0] p-4 hover:bg-[#FAFAF8] has-[:checked]:border-rose-300 has-[:checked]:bg-rose-50/40">
-                      <input
-                        type="radio"
-                        name="clear-pipeline-scope"
-                        className="mt-1"
-                        checked={clearPipelineScope === 'visible'}
-                        onChange={() => setClearPipelineScope('visible')}
-                      />
-                      <span>
-                        <span className="font-bold text-[#1C1C1E]">Visible rows only</span>
-                        <span className="block text-xs text-[#6B6B6B] mt-1">
-                          Delete {pipelineFiltered} job{pipelineFiltered === 1 ? '' : 's'} matching your search ({pipelineTotal} total in pipeline).
-                        </span>
-                      </span>
-                    </label>
-                    <label className="flex items-start gap-3 cursor-pointer rounded-2xl border border-[#E5E5E0] p-4 hover:bg-[#FAFAF8] has-[:checked]:border-rose-300 has-[:checked]:bg-rose-50/40">
-                      <input
-                        type="radio"
-                        name="clear-pipeline-scope"
-                        className="mt-1"
-                        checked={clearPipelineScope === 'all'}
-                        onChange={() => setClearPipelineScope('all')}
-                      />
-                      <span>
-                        <span className="font-bold text-[#1C1C1E]">Entire pipeline</span>
-                        <span className="block text-xs text-[#6B6B6B] mt-1">
-                          Delete all {pipelineTotal} job{pipelineTotal === 1 ? '' : 's'} (ignores search).
-                        </span>
-                      </span>
-                    </label>
-                  </div>
-                ) : (
-                  <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0] text-sm text-[#57534e]">
-                    This will delete <strong className="text-[#1C1C1E]">{pipelineTotal}</strong> pipeline job
-                    {pipelineTotal === 1 ? '' : 's'} and any stored JDs / tailored assets for those rows.
-                  </div>
-                )}
-              </div>
-              <div className="p-4 border-t border-[#E5E5E0] flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setClearPipelineOpen(false)}
-                  disabled={clearPipelineLoading}
-                  className="flex-1 px-4 py-3 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] font-bold text-sm hover:bg-[#F5F5F0] transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearPipeline}
-                  disabled={
-                    clearPipelineLoading ||
-                    (clearPipelineScope === 'visible' && pipelineFiltered === 0) ||
-                    (clearPipelineScope === 'all' && pipelineTotal === 0)
-                  }
-                  className="flex-1 px-4 py-3 rounded-xl bg-rose-600 text-white font-bold text-sm hover:bg-rose-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {clearPipelineLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Deleting…</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={16} />
-                      <span>Delete</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer p-2.5 rounded-lg border border-zinc-200 hover:bg-zinc-50">
+                <input
+                  type="radio"
+                  name="clear-pipeline-scope"
+                  className="mt-0.5"
+                  checked={clearPipelineScope === 'all'}
+                  onChange={() => setClearPipelineScope('all')}
+                />
+                <div>
+                  <span className="font-bold text-zinc-900">Entire pipeline</span>
+                  <span className="block text-[11px] text-zinc-500">
+                    Delete all {pipelineTotal} job{pipelineTotal === 1 ? '' : 's'} in pipeline.
+                  </span>
+                </div>
+              </label>
+            </div>
+          ) : (
+            <div className="bg-zinc-50 rounded-xl p-3 border border-zinc-200 text-xs text-zinc-600">
+              This will remove <strong className="text-zinc-900">{pipelineTotal}</strong> pipeline jobs and their cached descriptions.
+            </div>
+          )}
+        </div>
+      </AntdModal>
 
       <OutreachDraftModal target={outreachTarget} onClose={() => setOutreachTarget(null)} />
       <EngagementIntelModal

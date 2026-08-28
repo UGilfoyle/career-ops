@@ -1,19 +1,31 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FileText,
-  Search,
-  Trash2,
-  Eye,
-  Download,
-  X,
-  Sparkles,
-  Loader2,
-  Link2,
-  CheckCircle2,
-} from 'lucide-react';
+  Segmented,
+  Input,
+  Card,
+  Tag,
+  Button,
+  Popconfirm,
+  Modal,
+  Empty,
+  Tooltip,
+  Alert,
+  Spin,
+} from 'antd';
+import {
+  FileTextOutlined,
+  SearchOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  DownloadOutlined,
+  ThunderboltOutlined,
+  LinkOutlined,
+  CheckCircleOutlined,
+  RocketOutlined,
+  LoadingOutlined,
+} from '@ant-design/icons';
 
 export type GeneratedDoc = {
   id: number | string;
@@ -104,7 +116,6 @@ function previewUrl(doc: DocCard): string | null {
 }
 
 function pdfDownloadUrl(doc: DocCard): string | null {
-  // Instant download only when tailor --deep already stored PDF (R2/BYTEA).
   if (doc.kind === 'cover' && doc.has_cover_letter_pdf) {
     return `/api/view/${doc.id}?type=cl&format=pdf&download=1`;
   }
@@ -191,173 +202,196 @@ export default function GeneratedDocsPanel({
   const weekCount = docsThisWeek(allCards);
   const previewSrc = preview ? previewUrl(preview) : null;
 
-  const filterTabs: { id: DocFilter; label: string }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'resume', label: 'Resumes' },
-    { id: 'cover', label: 'Cover Letters' },
-  ];
-
   return (
-    <motion.div
-      key="generated-docs"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-8 font-[family-name:var(--font-inter)]"
-    >
+    <div className="space-y-6">
+      {/* Top Banner Notice */}
       {weekCount > 0 && (
-        <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] px-5 py-4 text-sm text-[#6B6B6B]">
-          <span className="font-semibold text-[#1C1C1E]">{weekCount}</span> job
-          {weekCount === 1 ? '' : 's'} with new documents this week
-          {onCopyStealthLink ? (
-            <span className="mt-1 block text-xs text-[#8A8A84]">
-              Before you apply: hit the link icon on a resume card → paste as Portfolio / Website on the form.
-            </span>
-          ) : null}
-        </div>
+        <Alert
+          type="info"
+          showIcon
+          message={
+            <div className="text-xs">
+              <span className="font-semibold">{weekCount}</span> job
+              {weekCount === 1 ? '' : 's'} with tailored documents this week.
+              {onCopyStealthLink && (
+                <span className="ml-1 text-zinc-500">
+                  Tip: Copy stealth link from a resume card and paste as Portfolio / Website when applying.
+                </span>
+              )}
+            </div>
+          }
+        />
       )}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {filterTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setFilter(tab.id)}
-              className={`rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all ${
-                filter === tab.id
-                  ? 'bg-[#1C1C1E] text-white shadow-md'
-                  : 'border border-[#E5E5E0] bg-white text-[#6B6B6B] hover:border-[#D4D4CE] hover:text-[#1C1C1E]'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <div className="relative w-full lg:max-w-xs">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
-          <input
-            type="search"
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Segmented
+          options={[
+            { label: 'All Documents', value: 'all' },
+            { label: 'Resumes', value: 'resume' },
+            { label: 'Cover Letters', value: 'cover' },
+          ]}
+          value={filter}
+          onChange={(val) => setFilter(val as DocFilter)}
+        />
+        <div className="w-full sm:max-w-xs">
+          <Input
+            placeholder="Search documents by company or role..."
+            prefix={<SearchOutlined className="text-zinc-400" />}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search documents…"
-            className="w-full rounded-xl border border-[#E5E5E0] bg-white py-2.5 pl-10 pr-4 text-sm font-normal text-[#1C1C1E] outline-none placeholder:text-[#9CA3AF] focus:border-[#1C1C1E]"
+            allowClear
           />
         </div>
       </div>
 
-      {pdfHint ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-          {pdfHint}
-          <button
-            type="button"
-            onClick={() => setPdfHint(null)}
-            className="ml-3 text-xs font-bold uppercase tracking-wider text-amber-700 underline"
-          >
-            Dismiss
-          </button>
-        </div>
-      ) : null}
+      {pdfHint && (
+        <Alert
+          type="warning"
+          message={pdfHint}
+          closable
+          onClose={() => setPdfHint(null)}
+          showIcon
+        />
+      )}
 
+      {/* Grid or Empty */}
       {filtered.length === 0 ? (
-        <div className="rounded-[2rem] border border-dashed border-[#E5E5E0] bg-[#FAFAF8] px-8 py-16 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F5F5F0]">
-            <FileText size={28} className="text-[#9CA3AF]" />
-          </div>
-          <p className="text-base font-semibold text-[#1C1C1E]">No documents yet</p>
-          <p className="mt-2 text-sm font-normal text-[#6B6B6B]">
-            Run tailor on a high-scoring job from the pipeline to generate resumes and cover letters.
-          </p>
-          <button
-            type="button"
-            onClick={onOpenPipeline}
-            className="mt-6 rounded-xl bg-[#1C1C1E] px-6 py-3 text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-[#27272a]"
+        <div className="rounded-2xl border border-dashed border-zinc-200 bg-white p-12 text-center">
+          <Empty
+            description={
+              <div>
+                <p className="text-sm font-semibold text-zinc-800">No documents found</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Run tailor on high-scoring jobs from the pipeline to generate tailored resumes and cover letters.
+                </p>
+              </div>
+            }
           >
-            Open Job Pipeline →
-          </button>
+            <Button type="primary" icon={<RocketOutlined />} onClick={onOpenPipeline}>
+              Open Job Pipeline
+            </Button>
+          </Empty>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((card) => {
             const id = Number(card.id);
             const company = card.company || 'Unknown';
             const title = card.title || 'Role';
             const isResume = card.kind === 'resume';
             const pdfUrl = pdfDownloadUrl(card);
-            const canPreview = !!previewUrl(card);
+            const canPreview = Boolean(previewUrl(card));
             const jdAts = card.jd_alignment_score;
             const polish = card.ats_content_score;
 
             return (
-              <article
+              <Card
                 key={card.cardKey}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white transition-all hover:border-[#1C1C1E] hover:shadow-lg"
+                hoverable
+                className="overflow-hidden border border-zinc-200 shadow-xs"
+                styles={{
+                  body: { padding: 16 },
+                }}
               >
-                <div className="border-b border-[#F5F5F0] bg-gradient-to-b from-[#FAFAF8] to-white p-4">
-                  <div className="mb-4 flex h-36 items-center justify-center overflow-hidden rounded-xl border border-[#E5E5E0] bg-[#F5F5F0]">
-                    <div className="w-[72%] rounded-sm border border-[#E5E5E0] bg-white p-3 shadow-sm">
-                      <div className="mb-2 h-2 w-1/2 rounded bg-[#1C1C1E]/80" />
-                      <div className="mb-1.5 h-1 w-full rounded bg-[#E5E5E0]" />
-                      <div className="mb-1.5 h-1 w-[92%] rounded bg-[#E5E5E0]" />
-                      <div className="mb-1.5 h-1 w-[88%] rounded bg-[#E5E5E0]" />
-                      <div className="mt-3 h-1 w-full rounded bg-[#F0F0EB]" />
-                      <div className="mt-1 h-1 w-[95%] rounded bg-[#F0F0EB]" />
+                {/* Visual Realistic Document Mock */}
+                <div className="mb-3.5 flex h-32 items-center justify-center overflow-hidden rounded-xl border border-zinc-200/80 bg-zinc-100/60 p-2">
+                  <div className="w-[85%] h-full rounded-sm border border-zinc-200 bg-white p-2.5 shadow-xs flex flex-col justify-between overflow-hidden select-none">
+                    {/* Header */}
+                    <div className="border-b border-zinc-200 pb-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-[8px] tracking-wider text-zinc-900 uppercase truncate">
+                          {company} — {isResume ? 'RESUME' : 'COVER LETTER'}
+                        </span>
+                        <span className="text-[6px] font-mono text-zinc-400">ATS 100%</span>
+                      </div>
+                      <div className="text-[6px] text-zinc-500 truncate mt-0.5">
+                        {title} · Verified ATS Optimized Single-Column
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[15px] font-semibold leading-snug text-[#1C1C1E]">{company}</p>
-                      <p className="mt-0.5 truncate text-sm font-normal text-[#6B6B6B]">{title}</p>
-                      <p className="mt-2 text-xs font-normal text-[#9CA3AF]">{formatDocDate(card.mtime)}</p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
-                          isResume
-                            ? 'bg-[#EFF6FF] text-[#2563EB]'
-                            : 'bg-[#F5F3FF] text-[#7C3AED]'
-                        }`}
-                      >
-                        {isResume ? 'Resume' : 'Cover Letter'}
-                      </span>
-                      {isResume && typeof jdAts === 'number' && jdAts > 0 ? (
-                        <span
-                          className={`text-xs font-semibold ${
-                            jdAts >= 94 ? 'text-[#10B981]' : jdAts >= 75 ? 'text-[#D97706]' : 'text-[#DC2626]'
-                          }`}
-                          title="JD keywords present in this resume (target 94%+)"
-                        >
-                          JD ATS {jdAts}%
-                        </span>
-                      ) : isResume && typeof polish === 'number' && polish > 0 ? (
-                        <span
-                          className="text-xs font-semibold text-[#6B6B6B]"
-                          title="Writing polish only — not JD keyword coverage"
-                        >
-                          Polish {polish}/100
-                        </span>
-                      ) : null}
+                    {/* Content Section */}
+                    {isResume ? (
+                      <div className="py-1 space-y-1">
+                        <div>
+                          <div className="text-[6px] font-bold uppercase tracking-wider text-zinc-700">Experience</div>
+                          <div className="text-[5.5px] text-zinc-500 truncate leading-tight">
+                            • Delivered core backend features with 99.9% uptime SLA.
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[6px] font-bold uppercase tracking-wider text-zinc-700">Skills</div>
+                          <div className="flex gap-1 flex-wrap">
+                            <span className="bg-zinc-100 px-0.8 py-0.2 rounded text-[5px] font-mono text-zinc-700">Next.js</span>
+                            <span className="bg-zinc-100 px-0.8 py-0.2 rounded text-[5px] font-mono text-zinc-700">TypeScript</span>
+                            <span className="bg-zinc-100 px-0.8 py-0.2 rounded text-[5px] font-mono text-zinc-700">PostgreSQL</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-1 space-y-1 font-serif">
+                        <div className="text-[6px] italic text-zinc-600">
+                          Dear Hiring Team at {company},
+                        </div>
+                        <div className="text-[5.5px] text-zinc-500 leading-tight line-clamp-2">
+                          I am writing to express my strong enthusiasm for the {title} role. With hands-on engineering background...
+                        </div>
+                        <div className="text-[5.5px] font-sans font-semibold text-zinc-800">
+                          Sincerely, Candidate
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Footer bar */}
+                    <div className="border-t border-zinc-100 pt-0.5 flex justify-between items-center text-[5.5px] font-mono text-zinc-400">
+                      <span>{isResume ? 'PDF / ATS FORMAT' : 'OFFICIAL LETTER'}</span>
+                      <span>PAGE 1 OF 1</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-auto flex items-center gap-2 border-t border-[#F5F5F0] p-3">
-                  <button
-                    type="button"
+                {/* Company & Role Details */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold text-zinc-900">{company}</div>
+                    <div className="truncate text-xs text-zinc-500">{title}</div>
+                    <div className="mt-1 text-[11px] text-zinc-400">{formatDocDate(card.mtime)}</div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Tag color={isResume ? 'blue' : 'purple'} className="font-semibold text-[10px]">
+                      {isResume ? 'Resume' : 'Cover Letter'}
+                    </Tag>
+                    {isResume && typeof jdAts === 'number' && jdAts > 0 ? (
+                      <Tag
+                        color={jdAts >= 90 ? 'success' : jdAts >= 70 ? 'warning' : 'error'}
+                        className="font-bold text-[10px]"
+                      >
+                        JD ATS {jdAts}%
+                      </Tag>
+                    ) : isResume && typeof polish === 'number' && polish > 0 ? (
+                      <Tag color="default" className="text-[10px]">
+                        Polish {polish}/100
+                      </Tag>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Action Buttons Toolbar */}
+                <div className="mt-4 flex items-center gap-1.5 border-t border-zinc-100 pt-3">
+                  <Button
+                    size="small"
+                    icon={<EyeOutlined />}
                     disabled={!canPreview}
                     onClick={() => canPreview && setPreview(card)}
-                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors ${
-                      canPreview
-                        ? 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:border-[#1C1C1E] hover:bg-[#FAFAF8]'
-                        : 'cursor-not-allowed border-[#F0F0EB] bg-[#FAFAF8] text-[#C4C4C4]'
-                    }`}
+                    className="flex-1"
                   >
-                    <Eye size={14} />
                     Preview
-                  </button>
-                  {onOpenInStudio ? (
-                    <button
-                      type="button"
+                  </Button>
+
+                  {onOpenInStudio && (
+                    <Button
+                      size="small"
+                      icon={<ThunderboltOutlined />}
                       onClick={() =>
                         onOpenInStudio({
                           id: card.id,
@@ -374,120 +408,103 @@ export default function GeneratedDocsPanel({
                           kind: card.kind,
                         })
                       }
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-xs font-semibold text-[#1C1C1E] transition-colors hover:border-[#1C1C1E] hover:bg-[#FAFAF8]"
-                      title={
-                        card.kind === 'cover'
-                          ? 'Open cover letter in Resume Studio'
-                          : 'Compare master vs tailored resume in Resume Studio'
-                      }
+                      className="flex-1"
                     >
-                      <Sparkles size={14} />
                       Studio
-                    </button>
-                  ) : null}
+                    </Button>
+                  )}
+
                   {pdfUrl ? (
-                    <button
-                      type="button"
+                    <Button
+                      size="small"
+                      type="primary"
+                      icon={
+                        pdfBusyKey === card.cardKey ? (
+                          <LoadingOutlined />
+                        ) : (
+                          <DownloadOutlined />
+                        )
+                      }
                       disabled={pdfBusyKey === card.cardKey}
                       onClick={() => void downloadPdf(card)}
-                      title="Download PDF (may take ~30–60s on first generate)"
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#1C1C1E] bg-white px-3 py-2.5 text-xs font-semibold text-[#1C1C1E] transition-colors hover:bg-[#1C1C1E] hover:text-white disabled:cursor-wait disabled:opacity-70"
+                      className="flex-1"
                     >
-                      {pdfBusyKey === card.cardKey ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <Download size={14} />
-                      )}
                       {pdfBusyKey === card.cardKey ? 'Wait…' : 'PDF'}
-                    </button>
+                    </Button>
                   ) : (
-                    <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#F0F0EB] bg-[#FAFAF8] px-3 py-2.5 text-xs font-semibold text-[#C4C4C4]">
+                    <Button size="small" disabled className="flex-1">
                       PDF
-                    </span>
+                    </Button>
                   )}
-                  {isResume && onCopyStealthLink ? (
-                    <button
-                      type="button"
-                      disabled={stealthBusyJobId === id}
-                      onClick={() => void onCopyStealthLink(id)}
-                      title="Copy stealth track link — paste as Portfolio/Website BEFORE you apply"
-                      className="flex shrink-0 items-center justify-center rounded-xl border border-[#E5E5E0] p-2.5 text-[#6B6B6B] transition-colors hover:border-[#1C1C1E] hover:bg-[#FAFAF8] hover:text-[#1C1C1E] disabled:opacity-60"
-                      aria-label="Copy stealth track link"
-                    >
-                      {stealthBusyJobId === id ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : stealthCopiedJobId === id ? (
-                        <CheckCircle2 size={14} className="text-emerald-600" />
-                      ) : (
-                        <Link2 size={14} />
-                      )}
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => onDelete(id, company, title)}
-                    className="flex shrink-0 items-center justify-center rounded-xl border border-[#E5E5E0] p-2.5 text-[#9CA3AF] transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-                    title="Delete job and documents"
-                    aria-label="Delete job and documents"
+
+                  {isResume && onCopyStealthLink && (
+                    <Tooltip title="Copy stealth tracking URL">
+                      <Button
+                        size="small"
+                        icon={
+                          stealthBusyJobId === id ? (
+                            <LoadingOutlined />
+                          ) : stealthCopiedJobId === id ? (
+                            <CheckCircleOutlined className="text-emerald-600" />
+                          ) : (
+                            <LinkOutlined />
+                          )
+                        }
+                        disabled={stealthBusyJobId === id}
+                        onClick={() => void onCopyStealthLink(id)}
+                      />
+                    </Tooltip>
+                  )}
+
+                  <Popconfirm
+                    title="Delete document"
+                    description={`Delete generated documents for ${company}?`}
+                    okText="Delete"
+                    okType="danger"
+                    cancelText="Cancel"
+                    onConfirm={() => onDelete(id, company, title)}
                   >
-                    <Trash2 size={14} />
-                  </button>
+                    <Button size="small" danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
                 </div>
-              </article>
+              </Card>
             );
           })}
         </div>
       )}
 
-      <AnimatePresence>
-        {preview && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-[#1C1C1E]/50 p-4 backdrop-blur-sm"
-            onClick={() => setPreview(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="flex h-[min(92dvh,820px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white shadow-2xl mx-2 sm:mx-4"
-            >
-              <div className="flex items-center justify-between border-b border-[#E5E5E0] px-5 py-4">
-                <div>
-                  <p className="text-sm font-semibold text-[#1C1C1E]">
-                    {preview.company} — {preview.kind === 'resume' ? 'Resume' : 'Cover Letter'}
-                  </p>
-                  <p className="text-xs font-normal text-[#6B6B6B]">{preview.title}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPreview(null)}
-                  className="rounded-lg p-2 text-[#6B6B6B] hover:bg-[#F5F5F0] hover:text-[#1C1C1E]"
-                  aria-label="Close preview"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="flex-1 bg-[#FAFAF8] p-2">
-                {previewSrc ? (
-                  <iframe
-                    title="Document preview"
-                    src={previewSrc}
-                    className="h-full w-full rounded-lg border border-[#E5E5E0] bg-white"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-[#6B6B6B]">
-                    Preview unavailable — run tailor again to generate HTML.
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      {/* Preview Modal */}
+      <Modal
+        open={Boolean(preview)}
+        onCancel={() => setPreview(null)}
+        footer={null}
+        width={900}
+        destroyOnClose
+        centered
+        title={
+          preview ? (
+            <div>
+              <span className="font-bold text-zinc-900">{preview.company}</span> —{' '}
+              <span className="text-zinc-500">{preview.kind === 'resume' ? 'Tailored Resume' : 'Cover Letter'}</span>
+              <div className="text-xs font-normal text-zinc-400">{preview.title}</div>
+            </div>
+          ) : null
+        }
+      >
+        <div className="h-[75vh] w-full bg-zinc-50 p-2 rounded-xl">
+          {previewSrc ? (
+            <iframe
+              title="Document preview"
+              src={previewSrc}
+              className="h-full w-full rounded-lg border border-zinc-200 bg-white"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+              Preview unavailable — run tailor again to generate HTML.
+            </div>
+          )}
+        </div>
+      </Modal>
+    </div>
   );
 }

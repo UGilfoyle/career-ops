@@ -2,33 +2,38 @@
 
 import { useMemo, useState } from 'react';
 import {
-  ArrowRight,
-  ArrowUpDown,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  ExternalLink,
-  Eye,
-  Filter,
-  Flame,
-  Globe,
-  Layers,
-  LayoutGrid,
-  Mail,
-  Play,
-  Plus,
-  Search,
-  Sparkles,
-  Table,
-  Target,
-  TrendingUp,
-  UserCheck,
-  X,
-  Zap,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { JobAvatar, CompanyAvatar } from './JobAvatar';
-import { MatchProgressRing } from './resume-studio/MatchProgressRing';
+  Segmented,
+  Select,
+  Button,
+  Input,
+  Card,
+  Tag,
+  Badge,
+  Progress,
+  Table as AntdTable,
+  Drawer,
+  Space,
+  Statistic,
+  Tooltip,
+  Popconfirm,
+} from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import {
+  SearchOutlined,
+  ThunderboltOutlined,
+  AppstoreOutlined,
+  TableOutlined,
+  CheckCircleOutlined,
+  ExportOutlined,
+  DeleteOutlined,
+  StarOutlined,
+  StarFilled,
+  GlobalOutlined,
+  FireOutlined,
+  BulbOutlined,
+  RocketOutlined,
+} from '@ant-design/icons';
+import { JobAvatar } from './JobAvatar';
 
 export type PipelineJob = {
   pipeline_id?: number | string;
@@ -120,7 +125,8 @@ export function PipelineStudioView({
     }
   });
 
-  const selectedCompany = controlledSelectedCompany !== undefined ? controlledSelectedCompany : internalSelectedCompany;
+  const selectedCompany =
+    controlledSelectedCompany !== undefined ? controlledSelectedCompany : internalSelectedCompany;
 
   const toggleFollow = (company: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -179,20 +185,23 @@ export function PipelineStudioView({
   // Filtered and Sorted Job Pipeline
   const filteredJobs = useMemo(() => {
     const filtered = pipeline.filter((job) => {
-      // Company filter
-      if (selectedCompany && (job.company?.trim().toLowerCase() !== selectedCompany.toLowerCase())) {
+      if (
+        selectedCompany &&
+        job.company?.trim().toLowerCase() !== selectedCompany.toLowerCase()
+      ) {
         return false;
       }
 
-      // Tab filter
       const score = parseNumericScore(job.score ?? job.score_raw);
-      const isApplied = Boolean(job.is_applied || (typeof job.status === 'string' && job.status.toLowerCase().includes('applied')));
+      const isApplied = Boolean(
+        job.is_applied ||
+          (typeof job.status === 'string' && job.status.toLowerCase().includes('applied'))
+      );
 
       if (filterTab === 'hot' && (score < 7.0 || isApplied)) return false;
       if (filterTab === 'gcc' && (!job.is_gcc || isApplied)) return false;
       if (filterTab === 'applied' && !isApplied) return false;
 
-      // Text search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const comp = (job.company || '').toLowerCase();
@@ -219,7 +228,7 @@ export function PipelineStudioView({
 
   // Stats calculation
   const stats = useMemo(() => {
-    let total = pipeline.length;
+    const total = pipeline.length;
     let applied = 0;
     let hot = 0;
     let gcc = 0;
@@ -234,7 +243,10 @@ export function PipelineStudioView({
       }
       if (score >= 7.0) hot += 1;
       if (j.is_gcc) gcc += 1;
-      if (j.is_applied || (typeof j.status === 'string' && j.status.toLowerCase().includes('applied'))) {
+      if (
+        j.is_applied ||
+        (typeof j.status === 'string' && j.status.toLowerCase().includes('applied'))
+      ) {
         applied += 1;
       }
     });
@@ -243,228 +255,297 @@ export function PipelineStudioView({
     return { total, applied, hot, gcc, avgScore, open: total - applied };
   }, [pipeline]);
 
+  // Ant Design Table Columns for Compact Table Mode
+  const tableColumns: ColumnsType<PipelineJob> = [
+    {
+      title: 'Company & Role',
+      key: 'company_role',
+      render: (_, job) => (
+        <div className="flex items-center gap-3">
+          <JobAvatar company={job.company} size="sm" />
+          <div className="min-w-0">
+            <div className="font-bold text-zinc-900 truncate max-w-[240px] text-xs">
+              {job.title}
+            </div>
+            <div className="text-[11px] text-zinc-500 truncate">{job.company}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Score',
+      key: 'score',
+      width: 100,
+      sorter: (a, b) =>
+        parseNumericScore(a.score ?? a.score_raw) - parseNumericScore(b.score ?? b.score_raw),
+      render: (_, job) => {
+        const s = parseNumericScore(job.score ?? job.score_raw);
+        return (
+          <Tag color={s >= 7.0 ? 'success' : s >= 5.0 ? 'warning' : 'default'} className="font-mono font-bold text-xs">
+            {s > 0 ? `${s.toFixed(1)}/10` : '—'}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: 'Type',
+      key: 'type',
+      width: 90,
+      render: (_, job) =>
+        job.is_gcc ? (
+          <Tag color="blue" className="text-[10px] font-bold">
+            GCC
+          </Tag>
+        ) : (
+          <span className="text-[11px] text-zinc-400">Direct</span>
+        ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      align: 'right',
+      width: 160,
+      render: (_, job, idx) => {
+        const jobId = Number(job.pipeline_id ?? job.id ?? idx);
+        const isApplied = Boolean(
+          job.is_applied ||
+            (typeof job.status === 'string' && job.status.toLowerCase().includes('applied'))
+        );
+        return (
+          <Space size="small" onClick={(e) => e.stopPropagation()}>
+            <Button
+              type="primary"
+              size="small"
+              icon={<ThunderboltOutlined />}
+              onClick={() => onTailor(jobId)}
+            >
+              Tailor
+            </Button>
+            <Button
+              size="small"
+              type={isApplied ? 'dashed' : 'default'}
+              icon={<CheckCircleOutlined className={isApplied ? 'text-emerald-600' : ''} />}
+              onClick={() => onMarkApplied(jobId, isApplied)}
+            >
+              {isApplied ? 'Applied' : 'Apply'}
+            </Button>
+          </Space>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* ── Studio Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E5E0] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-[#1C1C1E]">Pipeline Studio</h1>
-            <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 border border-emerald-300">
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900">Pipeline Studio</h1>
+            <Tag color="success" className="font-bold text-[10px] uppercase">
               Live Scanner
-            </span>
+            </Tag>
           </div>
-          <p className="text-xs text-[#6B6B6B] mt-1">
-            Discover active job board & GCC captive roles, score matches, and tailor tailored CVs.
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Discover active job board & GCC captive roles, score matches, and generate tailored CVs.
           </p>
         </div>
 
-        {/* Global Action Buttons & View Mode */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Density Switcher */}
-          <div className="flex items-center rounded-xl border border-[#E5E5E0] bg-[#F5F5F0] p-1">
-            <button
-              onClick={() => setViewDensity('cards')}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                viewDensity === 'cards' ? 'bg-white text-[#1C1C1E] shadow-2xs' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
-              }`}
-              title="Card Grid View"
-            >
-              <LayoutGrid size={15} />
-            </button>
-            <button
-              onClick={() => setViewDensity('table')}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                viewDensity === 'table' ? 'bg-white text-[#1C1C1E] shadow-2xs' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
-              }`}
-              title="Compact Data Table View"
-            >
-              <Table size={15} />
-            </button>
-          </div>
+        {/* Global Action Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Segmented
+            options={[
+              { value: 'cards', icon: <AppstoreOutlined /> },
+              { value: 'table', icon: <TableOutlined /> },
+            ]}
+            value={viewDensity}
+            onChange={(val) => setViewDensity(val as ViewDensity)}
+          />
 
-          {/* Sort Dropdown */}
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortField)}
-              className="appearance-none rounded-xl border border-[#E5E5E0] bg-white pl-3 pr-8 py-2 text-xs font-bold text-[#1C1C1E] outline-none hover:border-[#1C1C1E]/40 cursor-pointer shadow-2xs"
-            >
-              <option value="score">Sort: Highest Match</option>
-              <option value="date">Sort: Newest First</option>
-              <option value="company">Sort: Company (A-Z)</option>
-            </select>
-            <ArrowUpDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] pointer-events-none" />
-          </div>
+          <Select
+            value={sortBy}
+            onChange={(val) => setSortBy(val)}
+            options={[
+              { label: 'Sort: Highest Match', value: 'score' },
+              { label: 'Sort: Newest First', value: 'date' },
+              { label: 'Sort: Company (A-Z)', value: 'company' },
+            ]}
+            style={{ width: 170 }}
+          />
 
-          <button
-            type="button"
+          <Button
+            type="primary"
+            icon={<ThunderboltOutlined />}
             onClick={onScan}
-            className="flex items-center gap-1.5 rounded-xl bg-[#1C1C1E] px-4 py-2 text-xs font-bold text-white hover:bg-[#27272a] shadow-sm transition-all cursor-pointer"
           >
-            <Zap size={14} className="text-amber-300" />
-            Scan
-          </button>
+            Scan Portals
+          </Button>
 
-          {stats.total > 0 ? (
-            <button
-              type="button"
-              onClick={onClear}
-              className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+          {stats.total > 0 && (
+            <Popconfirm
+              title="Clear Pipeline"
+              description="Are you sure you want to clear all unscored/unapplied jobs?"
+              onConfirm={onClear}
+              okText="Clear"
+              cancelText="Cancel"
             >
-              Clear
-            </button>
-          ) : null}
+              <Button danger icon={<DeleteOutlined />}>
+                Clear
+              </Button>
+            </Popconfirm>
+          )}
         </div>
       </div>
 
       {/* ── 3-Column Studio Grid Layout ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* ── Column 1: Target Companies (3 cols on lg) ── */}
-        <div className="lg:col-span-3 rounded-2xl border border-[#E5E5E0] bg-white p-4 shadow-sm flex flex-col space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-sm font-bold text-[#1C1C1E]">Target Companies</h3>
-              <span className="text-[10px] font-bold text-[#9CA3AF] bg-[#F5F5F0] px-2 py-0.5 rounded-full font-mono">
-                {companiesList.length}
-              </span>
+        <Card
+          size="small"
+          className="lg:col-span-3 border-zinc-200 shadow-xs"
+          title={
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-zinc-900">Target Companies</span>
+                <Tag color="default" className="font-mono text-[10px]">
+                  {companiesList.length}
+                </Tag>
+              </div>
+              {selectedCompany && (
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => handleSelectCompany(null)}
+                  className="p-0 text-[10px] font-bold text-emerald-700 uppercase"
+                >
+                  Reset
+                </Button>
+              )}
             </div>
-            {selectedCompany ? (
-              <button
-                type="button"
-                onClick={() => handleSelectCompany(null)}
-                className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 hover:underline cursor-pointer"
-              >
-                Reset
-              </button>
-            ) : null}
-          </div>
-
-          {/* Search company */}
-          <div className="relative">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
-            <input
-              type="text"
+          }
+        >
+          <div className="space-y-3">
+            <Input
+              size="small"
+              placeholder="Filter companies…"
+              prefix={<SearchOutlined className="text-zinc-400" />}
               value={companySearch}
               onChange={(e) => setCompanySearch(e.target.value)}
-              placeholder="Filter companies…"
-              className="w-full rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] pl-7 pr-2.5 py-1.5 text-xs text-[#1C1C1E] outline-none focus:border-[#1C1C1E]"
+              allowClear
             />
-          </div>
 
-          {/* Companies List */}
-          <div className="max-h-[560px] overflow-y-auto space-y-2 pr-1">
-            {filteredCompanies.slice(0, 30).map((c) => {
-              const isSelected = selectedCompany === c.name;
-              return (
-                <div
-                  key={c.name}
-                  onClick={() => handleSelectCompany(isSelected ? null : c.name)}
-                  className={`group flex items-center justify-between gap-2.5 rounded-xl border p-2.5 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-[#1C1C1E] bg-[#FAFAF8] shadow-sm ring-1 ring-[#1C1C1E]/15'
-                      : 'border-[#E5E5E0] bg-white hover:border-[#1C1C1E]/40 hover:bg-[#FAFAF8]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <JobAvatar company={c.name} size="sm" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-[#1C1C1E] truncate group-hover:text-emerald-800 transition-colors">
-                        {c.name}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 font-mono">
-                          {c.count} role{c.count === 1 ? '' : 's'}
-                        </span>
-                        {c.isGcc ? (
-                          <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
-                            GCC
-                          </span>
-                        ) : null}
+            <div className="max-h-[540px] overflow-y-auto space-y-1.5 pr-0.5">
+              {filteredCompanies.slice(0, 30).map((c) => {
+                const isSelected = selectedCompany === c.name;
+                return (
+                  <div
+                    key={c.name}
+                    onClick={() => handleSelectCompany(isSelected ? null : c.name)}
+                    className={`flex items-center justify-between gap-2 rounded-xl border p-2 cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-zinc-900 bg-zinc-50 shadow-xs ring-1 ring-zinc-900/10'
+                        : 'border-zinc-100 bg-white hover:border-zinc-300 hover:bg-zinc-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <JobAvatar company={c.name} size="sm" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-zinc-900 truncate">{c.name}</div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Tag color="green" className="text-[9px] m-0 px-1 py-0 font-mono">
+                            {c.count} role{c.count === 1 ? '' : 's'}
+                          </Tag>
+                          {c.isGcc && (
+                            <Tag color="blue" className="text-[9px] m-0 px-1 py-0">
+                              GCC
+                            </Tag>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => toggleFollow(c.name, e)}
-                    className={`shrink-0 rounded-lg px-2 py-1 text-[9px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                      c.isFollowed
-                        ? 'bg-[#1C1C1E] text-white'
-                        : 'border border-[#E5E5E0] bg-white text-[#6B6B6B] hover:text-[#1C1C1E] hover:border-[#1C1C1E]'
-                    }`}
-                  >
-                    {c.isFollowed ? 'Following' : 'Follow'}
-                  </button>
-                </div>
-              );
-            })}
-            {filteredCompanies.length === 0 ? (
-              <p className="text-center py-6 text-xs text-[#9CA3AF]">No companies found</p>
-            ) : null}
+                    <Button
+                      size="small"
+                      type={c.isFollowed ? 'primary' : 'default'}
+                      icon={c.isFollowed ? <StarFilled /> : <StarOutlined />}
+                      onClick={(e) => toggleFollow(c.name, e)}
+                      className="text-[10px] h-6 px-2 shrink-0"
+                    >
+                      {c.isFollowed ? 'Saved' : 'Save'}
+                    </Button>
+                  </div>
+                );
+              })}
+              {filteredCompanies.length === 0 && (
+                <div className="text-center py-6 text-xs text-zinc-400">No companies found</div>
+              )}
+            </div>
           </div>
-        </div>
+        </Card>
 
         {/* ── Column 2: Live Pipeline (Cards or Table) (6 cols on lg) ── */}
-        <div className="lg:col-span-6 space-y-4">
-          {/* Filter Chips */}
-          <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
-            <div className="flex items-center gap-1.5">
-              {[
-                { id: 'all', label: 'All', count: stats.total },
-                { id: 'hot', label: '🔥 Hot Matches', count: stats.hot },
-                { id: 'gcc', label: '🌐 GCC Targets', count: stats.gcc },
-                { id: 'applied', label: '✓ Applied', count: stats.applied },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setFilterTab(tab.id as FilterTab)}
-                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                    filterTab === tab.id
-                      ? 'bg-[#1C1C1E] text-white shadow-sm'
-                      : 'border border-[#E5E5E0] bg-white text-[#6B6B6B] hover:text-[#1C1C1E] hover:border-[#1C1C1E]/40'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`rounded-full px-1.5 py-0.2 text-[9px] font-mono ${
-                      filterTab === tab.id ? 'bg-white/20 text-white' : 'bg-[#F5F5F0] text-[#9CA3AF]'
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
+        <div className="lg:col-span-6 space-y-3.5">
+          {/* Filter Chips & Text Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <Segmented
+              options={[
+                { label: `All (${stats.total})`, value: 'all' },
+                { label: `Hot (${stats.hot})`, value: 'hot' },
+                { label: `GCC (${stats.gcc})`, value: 'gcc' },
+                { label: `Applied (${stats.applied})`, value: 'applied' },
+              ]}
+              value={filterTab}
+              onChange={(val) => setFilterTab(val as FilterTab)}
+            />
 
-            {selectedCompany ? (
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg shrink-0">
-                {selectedCompany}
-              </span>
-            ) : null}
+            <div className="w-full sm:w-48">
+              <Input
+                size="small"
+                placeholder="Search jobs..."
+                prefix={<SearchOutlined className="text-zinc-400" />}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                allowClear
+              />
+            </div>
           </div>
+
+          {/* Selected company filter pill */}
+          {selectedCompany && (
+            <div className="flex items-center gap-2">
+              <Tag
+                closable
+                onClose={() => handleSelectCompany(null)}
+                color="success"
+                className="font-bold text-xs"
+              >
+                Filtered: {selectedCompany}
+              </Tag>
+            </div>
+          )}
 
           {/* View Mode: CARDS */}
           {viewDensity === 'cards' ? (
-            <div className="space-y-3 max-h-[720px] overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-[720px] overflow-y-auto pr-1">
               {filteredJobs.slice(0, 40).map((job, idx) => {
                 const jobId = Number(job.pipeline_id ?? job.id ?? idx);
                 const scoreNum = parseNumericScore(job.score ?? job.score_raw);
-                const isApplied = Boolean(job.is_applied || (typeof job.status === 'string' && job.status.toLowerCase().includes('applied')));
+                const isApplied = Boolean(
+                  job.is_applied ||
+                    (typeof job.status === 'string' && job.status.toLowerCase().includes('applied'))
+                );
                 const tags = extractTechTags(job.title, job.notes);
 
                 return (
-                  <motion.div
+                  <Card
                     key={jobId}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.3) }}
+                    size="small"
+                    hoverable
                     onClick={() => setInspectingJob(job)}
-                    className={`group rounded-2xl border p-4 transition-all hover:shadow-md cursor-pointer ${
+                    className={`border transition-all cursor-pointer ${
                       isApplied
-                        ? 'border-emerald-200/90 bg-[#F9FAF8] opacity-70 hover:opacity-100'
-                        : 'border-[#E5E5E0] bg-white hover:border-[#1C1C1E]/30'
+                        ? 'border-emerald-200 bg-zinc-50/70 opacity-80'
+                        : 'border-zinc-200 bg-white'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -479,399 +560,302 @@ export function PipelineStudioView({
                           size="md"
                         />
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-[#6B6B6B] uppercase tracking-wider">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                               {job.company || 'Company'}
                             </span>
                             {isApplied && (
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 border border-emerald-300 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                ✓ Applied (Inactive)
-                              </span>
+                              <Tag color="success" className="text-[10px] font-bold">
+                                ✓ Applied
+                              </Tag>
                             )}
-                            {job.is_gcc ? (
-                              <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                            {job.is_gcc && (
+                              <Tag color="blue" className="text-[9px] font-bold">
                                 GCC
-                              </span>
-                            ) : null}
-                            {job.location ? (
-                              <span className="text-[10px] text-[#9CA3AF] truncate">
+                              </Tag>
+                            )}
+                            {job.location && (
+                              <span className="text-[11px] text-zinc-400 truncate">
                                 · {job.location}
                               </span>
-                            ) : null}
+                            )}
                           </div>
 
-                          <h4 className="text-sm font-extrabold text-[#1C1C1E] mt-0.5 leading-snug group-hover:text-emerald-800 transition-colors line-clamp-1">
+                          <div className="text-sm font-bold text-zinc-900 mt-0.5 leading-snug truncate">
                             {job.title || 'Role Title'}
-                          </h4>
+                          </div>
 
                           {/* Tech tags */}
-                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                             {tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="text-[10px] font-semibold text-[#6B6B6B] bg-[#FAFAF8] px-2 py-0.5 rounded-md border border-[#E5E5E0]"
-                              >
+                              <Tag key={tag} className="text-[10px] m-0 bg-zinc-50 text-zinc-600">
                                 {tag}
-                              </span>
+                              </Tag>
                             ))}
                           </div>
                         </div>
                       </div>
 
-                      {/* Score Indicator */}
-                      <div className="flex flex-col items-end shrink-0 gap-1">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`text-xs font-mono font-extrabold px-2.5 py-1 rounded-xl border ${
-                              scoreNum >= 8.5
-                                ? 'bg-amber-50 text-amber-900 border-amber-300 shadow-2xs font-bold'
-                                : scoreNum >= 7.0
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                : scoreNum >= 5.0
-                                ? 'bg-amber-50/60 text-amber-700 border-amber-200'
-                                : 'bg-[#F5F5F0] text-[#9CA3AF] border-[#E5E5E0]'
-                            }`}
-                          >
-                            {scoreNum > 0 ? `${scoreNum.toFixed(1)}/10` : '—'}
-                          </span>
-                        </div>
+                      {/* Score Badge */}
+                      <div className="shrink-0 text-right">
+                        <Tag
+                          color={scoreNum >= 7.0 ? 'success' : scoreNum >= 5.0 ? 'warning' : 'default'}
+                          className="font-mono font-bold text-xs"
+                        >
+                          {scoreNum > 0 ? `${scoreNum.toFixed(1)}/10` : '—'}
+                        </Tag>
                       </div>
                     </div>
 
-                    {/* Bottom Action Ribbon */}
-                    <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-[#F5F5F0]">
-                      <div className="flex items-center gap-2">
+                    {/* Bottom Actions */}
+                    <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-zinc-100">
+                      <div>
                         {job.url && (
                           <a
                             href={job.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-500 hover:text-zinc-900"
                           >
-                            <ExternalLink size={12} />
-                            View Posting
+                            <ExportOutlined /> View Posting
                           </a>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
+                      <Space size="small" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<ThunderboltOutlined />}
                           onClick={() => onTailor(jobId)}
-                          className="inline-flex items-center gap-1 rounded-xl bg-[#1C1C1E] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#27272a] transition-all shadow-2xs cursor-pointer"
                         >
-                          <Sparkles size={12} className="text-amber-300" />
                           Tailor CV
-                        </button>
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          size="small"
+                          type={isApplied ? 'dashed' : 'default'}
+                          icon={<CheckCircleOutlined className={isApplied ? 'text-emerald-600' : ''} />}
                           onClick={() => onMarkApplied(jobId, isApplied)}
-                          className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-[11px] font-bold transition-colors cursor-pointer ${
-                            isApplied
-                              ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                              : 'border-[#E5E5E0] bg-white text-[#6B6B6B] hover:text-[#1C1C1E]'
-                          }`}
                         >
-                          <CheckCircle2 size={12} />
                           {isApplied ? 'Applied' : 'Mark Applied'}
-                        </button>
-                      </div>
+                        </Button>
+                      </Space>
                     </div>
-                  </motion.div>
+                  </Card>
                 );
               })}
-              {filteredJobs.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-2xl border border-[#E5E5E0]">
-                  <p className="text-sm font-bold text-[#1C1C1E]">No matching jobs</p>
-                  <p className="text-xs text-[#9CA3AF] mt-1">Try changing your search keywords or run a fresh scan.</p>
+
+              {filteredJobs.length === 0 && (
+                <div className="text-center py-16 bg-white rounded-2xl border border-zinc-200">
+                  <p className="text-sm font-bold text-zinc-800">No matching jobs</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Try changing your search filter or run a fresh portal scan.
+                  </p>
                 </div>
-              ) : null}
+              )}
             </div>
           ) : (
             /* View Mode: COMPACT TABLE */
-            <div className="bg-white rounded-2xl border border-[#E5E5E0] overflow-hidden shadow-sm">
-              <div className="overflow-x-auto max-h-[720px]">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#FAFAF8] border-b border-[#E5E5E0] text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] sticky top-0 z-10">
-                    <tr>
-                      <th className="py-3 px-4">Company & Role</th>
-                      <th className="py-3 px-3">Score</th>
-                      <th className="py-3 px-3">Type</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F5F5F0]">
-                    {filteredJobs.slice(0, 60).map((job, idx) => {
-                      const jobId = Number(job.pipeline_id ?? job.id ?? idx);
-                      const scoreNum = parseNumericScore(job.score ?? job.score_raw);
-                      const isApplied = Boolean(job.is_applied || (typeof job.status === 'string' && job.status.toLowerCase().includes('applied')));
-
-                      return (
-                        <tr
-                          key={jobId}
-                          onClick={() => setInspectingJob(job)}
-                          className={`hover:bg-[#FAFAF8] transition-colors cursor-pointer ${
-                            isApplied ? 'opacity-60 bg-[#FAFAF8]' : ''
-                          }`}
-                        >
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <JobAvatar company={job.company} size="sm" />
-                              <div className="min-w-0">
-                                <p className="font-bold text-[#1C1C1E] truncate max-w-[220px]">{job.title}</p>
-                                <p className="text-[10px] text-[#9CA3AF] truncate">{job.company}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3 font-mono font-bold">
-                            <span
-                              className={`px-2 py-0.5 rounded-md border text-[11px] ${
-                                scoreNum >= 7.0
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                  : 'bg-[#F5F5F0] text-[#6B6B6B] border-[#E5E5E0]'
-                              }`}
-                            >
-                              {scoreNum > 0 ? scoreNum.toFixed(1) : '—'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
-                            {job.is_gcc ? (
-                              <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                                GCC
-                              </span>
-                            ) : (
-                              <span className="text-[9px] text-[#9CA3AF]">Direct</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => onTailor(jobId)}
-                                className="px-2.5 py-1 bg-[#1C1C1E] text-white text-[10px] font-bold rounded-lg hover:bg-[#27272a] cursor-pointer"
-                              >
-                                Tailor
-                              </button>
-                              <button
-                                onClick={() => onMarkApplied(jobId, isApplied)}
-                                className={`px-2 py-1 border text-[10px] font-bold rounded-lg cursor-pointer ${
-                                  isApplied ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'text-[#6B6B6B] border-[#E5E5E0]'
-                                }`}
-                              >
-                                {isApplied ? '✓' : 'Apply'}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <AntdTable
+              dataSource={filteredJobs.slice(0, 60)}
+              columns={tableColumns}
+              rowKey={(r, idx) => String(r.pipeline_id ?? r.id ?? idx)}
+              size="small"
+              pagination={{ pageSize: 15, size: 'small' }}
+              onRow={(record) => ({
+                onClick: () => setInspectingJob(record),
+                className: 'cursor-pointer',
+              })}
+            />
           )}
         </div>
 
         {/* ── Column 3: Live Pipeline Match Intelligence Radar (3 cols on lg) ── */}
-        <div className="lg:col-span-3 rounded-2xl border border-[#E5E5E0] bg-white p-5 shadow-sm space-y-5">
-          <div className="flex items-center justify-between border-b border-[#F5F5F0] pb-3">
-            <h3 className="text-sm font-bold text-[#1C1C1E]">Match Radar</h3>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              AI Powered
-            </span>
-          </div>
-
-          <div className="space-y-4">
+        <Card
+          size="small"
+          className="lg:col-span-3 border-zinc-200 shadow-xs space-y-4"
+          title={
             <div className="flex items-center justify-between">
-              <span className="text-xs text-[#6B6B6B] font-medium">Avg Fit Score</span>
-              <span className="text-base font-extrabold text-[#1C1C1E] font-mono">{stats.avgScore}/10</span>
+              <span className="text-xs font-bold text-zinc-900">Match Radar</span>
+              <Tag color="success" className="text-[10px] font-bold uppercase">
+                AI Powered
+              </Tag>
             </div>
+          }
+        >
+          <div className="space-y-4">
+            <Statistic
+              title={<span className="text-xs text-zinc-500 font-medium">Average Pipeline Fit</span>}
+              value={stats.avgScore}
+              suffix="/ 10"
+              valueStyle={{ fontSize: 22, fontWeight: 800 }}
+            />
 
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-bold text-[#6B6B6B]">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-semibold text-zinc-600">
                 <span>Hot Matches (7.0+)</span>
-                <span className="font-mono text-[#1C1C1E]">{stats.hot}</span>
+                <span className="font-mono text-emerald-600 font-bold">{stats.hot}</span>
               </div>
-              <div className="h-2 w-full bg-[#F5F5F0] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (stats.hot / Math.max(1, stats.total)) * 100)}%` }}
-                />
-              </div>
+              <Progress
+                percent={Math.min(100, Math.round((stats.hot / Math.max(1, stats.total)) * 100))}
+                strokeColor="#10B981"
+                size="small"
+              />
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-bold text-[#6B6B6B]">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-semibold text-zinc-600">
                 <span>GCC Captives</span>
-                <span className="font-mono text-blue-700">{stats.gcc}</span>
+                <span className="font-mono text-blue-600 font-bold">{stats.gcc}</span>
               </div>
-              <div className="h-2 w-full bg-[#F5F5F0] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (stats.gcc / Math.max(1, stats.total)) * 100)}%` }}
-                />
-              </div>
+              <Progress
+                percent={Math.min(100, Math.round((stats.gcc / Math.max(1, stats.total)) * 100))}
+                strokeColor="#3B82F6"
+                size="small"
+              />
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-bold text-[#6B6B6B]">
-                <span>Applied</span>
-                <span className="font-mono text-emerald-700">{stats.applied}</span>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-semibold text-zinc-600">
+                <span>Applied Jobs</span>
+                <span className="font-mono text-zinc-800 font-bold">{stats.applied}</span>
               </div>
-              <div className="h-2 w-full bg-[#F5F5F0] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-stone-700 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (stats.applied / Math.max(1, stats.total)) * 100)}%` }}
-                />
+              <Progress
+                percent={Math.min(100, Math.round((stats.applied / Math.max(1, stats.total)) * 100))}
+                strokeColor="#18181B"
+                size="small"
+              />
+            </div>
+
+            <div className="pt-3 border-t border-zinc-100">
+              <div className="rounded-xl bg-zinc-50 p-3 border border-zinc-200">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900">
+                  <BulbOutlined className="text-amber-500" />
+                  Tailoring Recommendation
+                </div>
+                <p className="text-[11px] text-zinc-500 leading-relaxed mt-1">
+                  Roles scored <strong>7.0+</strong> have high keyword alignment with your master
+                  profile. Tailor these for 3x higher callback rates.
+                </p>
               </div>
             </div>
           </div>
-
-          <div className="pt-4 border-t border-[#F5F5F0]">
-            <div className="rounded-xl bg-[#FAFAF8] p-3.5 border border-[#E5E5E0] space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-[#1C1C1E]">
-                <Sparkles size={13} className="text-amber-500" />
-                Tailoring Tip
-              </div>
-              <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
-                Roles scored <strong>7.0+</strong> have strong keyword synergy with your master profile. Tailor these for 3x higher callback rates.
-              </p>
-            </div>
-          </div>
-        </div>
+        </Card>
       </div>
 
       {/* ── Slide-Over Flyout Job Inspector Drawer ── */}
-      <AnimatePresence>
-        {inspectingJob && (
-          <div className="fixed inset-0 z-[90] flex justify-end">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setInspectingJob(null)}
-              className="fixed inset-0 bg-[#1C1C1E]/30 backdrop-blur-xs cursor-pointer"
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="relative w-full max-w-lg bg-white h-full shadow-2xl border-l border-[#E5E5E0] z-10 flex flex-col overflow-hidden"
+      <Drawer
+        open={Boolean(inspectingJob)}
+        onClose={() => setInspectingJob(null)}
+        width={480}
+        destroyOnClose
+        title={
+          inspectingJob ? (
+            <div className="flex items-center gap-3">
+              <JobAvatar company={inspectingJob.company} size="md" />
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  {inspectingJob.company || 'Company'}
+                </div>
+                <div className="text-sm font-bold text-zinc-900 truncate">
+                  {inspectingJob.title || 'Role Title'}
+                </div>
+              </div>
+            </div>
+          ) : null
+        }
+        extra={
+          inspectingJob?.url ? (
+            <Button
+              size="small"
+              icon={<ExportOutlined />}
+              href={inspectingJob.url}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              {/* Drawer Header */}
-              <div className="p-6 border-b border-[#F0F0EB] bg-[#FAFAF8] flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3.5 min-w-0">
-                  <JobAvatar
-                    company={inspectingJob.company}
-                    url={inspectingJob.url}
-                    source={inspectingJob.source}
-                    logoUrl={inspectingJob.logo_url}
-                    size="lg"
-                  />
-                  <div className="min-w-0">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
-                      {inspectingJob.company || 'Company'}
-                    </span>
-                    <h2 className="text-lg font-extrabold text-[#1C1C1E] mt-0.5 leading-snug">
-                      {inspectingJob.title || 'Role Title'}
-                    </h2>
-                    {inspectingJob.location && (
-                      <p className="text-xs text-[#9CA3AF] mt-1">📍 {inspectingJob.location}</p>
-                    )}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setInspectingJob(null)}
-                  className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#1C1C1E] hover:bg-[#F0F0EB] transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Drawer Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* Score Banner */}
-                <div className="rounded-2xl bg-[#FAFAF8] border border-[#E5E5E0] p-4 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">AI Match Score</span>
-                    <p className="text-2xl font-extrabold text-[#1C1C1E] font-mono mt-0.5">
-                      {parseNumericScore(inspectingJob.score ?? inspectingJob.score_raw) > 0
-                        ? `${parseNumericScore(inspectingJob.score ?? inspectingJob.score_raw).toFixed(1)} / 10`
-                        : 'Pending Score'}
-                    </p>
-                  </div>
-                  {inspectingJob.is_gcc && (
-                    <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200">
-                      GCC Captive Employer
-                    </span>
-                  )}
-                </div>
-
-                {/* Tech Stack Signals */}
+              Board
+            </Button>
+          ) : null
+        }
+        footer={
+          inspectingJob ? (
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                onClick={() => {
+                  const id = Number(inspectingJob.pipeline_id ?? inspectingJob.id);
+                  onMarkApplied(id, Boolean(inspectingJob.is_applied));
+                  setInspectingJob((prev) =>
+                    prev ? { ...prev, is_applied: !prev.is_applied } : null
+                  );
+                }}
+              >
+                {inspectingJob.is_applied ? 'Mark Unapplied' : 'Mark Applied'}
+              </Button>
+              <Button
+                type="primary"
+                icon={<ThunderboltOutlined />}
+                onClick={() => {
+                  const id = Number(inspectingJob.pipeline_id ?? inspectingJob.id);
+                  setInspectingJob(null);
+                  onTailor(id);
+                }}
+              >
+                Tailor in Studio
+              </Button>
+            </div>
+          ) : null
+        }
+      >
+        {inspectingJob && (
+          <div className="space-y-5">
+            {/* Match Score Card */}
+            <Card size="small" className="bg-zinc-50 border-zinc-200">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF] mb-2.5">Detected Stack & Signals</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {extractTechTags(inspectingJob.title, inspectingJob.notes).map((tag) => (
-                      <span key={tag} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-stone-100 text-[#1C1C1E] border border-stone-200">
-                        {tag}
-                      </span>
-                    ))}
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                    AI Match Score
+                  </div>
+                  <div className="text-2xl font-extrabold text-zinc-900 font-mono mt-0.5">
+                    {parseNumericScore(inspectingJob.score ?? inspectingJob.score_raw) > 0
+                      ? `${parseNumericScore(inspectingJob.score ?? inspectingJob.score_raw).toFixed(1)} / 10`
+                      : 'Pending Score'}
                   </div>
                 </div>
-
-                {/* Job Description / Notes Preview */}
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF] mb-2">Posting Overview</h4>
-                  <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 text-xs text-[#6B6B6B] leading-relaxed max-h-60 overflow-y-auto">
-                    {inspectingJob.notes || 'Full JD ingested and ready for AI tailoring.'}
-                  </div>
-                </div>
+                {inspectingJob.is_gcc && (
+                  <Tag color="blue" className="font-bold text-xs">
+                    GCC Captive
+                  </Tag>
+                )}
               </div>
+            </Card>
 
-              {/* Drawer Footer Actions */}
-              <div className="p-5 border-t border-[#F0F0EB] bg-[#FAFAF8] flex items-center justify-between gap-3">
-                {inspectingJob.url ? (
-                  <a
-                    href={inspectingJob.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-[#E5E5E0] bg-white rounded-xl text-xs font-bold text-[#1C1C1E] hover:bg-stone-50 transition-colors"
-                  >
-                    <ExternalLink size={13} />
-                    Open Board
-                  </a>
-                ) : <div />}
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const id = Number(inspectingJob.pipeline_id ?? inspectingJob.id);
-                      onMarkApplied(id, Boolean(inspectingJob.is_applied));
-                      setInspectingJob((prev) => prev ? { ...prev, is_applied: !prev.is_applied } : null);
-                    }}
-                    className="px-4 py-2.5 border border-[#E5E5E0] bg-white rounded-xl text-xs font-bold text-[#1C1C1E] hover:bg-stone-50 transition-colors cursor-pointer"
-                  >
-                    {inspectingJob.is_applied ? 'Mark Unapplied' : 'Mark Applied'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      const id = Number(inspectingJob.pipeline_id ?? inspectingJob.id);
-                      setInspectingJob(null);
-                      onTailor(id);
-                    }}
-                    className="flex items-center gap-1.5 px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl text-xs font-bold hover:bg-[#27272a] transition-all shadow-md cursor-pointer"
-                  >
-                    <Sparkles size={14} className="text-amber-300" />
-                    Tailor in Studio
-                  </button>
-                </div>
+            {/* Tech Stack Signals */}
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                Detected Stack & Signals
               </div>
-            </motion.div>
+              <div className="flex flex-wrap gap-1.5">
+                {extractTechTags(inspectingJob.title, inspectingJob.notes).map((tag) => (
+                  <Tag key={tag} color="default" className="text-xs font-semibold">
+                    {tag}
+                  </Tag>
+                ))}
+              </div>
+            </div>
+
+            {/* Posting Overview */}
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                Posting Details & Notes
+              </div>
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3.5 text-xs text-zinc-600 leading-relaxed max-h-64 overflow-y-auto font-sans">
+                {inspectingJob.notes || 'Full JD ingested and ready for AI tailoring.'}
+              </div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
+      </Drawer>
     </div>
   );
 }

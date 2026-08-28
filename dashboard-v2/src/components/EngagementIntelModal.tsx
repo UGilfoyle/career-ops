@@ -1,19 +1,18 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { Modal, Card, Statistic, Tag, Button, Spin, Alert, message } from 'antd';
 import {
-  Activity,
-  CheckCircle2,
-  Clock,
-  Copy,
-  ExternalLink,
-  Globe,
-  Loader2,
-  Mail,
-  MousePointerClick,
-  X,
-} from 'lucide-react';
+  LineChartOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CopyOutlined,
+  ExportOutlined,
+  GlobalOutlined,
+  MailOutlined,
+  AimOutlined,
+  LinkOutlined,
+} from '@ant-design/icons';
 
 export type EngagementIntelTarget = {
   appId: number;
@@ -83,12 +82,6 @@ function formatWhen(iso: string | null | undefined): string {
   return d.toLocaleString();
 }
 
-function priorityStyles(p: Followup['priority']) {
-  if (p === 'now') return 'bg-emerald-50 text-emerald-800 border-emerald-200';
-  if (p === 'wait') return 'bg-amber-50 text-amber-800 border-amber-200';
-  return 'bg-sky-50 text-sky-800 border-sky-200';
-}
-
 type Props = {
   target: EngagementIntelTarget;
   onClose: () => void;
@@ -99,7 +92,6 @@ export function EngagementIntelModal({ target, onClose, onCopyStealthLink }: Pro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<TelemetryPayload | null>(null);
-  const [copied, setCopied] = useState<'subject' | 'body' | 'all' | 'link' | null>(null);
 
   useEffect(() => {
     if (!target) {
@@ -131,267 +123,244 @@ export function EngagementIntelModal({ target, onClose, onCopyStealthLink }: Pro
     };
   }, [target]);
 
-  const copyText = async (key: 'subject' | 'body' | 'all' | 'link', text: string) => {
+  const copyText = async (key: string, text: string) => {
     await navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(() => setCopied((c) => (c === key ? null : c)), 1800);
+    message.success(`Copied ${key} to clipboard`);
   };
 
   return (
-    <AnimatePresence>
-      {target ? (
-        <motion.div
-          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Application engagement intel"
-            className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-[#E5E5E0] bg-white shadow-2xl sm:rounded-2xl"
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 24, opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3 border-b border-[#F0F0EB] px-5 py-4">
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
-                  Private application intel
-                </p>
-                <h2 className="mt-1 truncate text-lg font-bold text-[#1C1C1E]">{target.company}</h2>
-                <p className="truncate text-sm text-[#6B6B6B]">{target.role}</p>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-[#E5E5E0] p-2 text-[#6B6B6B] hover:bg-[#F5F5F0]"
-                aria-label="Close"
+    <Modal
+      open={Boolean(target)}
+      onCancel={onClose}
+      footer={null}
+      width={560}
+      destroyOnClose
+      centered
+      title={
+        target ? (
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+              Private Application Intel
+            </div>
+            <div className="text-base font-bold text-zinc-900">{target.company}</div>
+            <div className="text-xs text-zinc-500 font-normal">{target.role}</div>
+          </div>
+        ) : null
+      }
+    >
+      <div className="pt-2 space-y-4 max-h-[75vh] overflow-y-auto">
+        {loading && (
+          <div className="py-12 text-center">
+            <Spin tip="Loading engagement intel..." />
+          </div>
+        )}
+
+        {error && <Alert type="error" message={error} showIcon />}
+
+        {!loading && data && !data.has_tracking && (
+          <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center">
+            <p className="text-sm font-semibold text-zinc-900">No stealth link generated yet</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Copy a stealth tracking link and paste it as your Portfolio / Website URL on the application.
+            </p>
+            {onCopyStealthLink && target && (
+              <Button
+                type="primary"
+                icon={<LinkOutlined />}
+                onClick={() => onCopyStealthLink(target.appId)}
+                className="mt-4"
               >
-                <X size={16} />
-              </button>
+                Copy Stealth Link
+              </Button>
+            )}
+          </div>
+        )}
+
+        {!loading && data?.tracking && (
+          <>
+            {/* Stat Cards */}
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              <Card size="small" className="text-center">
+                <Statistic
+                  title={<span className="text-[11px] font-medium text-zinc-500">VIEWS</span>}
+                  value={data.tracking.view_count}
+                  prefix={<LineChartOutlined className="text-blue-500" />}
+                  valueStyle={{ fontSize: 18, fontWeight: 700 }}
+                />
+              </Card>
+              <Card size="small" className="text-center">
+                <Statistic
+                  title={<span className="text-[11px] font-medium text-zinc-500">CLICKS</span>}
+                  value={data.tracking.click_count}
+                  prefix={<AimOutlined className="text-emerald-500" />}
+                  valueStyle={{ fontSize: 18, fontWeight: 700 }}
+                />
+              </Card>
+              <Card size="small" className="text-center">
+                <Statistic
+                  title={<span className="text-[11px] font-medium text-zinc-500">DWELL</span>}
+                  value={formatDwell(data.tracking.total_dwell_sec)}
+                  prefix={<ClockCircleOutlined className="text-amber-500" />}
+                  valueStyle={{ fontSize: 18, fontWeight: 700 }}
+                />
+              </Card>
+              <Card size="small" className="text-center">
+                <Statistic
+                  title={<span className="text-[11px] font-medium text-zinc-500">LAST ACTIVE</span>}
+                  value={formatWhen(data.tracking.last_engaged_at)}
+                  prefix={<GlobalOutlined className="text-purple-500" />}
+                  valueStyle={{ fontSize: 14, fontWeight: 600 }}
+                />
+              </Card>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {loading ? (
-                <div className="flex items-center justify-center gap-2 py-16 text-sm text-[#6B6B6B]">
-                  <Loader2 size={16} className="animate-spin" /> Loading engagement…
-                </div>
-              ) : null}
-
-              {error ? (
-                <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  {error}
-                </div>
-              ) : null}
-
-              {!loading && data && !data.has_tracking ? (
-                <div className="rounded-xl border border-dashed border-[#E5E5E0] bg-[#FAFAF8] px-4 py-8 text-center">
-                  <p className="text-sm font-medium text-[#1C1C1E]">No stealth link yet</p>
-                  <p className="mt-1 text-xs text-[#6B6B6B]">
-                    Copy a stealth link and paste it as Portfolio / Website on the application.
-                  </p>
-                  {onCopyStealthLink ? (
-                    <button
-                      type="button"
-                      onClick={() => onCopyStealthLink(target.appId)}
-                      className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#1C1C1E] px-3 py-2 text-xs font-bold text-white"
-                    >
-                      <Copy size={12} /> Copy Stealth Link
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {!loading && data?.tracking ? (
-                <>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <Stat label="Views" value={String(data.tracking.view_count)} icon={<Activity size={14} />} />
-                    <Stat label="Clicks" value={String(data.tracking.click_count)} icon={<MousePointerClick size={14} />} />
-                    <Stat
-                      label="Dwell"
-                      value={formatDwell(data.tracking.total_dwell_sec)}
-                      icon={<Clock size={14} />}
-                    />
-                    <Stat
-                      label="Last active"
-                      value={formatWhen(data.tracking.last_engaged_at)}
-                      icon={<Globe size={14} />}
-                    />
-                  </div>
-
-                  {data.breakdown ? (
-                    <div className="rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-3">
-                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
-                        Interest breakdown
-                      </p>
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        <Chip label={`Page views ${data.breakdown.page_views}`} />
-                        <Chip label={`GitHub ${data.breakdown.clicks_gh}`} />
-                        <Chip label={`LinkedIn ${data.breakdown.clicks_li}`} />
-                        {data.breakdown.clicks_portfolio > 0 ? (
-                          <Chip label={`Portfolio ${data.breakdown.clicks_portfolio}`} />
-                        ) : null}
-                      </div>
-                      {data.breakdown.countries.length > 0 ? (
-                        <p className="mt-2 text-xs text-[#6B6B6B]">
-                          Origin:{' '}
-                          {data.breakdown.countries
-                            .map((c) => `${c.country} (${c.count})`)
-                            .join(' · ')}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => copyText('link', data.tracking!.url)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5E0] px-3 py-2 text-xs font-bold text-[#1C1C1E] hover:bg-[#F5F5F0]"
-                    >
-                      {copied === 'link' ? <CheckCircle2 size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                      {copied === 'link' ? 'Copied' : 'Copy stealth URL'}
-                    </button>
-                    <a
-                      href={data.tracking.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5E0] px-3 py-2 text-xs font-bold text-[#1C1C1E] hover:bg-[#F5F5F0]"
-                    >
-                      <ExternalLink size={12} /> Open companion
-                    </a>
-                  </div>
-
-                  {data.followup ? (
-                    <div className="rounded-xl border border-[#E5E5E0] p-3 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
-                            Contextual follow-up
-                          </p>
-                          <p className="mt-1 text-xs text-[#6B6B6B]">{data.followup.reason}</p>
-                        </div>
-                        <span
-                          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${priorityStyles(data.followup.priority)}`}
-                        >
-                          {data.followup.priority === 'now'
-                            ? 'Follow up now'
-                            : data.followup.priority === 'wait'
-                              ? `Wait ~${data.followup.suggested_wait_hours}h`
-                              : `Soon (~${data.followup.suggested_wait_hours}h)`}
-                        </span>
-                      </div>
-                      <p className="text-xs font-medium text-[#1C1C1E]">Hook: {data.followup.hook}</p>
-                      <div className="rounded-lg bg-[#FAFAF8] px-3 py-2">
-                        <p className="text-[10px] font-bold uppercase text-[#9CA3AF]">Subject</p>
-                        <p className="text-sm text-[#1C1C1E]">{data.followup.subject}</p>
-                      </div>
-                      <div className="rounded-lg bg-[#FAFAF8] px-3 py-2">
-                        <p className="text-[10px] font-bold uppercase text-[#9CA3AF]">Body</p>
-                        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[#1C1C1E]">
-                          {data.followup.body}
-                        </pre>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => copyText('subject', data.followup!.subject)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5E0] px-3 py-2 text-xs font-bold hover:bg-[#F5F5F0]"
-                        >
-                          {copied === 'subject' ? <CheckCircle2 size={12} /> : <Copy size={12} />} Subject
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => copyText('body', data.followup!.body)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5E0] px-3 py-2 text-xs font-bold hover:bg-[#F5F5F0]"
-                        >
-                          {copied === 'body' ? <CheckCircle2 size={12} /> : <Mail size={12} />} Body
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyText(
-                              'all',
-                              `Subject: ${data.followup!.subject}\n\n${data.followup!.body}`
-                            )
-                          }
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#1C1C1E] px-3 py-2 text-xs font-bold text-white"
-                        >
-                          {copied === 'all' ? <CheckCircle2 size={12} /> : <Copy size={12} />} Copy all
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-[#E5E5E0] px-4 py-3 text-xs text-[#6B6B6B]">
-                      No engagement yet — follow-up draft unlocks after a recruiter opens the link.
-                    </div>
+            {/* Breakdown */}
+            {data.breakdown && (
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3.5">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  Interest Breakdown
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  <Tag color="blue">Page views: {data.breakdown.page_views}</Tag>
+                  <Tag color="purple">GitHub: {data.breakdown.clicks_gh}</Tag>
+                  <Tag color="cyan">LinkedIn: {data.breakdown.clicks_li}</Tag>
+                  {data.breakdown.clicks_portfolio > 0 && (
+                    <Tag color="green">Portfolio: {data.breakdown.clicks_portfolio}</Tag>
                   )}
+                </div>
+                {data.breakdown.countries.length > 0 && (
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Origin: {data.breakdown.countries.map((c) => `${c.country} (${c.count})`).join(' · ')}
+                  </p>
+                )}
+              </div>
+            )}
 
-                  {data.events.length > 0 ? (
-                    <div>
-                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
-                        Recent events
-                      </p>
-                      <ul className="space-y-1.5">
-                        {data.events.slice(0, 12).map((ev, i) => (
-                          <li
-                            key={`${ev.created_at}-${i}`}
-                            className="flex items-center justify-between gap-2 rounded-lg border border-[#F0F0EB] px-3 py-2 text-xs"
-                          >
-                            <span className="font-medium text-[#1C1C1E]">
-                              {ev.event_type === 'PAGE_VIEW'
-                                ? `View · ${formatDwell(Number(ev.dwell_seconds || 0))}`
-                                : `Click · ${ev.target || 'out'}`}
-                              {ev.country ? (
-                                <span className="ml-1.5 font-normal text-[#9CA3AF]">{ev.country}</span>
-                              ) : null}
-                            </span>
-                            <span className="shrink-0 font-mono text-[10px] text-[#9CA3AF]">
-                              {formatWhen(ev.created_at)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                icon={<CopyOutlined />}
+                size="small"
+                onClick={() => copyText('Stealth URL', data.tracking!.url)}
+              >
+                Copy Stealth URL
+              </Button>
+              <Button
+                icon={<ExportOutlined />}
+                size="small"
+                href={data.tracking.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open Companion Page
+              </Button>
             </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  );
-}
 
-function Stat({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon: ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5">
-      <div className="flex items-center gap-1 text-[#9CA3AF]">
-        {icon}
-        <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+            {/* Follow-up Section */}
+            {data.followup ? (
+              <Card
+                size="small"
+                title={
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-800">Contextual Follow-up</span>
+                    <Tag
+                      color={
+                        data.followup.priority === 'now'
+                          ? 'success'
+                          : data.followup.priority === 'wait'
+                          ? 'warning'
+                          : 'processing'
+                      }
+                      className="font-bold uppercase text-[10px]"
+                    >
+                      {data.followup.priority === 'now'
+                        ? 'Follow Up Now'
+                        : data.followup.priority === 'wait'
+                        ? `Wait ~${data.followup.suggested_wait_hours}h`
+                        : `Soon (~${data.followup.suggested_wait_hours}h)`}
+                    </Tag>
+                  </div>
+                }
+              >
+                <p className="text-xs text-zinc-500 mb-2">{data.followup.reason}</p>
+                <div className="mb-2 text-xs font-semibold text-zinc-800">Hook: {data.followup.hook}</div>
+
+                <div className="rounded-lg bg-zinc-50 p-2.5 mb-2 border border-zinc-100">
+                  <div className="text-[10px] font-bold uppercase text-zinc-400">Subject</div>
+                  <div className="text-xs font-medium text-zinc-900">{data.followup.subject}</div>
+                </div>
+
+                <div className="rounded-lg bg-zinc-50 p-2.5 mb-3 border border-zinc-100">
+                  <div className="text-[10px] font-bold uppercase text-zinc-400">Body</div>
+                  <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-zinc-800">
+                    {data.followup.body}
+                  </pre>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={() => copyText('Subject', data.followup!.subject)}
+                  >
+                    Subject
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<MailOutlined />}
+                    onClick={() => copyText('Body', data.followup!.body)}
+                  >
+                    Body
+                  </Button>
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={() =>
+                      copyText('All', `Subject: ${data.followup!.subject}\n\n${data.followup!.body}`)
+                    }
+                  >
+                    Copy Full Message
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <Alert
+                type="info"
+                message="No engagement yet — follow-up draft unlocks automatically after a recruiter opens your link."
+                showIcon
+              />
+            )}
+
+            {/* Events Log */}
+            {data.events.length > 0 && (
+              <div>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  Recent Telemetry Events
+                </p>
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {data.events.slice(0, 12).map((ev, i) => (
+                    <div
+                      key={`${ev.created_at}-${i}`}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 bg-white px-3 py-1.5 text-xs"
+                    >
+                      <span className="font-medium text-zinc-800">
+                        {ev.event_type === 'PAGE_VIEW'
+                          ? `View · ${formatDwell(Number(ev.dwell_seconds || 0))}`
+                          : `Click · ${ev.target || 'out'}`}
+                        {ev.country && <span className="ml-1.5 text-zinc-400">{ev.country}</span>}
+                      </span>
+                      <span className="font-mono text-[10px] text-zinc-400">
+                        {formatWhen(ev.created_at)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
-      <p className="mt-1 text-sm font-bold tabular-nums text-[#1C1C1E]">{value}</p>
-    </div>
-  );
-}
-
-function Chip({ label }: { label: string }) {
-  return (
-    <span className="rounded-full border border-[#E5E5E0] bg-white px-2.5 py-1 font-medium text-[#1C1C1E]">
-      {label}
-    </span>
+    </Modal>
   );
 }

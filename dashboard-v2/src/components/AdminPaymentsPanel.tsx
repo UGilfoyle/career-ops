@@ -1,7 +1,24 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Check, IndianRupee, Loader2, RefreshCw, X } from 'lucide-react';
+import {
+  Table as AntdTable,
+  Card,
+  Tag,
+  Button,
+  Segmented,
+  Alert,
+  Space,
+  Popconfirm,
+  Badge,
+} from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import {
+  SyncOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DollarOutlined,
+} from '@ant-design/icons';
 
 type UpiClaim = {
   id: number;
@@ -76,116 +93,160 @@ export default function AdminPaymentsPanel() {
     }
   }
 
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+  const columns: ColumnsType<UpiClaim> = [
+    {
+      title: 'Candidate',
+      key: 'user',
+      render: (_, c) => (
         <div>
-          <h2 className="text-2xl font-bold text-[#1C1C1E] flex items-center gap-2">
-            <IndianRupee size={22} />
-            UPI Payments
+          <div className="font-bold text-zinc-900 text-xs">{c.userEmail}</div>
+          <div className="text-[10px] text-zinc-400 font-mono">User ID: {c.userId}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Amount',
+      key: 'amount',
+      render: (_, c) => (
+        <span className="font-extrabold text-zinc-900 text-sm">
+          ₹{c.amountInr}
+        </span>
+      ),
+    },
+    {
+      title: 'UTR Reference',
+      key: 'utr',
+      render: (_, c) => (
+        <Tag color="default" className="font-mono font-bold text-xs">
+          {c.utr}
+        </Tag>
+      ),
+    },
+    {
+      title: 'VPA',
+      dataIndex: 'upiVpa',
+      key: 'upiVpa',
+      render: (vpa: string) => <span className="font-mono text-xs text-zinc-600">{vpa}</span>,
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      render: (_, c) => {
+        const s = c.status.toLowerCase();
+        return (
+          <Tag color={s === 'approved' ? 'success' : s === 'rejected' ? 'error' : 'warning'}>
+            {c.status.toUpperCase()}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: 'Submitted',
+      key: 'createdAt',
+      render: (_, c) => <span className="text-xs text-zinc-500">{formatWhen(c.createdAt)}</span>,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      align: 'right',
+      render: (_, c) => {
+        if (c.status.toLowerCase() !== 'pending') {
+          return (
+            <span className="text-xs text-zinc-400">
+              Reviewed {formatWhen(c.reviewedAt)}
+            </span>
+          );
+        }
+
+        const isBusy = busyId === c.id;
+
+        return (
+          <Space size="small">
+            <Popconfirm
+              title="Approve UPI Payment"
+              description={`Confirm receipt of ₹${c.amountInr} for ${c.userEmail}?`}
+              onConfirm={() => review(c.id, 'approve')}
+              okText="Approve"
+              cancelText="Cancel"
+            >
+              <Button
+                type="primary"
+                size="small"
+                icon={<CheckOutlined />}
+                loading={isBusy}
+              >
+                Approve
+              </Button>
+            </Popconfirm>
+
+            <Popconfirm
+              title="Reject UPI Payment"
+              description={`Reject transaction UTR ${c.utr}?`}
+              onConfirm={() => review(c.id, 'reject')}
+              okText="Reject"
+              okType="danger"
+              cancelText="Cancel"
+            >
+              <Button size="small" danger icon={<CloseOutlined />} loading={isBusy}>
+                Reject
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900">UPI Payment Verification</h1>
             {pendingCount > 0 && (
-              <span className="text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
-                {pendingCount} pending
-              </span>
+              <Badge count={pendingCount} overflowCount={99}>
+                <Tag color="warning" className="font-bold text-[10px] uppercase">
+                  Pending Verification
+                </Tag>
+              </Badge>
             )}
-          </h2>
-          <p className="text-sm text-[#6B6B6B] mt-1">
-            User pays → submits UTR → you check bank SMS → Approve / Reject. Approve emails Pro access link.
+          </div>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Manual UPI payment queue. Verify bank SMS or statement and approve to activate Pro accounts.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-[#E5E5E0] px-3 py-2 rounded-xl hover:border-[#1C1C1E]"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+
+        <Button icon={<SyncOutlined spin={loading} />} onClick={() => void load()}>
+          Refresh Queue
+        </Button>
       </div>
 
-      <div className="flex gap-2">
-        {(['pending', 'all', 'approved', 'rejected'] as const).map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setFilter(f)}
-            className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border transition ${
-              filter === f
-                ? 'bg-[#1C1C1E] text-white border-[#1C1C1E]'
-                : 'bg-white text-[#6B6B6B] border-[#E5E5E0] hover:border-[#1C1C1E]'
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
+      {error && <Alert type="error" message={error} showIcon closable onClose={() => setError('')} />}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {/* Filter Tabs */}
+      <Segmented
+        options={[
+          { label: `Pending (${pendingCount})`, value: 'pending' },
+          { label: 'All Payments', value: 'all' },
+          { label: 'Approved', value: 'approved' },
+          { label: 'Rejected', value: 'rejected' },
+        ]}
+        value={filter}
+        onChange={(val) => setFilter(val as any)}
+      />
 
-      <div className="bg-white border border-[#E5E5E0] rounded-2xl overflow-hidden">
-        {loading && claims.length === 0 ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="animate-spin text-[#1C1C1E]" size={24} />
-          </div>
-        ) : claims.length === 0 ? (
-          <p className="text-center text-sm text-[#9CA3AF] py-16">No {filter === 'all' ? '' : filter} payment requests.</p>
-        ) : (
-          <div className="divide-y divide-[#E5E5E0]">
-            {claims.map((c) => (
-              <div key={c.id} className="p-5 flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-[#1C1C1E] truncate">{c.userEmail}</span>
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                        c.status === 'pending'
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : c.status === 'approved'
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                            : 'bg-stone-100 text-stone-600 border-stone-200'
-                      }`}
-                    >
-                      {c.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-[#1C1C1E]">
-                    <span className="font-bold">₹{c.amountInr}</span>
-                    <span className="text-[#6B6B6B]"> · UTR </span>
-                    <span className="font-mono text-xs">{c.utr}</span>
-                  </p>
-                  <p className="text-[11px] text-[#9CA3AF]">
-                    Ref {c.transactionRef || '—'} · {formatWhen(c.createdAt)}
-                    {c.reviewedBy ? ` · by ${c.reviewedBy}` : ''}
-                  </p>
-                </div>
-
-                {c.status === 'pending' && (
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      type="button"
-                      disabled={busyId === c.id}
-                      onClick={() => void review(c.id, 'approve')}
-                      className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl disabled:opacity-50"
-                    >
-                      {busyId === c.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busyId === c.id}
-                      onClick={() => void review(c.id, 'reject')}
-                      className="inline-flex items-center gap-1.5 border border-[#E5E5E0] text-[#6B6B6B] hover:border-red-300 hover:text-red-700 text-xs font-bold px-4 py-2.5 rounded-xl disabled:opacity-50"
-                    >
-                      <X size={14} />
-                      Reject
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Table */}
+      <Card size="small" className="border-zinc-200 shadow-xs" styles={{ body: { padding: 0 } }}>
+        <AntdTable
+          dataSource={claims}
+          columns={columns}
+          rowKey="id"
+          loading={loading}
+          size="small"
+          pagination={{ pageSize: 15, size: 'small' }}
+        />
+      </Card>
     </div>
   );
 }

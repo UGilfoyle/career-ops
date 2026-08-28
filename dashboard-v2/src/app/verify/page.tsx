@@ -2,8 +2,14 @@
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, CheckCircle2, Loader2, RefreshCw, Zap } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Card, Input, Button, Alert, Space } from 'antd';
+import {
+  CheckCircleOutlined,
+  ArrowRightOutlined,
+  SyncOutlined,
+  ThunderboltOutlined,
+  LoadingOutlined,
+} from '@ant-design/icons';
 import Link from 'next/link';
 
 function VerifyContent() {
@@ -11,8 +17,8 @@ function VerifyContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
   const provider = searchParams.get('provider') || '';
-  
-  const [token, setToken] = useState(['', '', '', '', '', '']);
+
+  const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -24,80 +30,45 @@ function VerifyContent() {
     }
   }, [email, router]);
 
-  const handleInput = (index: number, value: string) => {
-    if (value.length > 1) value = value[0];
-    if (!/^\d*$/.test(value)) return;
+  const handleSubmit = useCallback(
+    async (codeToSubmit?: string) => {
+      const finalToken = codeToSubmit || otp;
+      if (finalToken.length < 6) return;
 
-    const newToken = [...token];
-    newToken[index] = value;
-    
-    setToken(newToken);
+      setIsLoading(true);
+      setError(null);
 
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
+      try {
+        const res = await fetch('/api/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, token: finalToken }),
+        });
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !token[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`);
-      prevInput?.focus();
-    }
-  };
+        const data = await res.json();
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').trim();
-    if (!/^\d+$/.test(pastedData)) return;
+        if (!res.ok) throw new Error(data.error || 'Verification failed');
 
-    const digits = pastedData.slice(0, 6).split('');
-    const newToken = [...token];
-    digits.forEach((digit, index) => {
-      if (index < 6) newToken[index] = digit;
-    });
-    setToken(newToken);
-    
-    // Focus the appropriate input after paste
-    const focusIndex = Math.min(digits.length, 5);
-    const targetInput = document.getElementById(`otp-${focusIndex}`);
-    targetInput?.focus();
-  };
-
-  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const finalToken = token.join('');
-    if (finalToken.length < 6) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, token: finalToken })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'Verification failed');
-
-      setIsSuccess(true);
-      setTimeout(() => {
-        if (provider === 'github') {
-          router.push('/auth/continue?provider=github&callbackUrl=%2F%3Fwalkthrough%3D1');
-          return;
-        }
-        router.push(`/auth/continue?provider=credentials&email=${encodeURIComponent(email)}&callbackUrl=%2F%3Fwalkthrough%3D1`);
-      }, 2000);
-
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [email, provider, router, token]);
+        setIsSuccess(true);
+        setTimeout(() => {
+          if (provider === 'github') {
+            router.push('/auth/continue?provider=github&callbackUrl=%2F%3Fwalkthrough%3D1');
+            return;
+          }
+          router.push(
+            `/auth/continue?provider=credentials&email=${encodeURIComponent(
+              email
+            )}&callbackUrl=%2F%3Fwalkthrough%3D1`
+          );
+        }, 1800);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Verification failed');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [email, provider, router, otp]
+  );
 
   const handleResend = async () => {
     if (!email || resendCooldown > 0 || isLoading) return;
@@ -107,7 +78,7 @@ function VerifyContent() {
       const res = await fetch('/api/verify/resend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Unable to resend verification code');
@@ -123,119 +94,98 @@ function VerifyContent() {
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  useEffect(() => {
-    if (token.every(t => t !== '')) {
-      handleSubmit();
+  const onOtpChange = (text: string) => {
+    setOtp(text);
+    if (text.length === 6) {
+      void handleSubmit(text);
     }
-  }, [token, handleSubmit]);
+  };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#1C1C1E] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
-      <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#f59e0b]/5 rounded-full blur-[150px]" />
-      
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md z-10"
-      >
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center h-14 w-14 bg-[#1C1C1E] rounded-2xl shadow-xl mb-6">
-            <Zap className="h-7 w-7 text-white" />
+    <div className="min-h-screen bg-[#FAFAF8] text-zinc-900 flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center h-12 w-12 bg-zinc-900 text-white rounded-xl shadow-sm mb-3">
+            <ThunderboltOutlined className="text-xl" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Check your email</h1>
-          <p className="text-[#6B6B6B] font-medium text-sm leading-relaxed">
-            We sent a 6-digit code to<br />
-            <span className="text-[#1C1C1E] font-bold">{email}</span>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Check your email</h1>
+          <p className="text-xs font-medium text-zinc-500 mt-1">
+            We sent a 6-digit code to <strong className="text-zinc-800">{email}</strong>
           </p>
-          <p className="text-[#9CA3AF] text-xs mt-2">Paste the code below — it expires in 10 minutes.</p>
+          <p className="text-[11px] text-zinc-400 mt-0.5">Code expires in 10 minutes.</p>
         </div>
 
-        <div className="bg-white border border-[#E5E5E0] rounded-[2.5rem] p-10 shadow-2xl shadow-black/[0.02] relative overflow-hidden">
-          <AnimatePresence mode="wait">
-            {isSuccess ? (
-              <motion.div 
-                key="success"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-10"
+        <Card className="border-zinc-200 shadow-xl p-4">
+          {isSuccess ? (
+            <div className="text-center py-6">
+              <CheckCircleOutlined className="text-4xl text-emerald-500 mb-3" />
+              <h2 className="text-lg font-bold text-zinc-900">Email Verified</h2>
+              <p className="text-xs text-zinc-500 mt-1">
+                Account activated. Redirecting to your dashboard...
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="flex justify-center py-2">
+                <Input.OTP
+                  length={6}
+                  size="large"
+                  value={otp}
+                  onChange={onOtpChange}
+                  autoFocus
+                />
+              </div>
+
+              {error && <Alert type="error" message={error} showIcon />}
+
+              <Button
+                type="primary"
+                size="large"
+                block
+                disabled={otp.length < 6}
+                loading={isLoading}
+                icon={<ArrowRightOutlined />}
+                onClick={() => void handleSubmit()}
               >
-                <div className="h-20 w-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-                </div>
-                <h2 className="text-2xl font-bold mb-2">Email Verified</h2>
-                <p className="text-[#9CA3AF] mb-4 font-medium">Account activated. Redirecting...</p>
-              </motion.div>
-            ) : (
-              <motion.div key="form">
-                <div className="flex justify-between gap-3 mb-10">
-                  {token.map((digit, i) => (
-                    <input
-                      key={i}
-                      id={`otp-${i}`}
-                      type="text"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleInput(i, e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(i, e)}
-                      onPaste={handlePaste}
-                      autoFocus={i === 0}
-                      className="w-12 h-16 bg-[#FAFAF8] border border-[#E5E5E0] rounded-2xl text-center text-2xl font-bold focus:border-[#1C1C1E] outline-none transition-all shadow-inner"
-                    />
-                  ))}
-                </div>
+                Verify Email
+              </Button>
 
-                {error && (
-                  <div className="text-rose-600 text-xs font-bold text-center bg-rose-50 py-3 rounded-2xl border border-rose-100 mb-8">
-                    {error}
-                  </div>
-                )}
-
-                <button 
-                  onClick={() => handleSubmit()}
-                  disabled={isLoading || token.some(t => !t)}
-                  className="w-full bg-[#1C1C1E] text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#27272a] transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
+              <div className="text-center pt-2">
+                <Button
+                  type="text"
+                  size="small"
+                  disabled={resendCooldown > 0}
+                  onClick={handleResend}
+                  icon={<SyncOutlined spin={resendCooldown > 0} />}
+                  className="text-xs text-zinc-500 font-bold uppercase tracking-wider"
                 >
-                  {isLoading ? <Loader2 className="animate-spin" size={20} /> : (
-                    <>
-                      Verify email
-                      <ArrowRight size={20} className="text-white/40" />
-                    </>
-                  )}
-                </button>
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
 
-                <div className="mt-8 text-center">
-                  <button 
-                    disabled={resendCooldown > 0}
-                    onClick={handleResend}
-                    className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-widest hover:text-[#1C1C1E] transition-colors disabled:opacity-50 inline-flex items-center gap-2"
-                  >
-                    <RefreshCw size={12} className={resendCooldown > 0 ? 'animate-spin' : ''} />
-                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <p className="mt-10 text-center text-[#9CA3AF] text-sm font-medium">
+        <p className="mt-6 text-center text-xs text-zinc-500">
           Wrong email address?{' '}
-          <Link href="/signup" className="text-[#1C1C1E] font-bold hover:underline underline-offset-4 decoration-[#E5E5E0]">
+          <Link href="/signup" className="font-bold text-zinc-900 hover:underline">
             Back to sign up
           </Link>
         </p>
-
-        <p className="mt-8 text-center text-[#9CA3AF] text-[11px] font-medium">
-          careerops.dpdns.org
-        </p>
-      </motion.div>
+      </div>
     </div>
   );
 }
 
 export default function VerifyPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center"><Loader2 className="animate-spin text-[#1C1C1E]" /></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
+          <LoadingOutlined style={{ fontSize: 28 }} spin />
+        </div>
+      }
+    >
       <VerifyContent />
     </Suspense>
   );
