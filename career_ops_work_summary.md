@@ -95,9 +95,9 @@ This document provides a complete record of all architecture upgrades, UI/UX ove
 
 ## 📁 Key Modified & Created Files
 
-* [`dashboard-v2/src/components/CommandPaletteModal.tsx`](file:///Users/akashkaintura/Desktop/career-ops/dashboard-v2/src/components/CommandPaletteModal.tsx) — Command Palette (`⌘K`)
-* [`dashboard-v2/src/components/PipelineStudioView.tsx`](file:///Users/akashkaintura/Desktop/career-ops/dashboard-v2/src/components/PipelineStudioView.tsx) — Table/Card density view & Slide-over drawer
-* [`dashboard-v2/src/components/Dashboard.tsx`](file:///Users/akashkaintura/Desktop/career-ops/dashboard-v2/src/components/Dashboard.tsx) — Toast auto-dismiss hook & Command Palette trigger
-* [`dashboard-v2/src/lib/mail.ts`](file:///Users/akashkaintura/Desktop/career-ops/dashboard-v2/src/lib/mail.ts) — Robust sender email regex sanitization
-* [`dashboard-v2/src/app/api/view/[id]/route.ts`](file:///Users/akashkaintura/Desktop/career-ops/dashboard-v2/src/app/api/view/[id]/route.ts) — R2 streaming endpoint
-* [`README.md`](file:///Users/akashkaintura/Desktop/career-ops/README.md) — Architecture diagram cleanup
+* `dashboard-v2/src/components/CommandPaletteModal.tsx` — Command Palette (`⌘K`)
+* `dashboard-v2/src/components/PipelineStudioView.tsx` — Table/Card density view & Slide-over drawer
+* `dashboard-v2/src/components/Dashboard.tsx` — Toast auto-dismiss hook & Command Palette trigger
+* `dashboard-v2/src/lib/mail.ts` — Robust sender email regex sanitization
+* `dashboard-v2/src/app/api/view/[id]/route.ts` — R2 streaming endpoint
+* `README.md` — Architecture diagram cleanup

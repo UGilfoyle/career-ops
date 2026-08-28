@@ -154,7 +154,7 @@ export default function ProPaywall({
             block
             size="large"
           >
-            Check Verification Status
+            Check verification status
           </Button>
           <p className="text-[11px] text-zinc-400">
             No need to pay again: one payment per account is tracked until it is approved.

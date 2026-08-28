@@ -96,7 +96,7 @@ for (const { name, allowFail } of scripts) {
 
 if (!QUICK) {
   console.log('\n3. Dashboard build (dashboard-v2)');
-  const nextBuild = run('cd dashboard-v2 && npm run build 2>&1');
+  const nextBuild = run('cd dashboard-v2 && npm run build 2>&1', { timeout: 120000, maxBuffer: 10 * 1024 * 1024 });
   if (nextBuild !== null) {
     pass('Dashboard (dashboard-v2) compiles successfully');
   } else {
