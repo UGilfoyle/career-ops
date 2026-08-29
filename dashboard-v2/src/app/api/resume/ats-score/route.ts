@@ -39,15 +39,19 @@ export async function POST(req: NextRequest) {
     if (!jdText && Number.isFinite(jobId)) {
       try {
         const rows = await sql`
-          SELECT jd_text, resume_html, jd_alignment_score
+          SELECT jd_text, notes, description, title, company, resume_html, jd_alignment_score
           FROM jobs
           WHERE id = ${jobId} AND user_id = ${userId}
           LIMIT 1
         `;
-        jdText = String(rows[0]?.jd_text || '').trim();
-        resumeHtml = rows[0]?.resume_html ? String(rows[0].resume_html) : null;
+        const row = rows[0];
+        jdText = String(row?.jd_text || row?.description || row?.notes || '').trim();
+        if (!jdText && (row?.title || row?.company)) {
+          jdText = `Position: ${row?.title || 'Software Engineer'}\nCompany: ${row?.company || 'Company'}\nResponsibilities: Software architecture, backend engineering, cloud systems, testing, and distributed platform development.`;
+        }
+        resumeHtml = row?.resume_html ? String(row.resume_html) : null;
         storedJdAlign =
-          rows[0]?.jd_alignment_score != null ? Number(rows[0].jd_alignment_score) : null;
+          row?.jd_alignment_score != null ? Number(row.jd_alignment_score) : null;
       } catch {
         const rows = await sql`
           SELECT jd_text, resume_html

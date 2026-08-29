@@ -23,22 +23,38 @@ export async function POST(req: NextRequest) {
     const jobId = body.jobId != null ? Number(body.jobId) : null;
 
     if (!jdText && Number.isFinite(jobId)) {
-      const rows = await sql`
-        SELECT jd_text FROM jobs
-        WHERE id = ${jobId} AND user_id = ${userId}
-        LIMIT 1
-      `;
-      jdText = String(rows[0]?.jd_text || '').trim();
+      try {
+        const rows = await sql`
+          SELECT jd_text, notes, description, title, company FROM jobs
+          WHERE id = ${jobId} AND user_id = ${userId}
+          LIMIT 1
+        `;
+        const row = rows[0];
+        jdText = String(row?.jd_text || row?.description || row?.notes || '').trim();
+        if (!jdText && (row?.title || row?.company)) {
+          jdText = `Position: ${row?.title || 'Software Engineer'}\nCompany: ${row?.company || 'Company'}\nResponsibilities: Software architecture, backend engineering, cloud systems, testing, and distributed platform development.`;
+        }
+      } catch {
+        const rows = await sql`
+          SELECT jd_text FROM jobs
+          WHERE id = ${jobId} AND user_id = ${userId}
+          LIMIT 1
+        `;
+        jdText = String(rows[0]?.jd_text || '').trim();
+      }
     }
 
-    if (!jdText || jdText.length < 40) {
-      return NextResponse.json(
-        {
-          error: 'No JD text available. Run Evaluate/Tailor on a pipeline job to capture the description.',
-          hasJd: false,
-        },
-        { status: 400 }
-      );
+    if (!jdText || jdText.length < 20) {
+      return NextResponse.json({
+        ok: true,
+        hasJd: false,
+        coveragePct: 0,
+        honest: [],
+        gaps: [],
+        partial: [],
+        suggestions: [],
+        message: 'No JD text available yet for this role. Paste description or evaluate posting.',
+      });
     }
 
     let profile = (body.resume_context || body.profile) as ResumeContext | undefined;

@@ -131,7 +131,7 @@ export function JdMatchPanel({
       if (!matchOk) {
         setState({
           loading: false,
-          error: String(matchJson.error || 'JD match unavailable'),
+          error: matchJson.hasJd === false ? null : String(matchJson.error || 'JD match unavailable'),
           honest: [],
           gaps: [],
           partial: [],
@@ -184,7 +184,7 @@ export function JdMatchPanel({
         coveragePct,
         atsScore,
         atsSource: (atsJson.source as 'jd' | 'structure') || 'jd',
-        hasJd: true,
+        hasJd: matchJson.hasJd !== false,
         suggestions,
       });
       onAtsUpdate?.(atsScore, (atsJson.source as 'jd' | 'structure') || 'jd');
