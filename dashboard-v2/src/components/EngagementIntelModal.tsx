@@ -237,13 +237,14 @@ export function EngagementIntelModal({ target, onClose, onCopyStealthLink }: Pro
             )}
 
             {/* Quick Actions */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
+                type="primary"
                 icon={<CopyOutlined />}
                 size="small"
                 onClick={() => copyText('Stealth URL', data.tracking!.url)}
               >
-                Copy Stealth URL
+                Copy Tracking URL
               </Button>
               <Button
                 icon={<ExportOutlined />}
@@ -252,8 +253,40 @@ export function EngagementIntelModal({ target, onClose, onCopyStealthLink }: Pro
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Open Companion Page
+                Test Link
               </Button>
+            </div>
+
+            {/* Embed Snippet Card for Personal Website */}
+            <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-3 text-left space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
+                  Personal Site Embed Code
+                </span>
+                <Button
+                  size="small"
+                  type="link"
+                  icon={<CopyOutlined />}
+                  onClick={() =>
+                    copyText(
+                      'Embed Script',
+                      '<script src="https://careerops.dpdns.org/beacon.js" async></script>'
+                    )
+                  }
+                  className="p-0 text-xs font-bold text-emerald-700 hover:text-emerald-800"
+                >
+                  Copy Script Tag
+                </Button>
+              </div>
+              <p className="text-[11px] text-zinc-600 leading-snug">
+                Paste this 1-line tag into your website (e.g.{' '}
+                <span className="font-mono text-zinc-800 font-bold">akashkaintura.is-a.dev</span>).
+                When recruiters visit with <span className="font-mono font-bold text-emerald-800">?ref=...</span>,
+                their views & dwell time will track live here!
+              </p>
+              <div className="bg-zinc-900 text-emerald-400 font-mono text-[11px] p-2 rounded-lg select-all overflow-x-auto">
+                {`<script src="https://careerops.dpdns.org/beacon.js" async></script>`}
+              </div>
             </div>
 
             {/* Follow-up Section */}

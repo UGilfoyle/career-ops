@@ -8,6 +8,19 @@ import { allowTelemetryBeaconLog } from '@/lib/telemetry/limits';
 
 export const dynamic = 'force-dynamic';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -15,18 +28,18 @@ export async function POST(req: NextRequest) {
     const dwellSeconds = Number.isInteger(body.dwellSeconds) ? body.dwellSeconds : 0;
 
     if (!slug || dwellSeconds < 4 || dwellSeconds > 7200) {
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true }, { headers: CORS_HEADERS });
     }
 
     const ua = req.headers.get('user-agent') || 'unknown';
     if (isPrefetchRequest(req.headers) || isBotUserAgent(ua)) {
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true }, { headers: CORS_HEADERS });
     }
 
     const ip = clientIpFromHeaders(req.headers);
     if (!(await allowTelemetryBeaconLog(ip))) {
       // Soft: acknowledge, skip write under abuse pressure
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true }, { headers: CORS_HEADERS });
     }
 
     let trackingId: number | null = null;
@@ -79,8 +92,8 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: CORS_HEADERS });
   } catch {
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: CORS_HEADERS });
   }
 }

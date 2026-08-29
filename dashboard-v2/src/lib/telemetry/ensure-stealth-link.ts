@@ -125,11 +125,15 @@ export async function ensureStealthLinkForApplication(
       linkedin_url: linkedinUrl,
       portfolio_url: portfolioUrl,
     });
+    const personalUrl = portfolioUrl && /^https?:\/\//i.test(portfolioUrl)
+      ? `${portfolioUrl.replace(/\/+$/, '')}/?ref=${existing.slug}`
+      : `${origin}/v/${existing.slug}`;
+
     return {
       ok: true,
       applicationId,
       slug: String(existing.slug),
-      url: `${origin}/v/${existing.slug}`,
+      url: personalUrl,
       view_count: Number(existing.view_count ?? 0),
       click_count: Number(existing.click_count ?? 0),
       total_dwell_sec: Number(existing.total_dwell_sec ?? 0),
@@ -180,11 +184,15 @@ export async function ensureStealthLinkForApplication(
     });
   }
 
+  const personalUrl = portfolioUrl && /^https?:\/\//i.test(portfolioUrl)
+    ? `${portfolioUrl.replace(/\/+$/, '')}/?ref=${slug}`
+    : `${origin}/v/${slug}`;
+
   return {
     ok: true,
     applicationId,
     slug,
-    url: `${origin}/v/${slug}`,
+    url: personalUrl,
     view_count: 0,
     click_count: 0,
     total_dwell_sec: 0,
