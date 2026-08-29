@@ -32,6 +32,7 @@ import {
   FireOutlined,
   BulbOutlined,
   RocketOutlined,
+  MailOutlined,
 } from '@ant-design/icons';
 import { JobAvatar } from './JobAvatar';
 
@@ -329,6 +330,13 @@ export function PipelineStudioView({
             >
               {isApplied ? 'Applied' : 'Apply'}
             </Button>
+            <Tooltip title="Research company & draft outreach email">
+              <Button
+                size="small"
+                icon={<MailOutlined />}
+                onClick={() => onOutreach?.(job)}
+              />
+            </Tooltip>
           </Space>
         );
       },
@@ -624,6 +632,13 @@ export function PipelineStudioView({
                       </div>
 
                       <Space size="small" onClick={(e) => e.stopPropagation()}>
+                        <Tooltip title="Research company & draft outreach email">
+                          <Button
+                            size="small"
+                            icon={<MailOutlined />}
+                            onClick={() => onOutreach?.(job)}
+                          />
+                        </Tooltip>
                         <Button
                           type="primary"
                           size="small"
@@ -782,6 +797,18 @@ export function PipelineStudioView({
           inspectingJob ? (
             <div className="flex items-center justify-between gap-2">
               <Button
+                icon={<MailOutlined />}
+                onClick={() => {
+                  onOutreach?.(inspectingJob);
+                  setInspectingJob(null);
+                }}
+              >
+                Draft Outreach Email
+              </Button>
+              <Button
+                size="middle"
+                type={inspectingJob.is_applied ? 'dashed' : 'default'}
+                icon={<CheckCircleOutlined className={inspectingJob.is_applied ? 'text-emerald-600' : ''} />}
                 onClick={() => {
                   const id = Number(inspectingJob.pipeline_id ?? inspectingJob.id);
                   onMarkApplied(id, Boolean(inspectingJob.is_applied));

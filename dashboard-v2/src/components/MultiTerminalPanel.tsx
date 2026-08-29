@@ -375,6 +375,16 @@ export function MultiTerminalPanel({
         {/* Quick Command Buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <Button
+            type="primary"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={addSession}
+            disabled={sessions.length >= 6}
+            className="text-xs font-mono bg-emerald-600 hover:bg-emerald-500 border-emerald-600"
+          >
+            + New Tab
+          </Button>
+          <Button
             size="small"
             icon={<PlayCircleOutlined />}
             onClick={() => runCommandOnSession(activeKey, 'scan --deep')}
@@ -416,7 +426,7 @@ export function MultiTerminalPanel({
       <div className="rounded-2xl border border-zinc-300 bg-zinc-950 shadow-xl overflow-hidden flex flex-col h-[600px]">
         {/* Terminal Tab Bar */}
         <div className="bg-zinc-900 border-b border-zinc-800 px-3 py-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             {sessions.map((sess) => {
               const isActive = sess.id === activeKey;
               return (
@@ -445,19 +455,20 @@ export function MultiTerminalPanel({
               );
             })}
 
-            <Tooltip title="Open new parallel terminal session">
-              <Button
-                type="text"
-                size="small"
-                icon={<PlusOutlined className="text-zinc-400 hover:text-white text-xs" />}
-                onClick={addSession}
-                className="hover:bg-zinc-800 text-zinc-400 h-7 w-7 rounded-lg"
-              />
-            </Tooltip>
+            <button
+              type="button"
+              onClick={addSession}
+              disabled={sessions.length >= 6}
+              title="Open a new parallel terminal session (up to 6)"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-700/60 transition-all cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <PlusOutlined className="text-[10px]" />
+              <span>New Tab</span>
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-500">
-            <span>{sessions.length}/6 sessions</span>
+          <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-500 shrink-0">
+            <span>{sessions.length}/6 parallel sessions</span>
           </div>
         </div>
 
@@ -493,8 +504,11 @@ export function MultiTerminalPanel({
                 <p>
                   <strong className="text-emerald-400">help</strong> → Print command reference
                 </p>
+                <p className="text-zinc-400 pt-1 border-t border-zinc-900">
+                  ⚡ <strong className="text-emerald-400">Parallel Execution:</strong> Click <span className="text-emerald-300 font-bold bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-700">[+ New Tab]</span> to run up to 6 concurrent sessions in parallel.
+                </p>
               </div>
-              <div className="text-zinc-600 italic text-[11px] pt-1">
+              <div className="text-[11px] text-zinc-600 font-mono">
                 Press Enter to run · Ctrl+C to abort running task · Multi-sessions run in parallel
               </div>
             </div>
