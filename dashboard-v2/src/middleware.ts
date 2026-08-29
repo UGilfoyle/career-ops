@@ -8,8 +8,8 @@ export default auth((req) => {
   const publicPages = ["/", "/login", "/signup", "/verify", "/forgot-password", "/reset-password", "/auth/continue", "/docs", "/privacy", "/status", "/billing/simulate"]
   const alwaysPublic = ["/billing/simulate"]
   const pathname = req.nextUrl.pathname
-  // Stealth companion + outbound redirects must be public (no auth wall)
-  const isStealthPublic = pathname === "/v" || pathname.startsWith("/v/")
+  // Stealth companion + outbound redirects and public beacon script must be public (no auth wall)
+  const isStealthPublic = pathname === "/v" || pathname.startsWith("/v/") || pathname === "/beacon.js"
   const isPublicPage = publicPages.includes(pathname) || isStealthPublic
   const isAlwaysPublic = alwaysPublic.includes(pathname) || isStealthPublic
 
@@ -30,6 +30,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/|api|_next/static|_next/image|favicon.ico|favicon.svg|icon.png|apple-icon.png|favicon-32.png|favicon-16.png).*)",
+    "/((?!api/|api|_next/static|_next/image|favicon.ico|favicon.svg|icon.png|apple-icon.png|favicon-32.png|favicon-16.png|beacon.js).*)",
   ],
 }
