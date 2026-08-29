@@ -79,10 +79,15 @@ export async function POST(req: Request, context: RouteContext) {
         linkedin_url: linkedinUrl,
         portfolio_url: portfolioUrl,
       });
+      const personalUrl = portfolioUrl && /^https?:\/\//i.test(portfolioUrl)
+        ? `${portfolioUrl.replace(/\/+$/, '')}/?ref=${existing.slug}`
+        : `${origin}/v/${existing.slug}`;
+
       return NextResponse.json({
         ok: true,
         slug: existing.slug,
-        url: `${origin}/v/${existing.slug}`,
+        url: personalUrl,
+        companion_url: `${origin}/v/${existing.slug}`,
         view_count: existing.view_count ?? 0,
         click_count: existing.click_count ?? 0,
         total_dwell_sec: existing.total_dwell_sec ?? 0,
@@ -130,10 +135,15 @@ export async function POST(req: Request, context: RouteContext) {
       });
     }
 
+    const personalUrl = portfolioUrl && /^https?:\/\//i.test(portfolioUrl)
+      ? `${portfolioUrl.replace(/\/+$/, '')}/?ref=${slug}`
+      : `${origin}/v/${slug}`;
+
     return NextResponse.json({
       ok: true,
       slug,
-      url: `${origin}/v/${slug}`,
+      url: personalUrl,
+      companion_url: `${origin}/v/${slug}`,
       view_count: 0,
       click_count: 0,
       total_dwell_sec: 0,
