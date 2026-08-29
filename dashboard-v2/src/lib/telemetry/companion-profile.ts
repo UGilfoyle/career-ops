@@ -133,24 +133,26 @@ export async function loadCompanionProfile(
   const exitStory = String(narrative.exit_story || '').trim();
   const summary = cleanCompanionSummary(exitStory);
 
+  const rawPortfolio =
+    candidate.portfolio_url ||
+    candidate.portfolio ||
+    candidate.website ||
+    candidate.website_url ||
+    (ctx as any).portfolio_url ||
+    (ctx as any).portfolio;
+
+  let portfolioUrl = normalizeExternalUrl(String(rawPortfolio || ''));
+  if (!portfolioUrl || /github\.com/i.test(portfolioUrl) || /linkedin\.com/i.test(portfolioUrl)) {
+    portfolioUrl = 'https://akashkaintura.is-a.dev';
+  }
+
   return {
     name: name || 'Candidate',
     headline,
     location: String(candidate.location || '').trim() || null,
     githubUrl: normalizeExternalUrl(String(candidate.github || '')),
     linkedinUrl: normalizeExternalUrl(String(candidate.linkedin || '')),
-    portfolioUrl:
-      normalizeExternalUrl(
-        String(
-          candidate.portfolio_url ||
-            candidate.portfolio ||
-            candidate.website ||
-            candidate.website_url ||
-            (ctx as any).portfolio_url ||
-            (ctx as any).portfolio ||
-            'https://akashkaintura.is-a.dev'
-        )
-      ) || 'https://akashkaintura.is-a.dev',
+    portfolioUrl,
     summary,
   };
 }

@@ -125,9 +125,11 @@ export async function ensureStealthLinkForApplication(
       linkedin_url: linkedinUrl,
       portfolio_url: portfolioUrl,
     });
-    const personalUrl = portfolioUrl && /^https?:\/\//i.test(portfolioUrl)
-      ? `${portfolioUrl.replace(/\/+$/, '')}/?ref=${existing.slug}`
-      : `${origin}/v/${existing.slug}`;
+    const effectivePortfolio =
+      portfolioUrl && !/github\.com/i.test(portfolioUrl) && !/linkedin\.com/i.test(portfolioUrl) && /^https?:\/\//i.test(portfolioUrl)
+        ? portfolioUrl
+        : 'https://akashkaintura.is-a.dev';
+    const personalUrl = `${effectivePortfolio.replace(/\/+$/, '')}/?ref=${existing.slug}`;
 
     return {
       ok: true,
@@ -184,9 +186,11 @@ export async function ensureStealthLinkForApplication(
     });
   }
 
-  const personalUrl = portfolioUrl && /^https?:\/\//i.test(portfolioUrl)
-    ? `${portfolioUrl.replace(/\/+$/, '')}/?ref=${slug}`
-    : `${origin}/v/${slug}`;
+  const effectivePortfolio =
+    portfolioUrl && !/github\.com/i.test(portfolioUrl) && !/linkedin\.com/i.test(portfolioUrl) && /^https?:\/\//i.test(portfolioUrl)
+      ? portfolioUrl
+      : 'https://akashkaintura.is-a.dev';
+  const personalUrl = `${effectivePortfolio.replace(/\/+$/, '')}/?ref=${slug}`;
 
   return {
     ok: true,

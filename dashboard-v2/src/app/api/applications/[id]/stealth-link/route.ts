@@ -79,9 +79,11 @@ export async function POST(req: Request, context: RouteContext) {
         linkedin_url: linkedinUrl,
         portfolio_url: portfolioUrl,
       });
-      const personalUrl = portfolioUrl && /^https?:\/\//i.test(portfolioUrl)
-        ? `${portfolioUrl.replace(/\/+$/, '')}/?ref=${existing.slug}`
-        : `${origin}/v/${existing.slug}`;
+      const effectivePortfolio =
+        portfolioUrl && !/github\.com/i.test(portfolioUrl) && !/linkedin\.com/i.test(portfolioUrl) && /^https?:\/\//i.test(portfolioUrl)
+          ? portfolioUrl
+          : 'https://akashkaintura.is-a.dev';
+      const personalUrl = `${effectivePortfolio.replace(/\/+$/, '')}/?ref=${existing.slug}`;
 
       return NextResponse.json({
         ok: true,
@@ -135,9 +137,11 @@ export async function POST(req: Request, context: RouteContext) {
       });
     }
 
-    const personalUrl = portfolioUrl && /^https?:\/\//i.test(portfolioUrl)
-      ? `${portfolioUrl.replace(/\/+$/, '')}/?ref=${slug}`
-      : `${origin}/v/${slug}`;
+    const effectivePortfolio =
+      portfolioUrl && !/github\.com/i.test(portfolioUrl) && !/linkedin\.com/i.test(portfolioUrl) && /^https?:\/\//i.test(portfolioUrl)
+        ? portfolioUrl
+        : 'https://akashkaintura.is-a.dev';
+    const personalUrl = `${effectivePortfolio.replace(/\/+$/, '')}/?ref=${slug}`;
 
     return NextResponse.json({
       ok: true,

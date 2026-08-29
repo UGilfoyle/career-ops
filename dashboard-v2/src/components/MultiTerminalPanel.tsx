@@ -168,9 +168,32 @@ export function MultiTerminalPanel({
   useEffect(() => {
     if (externalCommand && externalCommand.id !== lastExternalIdRef.current) {
       lastExternalIdRef.current = externalCommand.id;
-      runCommandOnSession(activeKey, externalCommand.command);
+      let targetId = activeKey;
+      const cur = sessions.find((s) => s.id === activeKey);
+      if (cur?.isExecuting) {
+        const idle = sessions.find((s) => !s.isExecuting);
+        if (idle) {
+          targetId = idle.id;
+        } else if (sessions.length < 6) {
+          const newId = `term-${Date.now()}`;
+          const newNum = sessions.length + 1;
+          const newSession: TerminalSession = {
+            id: newId,
+            name: `Terminal ${newNum}`,
+            logs: [],
+            isExecuting: false,
+            cmdInput: '',
+            history: [],
+            historyIndex: -1,
+          };
+          setSessions((prev) => [...prev, newSession]);
+          targetId = newId;
+        }
+      }
+      setActiveKey(targetId);
+      runCommandOnSession(targetId, externalCommand.command);
     }
-  }, [externalCommand, activeKey, runCommandOnSession]);
+  }, [externalCommand, activeKey, sessions, runCommandOnSession]);
 
   const addSession = () => {
     if (sessions.length >= 6) {
