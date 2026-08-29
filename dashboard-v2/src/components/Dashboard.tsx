@@ -163,14 +163,27 @@ function statusChipClass(status?: string | null) {
   return 'bg-amber-50 text-amber-700 border-amber-200';
 }
 
-function jobIsApplied(job: { is_applied?: boolean; application_status?: string | null; app_id?: number | null }) {
-  return Boolean(job?.is_applied || job?.app_id || job?.application_status);
+function jobIsApplied(job: {
+  is_applied?: boolean;
+  application_status?: string | null;
+  app_id?: number | null;
+  applied_at?: string | null;
+}) {
+  if (job?.applied_at) return true;
+  const raw = String(job?.application_status || '').toUpperCase().trim();
+  if (['EVALUATED', 'PENDING', 'SKIP', 'DISCARDED'].includes(raw)) return false;
+  return Boolean(job?.is_applied || ['APPLIED', 'INTERVIEW', 'OFFER', 'REJECTED'].includes(raw));
 }
 
-/** Normalize pipeline status — PENDING + applied chip → APPLIED for display. */
-function formatPipelineStatus(job: { application_status?: string | null; is_applied?: boolean }) {
-  const raw = String(job.application_status || '').toUpperCase();
-  if (job.is_applied && (raw === 'PENDING' || raw === 'EVALUATED' || !raw)) return 'APPLIED';
+/** Normalize pipeline status — keep EVALUATED distinct from APPLIED */
+function formatPipelineStatus(job: {
+  application_status?: string | null;
+  is_applied?: boolean;
+  applied_at?: string | null;
+}) {
+  const raw = String(job?.application_status || '').toUpperCase().trim();
+  if (job?.applied_at || raw === 'APPLIED') return 'APPLIED';
+  if (['EVALUATED', 'PENDING'].includes(raw)) return 'EVALUATED';
   if (!raw) return 'OPEN';
   return raw;
 }

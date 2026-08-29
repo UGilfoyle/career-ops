@@ -141,7 +141,13 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
 
     const mapRow = (p: Record<string, unknown>, extras: Record<string, unknown> = {}) => {
       const appStatus = p.application_status ? String(p.application_status) : null;
-      const isApplied = Boolean(p.is_applied ?? p.app_id);
+      const isApplied = Boolean(
+        p.applied_at ||
+          (appStatus &&
+            ['APPLIED', 'INTERVIEW', 'INTERVIEWING', 'OFFER', 'REJECTED'].includes(
+              appStatus.toUpperCase()
+            ))
+      );
       return {
       pipeline_id: p.pipeline_id,
       url: p.url,
@@ -203,7 +209,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           a.id AS app_id,
           a.status AS application_status,
           a.applied_at,
-          (a.id IS NOT NULL) AS is_applied
+          (a.applied_at IS NOT NULL OR a.status IN ('APPLIED', 'INTERVIEW', 'INTERVIEWING', 'OFFER', 'REJECTED')) AS is_applied
         FROM jobs j
         LEFT JOIN LATERAL (
           SELECT id, status, applied_at
@@ -249,7 +255,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           a.id AS app_id,
           a.status AS application_status,
           a.applied_at,
-          (a.id IS NOT NULL) AS is_applied
+          (a.applied_at IS NOT NULL OR a.status IN ('APPLIED', 'INTERVIEW', 'INTERVIEWING', 'OFFER', 'REJECTED')) AS is_applied
         FROM jobs j
         LEFT JOIN LATERAL (
           SELECT id, status, applied_at
@@ -284,7 +290,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           a.id AS app_id,
           a.status AS application_status,
           a.applied_at,
-          (a.id IS NOT NULL) AS is_applied
+          (a.applied_at IS NOT NULL OR a.status IN ('APPLIED', 'INTERVIEW', 'INTERVIEWING', 'OFFER', 'REJECTED')) AS is_applied
         FROM jobs j
         LEFT JOIN LATERAL (
           SELECT id, status, applied_at

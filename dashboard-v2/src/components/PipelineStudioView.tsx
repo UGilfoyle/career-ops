@@ -85,6 +85,16 @@ function parseNumericScore(score: string | number | null | undefined): number {
   return parseFloat(match[1]);
 }
 
+export function isPipelineJobApplied(job: PipelineJob): boolean {
+  if ((job as any).applied_at) return true;
+  const statusStr = String(job.status || (job as any).application_status || '').toUpperCase().trim();
+  if (['EVALUATED', 'PENDING', 'SKIP', 'DISCARDED'].includes(statusStr)) return false;
+  return Boolean(
+    job.is_applied ||
+    ['APPLIED', 'INTERVIEW', 'INTERVIEWING', 'OFFER', 'REJECTED'].includes(statusStr)
+  );
+}
+
 function extractTechTags(title?: string, notes?: string): string[] {
   const text = `${title || ''} ${notes || ''}`.toLowerCase();
   const known = [
@@ -194,10 +204,7 @@ export function PipelineStudioView({
       }
 
       const score = parseNumericScore(job.score ?? job.score_raw);
-      const isApplied = Boolean(
-        job.is_applied ||
-          (typeof job.status === 'string' && job.status.toLowerCase().includes('applied'))
-      );
+      const isApplied = isPipelineJobApplied(job);
 
       if (filterTab === 'hot' && (score < 7.0 || isApplied)) return false;
       if (filterTab === 'gcc' && (!job.is_gcc || isApplied)) return false;
@@ -244,10 +251,7 @@ export function PipelineStudioView({
       }
       if (score >= 7.0) hot += 1;
       if (j.is_gcc) gcc += 1;
-      if (
-        j.is_applied ||
-        (typeof j.status === 'string' && j.status.toLowerCase().includes('applied'))
-      ) {
+      if (isPipelineJobApplied(j)) {
         applied += 1;
       }
     });
@@ -308,10 +312,7 @@ export function PipelineStudioView({
       width: 160,
       render: (_, job, idx) => {
         const jobId = Number(job.pipeline_id ?? job.id ?? idx);
-        const isApplied = Boolean(
-          job.is_applied ||
-            (typeof job.status === 'string' && job.status.toLowerCase().includes('applied'))
-        );
+        const isApplied = isPipelineJobApplied(job);
         return (
           <Space size="small" onClick={(e) => e.stopPropagation()}>
             <Button
@@ -538,10 +539,7 @@ export function PipelineStudioView({
               {filteredJobs.slice(0, 40).map((job, idx) => {
                 const jobId = Number(job.pipeline_id ?? job.id ?? idx);
                 const scoreNum = parseNumericScore(job.score ?? job.score_raw);
-                const isApplied = Boolean(
-                  job.is_applied ||
-                    (typeof job.status === 'string' && job.status.toLowerCase().includes('applied'))
-                );
+                const isApplied = isPipelineJobApplied(job);
                 const tags = extractTechTags(job.title, job.notes);
 
                 return (
@@ -807,17 +805,17 @@ export function PipelineStudioView({
               </Button>
               <Button
                 size="middle"
-                type={inspectingJob.is_applied ? 'dashed' : 'default'}
-                icon={<CheckCircleOutlined className={inspectingJob.is_applied ? 'text-emerald-600' : ''} />}
+                type={isPipelineJobApplied(inspectingJob) ? 'dashed' : 'default'}
+                icon={<CheckCircleOutlined className={isPipelineJobApplied(inspectingJob) ? 'text-emerald-600' : ''} />}
                 onClick={() => {
                   const id = Number(inspectingJob.pipeline_id ?? inspectingJob.id);
-                  onMarkApplied(id, Boolean(inspectingJob.is_applied));
+                  onMarkApplied(id, isPipelineJobApplied(inspectingJob));
                   setInspectingJob((prev) =>
-                    prev ? { ...prev, is_applied: !prev.is_applied } : null
+                    prev ? { ...prev, is_applied: !isPipelineJobApplied(prev) } : null
                   );
                 }}
               >
-                {inspectingJob.is_applied ? 'Mark Unapplied' : 'Mark Applied'}
+                {isPipelineJobApplied(inspectingJob) ? 'Mark Unapplied' : 'Mark Applied'}
               </Button>
               <Button
                 type="primary"
