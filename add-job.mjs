@@ -78,51 +78,44 @@ function canonicalJobUrl(url) {
   }
 }
 
-// Heuristic parse for LinkedIn public job pages (body text varies by locale / auth wall)
+// Heuristic parse for LinkedIn public job pages
 function extractLinkedInCompanyTitle(jdText, url) {
-  if (!url.includes('linkedin.com')) return { company: null, title: null };
-  const head = String(jdText || '').slice(0, 6000);
-  // Document title / hero often: "Co hiring Role — Remote | LinkedIn"
-  const hiring = head.match(
-    /^[^\n]*\b([^\n|]{2,80}?)\s+hiring\s+([^\n|]+?)(?:\s+[-—]\s*(?:Remote|Hybrid|On-site)[^\n|]*)?(?:\s*\||\s*$)/im
-  );
-  if (hiring) {
-    const company = hiring[1].replace(/\s+/g, ' ').trim();
-    let title = hiring[2].replace(/\s+/g, ' ').trim();
-    title = title.replace(/\s+[-—]\s+Remote in .+$/i, '').trim();
-    if (company.length >= 2 && title.length >= 4) return { company, title };
-  }
-  const lines = String(jdText || '')
-    .split('\n')
+  if (!url.includes("linkedin.com")) return { company: null, title: null };
+  const lines = String(jdText || "")
+    .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
 
-  const skip = (l) =>
-    /^(skip to|sign in|join now|apply|save|report|get ai|email or phone|password|new to linkedin)/i.test(l) ||
-    l.length < 2;
-
-  const good = lines.filter((l) => !skip(l));
-
+  const cleanLines = lines.filter(l => !/^(skip to|linkedin|jobs|clear text|sign in|join now|apply|save|about the job|overview|get ai)/i.test(l));
   let title = null;
   let company = null;
 
-  for (let i = 0; i < Math.min(good.length, 50); i++) {
-    const line = good[i];
-    if (
-      !title &&
-      /(engineer|developer|manager|architect|lead|remote|contract|full[\s-]?stack|software|data|product|devops)/i.test(line) &&
-      line.length < 140
-    ) {
-      title = line.replace(/\s+/g, ' ').trim();
-      continue;
+  if (cleanLines.length >= 2) {
+    const l0 = cleanLines[0];
+    const l1 = cleanLines[1];
+    if (/(?:engineer|developer|architect|lead|manager|consultant|analyst|specialist|head|director)/i.test(l0) && l0.length < 120) {
+      title = l0;
+      if (l1.length < 80) {
+        const comp = l1.split(/[·\t]|  /)[0].trim();
+        if (comp.length >= 2 && !/^(full-time|remote|contract|part-time|hybrid)/i.test(comp)) {
+          company = comp;
+        }
+      }
     }
-    if (title && !company && line.length > 1 && line.length < 100) {
-      // Often: "Kake · Spain" or "Kake Spain" or "Company Name"
-      if (line === title) continue;
-      const c = line.split('·')[0].split('|')[0].trim();
-      if (c && c.toLowerCase() !== title.toLowerCase()) {
-        company = c;
-        break;
+  }
+
+  // Document title / hero often: "Co hiring Role — Remote | LinkedIn"
+  if (!company || !title) {
+    const head = String(jdText || "").slice(0, 6000);
+    const hiring = head.match(
+      /^[^\n]*\b([^\n|]{2,80}?)\s+hiring\s+([^\n|]+?)(?:\s+[-—]\s*(?:Remote|Hybrid|On-site)[^\n|]*)?(?:\s*\||\s*$)/im
+    );
+    if (hiring) {
+      if (!company) company = hiring[1].replace(/\s+/g, " ").trim();
+      if (!title) {
+        let t = hiring[2].replace(/\s+/g, " ").trim();
+        t = t.replace(/\s+[-—]\s+Remote in .+$/i, "").trim();
+        title = t;
       }
     }
   }
@@ -130,23 +123,36 @@ function extractLinkedInCompanyTitle(jdText, url) {
   return { company, title };
 }
 
-// Extract company name from URL (non-LinkedIn)
+// Extract company name from URL (intelligent ATS & portal extraction)
 function extractCompanyFromUrl(url) {
   try {
-    const hostname = new URL(url).hostname;
-    const parts = hostname.split('.');
-    if (hostname.includes('linkedin.com')) return 'LinkedIn Job';
-    if (hostname.includes('ashbyhq.com') || hostname.includes('greenhouse.io')) {
-      const match = url.match(/\/([^/]+)\/\d+/);
-      if (match) return match[1].charAt(0).toUpperCase() + match[1].slice(1);
+    const u = new URL(url);
+    const hostname = u.hostname.toLowerCase();
+    const pathname = u.pathname;
+
+    if (hostname.includes("smartrecruiters.com")) {
+      const match = pathname.match(/\/([^/]+)\/[0-9a-zA-Z\-_]+/);
+      if (match && match[1] && match[1] !== "jobs") return match[1];
     }
-    if (parts.length >= 2) {
-      return parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1);
+    if (hostname.includes("greenhouse.io") || hostname.includes("ashbyhq.com") || hostname.includes("lever.co")) {
+      const parts = pathname.split("/").filter(Boolean);
+      if (parts[0] && parts[0] !== "jobs" && parts[0] !== "job-boards") return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+      if (parts[1]) return parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+    }
+    if (hostname.includes("myworkdayjobs.com") || hostname.includes("ripplehire.com") || hostname.includes("bamboohr.com")) {
+      const sub = hostname.split(".")[0];
+      if (sub && sub !== "jobs" && sub !== "careers" && sub !== "usource") return sub.charAt(0).toUpperCase() + sub.slice(1);
+    }
+    if (hostname.includes("linkedin.com")) return null;
+
+    const hostParts = hostname.replace(/^(jobs|careers|app|www)\./, "").split(".");
+    if (hostParts.length >= 2) {
+      return hostParts[0].charAt(0).toUpperCase() + hostParts[0].slice(1);
     }
   } catch (e) {
     // ignore
   }
-  return 'Unknown Company';
+  return null;
 }
 
 // Extract job title from JD text (first line or heading)
