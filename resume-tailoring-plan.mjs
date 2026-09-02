@@ -118,27 +118,41 @@ export function resolveEmployerPolicy(profile) {
 export function classifyRoleFamily(jdText) {
   const t = String(jdText || '').toLowerCase();
   if (
-    /\betl\b|\belt\b|\bdata warehouse\b|\bdata reconcil|\bsource-to-target\b|\bscd\b|\bdatabricks\b|\bpyspark\b|\bdata factory\b|\badf\b|\bsnowflake\b|\bdata engineer\b|\bdata modeling\b/
-      .test(t)
+    /\b(data engineer|senior data engineer)\b/.test(t)
+    || (/\betl\b|\belt\b|\bdata warehouse\b|\bdata reconcil|\bsource-to-target\b|\bscd\b|\bdatabricks\b|\bpyspark\b|\bdata factory\b|\badf\b|\bsnowflake\b/.test(t)
+      && !/\b(backend|back[-\s]?end|full[-\s]?stack)\b/.test(t))
+    || (/\bdata modeling\b/.test(t) && /\b(data warehouse|etl|elt|databricks|snowflake|bigquery)\b/.test(t))
   ) {
     return 'data_etl';
   }
-  if (/\b(web scrap|scraping|puppeteer|playwright|cheerio)\b/.test(t)) return 'scraping_js';
-  if (/\b(llm|ai agent|generative ai|langchain|rag)\b/.test(t) && /\bengineer\b/.test(t)) {
+  if (/\b(web scrap|scraping|puppeteer|playwright|cheerio)\b/.test(t) && !/\bfull[-\s]?stack\b|\bplatform engineer\b/.test(t)) {
+    return 'scraping_js';
+  }
+  if (/\b(llm|ai agent|generative ai|langchain|rag)\b/.test(t) && /\bengineer\b/.test(t) && !/\b(backend|back[-\s]?end|full[-\s]?stack)\b/.test(t)) {
     return 'ai_llm';
   }
   // C++ / Linux / satellite / real-time must beat incidental CI/CD or "software engineer"
   if (isEmbeddedSystemsJd(jdText)) return 'embedded_systems';
   if (isDotnetAzureJd(jdText)) return 'azure_dotnet';
-  if (/\bfull[-\s]?stack\b/.test(t)) return 'fullstack';
-  if (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && !/\bback[-\s]?end\b|\bfull[-\s]?stack\b/.test(t)) {
+  if (/\bfull[-\s]?stack\b/.test(t) || (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && /\bback[-\s]?end\b|\bbackend\b/.test(t))) {
+    return 'fullstack';
+  }
+
+  const hasBackendCore = /\b(java\b|spring boot|microservices?|apis?|restful|kafka|backend|back[-\s]?end)\b/.test(t);
+  const hasFrontendCore = /\b(front[-\s]?end\b|frontend\b)/.test(t);
+  if (hasFrontendCore && !hasBackendCore && !/\bfull[-\s]?stack\b|\.net\b|\bnode\.?js\b/.test(t)) {
     return 'frontend';
   }
   if (/\bdevops\b|\bsite reliability\b|\bsre\b|\baws platform engineer\b/.test(t)) return 'devops_sre';
   if (/\bplatform engineer\b/.test(t) && /\b(aws|terraform|cloudformation|iam|vpc)\b/.test(t)) {
     return 'devops_sre';
   }
-  if (/\bback[-\s]?end\b|\bplatform engineer\b|\bapi engineer\b/.test(t)) return 'backend_platform';
+  if (/\bback[-\s]?end\b|\bplatform engineer\b|\bapi engineer\b/.test(t) || hasBackendCore) {
+    return 'backend_platform';
+  }
+  if (/\b(react|angular|vue|javascript)\b/.test(t) && /\b(java|python|node|go|c#|\.net|php|ruby)\b/.test(t)) {
+    return 'fullstack';
+  }
   return 'unknown';
 }
 
@@ -425,7 +439,7 @@ function escapeGapRegex(s) {
   return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function stripGapMention(bullet, gap) {
+export function stripGapMention(bullet, gap) {
   const raw = String(gap || "").trim();
   if (!raw || raw.length < 2) return bullet;
   let t = String(bullet || "");
@@ -438,9 +452,11 @@ function stripGapMention(bullet, gap) {
     || /asp\.net/i.test(raw)
   ) {
     t = t.replace(/\bASP\.?\s*NET(?:\s+Core)?\b/gi, "");
-    t = t.replace(/\bASP\s+APIs?\b/gi, "APIs");
-    if (compact !== "c#") t = t.replace(/\b\.NET(?:\s+Core)?\b/gi, "");
-    if (compact === "c#" || /asp\.net/i.test(raw)) t = t.replace(/\bC#\b/g, "");
+    if (compact !== "c#") t = t.replace(/(?:^|[^\w])(?:\.net|dotnet)(?:\s+Core)?(?=[^\w]|$)/gi, " ");
+    if (compact === "c#" || /asp\.net/i.test(raw)) t = t.replace(/\bC#(?=[^\w]|$)/gi, "");
+    t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s+and\s+/gi, " ");
+    t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s+(?=[,.;]|$)/gi, "");
+    t = t.replace(/\s+and\s+(?:and\s+)+/gi, " and ");
     return t.replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").replace(/,\s*,/g, ",").replace(/\s+\./g, ".").trim();
   }
   const escaped = escapeGapRegex(raw).replace(/\./g, "\.?");
@@ -448,6 +464,8 @@ function stripGapMention(bullet, gap) {
   t = t.replace(new RegExp(`(?:\\s*(?:,|/|and|&))?\\s*\\b${escaped}\\b(?:\\s*(?:,|/|and|&))?`, "gi"), "");
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s+and\s*,/gi, "");
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*,\s*([a-z]+ing\b)/gi, (m, prep, word) => word + " ");
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s+([a-z]+ing\b)/gi, (m, prep, word) => word + " ");
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s+(?:and\s+)?(?=[,.;]|$)/gi, "");
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of|and)\s+and\s+/gi, (m, p1) => p1 + " ");
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*,\s*([A-Za-z0-9+#]+)/gi, (m, p1, p2) => p1 + " " + p2);
   t = t.replace(/\busing\s*,\s*([a-z]+ing\b)/gi, (m, p1) => p1 + " ");

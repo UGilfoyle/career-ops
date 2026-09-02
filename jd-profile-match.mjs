@@ -316,31 +316,76 @@ export function isEmbeddedSystemsJd(jdText) {
 /** .NET / C# / ASP.NET plus Azure (Functions, Service Bus, Event Hub, containers). */
 export function isDotnetAzureJd(jdText) {
   const t = String(jdText || '').toLowerCase();
-  const net = /\b\.net\b|\bc#\b|\basp\.net\b/.test(t);
-  const azure = /\bazure\b/.test(t);
-  return net && (azure || /\basp\.net\b|\bazure functions?\b|\bservice bus\b/.test(t));
+  const net = /(?:^|[^\w])(?:\.net|dotnet)\b/i.test(t) || /\bc#(?=[^\w]|$)/i.test(t) || /\basp\.net\b/i.test(t);
+  const azure = /\bazure\b/i.test(t);
+  return net && (azure || /\basp\.net\b|\bazure functions?\b|\bservice bus\b/i.test(t));
 }
 
-/** Posted "Job Title:" when present — the most accurate title for any JD. */
-export function extractJdPostedTitle(jdText) {
-  const t = String(jdText || '');
-  const m = t.match(/(?:job\s*title|position title)\s*[:\-–]\s*([^\n]{8,90})/i);
-  if (!m) return '';
-  let title = String(m[1] || '').replace(/\s+/g, ' ').trim();
+function isRoleLikeTitle(s) {
+  return /\b(engineer|developer|consultant|architect|specialist|lead|manager|analyst|programmer|tester|administrator|trainee)\b/i.test(s)
+    || /\b(?:full[-\s]?stack|backend|frontend|devops|sre|platform|etl)\s+(?:engineer|developer|consultant|architect|lead|specialist|tester|testing)\b/i.test(s);
+}
+
+function cleanExtractedTitle(raw) {
+  let title = String(raw || '').replace(/\s+/g, ' ').trim();
   title = title.replace(/\s*\([^)]*\)\s*$/, '').trim();
   title = title.replace(/[|].*$/, '').trim();
-  if (title.length < 8 || title.length > 70) return '';
-  if (/\b(we are|hiring entity|requirements|responsibilities|about us|salary range)\b/i.test(title)) return '';
+  title = title.replace(/\s+(?:with|responsible for)\s+.*$/i, '').trim();
+  if (title.includes(' - ')) {
+    const parts = title.split(/\s+-\s+/);
+    const last = parts[parts.length - 1].trim();
+    if (isRoleLikeTitle(last)) {
+      const prev = parts[parts.length - 2];
+      title = (parts.length >= 2 && prev && isRoleLikeTitle(prev))
+        ? parts.slice(-2).join(' - ')
+        : last;
+    }
+  }
+  if (title.length < 5 || title.length > 85) return '';
+  if (/^(?:design|build|develop|implement|create|manage|collaborate|participate|deliver|drive|work with|ensure)\b/i.test(title)) return '';
+  if (/\b(we are|looking for|seeking|hiring entity|requirements|responsibilities|about us|salary range|department|location)\b/i.test(title)) return '';
   if (/https?:\/\//i.test(title)) return '';
   return title;
 }
 
-function seniorizePostedTitle(title, years) {
-  const t = String(title || '').replace(/\s+/g, ' ').trim();
+/** Posted "Job Title:" or heading title when present — the most accurate title for any JD. */
+export function extractJdPostedTitle(jdText) {
+  const t = String(jdText || '').trim();
   if (!t) return '';
+
+  // 1. Explicit labels: Job Title:, Role:, Title:, Position Title:
+  const m = t.match(/(?:job\s*title|position\s*title|role\s*title|^role|^title|^position)\s*[:\-–]\s*([^\n]{5,120})/im);
+  if (m) {
+    const cleaned = cleanExtractedTitle(m[1]);
+    if (cleaned) return cleaned;
+  }
+
+  // 2. Markdown H1 or lines with company separator (e.g. # Title — Company, Title @ Company)
+  const lines = t.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 6);
+  for (const line of lines) {
+    const headerMatch = line.match(/^#+\s*(.+)$/);
+    const candidate = headerMatch ? headerMatch[1].trim() : line;
+    const splitMatch = candidate.match(/^([A-Za-z0-9/,\s.()+-]{5,80}?)\s+(?:—|–|-|@|at|\|)\s+([A-Za-z0-9\s.,&-]+)/i);
+    if (splitMatch && !isRoleLikeTitle(splitMatch[2])) {
+      const cleaned = cleanExtractedTitle(splitMatch[1]);
+      if (cleaned && isRoleLikeTitle(cleaned)) return cleaned;
+    }
+    if (isRoleLikeTitle(candidate) && !candidate.toLowerCase().startsWith('url:')) {
+      const cleaned = cleanExtractedTitle(candidate);
+      if (cleaned) return cleaned;
+    }
+  }
+  return '';
+}
+
+function seniorizePostedTitle(title, years) {
+  let t = String(title || '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  t = t.replace(/\s+I\s*\/\s*II\b/i, '');
+  t = t.replace(/\s+I{1,3}\b/i, '');
   if (/\b(senior|staff|principal|lead|junior|associate|intern)\b/i.test(t)) return t;
-  if ((Number(years) || 0) >= 5 && /^software engineer\b/i.test(t)) {
-    return t.replace(/^software engineer/i, 'Senior Software Engineer');
+  if ((Number(years) || 0) >= 5 && /^(?:software\s+)?(?:engineer|developer)\b/i.test(t)) {
+    return t.replace(/^(?:software\s+)?(?:engineer|developer)/i, (m) => `Senior ${m}`);
   }
   return t;
 }
@@ -367,38 +412,42 @@ export function inferJdWorkShapeLine(jdText) {
 export function inferRoleTitleFromJd(jdText, yearsExp = 0) {
   const t = String(jdText || '').toLowerCase();
   const y = Number(yearsExp) || 0;
+  const postedRaw = extractJdPostedTitle(jdText);
+  const posted = postedRaw ? seniorizePostedTitle(postedRaw, y) : '';
+
   if (/\baws platform engineer\b/.test(t) || (/\bplatform engineer\b/.test(t) && /\baws\b/.test(t))) {
-    return /\bprincipal\b/.test(t)
+    return posted || (/\bprincipal\b/.test(t)
       ? 'AWS Platform Engineer Principal'
-      : 'Senior AWS Platform Engineer';
+      : 'Senior AWS Platform Engineer');
   }
   if (isEmbeddedSystemsJd(jdText)) {
-    return y > 0 ? 'Senior Software Engineer' : 'Software Engineer';
+    return posted || (y > 0 ? 'Senior Software Engineer' : 'Software Engineer');
   }
   if (isDotnetAzureJd(jdText)) {
-    return seniorizePostedTitle(extractJdPostedTitle(jdText), y)
-      || (y > 0 ? 'Senior Software Engineer' : 'Software Engineer');
+    return posted || (y > 0 ? 'Senior Software Engineer' : 'Software Engineer');
   }
   if (/\bstaff\s+(software\s+)?engineer\b|\bprincipal\s+(software\s+)?engineer\b/.test(t)) {
-    return y >= 8 ? 'Staff Software Engineer' : 'Senior Software Engineer';
+    return posted || (y >= 8 ? 'Staff Software Engineer' : 'Senior Software Engineer');
   }
   if (/\b(etl testing|senior consultant.*etl|data warehouse testing)\b/.test(t)) {
-    return 'Senior Consultant - ETL Testing';
+    return posted || 'Senior Consultant - ETL Testing';
+  }
+  // If posted title cleanly exists and matches role conventions, prefer it over fallback keywords
+  if (posted && isRoleLikeTitle(posted)) {
+    return posted;
   }
   if (
     /\bdata engineer\b|\bsenior data engineer\b/.test(t)
-    || (/\b(databricks|pyspark|azure data factory|\badf\b|snowflake|data modeling)\b/.test(t)
+    || (/\b(databricks|pyspark|azure data factory|\badf\b|snowflake)\b/.test(t)
       && /\b(data|etl|elt|spark)\b/.test(t))
   ) {
     return 'Senior Data Engineer';
   }
-  if (/\b(web scrap|scraping)\b/.test(t) && /\bjavascript|js\b|node/.test(t)) {
+  if (/\b(web scrap|scraping)\b/.test(t) && /\bjavascript|js\b|node/.test(t) && !/\bfull[-\s]?stack\b/.test(t)) {
     return 'Senior JavaScript Developer';
   }
-  const posted = seniorizePostedTitle(extractJdPostedTitle(jdText), y);
-  if (posted) return posted;
   if (/\bfull[-\s]?stack\b/.test(t)) return 'Senior Full-Stack Engineer';
-  if (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && !/\bback[-\s]?end\b|\bfull[-\s]?stack\b|\.net\b|\bnode\.?js\b/.test(t)) {
+  if (/\bfront[-\s]?end\b|\bfrontend\b/.test(t) && !/\bback[-\s]?end\b|\bfull[-\s]?stack\b|\.net\b|\bnode\.?js\b|\bjava\b/.test(t)) {
     return 'Senior Frontend Engineer';
   }
   if (/\bback[-\s]?end\b|\bplatform engineer\b|\bapi engineer\b/.test(t)) return 'Senior Backend Engineer';

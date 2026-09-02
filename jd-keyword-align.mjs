@@ -235,6 +235,7 @@ export function isApprovedSkillPhrase(kw) {
   if (isJunkKeyword(kw)) return false;
   const k = normalizeKeyword(kw);
   if (!k) return false;
+  if (/\s+or\s+/i.test(k)) return false;
   if (/[()[\]{}]/.test(k) && ((k.match(/[([{]/g) || []).length !== (k.match(/[)\]}]/g) || []).length)) {
     return false;
   }
@@ -561,7 +562,7 @@ export const DOMAIN_EVIDENCE_STEMS = [
   { match: /web scrap|puppeteer|playwright|cheerio|browser automation|anti-bot|proxy/i, stems: ['scrap', 'puppeteer', 'playwright', 'cheerio', 'javascript', 'node'] },
   { match: /event-?driven|message (queue|broker)|kafka|microservices?/i, stems: ['event-driven', 'microservice', 'kafka', 'queue', 'broker', 'node', 'api'] },
   { match: /observability|incident response|distributed tracing/i, stems: ['grafana', 'prometheus', 'datadog', 'tracing', 'logging', 'elk', 'incident'] },
-  { match: /auto-?scaling|container orchestration|infrastructure as code|continuous delivery/i, stems: ['aws', 'docker', 'kubernetes', 'ecs', 'lambda', 'terraform', 'ci/cd', 'deploy'] },
+  { match: /ci\s*\/\s*cd|continuous integration|continuous delivery|auto-?scaling|container orchestration|infrastructure as code/i, stems: ['aws', 'docker', 'kubernetes', 'ecs', 'lambda', 'terraform', 'ci/cd', 'deploy', 'jenkins', 'pipeline'] },
   { match: /restful|api design|high-throughput|low-latency|rate limit/i, stems: ['api', 'rest', 'fastapi', 'express', 'throughput', 'latency', 'node'] },
   { match: /state management|component librar|responsive design|react|typescript/i, stems: ['react', 'typescript', 'redux', 'frontend', 'ui'] },
   { match: /vector|embedding|rag|prompt engineering|agentic|langchain|llm/i, stems: ['llm', 'embedding', 'rag', 'openai', 'langchain', 'vector', 'chromadb'] },
@@ -603,10 +604,12 @@ export function isWeaveableNounPhrase(kw) {
 
 /** Significant tokens of a keyword phrase (used for token-level coverage checks). */
 export function keywordTokens(kw) {
-  return normalizeKeyword(kw)
+  const all = normalizeKeyword(kw)
     .toLowerCase()
     .split(/[^a-z0-9+#.]+/)
-    .filter((t) => t.length >= 3);
+    .filter(Boolean);
+  const preserved = all.filter((t) => t.length >= 3 || /^(ci|cd|go|ai|ml|ui|qa|db|os|s3|r|c)$/.test(t));
+  return preserved.length ? preserved : all.filter((t) => t.length >= 2);
 }
 
 /** True when text already carries the keyword — exact phrase or all tokens co-occur. */
@@ -904,16 +907,25 @@ export function keywordAppearsInJd(kw, jdText) {
   const raw = String(kw || '').trim();
   const t = String(jdText || '');
   if (!raw || !t) return false;
-  const k = normalizeKeyword(raw);
+  const k = normalizeKeyword(raw).toLowerCase();
   if (!k) return false;
   if (k === 'c++' || k === 'cpp') return /c\+\+/i.test(t);
-  if (k === 'node.js' || k === 'nodejs') return /\bnode\.?js\b/i.test(t);
+  if (k === 'c#' || k === 'csharp') return /\bc#(?=[^\w]|$)/i.test(t);
+  if (k === '.net' || k === 'dotnet' || k === '.net core' || k === 'asp.net') {
+    return /(?:^|[^\w])(?:\.net|dotnet)\b/i.test(t) || /\basp\.net\b/i.test(t);
+  }
+  if (k === 'node.js' || k === 'nodejs' || k === 'node') return /\bnode(?:\.?js)?\b/i.test(t);
+  if (k === 'react.js' || k === 'reactjs' || k === 'react') return /\breact(?:\.?js)?\b/i.test(t);
+  if (k === 'vue.js' || k === 'vuejs' || k === 'vue') return /\bvue(?:\.?js)?\b/i.test(t);
+  if (k === 'angular.js' || k === 'angularjs' || k === 'angular') return /\bangular(?:\.?js)?\b/i.test(t);
+  if (k === 'postgres' || k === 'postgresql') return /\bpostgres(?:ql)?\b/i.test(t);
+  if (k === 'mongo' || k === 'mongodb') return /\bmongo(?:db)?\b/i.test(t);
   if (k === 'ci/cd') return /\bci\s*\/\s*cd\b|\bcontinuous integration\b|\bcontinuous delivery\b/i.test(t);
   if (k === 'rest api' || k === 'restful api' || k === 'restful apis') {
     return /\brest(?:ful)?\s*apis?\b/i.test(t);
   }
   const hits = findKnownTechInText(normalizeJdTechAliases(t));
-  if (hits.some((x) => normalizeKeyword(x) === k)) return true;
+  if (hits.some((x) => normalizeKeyword(x).toLowerCase() === k)) return true;
   try {
     const escaped = escapeRe(k);
     if (/[+#./]/.test(k)) {
