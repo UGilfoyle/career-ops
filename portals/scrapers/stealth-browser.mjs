@@ -8,12 +8,14 @@
  */
 import { chromium } from 'playwright';
 
-const OBSCURA_CDP_URL = process.env.OBSCURA_CDP_URL || process.env.CDP_URL || 'http://127.0.0.1:9222';
+export function resolveObscuraCdpUrl() {
+  return process.env.OBSCURA_CDP_URL || process.env.CDP_URL || 'http://127.0.0.1:9222';
+}
 
 /**
  * Checks if Obscura / CDP daemon is currently reachable
  */
-export async function isObscuraDaemonAvailable(cdpUrl = OBSCURA_CDP_URL) {
+export async function isObscuraDaemonAvailable(cdpUrl = resolveObscuraCdpUrl()) {
   try {
     const res = await fetch(`${cdpUrl}/json/version`, { signal: AbortSignal.timeout(1000) });
     return res.ok;
@@ -25,21 +27,23 @@ export async function isObscuraDaemonAvailable(cdpUrl = OBSCURA_CDP_URL) {
 /**
  * Open a stealth scraper session (Obscura CDP if running, standard Chromium fallback)
  * @param {Object} options
+ * @param {string} [options.cdpUrl]
  * @param {string} [options.userAgent]
  * @param {{ width: number, height: number }} [options.viewport]
  * @returns {Promise<{ browser: any, context: any, page: any, engine: 'obscura_cdp'|'playwright_chromium', close: () => Promise<void> }>}
  */
 export async function openStealthScraperSession(options = {}) {
   const {
+    cdpUrl = resolveObscuraCdpUrl(),
     userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     viewport = { width: 1280, height: 800 },
   } = options;
 
   // 1. Try Obscura Rust CDP if available
-  const available = await isObscuraDaemonAvailable();
+  const available = await isObscuraDaemonAvailable(cdpUrl);
   if (available) {
     try {
-      const browser = await chromium.connectOverCDP(OBSCURA_CDP_URL, { timeout: 3000 });
+      const browser = await chromium.connectOverCDP(cdpUrl, { timeout: 3000 });
       const context = browser.contexts().length > 0 ? browser.contexts()[0] : await browser.newContext({ userAgent, viewport });
       const page = await context.newPage();
       return {
