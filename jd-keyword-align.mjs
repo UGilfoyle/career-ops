@@ -872,6 +872,13 @@ function suppressFalsePositiveLanguages(found, text) {
  * Keeps balanced forms like "Go (Golang)" and tokens like Node.js / C# / CI/CD.
  */
 export function cleanSkillToken(text) {
+  let rawStr = String(text || '').trim();
+  // Strip JD fluff suffixes like 'a plus', 'is a plus', 'nice to have', 'preferred', 'required'
+  rawStr = rawStr.replace(/\s*\(?(?:is\s+)?a\s+plus\)?\s*$/i, '');
+  rawStr = rawStr.replace(/\s*\(?(?:is\s+)?(?:nice|good)\s+to\s+have\)?\s*$/i, '');
+  rawStr = rawStr.replace(/\s*\(?(?:is\s+)?(?:preferred|required|optional)\)?\s*$/i, '');
+  rawStr = rawStr.replace(/\s*\(?plus\)?\s*$/i, '');
+  text = rawStr;
   let s = String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
   if (!s) return '';
   s = s.replace(/^[\s<"']+/u, '').replace(/[\s"'.,;:\/\-]+$/u, '').trim();
