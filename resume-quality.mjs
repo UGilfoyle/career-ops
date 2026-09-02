@@ -725,7 +725,10 @@ export function repairMidSentenceArtifacts(bullet) {
     const trailingWord = match.replace(/using,\s*/i, "").trim();
     return trailingWord ? trailingWord + ' ' : '';
   });
-  t = t.replace(/\busing,\s*/gi, '');
+  t = t.replace(/\busing\s*[\.,]\s*([a-z]+ing\b)/gi, (m, word) => word + ' ');
+  t = t.replace(/\busing\s*[\.,]\s*/gi, '');
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*[\.,]\s*/gi, '');
+  t = t.replace(/\s*\((?:React|React\.js|EC2|Jenkins|WebSockets|RESTful API|CI\/CD|GitHub Actions|JavaScript)(?:,\s*(?:React|React\.js|EC2|Jenkins|WebSockets|RESTful API|CI\/CD|GitHub Actions|JavaScript))*\)\.\?$/gi, '.');
   t = t.replace(/\busing\s*,/gi, '');
   t = t.replace(/\busing\s+using\b/gi, 'using');
   t = t.replace(/\s{2,}/g, " ");

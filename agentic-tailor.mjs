@@ -70,6 +70,9 @@ import {
   IndeedFetchError,
 } from './indeed-job.mjs';
 import {
+  stripJobBoardChrome,
+} from './jd-keyword-align.mjs';
+import {
   isNaukriUrl,
   fetchNaukriJob,
   stripNaukriChrome,
@@ -1198,7 +1201,7 @@ async function scrapeJD(url) {
 }
 
 async function resolveJdText(entry) {
-  let jdText = String(entry?.jd_text || '').trim();
+  let jdText = stripJobBoardChrome(String(entry?.jd_text || '').trim());
   if (isNaukriUrl(entry.url) && jdText) {
     jdText = stripNaukriChrome(jdText);
     if (looksLikeNaukriPollution(jdText) || !looksLikeUsableJd(jdText, { minLength: 220 })) {
@@ -1211,7 +1214,7 @@ async function resolveJdText(entry) {
   }
 
   try {
-    let scraped = await scrapeJD(entry.url);
+    let scraped = stripJobBoardChrome(await scrapeJD(entry.url));
     // Indeed serves navigation chrome instead of a 403 page — tailoring on that
     // yields 0% JD coverage, so stop with instructions rather than guessing.
     if (isIndeedUrl(entry.url) && !looksLikeUsableJd(scraped)) {
