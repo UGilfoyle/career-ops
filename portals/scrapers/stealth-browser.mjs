@@ -16,8 +16,12 @@ export function resolveObscuraCdpUrl() {
  * Checks if Obscura / CDP daemon is currently reachable
  */
 export async function isObscuraDaemonAvailable(cdpUrl = resolveObscuraCdpUrl()) {
+  if (!cdpUrl || typeof cdpUrl !== 'string' || !/^https?:\/\//i.test(cdpUrl)) {
+    return false;
+  }
   try {
-    const res = await fetch(`${cdpUrl}/json/version`, { signal: AbortSignal.timeout(1000) });
+    const normalized = cdpUrl.replace(/\/+$/, '');
+    const res = await fetch(`${normalized}/json/version`, { signal: AbortSignal.timeout(1000) });
     return res.ok;
   } catch {
     return false;
@@ -46,13 +50,18 @@ export async function openStealthScraperSession(options = {}) {
       const browser = await chromium.connectOverCDP(cdpUrl, { timeout: 3000 });
       const context = browser.contexts().length > 0 ? browser.contexts()[0] : await browser.newContext({ userAgent, viewport });
       const page = await context.newPage();
+      let closed = false;
       return {
         browser,
         context,
         page,
         engine: 'obscura_cdp',
         close: async () => {
-          if (!page.isClosed()) await page.close().catch(() => {});
+          if (closed) return;
+          closed = true;
+          if (page && !page.isClosed()) {
+            await page.close().catch(() => {});
+          }
         },
       };
     } catch (err) {
@@ -64,12 +73,15 @@ export async function openStealthScraperSession(options = {}) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ userAgent, viewport });
   const page = await context.newPage();
+  let closed = false;
   return {
     browser,
     context,
     page,
     engine: 'playwright_chromium',
     close: async () => {
+      if (closed) return;
+      closed = true;
       await browser.close().catch(() => {});
     },
   };

@@ -71,6 +71,7 @@ const scripts = [
   { name: 'resume-quality-tests.mjs', expectExit: 0 },
   { name: 'stealth-browser-tests.mjs', expectExit: 0 },
   { name: 'stealth-mcdc-tests.mjs', expectExit: 0 },
+  { name: 'stress-fault-injection.mjs', expectExit: 0 },
   { name: 'jd-keyword-align-tests.mjs', expectExit: 0 },
   { name: 'resume-tailoring-plan-tests.mjs', expectExit: 0 },
   { name: 'verify-tailor-quality.mjs', expectExit: 0 },
