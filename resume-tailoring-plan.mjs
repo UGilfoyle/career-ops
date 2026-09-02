@@ -426,33 +426,37 @@ function escapeGapRegex(s) {
 }
 
 function stripGapMention(bullet, gap) {
-  const raw = String(gap || '').trim();
+  const raw = String(gap || "").trim();
   if (!raw || raw.length < 2) return bullet;
-  let t = String(bullet || '');
-  const compact = raw.toLowerCase().replace(/\s+/g, '');
+  let t = String(bullet || "");
+  const compact = raw.toLowerCase().replace(/\s+/g, "");
   if (
-    compact === 'c#'
-    || compact === '.net'
-    || compact === 'asp.net'
-    || compact === 'aspnet'
+    compact === "c#"
+    || compact === ".net"
+    || compact === "asp.net"
+    || compact === "aspnet"
     || /asp\.net/i.test(raw)
   ) {
-    t = t.replace(/\bASP\.?\s*NET(?:\s+Core)?\b/gi, '');
-    t = t.replace(/\bASP\s+APIs?\b/gi, 'APIs');
-    if (compact !== 'c#') t = t.replace(/\b\.NET(?:\s+Core)?\b/gi, '');
-    if (compact === 'c#' || /asp\.net/i.test(raw)) t = t.replace(/\bC#\b/g, '');
-    return t.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/,\s*,/g, ',').replace(/\s+\./g, '.').trim();
+    t = t.replace(/\bASP\.?\s*NET(?:\s+Core)?\b/gi, "");
+    t = t.replace(/\bASP\s+APIs?\b/gi, "APIs");
+    if (compact !== "c#") t = t.replace(/\b\.NET(?:\s+Core)?\b/gi, "");
+    if (compact === "c#" || /asp\.net/i.test(raw)) t = t.replace(/\bC#\b/g, "");
+    return t.replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").replace(/,\s*,/g, ",").replace(/\s+\./g, ".").trim();
   }
-  const escaped = escapeGapRegex(raw).replace(/\\\./g, '\\.?');
-  t = t.replace(new RegExp(`\\s*\\(${escaped}\\)`, 'gi'), '');
-  t = t.replace(new RegExp(`(?:\\s*(?:,|/|and|&))?\\s*\\b${escaped}\\b`, 'gi'), '');
-  return t.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/,\s*,/g, ',').replace(/\s+\./g, '.').trim();
+  const escaped = escapeGapRegex(raw).replace(/\./g, "\.?");
+  t = t.replace(new RegExp(`\\s*\\(${escaped}\\)`, "gi"), "");
+  t = t.replace(new RegExp(`(?:\\s*(?:,|/|and|&))?\\s*\\b${escaped}\\b(?:\\s*(?:,|/|and|&))?`, "gi"), "");
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s+and\s*,/gi, "");
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*,\s*([a-z]+ing\b)/gi, (m, prep, word) => word + " ");
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of|and)\s+and\s+/gi, (m, p1) => p1 + " ");
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*,\s*([A-Za-z0-9+#]+)/gi, (m, p1, p2) => p1 + " " + p2);
+  t = t.replace(/\busing\s*,\s*([a-z]+ing\b)/gi, (m, p1) => p1 + " ");
+  t = t.replace(/\busing\s*,/gi, "");
+  t = t.replace(/\busing\s+using\b/gi, "using");
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*,/gi, "");
+  return t.replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").replace(/,\s*,/g, ",").replace(/\s+\./g, ".").trim();
 }
 
-/**
- * Drop JD-gap tools (Angular, NestJS, Azure) from experience unless that role's
- * source digest already names them. Skills/summary may still list gaps for ATS.
- */
 export function scrubGapToolsFromMutableRoles(resume, plan, profile) {
   const gaps = (plan?.keywords?.gaps || []).filter(
     (g) => g && (isApprovedSkillPhrase(g) || isWeavableKeyword(g)),

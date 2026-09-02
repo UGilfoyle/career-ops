@@ -718,6 +718,8 @@ export function repairMidSentenceArtifacts(bullet) {
   
   // Clean dangling connectors and prepositions
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of|and)\s+and\s+([A-Za-z0-9+#]+)/gi, (m, p1, p2) => p1 + ' ' + p2);
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s+and\s*,/gi, '');
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*,\s*([a-z]+ing\b)/gi, (m, prep, word) => word + ' ');
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of|and)\s+and\s+/gi, (m, p1) => p1 + ' ');
   t = t.replace(/\busing,\s*(?:leading|implementing|integrating|synthesizing|transitioning|designing|architecting|configuring|introducing|remodeling|reconfiguring)?\s*/gi, (match) => {
     const trailingWord = match.replace(/using,\s*/i, "").trim();
