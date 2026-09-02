@@ -113,12 +113,24 @@ let executed = executeTailoringPlan(plan, profile, {
   companyName: company,
 });
 
-const coverageKeywords = [
-  ...(plan.keywords.weave || []),
-  ...(plan.keywords.honest || []),
-  ...(plan.keywords.domain || []),
-];
-let mutable = measureMutableRoleCoverage(executed.resume, plan, coverageKeywords);
+const gapSet = new Set(
+  (plan.keywords?.gaps || []).map((g) => String(g).toLowerCase().trim())
+);
+const candidateKeywords = (plan.keywords?.honest?.length
+  ? plan.keywords.honest
+  : (plan.keywords?.weave || []));
+const coverageKeywords = candidateKeywords.filter((kw) => {
+  const lower = String(kw).toLowerCase().trim();
+  return !gapSet.has(lower) && !gapSet.has('.' + lower) && !gapSet.has(lower.replace(/^\./, ''));
+});
+const activeCoverage = coverageKeywords.length
+  ? coverageKeywords
+  : (plan.keywords?.weave || []).filter((kw) => {
+      const lower = String(kw).toLowerCase().trim();
+      return !gapSet.has(lower);
+    });
+
+let mutable = measureMutableRoleCoverage(executed.resume, plan, activeCoverage);
 const minRatio = plan.validation?.mutableCoverageMin ?? 0.35;
 if (mutable.matchRatio < minRatio) {
   console.warn(`⚠ Mutable coverage ${mutable.score}% < ${Math.round(minRatio * 100)}% — repair pass`);
@@ -134,13 +146,13 @@ if (mutable.matchRatio < minRatio) {
     const key = String(idx);
     const a = repairedResume.experience?.[key] || [];
     const b = executed.resume.experience?.[key] || [];
-    const score = (bullets) => coverageKeywords.filter((kw) =>
+    const score = (bullets) => activeCoverage.filter((kw) =>
       bullets.join('\n').toLowerCase().includes(String(kw).toLowerCase())
     ).length;
     if (score(a) > score(b)) executed.resume.experience[key] = a;
   }
   executed.resume = restorePreservedEmployers(executed.resume, executed.preservedSnapshot);
-  mutable = measureMutableRoleCoverage(executed.resume, plan, coverageKeywords);
+  mutable = measureMutableRoleCoverage(executed.resume, plan, activeCoverage);
 }
 
 const alignment = validateResumeAlignment({

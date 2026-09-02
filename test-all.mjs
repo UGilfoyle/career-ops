@@ -82,6 +82,8 @@ const scripts = [
   { name: 'billing-db-e2e.mjs', expectExit: 0 }, // skips when DATABASE_URL is unset
   { name: 'billing-smoke-e2e.mjs', expectExit: 0 },
   { name: 'feedback-tests.mjs', expectExit: 0 },
+  { name: 'resume-engine-unit-tests.mjs', expectExit: 0 },
+  { name: 'resume-engine-mcdc-tests.mjs', expectExit: 0 },
 ];
 
 for (const { name, allowFail } of scripts) {
