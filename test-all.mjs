@@ -69,6 +69,7 @@ const scripts = [
   { name: 'profile-hydrate-tests.mjs', expectExit: 0 },
   { name: 'resume-alignment-validator-tests.mjs', expectExit: 0 },
   { name: 'resume-quality-tests.mjs', expectExit: 0 },
+  { name: 'stealth-browser-tests.mjs', expectExit: 0 },
   { name: 'jd-keyword-align-tests.mjs', expectExit: 0 },
   { name: 'resume-tailoring-plan-tests.mjs', expectExit: 0 },
   { name: 'verify-tailor-quality.mjs', expectExit: 0 },
