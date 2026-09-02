@@ -637,7 +637,33 @@ export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText
       return true;
     });
   const jdLead = leadPool.filter((k) => !jdText || keywordAppearsInJd(k, jdText));
-  const leadTerms = [...new Set([...jdTechLead, ...jdLead].map((k) => String(k).trim()))].slice(0, 8);
+  const CORE_LANGUAGES = new Set([
+  'typescript', 'javascript', 'python', 'java', 'go', 'golang', 'c#', 'c++', 'kotlin', 'php', 'ruby', 'rust', 'swift', 'sql'
+]);
+const CORE_FRAMEWORKS = new Set([
+  'react', 'react.js', 'node.js', 'node', 'express', 'fastapi', 'spring boot', 'next.js', 'django', 'flask', 'vue', 'angular', 'nest.js', 'nestjs'
+]);
+const CORE_DATABASES = new Set([
+  'postgresql', 'postgres', 'oracle', 'dynamodb', 'mongodb', 'mysql', 'aurora', 'redis', 'chromadb', 'cassandra', 'sqlite'
+]);
+const CORE_CLOUD_INFRA = new Set([
+  'aws', 'kubernetes', 'docker', 'lambda', 'cdk', 'terraform', 'cloudformation', 'kafka', 'sqs', 'eventbridge', 'azure', 'gcp', 'ci/cd', 'rest api', 'restful api', 'microservices'
+]);
+
+function prioritizeSummaryTechTerms(terms) {
+  const score = (term) => {
+    const lower = String(term || '').toLowerCase().trim();
+    if (CORE_LANGUAGES.has(lower)) return 10;
+    if (CORE_FRAMEWORKS.has(lower)) return 20;
+    if (CORE_DATABASES.has(lower)) return 30;
+    if (CORE_CLOUD_INFRA.has(lower)) return 40;
+    return 50;
+  };
+  return [...terms].sort((a, b) => score(a) - score(b));
+}
+
+  const rawLeadTerms = [...new Set([...jdTechLead, ...jdLead].map((k) => String(k).trim()))];
+  const leadTerms = prioritizeSummaryTechTerms(rawLeadTerms).slice(0, 8);
   const embedded = isEmbeddedSystemsJd(jdText);
   const dotnetAzure = isDotnetAzureJd(jdText);
   const workShape = inferJdWorkShapeLine(jdText);

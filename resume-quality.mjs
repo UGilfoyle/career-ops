@@ -338,10 +338,11 @@ function cleanSpellingAndGrammar(text) {
  */
 export function removeSplicedFragments(text) {
   let out = String(text);
-  out = out.replace(/\busing\s+and\s+/gi, 'using ');
-  out = out.replace(/\bwith\s+and\s+/gi, 'with ');
-  out = out.replace(/\band\s+and\s+/gi, 'and ');
+  out = out.replace(/\b(in|using|with|via|through|across|for|from|to|of|and)\s+and\s+([A-Za-z0-9+#]+)/gi, (m, p1, p2) => p1 + ' ' + p2);
+  out = out.replace(/\b(in|using|with|via|through|across|for|from|to|of|and)\s+and\s+/gi, (m, p1) => p1 + ' ');
+  out = out.replace(/\busing\s*,\s*([a-z]+ing\b)/gi, (m, p1) => p1);
   out = out.replace(/\busing\s*,\s*/gi, 'using ');
+  out = out.replace(/\s*\((?:Secrets Manager|Parameter Store|CloudWatch|IAM)\)\.?/gi, '');
   out = out.replace(/,\s*\d+\s*hours\s+per\s+month\.?$/gi, '.');
   out = out.replace(/,\s*\d+\s*(?:hours|days|weeks|months)\s+(?:per\s+(?:month|week|day|year)|monthly|weekly)\.?$/gi, '.');
   out = out.replace(/,\s*[^,.]*\b\d+-[a-z]{2,}\b[^,.]*(?=\.|$)/gi, '');
@@ -715,15 +716,16 @@ export function repairMidSentenceArtifacts(bullet) {
   t = t.replace(/\s+In addition,?\s+I\s+/gi, ". Also ");
   t = t.replace(/\bworkflows\s+that\s+reduced\.?\s*$/i, "workflows that reduced manual effort.");
   
-  // Clean dangling "using," and spliced connectors
+  // Clean dangling connectors and prepositions
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of|and)\s+and\s+([A-Za-z0-9+#]+)/gi, (m, p1, p2) => p1 + ' ' + p2);
+  t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of|and)\s+and\s+/gi, (m, p1) => p1 + ' ');
   t = t.replace(/\busing,\s*(?:leading|implementing|integrating|synthesizing|transitioning|designing|architecting|configuring|introducing|remodeling|reconfiguring)?\s*/gi, (match) => {
     const trailingWord = match.replace(/using,\s*/i, "").trim();
-    return trailingWord ? `${trailingWord} ` : "";
+    return trailingWord ? trailingWord + ' ' : '';
   });
-  t = t.replace(/\busing\s+and\s+([A-Za-z0-9+#]+)/gi, "using $1");
-  t = t.replace(/\busing,\s*/gi, "");
-  t = t.replace(/\busing\s*,/gi, "");
-  t = t.replace(/\busing\s+using\b/gi, "using");
+  t = t.replace(/\busing,\s*/gi, '');
+  t = t.replace(/\busing\s*,/gi, '');
+  t = t.replace(/\busing\s+using\b/gi, 'using');
   t = t.replace(/\s{2,}/g, " ");
   return t.trim();
 }
