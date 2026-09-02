@@ -264,6 +264,10 @@ export function sanitizeCompetencyList(items, jdText = '') {
     if (!s) continue;
     if (isEditorIdeTool(s) || isJunkKeyword(s) || isEmployerBrandKeyword(s, jdText)) continue;
     if (isNarrativeSuperpower(s) || !isTechStackSkill(s)) continue;
+    if (isUnprovenLanguageSkill(s)) {
+      // Reject languages like Ruby, PHP, Django from footer spam unless JD explicitly requires it AND it's not a generic listing
+      if (!jdText || !keywordAppearsInJd(s, jdText)) continue;
+    }
     const label = normalizeSkillLabel(s);
     const key = label.toLowerCase();
     if (!label || seen.has(key)) continue;
