@@ -507,7 +507,6 @@ export function scrubInventedStackFromMutableRoles(resume, plan, profile) {
           .sort((a, c) => String(c).length - String(a).length);
         for (const tech of toStrip) {
           if (jd && keywordAppearsInJd(tech, jd)) continue;
-          if (keywordCoveredInText(source, tech)) continue;
           if (!keywordCoveredInText(t, tech) && !new RegExp(tech.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(t)) {
             continue;
           }
