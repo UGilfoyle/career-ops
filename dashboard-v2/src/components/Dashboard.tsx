@@ -286,6 +286,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [appsSearchOpen, setAppsSearchOpen] = useState(false);
+  const [appsSearchQuery, setAppsSearchQuery] = useState('');
+  const appsSearchInputRef = useRef<HTMLInputElement | null>(null);
   const [resumeImportStatus, setResumeImportStatus] = useState<'idle' | 'uploading' | 'ready' | 'error'>('idle');
   const [resumeImport, setResumeImport] = useState<any>(null);
   // Merge is the safer default — Replace can wipe roles the PDF parser misses.
@@ -384,8 +387,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   const filteredPipeline = (data?.pipeline || []).filter((job: any) =>
     matches(job.company) || matches(job.title) || matches(job.url) || matches(job.source) || matches(job.score)
   );
+  const aq = appsSearchQuery.trim().toLowerCase();
+  const appsMatches = (value: any) => {
+    if (!aq) return true;
+    return String(value || '').toLowerCase().includes(aq);
+  };
   const filteredApplications = (data?.applications || []).filter((app: any) =>
-    matches(app.company) || matches(app.role) || matches(app.url) || matches(app.status) || matches(app.score)
+    (matches(app.company) || matches(app.role) || matches(app.url) || matches(app.status) || matches(app.score)) &&
+    (appsMatches(app.company) || appsMatches(app.role) || appsMatches(app.url) || appsMatches(app.status) || appsMatches(app.score))
   );
   const sortedApplications = [...filteredApplications].sort((a: any, b: any) => {
     if (appsSortBy === 'score') {
@@ -1926,6 +1935,21 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       </div>
       <button
         type="button"
+        onClick={() => {
+          setAppsSearchOpen((v) => !v);
+          if (!appsSearchOpen) setTimeout(() => appsSearchInputRef.current?.focus(), 60);
+        }}
+        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
+          appsSearchOpen || appsSearchQuery.trim()
+            ? 'border-[#1C1C1E] bg-[#1C1C1E] text-white'
+            : 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:bg-[#FAFAF8]'
+        }`}
+      >
+        <Search size={14} />
+        Search
+      </button>
+      <button
+        type="button"
         onClick={() => setIsSearchOpen((v) => !v)}
         className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
           isSearchOpen || searchQuery.trim()
@@ -2453,6 +2477,49 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   subtitle={`${activeApplicationCount} active application${activeApplicationCount === 1 ? '' : 's'} across 5 stages`}
                   actions={appsHeaderActions}
                 />
+              {appsSearchOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex items-center gap-3 bg-white border border-[#E5E5E0] rounded-2xl px-4 py-3 shadow-sm">
+                    <Search size={16} className="text-[#9CA3AF] shrink-0" />
+                    <input
+                      ref={appsSearchInputRef}
+                      value={appsSearchQuery}
+                      onChange={(e) => setAppsSearchQuery(e.target.value)}
+                      placeholder="Search by company, role, keyword..."
+                      className="flex-1 bg-transparent outline-none text-sm font-medium text-[#1C1C1E] placeholder:text-[#9CA3AF]"
+                      onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                        if (e.key === 'Escape') {
+                          setAppsSearchQuery('');
+                          setAppsSearchOpen(false);
+                        }
+                      }}
+                    />
+                    {appsSearchQuery.trim() && (
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF] shrink-0 tabular-nums">
+                        {filteredApplications.length} result{filteredApplications.length === 1 ? '' : 's'}
+                      </span>
+                    )}
+                    {appsSearchQuery.trim() ? (
+                      <button
+                        onClick={() => { setAppsSearchQuery(''); appsSearchInputRef.current?.focus(); }}
+                        className="px-3 py-1.5 rounded-xl border border-[#E5E5E0] text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:bg-[#FAFAF8] transition-colors shrink-0"
+                      >
+                        Clear
+                      </button>
+                    ) : (
+                      <kbd className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-[#E5E5E0] bg-[#F5F5F0] px-2 py-1 text-[10px] font-mono font-bold text-[#9CA3AF] shrink-0">
+                        ESC
+                      </kbd>
+                    )}
+                  </div>
+                </motion.div>
+              )}
               {appsStageFocus && (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E5E5E0] bg-[#F5F5F0] px-4 py-3">
                   <p className="text-sm font-medium text-[#1C1C1E]">

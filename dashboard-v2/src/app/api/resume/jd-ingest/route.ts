@@ -4,7 +4,7 @@ import { auth } from '@/auth';
 import sql from '@/lib/db';
 import { assertProAccess } from '@/lib/billing/entitlements';
 import { countryFromRequest } from '@/lib/billing/geo';
-import { extractDocumentText, inferTitleFromJd } from '@/lib/resume/extract-document-text';
+import { extractDocumentText, inferCompanyAndTitleFromJd, inferTitleFromJd } from '@/lib/resume/extract-document-text';
 import { resolveJobLogoFields } from '@/lib/job-logos';
 
 export const dynamic = 'force-dynamic';
@@ -60,10 +60,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const resolvedCompany = company || 'Custom JD';
-    const resolvedTitle = title || inferTitleFromJd(jdText);
+    const inferred = inferCompanyAndTitleFromJd(jdText);
+    const resolvedCompany = company || inferred.company || 'Company';
+    const resolvedTitle = title || inferred.title || inferTitleFromJd(jdText) || 'Role';
     const manualUrl = `manual:jd:${userId}:${randomUUID()}`;
-    const logoFields = resolveJobLogoFields({ url: manualUrl, source: 'manual-jd' });
+    const logoFields = resolveJobLogoFields({
+      url: manualUrl,
+      source: 'manual-jd',
+      company: resolvedCompany,
+    });
 
     const rows = await sql`
       INSERT INTO jobs (url, canonical_url, company, title, source, user_id, jd_text, portal_key, logo_url, logo_source)

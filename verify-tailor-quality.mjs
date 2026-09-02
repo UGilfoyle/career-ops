@@ -68,8 +68,8 @@ const paths = buildApplicationDocumentPaths({
 const ok =
   stats.atsContentScore >= 90
   && after.repeatedVerbs.length === 0
-  && paths.resumePdf.endsWith('AkashKaintura_Stripe_SrBEEng.pdf')
-  && paths.coverPdf.endsWith('AkashKaintura_Stripe_SrBEEng_cover.pdf');
+  && paths.resumePdf.endsWith('AKASH_KAINTURA_STRIPE_CV.pdf')
+  && paths.coverPdf.endsWith('AKASH_KAINTURA_STRIPE_CL.pdf');
 
 console.log(JSON.stringify({
   ok,

@@ -1895,10 +1895,26 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
           entry = jobRecord;
           console.log(`📎 Found existing job in DB: id=${entry.id}, company=${entry.company}`);
         } else {
-          const domain = new URL(idOrUrl).hostname;
-          const parts = domain.split('.');
-          if (parts.length >= 2) {
-            entry.company = parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1);
+          const u = new URL(idOrUrl);
+          const hostname = u.hostname.toLowerCase();
+          const pathname = u.pathname;
+          if (hostname.includes("smartrecruiters.com")) {
+            const match = pathname.match(/\/([^/]+)\/[0-9a-zA-Z\-_]+/);
+            if (match && match[1] && match[1] !== "jobs") entry.company = match[1];
+          } else if (hostname.includes("greenhouse.io") || hostname.includes("ashbyhq.com") || hostname.includes("lever.co")) {
+            const parts = pathname.split("/").filter(Boolean);
+            if (parts[0] && parts[0] !== "jobs" && parts[0] !== "job-boards") entry.company = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+            else if (parts[1]) entry.company = parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+          } else if (hostname.includes("myworkdayjobs.com") || hostname.includes("ripplehire.com") || hostname.includes("bamboohr.com")) {
+            const sub = hostname.split(".")[0];
+            if (sub && sub !== "jobs" && sub !== "careers" && sub !== "usource") entry.company = sub.charAt(0).toUpperCase() + sub.slice(1);
+          } else if (hostname.includes("linkedin.com")) {
+            entry.company = null;
+          } else {
+            const hostParts = hostname.replace(/^(jobs|careers|app|www)\./, "").split(".");
+            if (hostParts.length >= 2) {
+              entry.company = hostParts[0].charAt(0).toUpperCase() + hostParts[0].slice(1);
+            }
           }
         }
       } catch (e) {
@@ -2205,6 +2221,34 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
       const titleLine = jdText.split('\n').find((l) => l.toLowerCase().startsWith('job title:'));
       if (titleLine) {
         roleTitle = titleLine.substring(titleLine.indexOf(':') + 1).trim();
+      } else if (!entry.title || entry.title === 'Job via URL' || entry.title === 'Role' || entry.title.startsWith('Overview')) {
+        // Fallback: extract title from JD text
+        const cleanLines = jdText.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+          .filter(l => !/^(skip to|linkedin|jobs|clear text|sign in|join now|apply|save|about the job|overview|responsibilities|qualifications)/i.test(l));
+        for (const line of cleanLines.slice(0, 10)) {
+          if (line.length >= 4 && line.length <= 100 && /(?:engineer|developer|architect|lead|manager|analyst|specialist|head|director)/i.test(line)) {
+            roleTitle = line;
+            entry.title = line;
+            break;
+          }
+        }
+      }
+      // If company is generic or missing, extract from JD text
+      if (!entry.company || entry.company === 'Linkedin' || entry.company === 'Custom JD' || entry.company === 'Direct Application' || entry.company === 'Company') {
+        const cleanLines = jdText.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+          .filter(l => !/^(skip to|linkedin|jobs|clear text|sign in|join now|apply|save|about the job|overview|get ai)/i.test(l));
+        if (cleanLines.length >= 2 && /(?:engineer|developer|architect|lead|manager)/i.test(cleanLines[0])) {
+          const comp = cleanLines[1].split(/[·\t]|  /)[0].trim();
+          if (comp && comp.length >= 2 && !/^(full-time|remote|contract|part-time)/i.test(comp)) {
+            entry.company = comp;
+          }
+        }
+        if (!entry.company || entry.company === 'Linkedin' || entry.company === 'Custom JD') {
+          const hiringMatch = jdText.slice(0, 3000).match(/(?:(?:hi|hey|hello)\s+)?([A-Za-z0-9&.\s]{2,35}?)\s+is\s+hiring\s+(?:for\s+)?(?:a\s+|an\s+)?([A-Za-z0-9\s/+\-_]+)/i);
+          if (hiringMatch && hiringMatch[1]) {
+            entry.company = hiringMatch[1].trim();
+          }
+        }
       }
     }
 
