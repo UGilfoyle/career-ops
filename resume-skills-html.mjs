@@ -116,6 +116,8 @@ const SKILL_CANONICAL = new Map([
   ['api design', 'API Design'],
   ['agile', 'Agile'],
   ['sql server', 'SQL Server'],
+  ['scala', 'Scala'],
+  ['scala a plus', 'Scala'],
   ['postgresql', 'PostgreSQL'],
 ]);
 

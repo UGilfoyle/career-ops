@@ -728,7 +728,13 @@ export function repairMidSentenceArtifacts(bullet) {
   t = t.replace(/\busing\s*[\.,]\s*([a-z]+ing\b)/gi, (m, word) => word + ' ');
   t = t.replace(/\busing\s*[\.,]\s*/gi, '');
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*[\.,]\s*/gi, '');
-  t = t.replace(/\s*\((?:React|React\.js|EC2|Jenkins|WebSockets|RESTful API|CI\/CD|GitHub Actions|JavaScript)(?:,\s*(?:React|React\.js|EC2|Jenkins|WebSockets|RESTful API|CI\/CD|GitHub Actions|JavaScript))*\)\.\?$/gi, '.');
+  // Clean empty parentheses anywhere in the bullet
+  t = t.replace(/\s*\(\s*\)/g, '');
+  // Clean trailing tool dumps slapped at the end of bullets (e.g. (React, React.js) or (EC2, Jenkins) or (CI/CD))
+  t = t.replace(/\s*\([A-Za-z0-9.+#/\-,\s]{1,90}\)\.?$/gi, '.');
+  // Clean dangling metric commas: ", by 85%" -> " by 85%"
+  t = t.replace(/,\s*by\s+(\d+%)/gi, ' by $1');
+  t = t.replace(/,\s*by\s*$/gi, '.');
   t = t.replace(/\busing\s*,/gi, '');
   t = t.replace(/\busing\s+using\b/gi, 'using');
   t = t.replace(/\s{2,}/g, " ");
@@ -809,15 +815,39 @@ export function formatPeriodDisplay(raw) {
     .trim();
 }
 
+export function dedupeSharedSubordinatePhrases(bullets) {
+  if (!Array.isArray(bullets) || bullets.length < 2) return bullets;
+  return bullets.map((b, idx) => {
+    let cleanB = b;
+    for (let prevIdx = 0; prevIdx < idx; prevIdx++) {
+      const prev = bullets[prevIdx];
+      const match = cleanB.match(/(,s*(?:ands+)?(?:leading|dropping|cutting|integrating|ensuring|preserving)s+[^.]{25,}.?)$/i);
+      if (match && match[1]) {
+        const clause = match[1].toLowerCase().replace(/[^a-z0-9]/g, ' ');
+        const prevLower = prev.toLowerCase().replace(/[^a-z0-9]/g, ' ');
+        const clauseWords = clause.split(/s+/).filter(w => w.length > 3);
+        const matchCount = clauseWords.filter(w => prevLower.includes(w)).length;
+        if (clauseWords.length > 5 && (matchCount / clauseWords.length) >= 0.75) {
+          cleanB = cleanB.replace(match[1], '').trim();
+          if (!/[.!?]$/.test(cleanB)) cleanB += '.';
+        }
+      }
+    }
+    return cleanB;
+  });
+}
+
 export function sanitizeExperienceEntries(experience) {
   if (!Array.isArray(experience)) return [];
   let jobs = experience
     .map((job) => ({
       ...job,
       period: formatPeriodDisplay(job.period || ''),
-      bullets: (Array.isArray(job.bullets) ? job.bullets : [])
-        .map(repairMidSentenceArtifacts)
-        .filter((b) => !isEmbeddedJobHeader(b)),
+      bullets: dedupeSharedSubordinatePhrases(
+        (Array.isArray(job.bullets) ? job.bullets : [])
+          .map(repairMidSentenceArtifacts)
+          .filter((b) => !isEmbeddedJobHeader(b))
+      ),
     }))
     .filter((job) => job.role || job.company);
 
