@@ -821,13 +821,14 @@ export function dedupeSharedSubordinatePhrases(bullets) {
     let cleanB = b;
     for (let prevIdx = 0; prevIdx < idx; prevIdx++) {
       const prev = bullets[prevIdx];
-      const match = cleanB.match(/(,s*(?:ands+)?(?:leading|dropping|cutting|integrating|ensuring|preserving)s+[^.]{25,}.?)$/i);
+      const match = cleanB.match(/(,s*(?:ands+)?(?:leading|dropping|cutting|integrating|ensuring|preserving|synthesizing|transitioning|remodeling)s+[^.]{20,}.?)$/i);
       if (match && match[1]) {
         const clause = match[1].toLowerCase().replace(/[^a-z0-9]/g, ' ');
-        const prevLower = prev.toLowerCase().replace(/[^a-z0-9]/g, ' ');
-        const clauseWords = clause.split(/s+/).filter(w => w.length > 3);
-        const matchCount = clauseWords.filter(w => prevLower.includes(w)).length;
-        if (clauseWords.length > 5 && (matchCount / clauseWords.length) >= 0.75) {
+        const prevNormalized = prev.toLowerCase().replace(/[^a-z0-9]/g, ' ');
+        const clauseWords = clause.split(/s+/).filter((w) => w.length > 2);
+        const prevWords = new Set(prevNormalized.split(/s+/));
+        const matchCount = clauseWords.filter((w) => prevWords.has(w)).length;
+        if (clauseWords.length >= 4 && matchCount / clauseWords.length >= 0.60) {
           cleanB = cleanB.replace(match[1], '').trim();
           if (!/[.!?]$/.test(cleanB)) cleanB += '.';
         }
