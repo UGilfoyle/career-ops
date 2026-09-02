@@ -505,9 +505,16 @@ export function validateResumeAlignment({
     // Measure against the weave list — what the plan actually intends to weave.
     // honest/domain also carry JD gaps (skills with no CV proof) that must NOT be
     // woven into experience, so counting them as "missing" unfairly sinks coverage.
-    const coverageKeywords = (activePlan.keywords?.weave?.length
-      ? activePlan.keywords.weave
-      : activePlan.keywords?.honest || []);
+    const gapSet = new Set(
+      (activePlan.keywords?.gaps || []).map((g) => String(g).toLowerCase().trim())
+    );
+    const candidateKeywords = (activePlan.keywords?.honest?.length
+      ? activePlan.keywords.honest
+      : (activePlan.keywords?.weave || []));
+    const coverageKeywords = candidateKeywords.filter((kw) => {
+      const lower = String(kw).toLowerCase().trim();
+      return !gapSet.has(lower) && !gapSet.has('.' + lower) && !gapSet.has(lower.replace(/^\./, ''));
+    });
     mutableCoverage = measureMutableRoleCoverage(
       selectedResume,
       activePlan,
