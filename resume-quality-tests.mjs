@@ -597,5 +597,41 @@ console.log('resume-quality tests\n');
 }
 
 
+
+  // Regression test: Dangling using, and using and Express repairs
+  const usingLeading = normalizeBulletText(
+    "Architect mission-critical enterprise features using, leading the continuous transition of legacy monolithic services.",
+    "Quest Global"
+  );
+  assert(!/using,/i.test(usingLeading), "removes dangling using, connector");
+  assert(/leading the continuous transition/i.test(usingLeading), "preserves action clause after dangling using,");
+
+  const usingExpress = normalizeBulletText(
+    "Shipped resilient backend features using and Express for multi-tenant SaaS applications.",
+    "Srijan Technologies"
+  );
+  assert(!/using and Express/i.test(usingExpress), "repairs using and Express into using Express");
+  assert(/using Express/i.test(usingExpress), "correctly formats using Express");
+
+  const usingIntegrating = normalizeBulletText(
+    "Engineered reusable React UI components using, integrating custom frontend dashboards.",
+    "INTVERSE"
+  );
+  assert(!/using,/i.test(usingIntegrating), "removes using, before integrating");
+  assert(/integrating custom frontend/i.test(usingIntegrating), "preserves integrating clause");
+
+  // Regression test: Intra-job duplicate overlap deduplication
+  const intraJobDedupe = sanitizeExperienceEntries([
+    {
+      company: "Quest Global",
+      role: "Senior Software Engineer",
+      bullets: [
+        "Architect mission-critical enterprise features leading the transition into scalable microservices, dropping server CPU load by 30%, and leading the integration of high-volume Oracle and PostgreSQL databases to ensure data integrity and scalability.",
+        "Optimized system performance by redesigning SQL query patterns, dropping server CPU load by 30%, and leading the integration of high-volume Oracle and PostgreSQL databases to ensure data integrity and scalability."
+      ]
+    }
+  ]);
+  assert(intraJobDedupe[0].bullets.length === 1, "deduplicates near-identical intra-job bullets with shared metric tails");
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

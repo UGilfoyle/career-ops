@@ -699,15 +699,26 @@ function bulletMentionsOtherCompany(bullet, ownCompany, allJobs) {
 
 /** Fix mid-sentence LLM splice crumbs inside a single bullet string. */
 export function repairMidSentenceArtifacts(bullet) {
-  let t = String(bullet || '');
-  t = t.replace(/[\u00ad\u200b-\u200d\uFEFF\uFFFD]/g, '');
-  t = t.replace(/â€"|â€“|â€”|â€˜|â€™/g, '-');
-  t = t.replace(/\bservices\s+Integrity\s+through\b/gi, 'services, preserving data integrity through');
-  t = t.replace(/\brecords,?\s+preserving\.?\s*Integrity\s+through\b/gi, 'records, preserving data integrity through');
-  t = t.replace(/,\s*preserving data\.?\s*$/i, ', preserving data integrity.');
-  t = t.replace(/\bplatform,?\s+synthesizing\.?\s*Logic\s+into\b/gi, 'platform, synthesizing business logic into');
-  t = t.replace(/\s+In addition,?\s+I\s+/gi, '. Also ');
-  t = t.replace(/\bworkflows\s+that\s+reduced\.?\s*$/i, 'workflows that reduced manual effort.');
+  let t = String(bullet || "");
+  t = t.replace(/[\u00ad\u200b-\u200d\uFEFF\uFFFD]/g, "");
+  t = t.replace(/â€"|â€“|â€”|â€˜|â€™/g, "-");
+  t = t.replace(/\bservices\s+Integrity\s+through\b/gi, "services, preserving data integrity through");
+  t = t.replace(/\brecords,?\s+preserving\.?\s*Integrity\s+through\b/gi, "records, preserving data integrity through");
+  t = t.replace(/,\s*preserving data\.?\s*$/i, ", preserving data integrity.");
+  t = t.replace(/\bplatform,?\s+synthesizing\.?\s*Logic\s+into\b/gi, "platform, synthesizing business logic into");
+  t = t.replace(/\s+In addition,?\s+I\s+/gi, ". Also ");
+  t = t.replace(/\bworkflows\s+that\s+reduced\.?\s*$/i, "workflows that reduced manual effort.");
+  
+  // Clean dangling "using," and spliced connectors
+  t = t.replace(/\busing,\s*(?:leading|implementing|integrating|synthesizing|transitioning|designing|architecting|configuring|introducing|remodeling|reconfiguring)?\s*/gi, (match) => {
+    const trailingWord = match.replace(/using,\s*/i, "").trim();
+    return trailingWord ? `${trailingWord} ` : "";
+  });
+  t = t.replace(/\busing\s+and\s+([A-Za-z0-9+#]+)/gi, "using $1");
+  t = t.replace(/\busing,\s*/gi, "");
+  t = t.replace(/\busing\s*,/gi, "");
+  t = t.replace(/\busing\s+using\b/gi, "using");
+  t = t.replace(/\s{2,}/g, " ");
   return t.trim();
 }
 
@@ -733,26 +744,45 @@ export function dedupeBulletsAcrossJobs(experience) {
     }
   });
 
-  let jobs = experience.map((job, idx) => ({
-    ...job,
-    bullets: (job.bullets || []).filter((b) => {
+  let jobs = experience.map((job, idx) => {
+    const seenLocalKeys = new Set();
+    const keptLocalBullets = [];
+
+    for (const b of job.bullets || []) {
       const k = bulletKey(b);
+      if (k && seenLocalKeys.has(k)) continue;
+      const isLocalDuplicate = keptLocalBullets.some((kb) => bulletKey(b).length > 35 && wordOverlapRatio(b, kb) >= 0.50);
+      if (isLocalDuplicate) continue;
+
       const owners = keyOwners.get(k);
       if (owners && owners.size > 1) {
         const keeper = Math.max(...owners);
-        if (idx !== keeper) return false;
+        if (idx !== keeper) continue;
       }
+      let crossJobDuplicate = false;
       for (let j = 0; j < experience.length; j++) {
         if (j === idx) continue;
         for (const ob of experience[j].bullets || []) {
           if (bulletKey(b).length > 35 && wordOverlapRatio(b, ob) >= 0.55) {
-            return idx > j;
+            if (idx <= j) {
+              crossJobDuplicate = true;
+              break;
+            }
           }
         }
+        if (crossJobDuplicate) break;
       }
-      return true;
-    }),
-  }));
+      if (crossJobDuplicate) continue;
+
+      if (k) seenLocalKeys.add(k);
+      keptLocalBullets.push(b);
+    }
+
+    return {
+      ...job,
+      bullets: keptLocalBullets,
+    };
+  });
   return jobs;
 }
 
