@@ -106,10 +106,10 @@ const METRIC_UNIT_RE =
 export function extractMetricClause(text) {
   const s = String(text || '');
   const patterns = [
-    /(?:reduced|cut|decreased|lowered|increased|improved|optimized|saved|accelerated|boosted|raised)[^.]{0,60}\d[^.]*/i,
-    /\d+%[^.]*/,
-    /\d[\d,]*\+?[^.]*/,
-    /from [^.]{3,50} to [^.]{3,50}/i,
+    /(?:reduced|reducing|cut|cutting|decreased|decreasing|lowered|lowering|increased|increasing|improved|improving|optimized|optimizing|saved|saving|accelerated|accelerating|boosted|boosting|raised|raising|dropped|dropping|trimmed|trimming)[^.]{0,80}\d[^.]*/i,
+    /\bby\s+\d+(?:\.\d+)?%[^.]*/i,
+    /from\s+[^.]{3,50}\s+to\s+[^.]{3,50}/i,
+    /\d+%\s*(?:reduction|increase|improvement|drop|decrease|boost|growth|saving|latency|efficiency|uptime)[^.]*/i,
   ];
   for (const re of patterns) {
     const m = s.match(re);
@@ -338,6 +338,12 @@ function cleanSpellingAndGrammar(text) {
  */
 export function removeSplicedFragments(text) {
   let out = String(text);
+  out = out.replace(/\busing\s+and\s+/gi, 'using ');
+  out = out.replace(/\bwith\s+and\s+/gi, 'with ');
+  out = out.replace(/\band\s+and\s+/gi, 'and ');
+  out = out.replace(/\busing\s*,\s*/gi, 'using ');
+  out = out.replace(/,\s*\d+\s*hours\s+per\s+month\.?$/gi, '.');
+  out = out.replace(/,\s*\d+\s*(?:hours|days|weeks|months)\s+(?:per\s+(?:month|week|day|year)|monthly|weekly)\.?$/gi, '.');
   out = out.replace(/,\s*[^,.]*\b\d+-[a-z]{2,}\b[^,.]*(?=\.|$)/gi, '');
   out = out.replace(/,?\s*\bsupporting\s+[A-Za-z0-9][A-Za-z0-9\s-]*?(?:assisted|driven|oriented|based|related|aligned)\.(?=\s|$)/gi, '.');
   const m = out.match(/^(.*),\s*([^,.]{12,})\.?\s*$/s);
@@ -1258,21 +1264,7 @@ function enrichBulletsWithMetrics(bullets, roleSourceBullets, allSourceBullets, 
     return { bullet: cleanB, enriched: false };
   });
 
-  // Second pass: unused same-role metrics → attach to remaining non-quantified bullets
-  const leftover = metricSources
-    .map((s) => extractMetricClause(s))
-    .filter((m) => m && !usedMetrics.has(m.toLowerCase()));
-  let li = 0;
-  return firstPass.map((row) => {
-    if (hasQuantifiedImpact(row.bullet) || li >= leftover.length) return row;
-    const metric = leftover[li++];
-    const trimmed = String(row.bullet).trim().replace(/\.$/, '');
-    usedMetrics.add(metric.toLowerCase());
-    return {
-      bullet: cleanSpellingAndGrammar(`${trimmed}, ${varyMetricPhrase(metric)}.`),
-      enriched: true,
-    };
-  });
+  return firstPass;
 }
 
 /** Soft-vary repeated "reduced X by Y%" clauses so Enhancv repetition checks don't tank. */
