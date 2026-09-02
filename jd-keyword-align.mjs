@@ -203,9 +203,19 @@ const JD_EQUIPMENT_PHRASE_RE =
   /\b(provide your own|your own dual|dual monitors?|hd webcam|webcam|headset|internet connection|stable internet|dsl, cable|fiber wired|work-from-home setup|laptop system|system requirements?|operating system|mac osx|windows 10|processor;?|ram;?)\b/i;
 
 /** Known tech only — preferred for ATS competency / skills lines. */
+const GENERAL_JOB_BOARD_CHROME_CUT_RE =
+  /\n\s*#{0,6}\s*(?:Similar jobs|Jobs you might be interested|Explore more jobs|People also viewed|Get notified about new|Referrals increase your chances|Beware of imposters|Salary insights|Resume Display|About company|Register to unlock|Sign in to create job alert|See who [A-Za-z0-9\s-]{2,40} has hired)\b/i;
+
+export function stripJobBoardChrome(text) {
+  let t = String(text || '').replace(/\r/g, '');
+  const cut = t.search(GENERAL_JOB_BOARD_CHROME_CUT_RE);
+  if (cut > 80) t = t.slice(0, cut);
+  return t.trim();
+}
+
 export function extractJdTechKeywords(jdText, limit = 20) {
   if (!jdText || String(jdText).length < 30) return [];
-  const text = normalizeJdTechAliases(String(jdText));
+  const text = normalizeJdTechAliases(stripJobBoardChrome(String(jdText)));
   const found = uniqueCasePreserved(findKnownTechInText(text));
   return suppressFalsePositiveLanguages(found, text).slice(0, limit);
 }
@@ -494,6 +504,8 @@ export function isJunkKeyword(kw) {
   if (/^aws[-\s]?based$/i.test(k) || /^aws\s+serverless(\s+architectures?)?$/i.test(k)) return true;
   if (/^aws\s+cloud\s+infrastructure$/i.test(k)) return true;
   if (isEmployerBrandKeyword(k)) return true;
+  if (/^(?:https?:\/\/|www\.)|[a-z0-9-]+\.(?:com|org|io|net|ai|co|in|edu|gov)(?:\/|$)/i.test(k)) return true;
+  if (/^[\w#+.\s]+\s*\/$/.test(k)) return true;
   // Bare version fragments split from model names ("3-large" from text-embedding-3-large)
   if (/^\d+-[a-z0-9-]+$/.test(k)) return true;
   if (STOPWORDS.has(k)) return true;
@@ -862,7 +874,7 @@ function suppressFalsePositiveLanguages(found, text) {
 export function cleanSkillToken(text) {
   let s = String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
   if (!s) return '';
-  s = s.replace(/^[\s<"']+/u, '').replace(/[\s"'.,;:]+$/u, '').trim();
+  s = s.replace(/^[\s<"']+/u, '').replace(/[\s"'.,;:\/\-]+$/u, '').trim();
   const count = (str, re) => (str.match(re) || []).length;
   while (/[)\]}>]$/.test(s) && count(s, /[)\]}]/g) > count(s, /[([{]/g)) {
     s = s.slice(0, -1).trim();

@@ -11,6 +11,7 @@ import {
   isApprovedSkillPhrase,
   isEditorIdeTool,
   cleanSkillToken,
+  stripJobBoardChrome,
   keywordAppearsInJd,
   isMethodologySkillPhrase,
 } from './jd-keyword-align.mjs';
@@ -619,6 +620,8 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
  * Offline path is the quality floor (LLM draft is honesty-gated separately).
  */
 export function buildHonestSummary(baseSummary, yearsExp, honestKeywords, jdText) {
+  const cleanJd = stripJobBoardChrome(String(jdText || ''));
+  jdText = cleanJd;
   const y = Number(yearsExp) || 0;
   const jdTechLead = extractJdTechKeywords(jdText, 18)
     .filter((k) => {
