@@ -356,6 +356,7 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
 
   let cursor = 0;
   for (const idx of plan.tailorIndices) {
+    const source = (profile?.experience?.[idx]?.bullets || []).join('\n');
     const key = String(idx);
     const bullets = Array.isArray(copy.experience[key]) ? copy.experience[key].map(stripInjectNoise) : [];
     if (!bullets.length) continue;
@@ -493,6 +494,7 @@ export function scrubInventedStackFromMutableRoles(resume, plan, profile) {
   const jd = String(plan?.jdText || '');
   const copy = JSON.parse(JSON.stringify(resume));
   for (const idx of plan.tailorIndices) {
+    const source = (profile?.experience?.[idx]?.bullets || []).join('\n');
     const key = String(idx);
     const bullets = Array.isArray(copy.experience[key]) ? copy.experience[key] : [];
     copy.experience[key] = bullets
@@ -505,6 +507,7 @@ export function scrubInventedStackFromMutableRoles(resume, plan, profile) {
           .sort((a, c) => String(c).length - String(a).length);
         for (const tech of toStrip) {
           if (jd && keywordAppearsInJd(tech, jd)) continue;
+          if (keywordCoveredInText(source, tech)) continue;
           if (!keywordCoveredInText(t, tech) && !new RegExp(tech.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(t)) {
             continue;
           }
