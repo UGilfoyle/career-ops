@@ -12,6 +12,40 @@ export const REPOST_GAP_DAYS = 60;
 const CHECK_URL = 'https://mcp.whenthisjobwasposted.com/api/v1/check';
 const DEFAULT_TIMEOUT_MS = 120_000;
 
+/**
+ * Pasted JDs / local files have no public posting URL.
+ * Date-checking them returns invalid_url → unknown → Yes required → GH Actions abort.
+ */
+export function isPastedOrLocalJobUrl(jobUrl) {
+  const url = String(jobUrl || '').trim();
+  if (!url) return false;
+  if (/^https?:\/\//i.test(url)) return false;
+  return (
+    /^manual:jd:/i.test(url)
+    || /^local:/i.test(url)
+    || /^file:/i.test(url)
+  );
+}
+
+export function skippedPastedJdAnalysis() {
+  return {
+    posted_at: null,
+    first_seen_at: null,
+    updated_at: null,
+    age_days: null,
+    first_seen_days: null,
+    repost_gap_days: null,
+    possible_repost: false,
+    ancient: false,
+    stale: false,
+    needs_confirm: false,
+    severity: 'fresh',
+    confidence: null,
+    reason: 'pasted_jd',
+    sources: {},
+  };
+}
+
 function parseDate(value) {
   if (value == null || value === '') return null;
   if (value instanceof Date) {
@@ -246,7 +280,9 @@ export function formatPostingGateMessage({
   if (a.confidence) lines.push(`Confidence: ${a.confidence}`);
   if (a.reason || reason) lines.push(`Reason: ${(a.reason || reason || '').slice(0, 200)}`);
 
-  if (a.severity === 'ancient') {
+  if (a.reason === 'pasted_jd' || isPastedOrLocalJobUrl(url)) {
+    lines.push('✓ Pasted/local JD — no public posting URL to date-check. Continuing tailor.');
+  } else if (a.severity === 'ancient') {
     lines.push('⚠ This posting looks ~1 year old (or older). Applying may waste time.');
   } else if (a.possible_repost) {
     lines.push(
@@ -297,6 +333,20 @@ export async function gateResumeOnPostingAge({
 } = {}) {
   if (skip || process.env.CAREER_OPS_SKIP_POSTING_GATE === '1') {
     return { ok: true, skipped: true, analysis: null, message: '', confirmed: false };
+  }
+
+  if (isPastedOrLocalJobUrl(url)) {
+    const analysis = skippedPastedJdAnalysis();
+    const message = formatPostingGateMessage({
+      company,
+      title,
+      url,
+      analysis,
+      reason: 'pasted_jd',
+    });
+    log(message);
+    log('✓ Pasted JD — skipping posting-age gate.');
+    return { ok: true, skipped: true, analysis, message, confirmed: false };
   }
 
   const result = await fetchJobPostingHistory(url);

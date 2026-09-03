@@ -6,6 +6,8 @@ import {
   fetchJobPostingDate,
   analyzePostingHistory,
   formatPostingGateMessage,
+  isPastedOrLocalJobUrl,
+  skippedPastedJdAnalysis,
 } from '@/lib/job-posting-date';
 
 export const dynamic = 'force-dynamic';
@@ -98,10 +100,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     const jobUrl = String(job.canonical_url || job.url || '');
+    const pastedJd = isPastedOrLocalJobUrl(jobUrl) || String(job.source || '') === 'manual-jd';
     const checkedAt = job.posted_checked_at ? new Date(job.posted_checked_at).getTime() : 0;
-    // Lazy enrich when missing date, daily retry for unknowns, or explicit refresh (tailor gate)
+    // Lazy enrich when missing date, daily retry for unknowns, or explicit refresh (tailor gate).
+    // Pasted JDs have no public URL — skip MCP/date-check entirely.
     const needsEnrich =
-      Boolean(jobUrl)
+      !pastedJd
+      && Boolean(jobUrl)
       && (
         forceRefresh
         || !job.posted_at
@@ -112,7 +117,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     let analysis = null;
     let gateMessage = '';
 
-    if (needsEnrich) {
+    if (pastedJd) {
+      analysis = skippedPastedJdAnalysis();
+      gateMessage = formatPostingGateMessage({
+        company: job.company,
+        title: job.title,
+        url: jobUrl,
+        analysis,
+      });
+    } else if (needsEnrich) {
       const enrich = await fetchJobPostingDate(jobUrl);
       const now = new Date();
       analysis = enrich.analysis || analyzePostingHistory(enrich.raw || {});

@@ -5,6 +5,9 @@ import assert from 'node:assert/strict';
 import {
   analyzePostingHistory,
   formatPostingGateMessage,
+  gateResumeOnPostingAge,
+  isPastedOrLocalJobUrl,
+  skippedPastedJdAnalysis,
   STALE_POSTING_DAYS,
   ANCIENT_POSTING_DAYS,
 } from './job-posting-gate.mjs';
@@ -70,5 +73,30 @@ const msg = formatPostingGateMessage({
 assert.match(msg, /JOB POSTING CHECK/);
 assert.match(msg, /Yes or No/i);
 assert.match(msg, /1 year/i);
+
+assert.equal(isPastedOrLocalJobUrl('manual:jd:19:0f681d4a-77ff-4e02-aa44-c46ab809e90c'), true);
+assert.equal(isPastedOrLocalJobUrl('local:jds/epam.md'), true);
+assert.equal(isPastedOrLocalJobUrl('https://jobs.epam.com/foo'), false);
+assert.equal(skippedPastedJdAnalysis().needs_confirm, false);
+assert.equal(skippedPastedJdAnalysis().reason, 'pasted_jd');
+
+const skipped = await gateResumeOnPostingAge({
+  url: 'manual:jd:19:abc',
+  company: 'EPAM Systems',
+  title: 'Python Fullstack Engineer',
+  log: () => {},
+});
+assert.equal(skipped.ok, true);
+assert.equal(skipped.skipped, true);
+assert.equal(skipped.analysis?.needs_confirm, false);
+
+const pastedMsg = formatPostingGateMessage({
+  company: 'EPAM Systems',
+  title: 'Python Fullstack Engineer',
+  url: 'manual:jd:19:abc',
+  analysis: skippedPastedJdAnalysis(),
+});
+assert.match(pastedMsg, /Pasted\/local JD/);
+assert.doesNotMatch(pastedMsg, /Yes or No/i);
 
 console.log('job-posting-gate-tests: ok');

@@ -116,6 +116,20 @@ export function MultiTerminalPanel({
     }));
   }, [updateSession]);
 
+  const parseTailorCommand = (query: string) => {
+    const tailorMatch = query.match(/^tailor\s+(.+)$/i);
+    if (!tailorMatch) return null;
+    const rest = tailorMatch[1].trim();
+    const yes = /\s--yes\b|\s-y\b|\s--confirm-stale\b/i.test(rest);
+    const target = rest
+      .replace(/\s+--deep\b/gi, '')
+      .replace(/\s+--yes\b/gi, '')
+      .replace(/\s+-y\b/gi, '')
+      .replace(/\s+--confirm-stale\b/gi, '')
+      .trim();
+    return { target, yes };
+  };
+
   const runCommandOnSession = useCallback(
     (sessionId: string, query: string) => {
       // Close previous connection on this session if any
@@ -163,6 +177,60 @@ export function MultiTerminalPanel({
     [appendLog, onToast, terminalPrompt, updateSession]
   );
 
+  const startTailorWithGate = useCallback(
+    async (sessionId: string, target: string, yes: boolean) => {
+      if (!target) {
+        appendLog(sessionId, { type: 'stderr', content: 'Usage: tailor <job_id|url> --deep\n' });
+        return;
+      }
+      if (yes) {
+        runCommandOnSession(sessionId, `tailor ${target} --deep --yes`);
+        return;
+      }
+
+      appendLog(sessionId, {
+        type: 'stdout',
+        content: `\n${terminalPrompt} tailor ${target} --deep\n[CHECK] Running job posting age verification…\n`,
+      });
+
+      try {
+        const isUrl = /^https?:\/\//i.test(target);
+        const id = Number.parseInt(target, 10);
+        const res = await fetch(
+          isUrl ? `/api/job/posting-check?url=${encodeURIComponent(target)}` : `/api/job/${id}?refresh=1`,
+        );
+        if (res.ok) {
+          const job = await res.json();
+          const gateMessage = String(job?.posting_gate_message || '').trim();
+          if (gateMessage) {
+            appendLog(sessionId, { type: 'stdout', content: `\n${gateMessage}\n` });
+          }
+          if (job?.posting_analysis?.needs_confirm) {
+            updateSession(sessionId, (s) => ({
+              ...s,
+              awaitingPostingConfirm: true,
+              staleTailorTarget: target,
+              logs: [
+                ...s.logs,
+                {
+                  type: 'stdout',
+                  content:
+                    '\nContinue with resume generation? [Yes/No]:\n(Type yes or no, then Enter — Ctrl+C to cancel)\n',
+                },
+              ],
+            }));
+            return;
+          }
+        }
+      } catch {
+        /* pasted JD / network flake — GH Actions still date-checks real URLs */
+      }
+
+      runCommandOnSession(sessionId, `tailor ${target} --deep`);
+    },
+    [appendLog, runCommandOnSession, terminalPrompt, updateSession],
+  );
+
   // Handle external command triggers
   const lastExternalIdRef = useRef<number | null>(null);
   useEffect(() => {
@@ -191,9 +259,14 @@ export function MultiTerminalPanel({
         }
       }
       setActiveKey(targetId);
-      runCommandOnSession(targetId, externalCommand.command);
+      const parsed = parseTailorCommand(externalCommand.command);
+      if (parsed) {
+        void startTailorWithGate(targetId, parsed.target, parsed.yes);
+      } else {
+        runCommandOnSession(targetId, externalCommand.command);
+      }
     }
-  }, [externalCommand, activeKey, sessions, runCommandOnSession]);
+  }, [externalCommand, activeKey, sessions, runCommandOnSession, startTailorWithGate]);
 
   const addSession = () => {
     if (sessions.length >= 6) {
@@ -278,67 +351,9 @@ export function MultiTerminalPanel({
     }));
 
     // Check if tailor command needs posting check
-    const tailorMatch = q.match(/^tailor\s+(.+)$/i);
-    if (tailorMatch) {
-      const rest = tailorMatch[1].trim();
-      const yes = /\s--yes\b|\s-y\b|\s--confirm-stale\b/i.test(rest);
-      const target = rest
-        .replace(/\s+--deep\b/gi, '')
-        .replace(/\s+--yes\b/gi, '')
-        .replace(/\s+-y\b/gi, '')
-        .replace(/\s+--confirm-stale\b/gi, '')
-        .trim();
-
-      if (!target) {
-        appendLog(activeKey, { type: 'stderr', content: 'Usage: tailor <job_id|url> --deep\n' });
-        return;
-      }
-
-      if (yes) {
-        runCommandOnSession(activeKey, `tailor ${target} --deep --yes`);
-        return;
-      }
-
-      // Check posting age gate
-      appendLog(activeKey, {
-        type: 'stdout',
-        content: `\n${terminalPrompt} ${q}\n[CHECK] Running job posting age verification…\n`,
-      });
-
-      try {
-        const isUrl = /^https?:\/\//i.test(target);
-        const id = Number.parseInt(target, 10);
-        const res = await fetch(
-          isUrl ? `/api/job/posting-check?url=${encodeURIComponent(target)}` : `/api/job/${id}?refresh=1`
-        );
-        if (res.ok) {
-          const job = await res.json();
-          const gateMessage = String(job?.posting_gate_message || '').trim();
-          if (gateMessage) {
-            appendLog(activeKey, { type: 'stdout', content: `\n${gateMessage}\n` });
-          }
-          if (job?.posting_analysis?.needs_confirm) {
-            updateSession(activeKey, (s) => ({
-              ...s,
-              awaitingPostingConfirm: true,
-              staleTailorTarget: target,
-              logs: [
-                ...s.logs,
-                {
-                  type: 'stdout',
-                  content:
-                    '\nContinue with resume generation? [Yes/No]:\n(Type yes or no, then Enter — Ctrl+C to cancel)\n',
-                },
-              ],
-            }));
-            return;
-          }
-        }
-      } catch {
-        /* proceed */
-      }
-
-      runCommandOnSession(activeKey, `tailor ${target} --deep`);
+    const parsed = parseTailorCommand(q);
+    if (parsed) {
+      await startTailorWithGate(activeKey, parsed.target, parsed.yes);
       return;
     }
 
