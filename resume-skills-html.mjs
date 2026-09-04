@@ -215,7 +215,17 @@ function skillsCategoryLines(items, jdText = '') {
     buckets[skillCategory(label)].push(label);
   }
 
-  const order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
+  let order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
+  const jdLower = String(jdText || '').toLowerCase();
+  if (/\b(devops|sre|site reliability|cloud engineer|platform engineer|infrastructure|aws platform|kubernetes)\b/i.test(jdLower)) {
+    order = ['Cloud', 'Languages', 'Frameworks', 'Databases', 'Other'];
+  } else if (/\b(data engineer|etl|data platform|data warehouse|databricks|snowflake|pyspark|bigquery)\b/i.test(jdLower)) {
+    order = ['Databases', 'Languages', 'Cloud', 'Frameworks', 'Other'];
+  } else if (/\b(full[-\s]?stack|frontend|front[-\s]?end|ui engineer|web developer)\b/i.test(jdLower)) {
+    order = ['Frameworks', 'Languages', 'Databases', 'Cloud', 'Other'];
+  } else if (/\b(ai engineer|llm|machine learning|ml engineer|rag|generative ai)\b/i.test(jdLower)) {
+    order = ['Frameworks', 'Languages', 'Cloud', 'Databases', 'Other'];
+  }
   return order
     .filter((name) => buckets[name].length)
     .map(
@@ -268,7 +278,7 @@ export function sanitizeCompetencyList(items, jdText = '') {
     if (isNarrativeSuperpower(s) || !isTechStackSkill(s)) continue;
     if (isUnprovenLanguageSkill(s)) {
       // Reject languages like Ruby, PHP, Django from footer spam unless JD explicitly requires it AND it's not a generic listing
-      if (!jdText || !keywordAppearsInJd(s, jdText)) continue;
+      if (jdText && !keywordAppearsInJd(s, jdText)) continue;
     }
     const label = normalizeSkillLabel(s);
     const key = label.toLowerCase();

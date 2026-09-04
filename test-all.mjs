@@ -85,6 +85,7 @@ const scripts = [
   { name: 'feedback-tests.mjs', expectExit: 0 },
   { name: 'resume-engine-unit-tests.mjs', expectExit: 0 },
   { name: 'resume-engine-mcdc-tests.mjs', expectExit: 0 },
+  { name: 'resume-skills-editor-block-tests.mjs', expectExit: 0 },
 ];
 
 for (const { name, allowFail } of scripts) {

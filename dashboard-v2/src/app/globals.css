@@ -117,6 +117,12 @@
     padding-right: env(safe-area-inset-right);
   }
 
+  /* Disable font ligatures in code and mono elements so CLI flags like `--deep` render distinct double hyphens */
+  code, pre, kbd, samp, .font-mono, input.font-mono {
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;

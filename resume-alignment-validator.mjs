@@ -738,6 +738,7 @@ export function writeAlignmentReport(result, resumePathOrBase) {
     selectedId: result.selectedId,
     scores: result.scores,
     fit: result.fit,
+    plan: result.plan,
     meta: result.meta,
     // Keep evidence from selected/aligned detail without dumping full resumes
     matchedEvidence: result.detail?.[result.selectedId]?.matchedEvidence

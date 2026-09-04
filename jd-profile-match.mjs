@@ -702,17 +702,43 @@ const CORE_CLOUD_INFRA = new Set([
   'aws', 'kubernetes', 'docker', 'lambda', 'cdk', 'terraform', 'cloudformation', 'kafka', 'sqs', 'eventbridge', 'azure', 'gcp', 'ci/cd', 'rest api', 'restful api', 'microservices'
 ]);
 
-function prioritizeSummaryTechTerms(terms) {
-  const score = (term) => {
-    const lower = String(term || '').toLowerCase().trim();
-    if (CORE_LANGUAGES.has(lower)) return 10;
-    if (CORE_FRAMEWORKS.has(lower)) return 20;
-    if (CORE_DATABASES.has(lower)) return 30;
-    if (CORE_CLOUD_INFRA.has(lower)) return 40;
-    return 50;
-  };
-  return [...terms].sort((a, b) => score(a) - score(b));
-}
+  const jdLower = String(jdText || '').toLowerCase();
+  const isCloudRole = /\b(devops|sre|platform engineer|aws platform|infrastructure|kubernetes)\b/i.test(jdLower);
+  const isDataRole = /\b(data engineer|etl|warehouse|databricks|snowflake|pyspark)\b/i.test(jdLower);
+  const isAiRole = /\b(large language model|\bllms?\b|\brag\b|generative ai|ai engineer)\b/i.test(jdLower);
+
+  function prioritizeSummaryTechTerms(terms) {
+    const score = (term) => {
+      const lower = String(term || '').toLowerCase().trim();
+      if (isCloudRole) {
+        if (CORE_CLOUD_INFRA.has(lower)) return 10;
+        if (CORE_LANGUAGES.has(lower)) return 20;
+        if (CORE_DATABASES.has(lower)) return 30;
+        if (CORE_FRAMEWORKS.has(lower)) return 40;
+        return 50;
+      }
+      if (isDataRole) {
+        if (CORE_DATABASES.has(lower)) return 10;
+        if (CORE_LANGUAGES.has(lower)) return 20;
+        if (CORE_CLOUD_INFRA.has(lower)) return 30;
+        if (CORE_FRAMEWORKS.has(lower)) return 40;
+        return 50;
+      }
+      if (isAiRole) {
+        if (CORE_FRAMEWORKS.has(lower) || /langchain|rag|vector/i.test(lower)) return 10;
+        if (CORE_LANGUAGES.has(lower)) return 20;
+        if (CORE_CLOUD_INFRA.has(lower)) return 30;
+        if (CORE_DATABASES.has(lower)) return 40;
+        return 50;
+      }
+      if (CORE_LANGUAGES.has(lower)) return 10;
+      if (CORE_FRAMEWORKS.has(lower)) return 20;
+      if (CORE_DATABASES.has(lower)) return 30;
+      if (CORE_CLOUD_INFRA.has(lower)) return 40;
+      return 50;
+    };
+    return [...terms].sort((a, b) => score(a) - score(b));
+  }
 
   const rawLeadTerms = [...new Set([...jdTechLead, ...jdLead].map((k) => String(k).trim()))];
   const leadTerms = prioritizeSummaryTechTerms(rawLeadTerms).slice(0, 8);
@@ -722,24 +748,32 @@ function prioritizeSummaryTechTerms(terms) {
   const lead = leadTerms.length
     ? leadTerms.join(', ')
     : (embedded ? 'Linux, Python, Jenkins, AWS, and Azure' : 'APIs, cloud platforms, and production services');
-  const jdLower = String(jdText || '').toLowerCase();
   const title = inferRoleTitleFromJd(jdText, y);
   const yearsLabel = y > 0 ? `${y}+ years` : 'years';
   const iotShape = /\biot\b|\btelemetry\b|\bderms?\b/i.test(jdLower);
   const lines = [];
 
+  const domainClause =
+    /\bdata engineer|databricks|pyspark|data factory|snowflake\b/i.test(jdLower)
+      ? 'data platforms, pipelines, and cloud analytics systems'
+      : embedded
+        ? 'Linux services, multi-process systems, and communications software'
+        : iotShape
+          ? 'event-driven integrations, IoT telemetry pipelines, and cloud APIs'
+          : dotnetAzure
+            ? 'event-driven integrations, cloud APIs, and message-driven services'
+            : /\b(devops|sre|site reliability|platform engineer|aws platform)\b/i.test(jdLower)
+              ? 'cloud infrastructure, CI/CD pipelines, and high-availability platforms'
+              : /\b(web scrap|scraping|puppeteer|playwright)\b/i.test(jdLower)
+                ? 'automated data extraction, browser pipelines, and production APIs'
+                : /\b(large language model|\bllms?\b|\brag\b|generative ai)\b/i.test(jdLower)
+                  ? 'AI-enabled services, LLM pipelines, and backend architectures'
+                  : /\b(full[-\s]?stack|react|frontend)\b/i.test(jdLower) && /\b(node|backend|api)\b/i.test(jdLower)
+                    ? 'full-stack web applications, resilient backend APIs, and modern UIs'
+                    : 'backends, cloud platforms, and API systems';
+
   lines.push(
-    `${title} with ${yearsLabel} owning production ${
-      /\bdata engineer|databricks|pyspark|data factory|snowflake\b/i.test(jdLower)
-        ? 'data platforms, pipelines, and cloud analytics systems'
-        : embedded
-          ? 'Linux services, multi-process systems, and communications software'
-          : iotShape
-            ? 'event-driven integrations, IoT telemetry pipelines, and cloud APIs'
-            : dotnetAzure
-              ? 'event-driven integrations, cloud APIs, and message-driven services'
-              : 'backends, cloud platforms, and API systems'
-    } in ${lead}.`,
+    `${title} with ${yearsLabel} owning production ${domainClause} in ${lead}.`,
   );
 
   if (/\b(databricks|pyspark|azure data factory|\badf\b|snowflake|redshift|bigquery)\b/i.test(jdLower)) {

@@ -513,6 +513,7 @@ export function MultiTerminalPanel({
         {/* Terminal Output Area */}
         <div
           ref={logContainerRef}
+          style={{ fontVariantLigatures: 'none' }}
           className="flex-1 p-4 font-mono text-xs overflow-y-auto whitespace-pre-wrap bg-zinc-950 text-zinc-100 selection:bg-emerald-800 selection:text-white leading-relaxed select-text"
         >
           {activeSession.logs.length === 0 && !activeSession.isExecuting ? (
@@ -603,6 +604,7 @@ export function MultiTerminalPanel({
                     : 'scan / rank / tailor <id> / help (Ctrl+C to abort)'
                 }
                 disabled={activeSession.isExecuting}
+                style={{ fontVariantLigatures: 'none' }}
                 className="w-full bg-transparent outline-none border-none text-zinc-100 font-mono text-xs placeholder:text-zinc-600 caret-emerald-400"
                 autoFocus
               />
