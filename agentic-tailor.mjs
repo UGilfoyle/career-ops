@@ -44,6 +44,7 @@ import { callFirstAvailableFallback } from './llm-fallback.mjs';
 import { renderCategorizedSkills, sanitizeCompetencyList } from './resume-skills-html.mjs';
 import { renderContactBarHtml } from './resume-contact-html.mjs';
 import { gateResumeOnPostingAge, argvHasYes } from './job-posting-gate.mjs';
+import { fetchAshbyJobDescription, parseAshbyJobRef } from './ashby-jd.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
 import { classifyCompany } from './gcc-classify.mjs';
 import { hydrateResumeProfile } from './profile-hydrate.mjs';
@@ -780,6 +781,20 @@ async function scrapeJD(url) {
     // Never Playwright/HTML-dump a Naukri listing — "Similar jobs" leaks other stacks
     // (Python fullstack, Nest) and the tailor then invents FastAPI/Angular on Quest.
     throw new NaukriFetchError(naukriManualJdHint(targetUrl));
+  }
+
+  // Ashby (jobs.ashbyhq.com/{slug}/{id} or custom board ?ashby_jid=)
+  // Playwright + HTML fetch get an empty SPA shell on jobs.bureau.id etc.
+  if (parseAshbyJobRef(targetUrl)) {
+    try {
+      const ashby = await fetchAshbyJobDescription(targetUrl);
+      if (ashby?.text) {
+        console.log(`✅ Successfully extracted job description via Ashby board API (${ashby.text.length} chars).`);
+        return ashby.text;
+      }
+    } catch (err) {
+      console.warn(`⚠️ Ashby board API failed: ${err.message}. Falling back to default scraper.`);
+    }
   }
 
   // Intercept BambooHR URLs to fetch clean JSON details directly
