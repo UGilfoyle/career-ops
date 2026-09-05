@@ -21,6 +21,10 @@ on:
         options:
           - 'false'
           - 'true'
+      target_user_ids:
+        description: 'Target User IDs (comma-separated)'
+        required: false
+        default: '24,25,26,27,29,30,31,32,33,53,56,59,60'
 
 jobs:
   product-update:
@@ -51,4 +55,5 @@ jobs:
           NEWSLETTER_UNSUB_SECRET: ${{ secrets.NEWSLETTER_UNSUB_SECRET }}
           NEWSLETTER_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
           NEWSLETTER_FORCE: ${{ github.event.inputs.force == 'true' && '1' || '' }}
+          TARGET_USER_IDS: ${{ github.event.inputs.target_user_ids }}
         run: node newsletter-product-update.mjs

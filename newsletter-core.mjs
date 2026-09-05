@@ -156,23 +156,22 @@ export function buildMonthlyEmailHtml({
 
 
 const FEATURE_ICONS = {
-  'instant-tailor': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`,
-  'multi-terminal': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`,
-  'copilot': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`,
-  'ui-ux': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>`,
-  'resume-studio': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
-  'practice-ide': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
+  'instant-tailor': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`,
+  'copilot': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`,
+  'multi-terminal': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`,
+  'resume-studio': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
+  'cloud-automation': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F472B6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>`,
 };
 
-const DEFAULT_FEATURE_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>`;
+const DEFAULT_FEATURE_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>`;
 
 const BADGE_COLORS = {
-  New: { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
-  Flagship: { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
-  Improved: { bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd' },
-  Security: { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
-  Live: { bg: '#1C1C1E', text: '#ffffff', border: '#1C1C1E' },
-  Bonus: { bg: '#F5F5F0', text: '#6B6B6B', border: '#E5E5E0' },
+  Flagship: { bg: '#064E3B', text: '#34D399', border: '#059669' },
+  Fast: { bg: '#312E81', text: '#A5B4FC', border: '#4F46E5' },
+  New: { bg: '#0C4A6E', text: '#7DD3FC', border: '#0284C7' },
+  Live: { bg: '#451A03', text: '#FCD34D', border: '#D97706' },
+  Cloud: { bg: '#4A044E', text: '#F472B6', border: '#9333EA' },
+  Improved: { bg: '#0F172A', text: '#94A3B8', border: '#334155' },
 };
 
 function featureCardHtml(feature) {
@@ -180,19 +179,38 @@ function featureCardHtml(feature) {
   const iconSvg = FEATURE_ICONS[feature.id] || DEFAULT_FEATURE_ICON;
   return `
     <tr>
-      <td style="padding:0 0 16px 0;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF8;border:1px solid #E5E5E0;border-radius:16px;">
+      <td style="padding:0 0 14px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#161F30;border:1px solid #243247;border-radius:16px;">
           <tr>
-            <td style="padding:18px 20px;">
+            <td style="padding:16px 18px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td>
-                    <span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:${colors.bg};color:${colors.text};border:1px solid ${colors.border};margin-bottom:8px;">
-                      ${iconSvg} ${feature.badge}
-                    </span>
-                    <h3 style="margin:6px 0 6px;font-size:15px;font-weight:700;color:#1C1C1E;letter-spacing:-0.01em;">${feature.title}</h3>
-                    <p style="margin:0;font-size:13px;line-height:1.55;color:#6B6B6B;">${feature.summary}</p>
-                    <p style="margin:8px 0 0;font-size:12px;line-height:1.5;color:#9CA3AF;">${feature.detail}</p>
+                  <td width="44" valign="top" style="padding-right:14px;">
+                    <div style="width:42px;height:42px;background:#0F172A;border:1px solid #334155;border-radius:12px;text-align:center;line-height:42px;">
+                      ${iconSvg}
+                    </div>
+                  </td>
+                  <td valign="top">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td>
+                          <span style="font-size:15px;font-weight:700;color:#FFFFFF;letter-spacing:-0.01em;">${feature.title}</span>
+                          <span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:${colors.bg};color:${colors.text};border:1px solid ${colors.border};margin-left:8px;vertical-align:middle;">
+                            ${feature.badge}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top:5px;font-size:13.5px;line-height:1.5;color:#94A3B8;">
+                          ${feature.summary}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top:6px;font-size:12px;line-height:1.45;color:#64748B;">
+                          ${feature.detail}
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
@@ -203,7 +221,7 @@ function featureCardHtml(feature) {
     </tr>`;
 }
 
-/** Product announcement email (v3 release, Copilot, Resume Studio, etc.). */
+/** Product announcement email with horizontal architecture and executive dark palette. */
 export function buildProductUpdateEmailHtml({
   name,
   release,
@@ -214,9 +232,9 @@ export function buildProductUpdateEmailHtml({
 }) {
   const first = String(name || '').trim().split(/\s+/)[0] || 'there';
   const features = Array.isArray(release?.features) ? release.features : [];
-  const version = release?.version || 'v3.0';
+  const version = release?.version || 'v3.2';
   const tagline = release?.tagline || 'Major platform update';
-  const headline = release?.headline || "What's new in Career-Ops";
+  const headline = release?.headline || "What is new in Career-Ops";
 
   const featureRows = features.map(featureCardHtml).join('');
 
@@ -227,83 +245,110 @@ export function buildProductUpdateEmailHtml({
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${headline}</title>
 </head>
-<body style="margin:0;padding:0;background:#FAFAF8;font-family:Inter,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF8;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#080C14;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#080C14;padding:36px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #E5E5E0;border-radius:28px;overflow:hidden;">
-          <!-- Hero -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#0F172A;border:1px solid #1E293B;border-radius:24px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+          <!-- Header -->
           <tr>
-            <td style="background:#1C1C1E;padding:40px 32px;text-align:center;">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;">
+            <td style="background:linear-gradient(180deg,#161F30 0%,#0F172A 100%);padding:36px 32px 28px;text-align:center;border-bottom:1px solid #1E293B;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
                 <tr>
-                  <td align="center" style="width:52px;height:52px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:16px;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;">
+                  <td align="center" style="width:48px;height:48px;background:#0F172A;border:1px solid #334155;border-radius:14px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;">
                       <polyline points="4 17 10 11 4 5"></polyline>
                       <line x1="12" y1="19" x2="20" y2="19"></line>
                     </svg>
                   </td>
                 </tr>
               </table>
-              <p style="margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.55);">${version} · Product Update</p>
-              <h1 style="margin:0 0 10px;font-size:26px;font-weight:700;color:#ffffff;line-height:1.25;">${headline}</h1>
-              <p style="margin:0;font-size:14px;line-height:1.55;color:rgba(255,255,255,0.72);">${tagline}</p>
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#38BDF8;margin-bottom:8px;">${version} Product Release</div>
+              <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#FFFFFF;line-height:1.3;letter-spacing:-0.02em;">${headline}</h1>
+              <p style="margin:0;font-size:13.5px;line-height:1.55;color:#94A3B8;">${tagline}</p>
             </td>
           </tr>
-          <!-- Intro -->
+
+          <!-- Intro Note -->
           <tr>
-            <td style="padding:32px 32px 8px;">
-              <p style="margin:0;font-size:15px;line-height:1.6;color:#1C1C1E;">Hey <strong>${first}</strong>,</p>
-              <p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:#6B6B6B;">
-                We shipped a big update to Career-Ops — Career Copilot, Resume Studio, saved tailored docs, mobile polish, and stronger security. Here is everything that landed:
+            <td style="padding:28px 28px 12px;">
+              <p style="margin:0;font-size:14.5px;line-height:1.6;color:#FFFFFF;">Hi <strong>${first}</strong>,</p>
+              <p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#94A3B8;">
+                We deployed major platform updates to Career-Ops. You now have instant 1-click resume tailoring, sub-second Copilot guidance, and a clean parallel dashboard. Zero configuration required on your side.
               </p>
             </td>
           </tr>
-          <!-- Features -->
+
+          <!-- Horizontal Highlight Metrics Bar -->
           <tr>
-            <td style="padding:8px 32px 8px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                ${featureRows}
-              </table>
-            </td>
-          </tr>
-          <!-- CTA -->
-          <tr>
-            <td style="padding:16px 32px 32px;text-align:center;">
-              <a href="${dashboardUrl}" style="display:inline-block;background:#1C1C1E;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:14px 32px;border-radius:14px;margin:0 6px 10px;">Open Dashboard</a>
-              <a href="${signupUrl}" style="display:inline-block;background:#ffffff;color:#1C1C1E;text-decoration:none;font-weight:700;font-size:14px;padding:13px 28px;border-radius:14px;border:1px solid #E5E5E0;margin:0 6px 10px;">Invite a friend</a>
-            </td>
-          </tr>
-          <!-- Referral -->
-          <tr>
-            <td style="padding:0 32px 32px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF8;border:1px solid #E5E5E0;border-radius:18px;">
+            <td style="padding:12px 28px 16px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#161F30;border:1px solid #243247;border-radius:14px;text-align:center;">
                 <tr>
-                  <td style="padding:22px 24px;text-align:center;">
-                    <h2 style="margin:0 0 8px;font-size:15px;font-weight:700;color:#1C1C1E;">Your referral link</h2>
-                    <p style="margin:0 0 12px;font-size:13px;line-height:1.5;color:#6B6B6B;">Share Career-Ops with someone job hunting — they sign up with your code pre-filled.</p>
-                    <a href="${referralUrl}" style="font-size:12px;font-weight:600;color:#1C1C1E;word-break:break-all;">${referralUrl}</a>
+                  <td width="33%" style="padding:14px 6px;border-right:1px solid #243247;">
+                    <div style="font-size:17px;font-weight:700;color:#38BDF8;letter-spacing:-0.02em;">&lt; 60s</div>
+                    <div style="font-size:10.5px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">1-Click Tailor</div>
+                  </td>
+                  <td width="33%" style="padding:14px 6px;border-right:1px solid #243247;">
+                    <div style="font-size:17px;font-weight:700;color:#818CF8;letter-spacing:-0.02em;">Real-Time</div>
+                    <div style="font-size:10.5px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Career Copilot</div>
+                  </td>
+                  <td width="33%" style="padding:14px 6px;">
+                    <div style="font-size:17px;font-weight:700;color:#34D399;letter-spacing:-0.02em;">Zero Config</div>
+                    <div style="font-size:10.5px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Cloud Automated</div>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
+
+          <!-- Features (Horizontal Layout) -->
+          <tr>
+            <td style="padding:8px 28px 12px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                ${featureRows}
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA Button -->
+          <tr>
+            <td style="padding:16px 28px 28px;text-align:center;">
+              <a href="${dashboardUrl}" style="display:inline-block;background:#2563EB;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:14px;padding:14px 34px;border-radius:12px;box-shadow:0 4px 14px rgba(37,99,235,0.35);margin:0 6px 10px;">Open Career-Ops Dashboard</a>
+            </td>
+          </tr>
+
+          <!-- Referral Card -->
+          <tr>
+            <td style="padding:0 28px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#161F30;border:1px solid #243247;border-radius:16px;">
+                <tr>
+                  <td style="padding:18px 20px;text-align:center;">
+                    <div style="font-size:13.5px;font-weight:700;color:#FFFFFF;margin-bottom:6px;">Invite an Engineer</div>
+                    <p style="margin:0 0 10px;font-size:12.5px;line-height:1.5;color:#94A3B8;">Know someone navigating job search? Share your referral link so they can evaluate roles and tailor resumes with your code pre-filled.</p>
+                    <div style="display:inline-block;background:#0F172A;border:1px solid #334155;border-radius:8px;padding:6px 14px;">
+                      <a href="${referralUrl}" style="font-size:12px;font-weight:600;color:#38BDF8;text-decoration:none;word-break:break-all;">${referralUrl}</a>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
           <!-- Footer -->
           <tr>
-            <td style="padding:24px 32px;border-top:1px solid #F5F5F0;text-align:center;">
-              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9CA3AF;">You are receiving this one-time product update because you have a Career-Ops account with email notifications enabled.</p>
-              <p style="margin:0;font-size:11px;color:#9CA3AF;"><a href="${unsub}" style="color:#6B6B6B;text-decoration:underline;">Unsubscribe from emails</a></p>
+            <td style="padding:22px 28px;border-top:1px solid #1E293B;text-align:center;">
+              <p style="margin:0 0 6px;font-size:11.5px;line-height:1.6;color:#64748B;">You are receiving this product update because you have an account on Career-Ops with email notifications enabled.</p>
+              <p style="margin:0;font-size:11px;color:#64748B;"><a href="${unsub}" style="color:#94A3B8;text-decoration:underline;">Unsubscribe from emails</a></p>
             </td>
           </tr>
         </table>
-        <p style="margin:20px 0 0;font-size:10px;color:#9CA3AF;letter-spacing:0.05em;">Career-Ops · careerops.dpdns.org</p>
+        <p style="margin:16px 0 0;font-size:10px;color:#64748B;letter-spacing:0.05em;">Career-Ops - careerops.dpdns.org</p>
       </td>
     </tr>
   </table>
 </body>
 </html>`;
 }
-
 /** Prefer authenticated custom domain — never freemail as default From. */
 const DEFAULT_BREVO_SENDER = 'noreply@careerops.dpdns.org';
 

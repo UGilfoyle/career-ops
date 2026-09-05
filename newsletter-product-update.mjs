@@ -27,7 +27,7 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RELEASE_PATH = join(__dirname, 'dashboard-v2/src/content/release-v3.json');
-const SEND_KIND = 'product-update-sept-2026';
+const SEND_KIND = 'product-update-sept-2026-v2';
 
 const cleanDbUrl = (process.env.DATABASE_URL || '')
   .replace('&channel_binding=require', '')
@@ -83,14 +83,32 @@ async function main() {
     const dashboardUrl = appBaseUrl();
     const signupUrl = `${dashboardUrl}/signup`;
 
-    const users = await sql`
-      SELECT u.id::text AS id, u.name, u.email
-      FROM users u
-      WHERE u.email IS NOT NULL
-        AND u.email_verified IS NOT NULL
-        AND COALESCE(u.newsletter_opt_in, true) = true
-      ORDER BY u.id
-    `;
+    const targetUserIdsRaw = process.env.TARGET_USER_IDS || '24,25,26,27,29,30,31,32,33,53,56,59,60';
+    const targetIds = targetUserIdsRaw
+      .split(',')
+      .map((s) => Number(s.trim()))
+      .filter(Boolean);
+
+    let users;
+    if (targetIds && targetIds.length > 0) {
+      users = await sql`
+        SELECT u.id::text AS id, u.name, u.email
+        FROM users u
+        WHERE u.id IN ${sql(targetIds)}
+          AND u.email IS NOT NULL
+          AND COALESCE(u.newsletter_opt_in, true) = true
+        ORDER BY u.id
+      `;
+    } else {
+      users = await sql`
+        SELECT u.id::text AS id, u.name, u.email
+        FROM users u
+        WHERE u.email IS NOT NULL
+          AND u.email_verified IS NOT NULL
+          AND COALESCE(u.newsletter_opt_in, true) = true
+        ORDER BY u.id
+      `;
+    }
 
     console.log(`Eligible users: ${users.length}`);
     console.log('Note: Recipients come from your database — no Brevo contact list required.');
@@ -99,7 +117,7 @@ async function main() {
     let skipped = 0;
     let failed = 0;
 
-    const subject = `What's new in Career-Ops — ${release.tagline}`;
+    const subject = `What is new in Career-Ops - ${release.tagline}`;
 
     for (const user of users) {
       const uid = String(user.id);

@@ -1,53 +1,46 @@
 {
-  "id": "v3-2-sept-2026",
+  "id": "v3-2-sept-2026-eng",
   "version": "v3.2",
-  "title": "September 2026 Major Update",
-  "tagline": "1-Click AI Tailoring, Multi-Session Terminal, Copilot & Redesigned UI",
-  "headline": "What's new in Career-Ops",
-  "subheadline": "1-Click Resume Tailoring, Parallel Multi-Session Terminals, Career Copilot, and an all-new modern UI.",
+  "title": "September 2026 Product Release",
+  "tagline": "1-Click Resume Tailoring, Sub-Second Career Copilot, and Unified Cloud Automation",
+  "headline": "What is new in Career-Ops",
+  "subheadline": "Instant 1-click resume tailoring, real-time Copilot guidance, parallel terminal scans, and zero-configuration cloud automation.",
   "storageKey": "career_ops_seen_release_v3_2",
   "features": [
     {
       "id": "instant-tailor",
       "badge": "Flagship",
       "title": "1-Click AI Resume Tailor",
-      "summary": "Paste any job URL and get an ATS-optimized tailored resume in 60 seconds.",
-      "detail": "Zero terminal commands, zero setup. Just paste any LinkedIn, Indeed, Greenhouse, or Lever link right on your dashboard to extract requirements and compile tailored docs automatically."
+      "summary": "Paste any job link or text to generate an ATS-aligned tailored resume in under 60 seconds.",
+      "detail": "Extracts hard technical requirements, highlights matching qualifications, and compiles clean, export-ready PDFs with zero manual setup."
+    },
+    {
+      "id": "copilot",
+      "badge": "Fast",
+      "title": "Real-Time Career Copilot",
+      "summary": "Sub-second career strategist synced to your career profile, targeting keywords, and experience.",
+      "detail": "Refine your exit narrative, simulate technical and system design interviews, and draft personalized outreach messages without rate limits."
     },
     {
       "id": "multi-terminal",
       "badge": "New",
-      "title": "Multi-Session Parallel Terminal",
-      "summary": "Run multiple discovery scans and resume tailoring tasks simultaneously.",
-      "detail": "Execute broad job scans, GCC employer hunts, and deep tailoring in parallel tabs without waiting for previous jobs to finish."
-    },
-    {
-      "id": "copilot",
-      "badge": "New",
-      "title": "AI Career Copilot",
-      "summary": "Your personal career strategist trained on your profile and goals.",
-      "detail": "Generate personalized recruiter outreach on LinkedIn, prep interview answers using the STAR method, and detect skill gaps before submitting applications."
-    },
-    {
-      "id": "ui-ux",
-      "badge": "Improved",
-      "title": "Modernized UI/UX & Kanban Funnel",
-      "summary": "Sleek dark-accented interface with mobile-first responsiveness.",
-      "detail": "Enjoy a refreshed visual design, responsive layouts on iPhone and Android, interactive 5-stage application Kanban, and real-time status updates."
+      "title": "Parallel Discovery Terminal",
+      "summary": "Run job discovery scans and deep document tailoring simultaneously in background sessions.",
+      "detail": "Track multiple portals and employer pipelines in isolated parallel tabs with live streaming logs and unified status views."
     },
     {
       "id": "resume-studio",
-      "badge": "Flagship",
-      "title": "Interactive Resume Studio & ATS Scoring",
-      "summary": "Real-time JD match scoring with live WYSIWYG editor.",
-      "detail": "Compare your resume against any job description in real-time, fine-tune competencies on the fly, and download polished PDFs instantly."
+      "badge": "Live",
+      "title": "Interactive Resume Studio",
+      "summary": "WYSIWYG resume editor with live keyword alignment scoring against target job descriptions.",
+      "detail": "Inspect ATS compliance scores, edit competency matrices on the fly, and download tailored PDFs with zero watermark."
     },
     {
-      "id": "practice-ide",
-      "badge": "New",
-      "title": "Interview Practice Arena",
-      "summary": "In-browser coding and system design interview sandbox.",
-      "detail": "Sharpen your technical interview readiness with live code execution, DSA question packs, and complexity breakdown right inside Career-Ops."
+      "id": "cloud-automation",
+      "badge": "Cloud",
+      "title": "Zero-Config Cloud Pipeline",
+      "summary": "All background scanning, PDF compiling, and tracking pipelines run fully managed in the cloud.",
+      "detail": "No API keys or local developer environment required. Your applications, resumes, and outreach drafts are always synchronized."
     }
   ]
 }
