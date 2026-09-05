@@ -121,7 +121,16 @@ export function buildMonthlyEmailHtml({
 <html><head><meta charset="UTF-8"></head>
 <body style="font-family:Inter,Helvetica,Arial,sans-serif;margin:0;padding:0;background:#FAFAF8;">
   <div style="max-width:600px;margin:40px auto;padding:48px 40px;background:#fff;border:1px solid #E5E5E0;border-radius:32px;">
-    <div style="width:56px;height:56px;background:#1C1C1E;border-radius:16px;margin:0 auto 32px;"></div>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+      <tr>
+        <td align="center" style="width:56px;height:56px;background:#1C1C1E;border-radius:16px;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+        </td>
+      </tr>
+    </table>
     <h1 style="font-size:28px;font-weight:700;color:#1C1C1E;text-align:center;margin:0 0 12px;">${headline}</h1>
     <p style="font-size:15px;color:#6B6B6B;text-align:center;line-height:1.55;margin:0 0 28px;">${intro}</p>
     <ul style="color:#1C1C1E;font-size:14px;line-height:1.7;margin:0 0 28px;padding-left:20px;">
@@ -145,6 +154,18 @@ export function buildMonthlyEmailHtml({
 </body></html>`;
 }
 
+
+const FEATURE_ICONS = {
+  'instant-tailor': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`,
+  'multi-terminal': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`,
+  'copilot': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`,
+  'ui-ux': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>`,
+  'resume-studio': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
+  'practice-ide': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
+};
+
+const DEFAULT_FEATURE_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;display:inline-block;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>`;
+
 const BADGE_COLORS = {
   New: { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
   Flagship: { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
@@ -156,6 +177,7 @@ const BADGE_COLORS = {
 
 function featureCardHtml(feature) {
   const colors = BADGE_COLORS[feature.badge] || BADGE_COLORS.New;
+  const iconSvg = FEATURE_ICONS[feature.id] || DEFAULT_FEATURE_ICON;
   return `
     <tr>
       <td style="padding:0 0 16px 0;">
@@ -165,8 +187,10 @@ function featureCardHtml(feature) {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:${colors.bg};color:${colors.text};border:1px solid ${colors.border};margin-bottom:8px;">${feature.badge}</span>
-                    <h3 style="margin:6px 0 6px;font-size:15px;font-weight:700;color:#1C1C1E;">${feature.title}</h3>
+                    <span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:${colors.bg};color:${colors.text};border:1px solid ${colors.border};margin-bottom:8px;">
+                      ${iconSvg} ${feature.badge}
+                    </span>
+                    <h3 style="margin:6px 0 6px;font-size:15px;font-weight:700;color:#1C1C1E;letter-spacing:-0.01em;">${feature.title}</h3>
                     <p style="margin:0;font-size:13px;line-height:1.55;color:#6B6B6B;">${feature.summary}</p>
                     <p style="margin:8px 0 0;font-size:12px;line-height:1.5;color:#9CA3AF;">${feature.detail}</p>
                   </td>
@@ -211,7 +235,16 @@ export function buildProductUpdateEmailHtml({
           <!-- Hero -->
           <tr>
             <td style="background:#1C1C1E;padding:40px 32px;text-align:center;">
-              <div style="width:52px;height:52px;background:rgba(255,255,255,0.12);border-radius:14px;margin:0 auto 20px;line-height:52px;font-size:22px;">⚡</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;">
+                <tr>
+                  <td align="center" style="width:52px;height:52px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:16px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;">
+                      <polyline points="4 17 10 11 4 5"></polyline>
+                      <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                  </td>
+                </tr>
+              </table>
               <p style="margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.55);">${version} · Product Update</p>
               <h1 style="margin:0 0 10px;font-size:26px;font-weight:700;color:#ffffff;line-height:1.25;">${headline}</h1>
               <p style="margin:0;font-size:14px;line-height:1.55;color:rgba(255,255,255,0.72);">${tagline}</p>
