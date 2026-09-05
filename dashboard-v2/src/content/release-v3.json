@@ -1,81 +1,53 @@
 {
-  "id": "v3-aug-2026",
-  "version": "v3.0",
-  "title": "August 2026 Release",
-  "tagline": "Copilot, Resume Studio, security hardening & mobile polish",
+  "id": "v3-2-sept-2026",
+  "version": "v3.2",
+  "title": "September 2026 Major Update",
+  "tagline": "1-Click AI Tailoring, Multi-Session Terminal, Copilot & Redesigned UI",
   "headline": "What's new in Career-Ops",
-  "subheadline": "Copilot, Resume Studio, and a more reliable dashboard: here's what changed.",
-  "storageKey": "career_ops_seen_release_v3",
+  "subheadline": "1-Click Resume Tailoring, Parallel Multi-Session Terminals, Career Copilot, and an all-new modern UI.",
+  "storageKey": "career_ops_seen_release_v3_2",
   "features": [
+    {
+      "id": "instant-tailor",
+      "badge": "Flagship",
+      "title": "1-Click AI Resume Tailor",
+      "summary": "Paste any job URL and get an ATS-optimized tailored resume in 60 seconds.",
+      "detail": "Zero terminal commands, zero setup. Just paste any LinkedIn, Indeed, Greenhouse, or Lever link right on your dashboard to extract requirements and compile tailored docs automatically."
+    },
+    {
+      "id": "multi-terminal",
+      "badge": "New",
+      "title": "Multi-Session Parallel Terminal",
+      "summary": "Run multiple discovery scans and resume tailoring tasks simultaneously.",
+      "detail": "Execute broad job scans, GCC employer hunts, and deep tailoring in parallel tabs without waiting for previous jobs to finish."
+    },
     {
       "id": "copilot",
       "badge": "New",
-      "title": "Career Copilot",
-      "summary": "Chat with an AI that knows your profile, targeting keywords, and resume context.",
-      "detail": "Draft LinkedIn outreach, prep interview answers, spot skill gaps, and get role-specific advice, powered by Mistral AI with OpenRouter fallback."
+      "title": "AI Career Copilot",
+      "summary": "Your personal career strategist trained on your profile and goals.",
+      "detail": "Generate personalized recruiter outreach on LinkedIn, prep interview answers using the STAR method, and detect skill gaps before submitting applications."
+    },
+    {
+      "id": "ui-ux",
+      "badge": "Improved",
+      "title": "Modernized UI/UX & Kanban Funnel",
+      "summary": "Sleek dark-accented interface with mobile-first responsiveness.",
+      "detail": "Enjoy a refreshed visual design, responsive layouts on iPhone and Android, interactive 5-stage application Kanban, and real-time status updates."
     },
     {
       "id": "resume-studio",
       "badge": "Flagship",
-      "title": "Resume Studio",
-      "summary": "Live ATS preview, JD match scoring, and one-click tailored PDFs.",
-      "detail": "Edit your master resume with real-time preview, match against job descriptions, save tailored versions per role, and export polished PDFs cached in the cloud."
-    },
-    {
-      "id": "saved-docs",
-      "badge": "New",
-      "title": "Saved tailored resumes",
-      "summary": "Re-open generated docs without re-running the AI pipeline.",
-      "detail": "Your tailored resumes and PDFs are stored securely, so you can load them instantly from Generated Docs or Resume Studio."
-    },
-    {
-      "id": "mobile",
-      "badge": "Improved",
-      "title": "Mobile-ready dashboard",
-      "summary": "Works smoothly on iPhone and Android.",
-      "detail": "Hamburger nav, safe-area layouts, touch-friendly inputs, and auto-scaling resume preview on smaller screens."
-    },
-    {
-      "id": "security",
-      "badge": "Security",
-      "title": "Hardened auth & rate limits",
-      "summary": "Login lockout, OTP protection, and API quotas.",
-      "detail": "Brute-force protection on login, per-email OTP limits, Copilot/PDF/terminal rate limits, and optional Cloudflare Turnstile on signup."
-    },
-    {
-      "id": "admin",
-      "badge": "New",
-      "title": "Admin registry",
-      "summary": "User analytics and visitor insights for platform admins.",
-      "detail": "See verified users, job counts, newsletter opt-ins, and traffic stats from one admin panel."
-    },
-    {
-      "id": "domain",
-      "badge": "Live",
-      "title": "careerops.dpdns.org",
-      "summary": "Custom domain with verified email delivery.",
-      "detail": "Production runs on your branded domain with Brevo-authenticated sender for OTP and newsletters."
+      "title": "Interactive Resume Studio & ATS Scoring",
+      "summary": "Real-time JD match scoring with live WYSIWYG editor.",
+      "detail": "Compare your resume against any job description in real-time, fine-tune competencies on the fly, and download polished PDFs instantly."
     },
     {
       "id": "practice-ide",
       "badge": "New",
-      "title": "Interview Practice IDE",
-      "summary": "Live in-browser code editor with instant test runner and AI DSA Handbook.",
-      "detail": "Practice coding and system design interview questions directly in your dashboard with split-view tests, time complexity analysis, and instant feedback."
-    },
-    {
-      "id": "pipeline-studio",
-      "badge": "New",
-      "title": "3-Column Pipeline Studio",
-      "summary": "Target discovery, live match scores, and application Kanban.",
-      "detail": "Scan top Global Capability Centers (GCCs), review AI match scores, and drag applications across your 5-stage hiring funnel."
-    },
-    {
-      "id": "referral",
-      "badge": "Bonus",
-      "title": "Referral links",
-      "summary": "Invite friends, and they land on signup with your code pre-filled.",
-      "detail": "Every user gets a unique referral code. Share it from Settings or your monthly email."
+      "title": "Interview Practice Arena",
+      "summary": "In-browser coding and system design interview sandbox.",
+      "detail": "Sharpen your technical interview readiness with live code execution, DSA question packs, and complexity breakdown right inside Career-Ops."
     }
   ]
 }

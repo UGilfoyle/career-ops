@@ -27,7 +27,7 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RELEASE_PATH = join(__dirname, 'dashboard-v2/src/content/release-v3.json');
-const SEND_KIND = 'product-update-v3-aug-2026';
+const SEND_KIND = 'product-update-sept-2026';
 
 const cleanDbUrl = (process.env.DATABASE_URL || '')
   .replace('&channel_binding=require', '')
