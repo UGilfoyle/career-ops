@@ -5,6 +5,8 @@ import { formatRetryHint } from '@/lib/rate-limit';
 import { checkCopilotRateLimit } from '@/lib/billing/entitlements';
 import { resolvePlanForCountry, planSubtitle } from '@/lib/billing/plans';
 import { countryFromRequest } from '@/lib/billing/geo';
+import { createHash } from 'crypto';
+import { kvGet, kvSet } from '@/lib/telemetry/kv';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +26,83 @@ function isGithubModelsUrl(url: string): boolean {
 }
 
 /** Stale GitHub PATs cannot auth against DeepSeek/OpenRouter/etc. */
+
+// Sub-millisecond in-memory cache fallback (resilient across warm serverless lambdas)
+const memCache = new Map<string, { value: string; exp: number }>();
+
+function getMemCache(key: string): string | null {
+  const item = memCache.get(key);
+  if (!item) return null;
+  if (Date.now() > item.exp) {
+    memCache.delete(key);
+    return null;
+  }
+  return item.value;
+}
+
+function setMemCache(key: string, value: string, ttlSec: number) {
+  if (memCache.size > 500) {
+    const firstKey = memCache.keys().next().value;
+    if (firstKey) memCache.delete(firstKey);
+  }
+  memCache.set(key, { value, exp: Date.now() + ttlSec * 1000 });
+}
+
+async function getCachedChat(cacheKey: string): Promise<string | null> {
+  const mem = getMemCache(cacheKey);
+  if (mem) return mem;
+  try {
+    const kv = await kvGet(cacheKey);
+    if (kv) {
+      setMemCache(cacheKey, kv, 3600);
+      return kv;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+async function setCachedChat(cacheKey: string, value: string, ttlSec = 86400): Promise<void> {
+  setMemCache(cacheKey, value, ttlSec);
+  try {
+    await kvSet(cacheKey, value, ttlSec);
+  } catch {
+    /* ignore */
+  }
+}
+
+function buildProfileDigest(rawCtx: unknown, targetingKeywords: { positive?: string[]; negative?: string[] }): string {
+  let ctx = rawCtx as Record<string, any>;
+  if (typeof ctx === 'string') {
+    try { ctx = JSON.parse(ctx); } catch { ctx = {}; }
+  }
+  if (!ctx || typeof ctx !== 'object') {
+    return 'Candidate: Senior Software / Platform Engineer';
+  }
+  const candidate = ctx.candidate || {};
+  const name = candidate.full_name || candidate.name || 'Candidate';
+  const narrative = ctx.narrative || {};
+  const headline = narrative.headline || candidate.headline || 'Senior Software Engineer';
+  const superpowers = (narrative.superpowers || []).slice(0, 8).join(', ');
+  
+  const exp = Array.isArray(ctx.experience) ? ctx.experience : [];
+  const current = exp[0] ? `${exp[0].role || exp[0].title || 'Engineer'} at ${exp[0].company || 'Company'} (${exp[0].period || ''})` : '';
+  
+  const exitStory = narrative.exit_story ? String(narrative.exit_story).split('\n')[0].slice(0, 180) : '';
+  const targetRoles = (ctx.target_roles?.primary || []).slice(0, 3).join(', ');
+  const posKeywords = (targetingKeywords?.positive || []).slice(0, 6).join(', ');
+
+  return [
+    `Candidate: ${name} | ${headline}`,
+    superpowers ? `Core Stack: ${superpowers}` : '',
+    current ? `Current Role: ${current}` : '',
+    exitStory ? `Exit Narrative: ${exitStory}` : '',
+    targetRoles ? `Target Roles: ${targetRoles}` : '',
+    posKeywords ? `Target Keywords: ${posKeywords}` : '',
+  ].filter(Boolean).join('\n');
+}
+
 function isGithubPatKey(key: string): boolean {
   return /^gh[pousr]_|github_pat_/i.test(String(key || '').trim());
 }
@@ -62,6 +141,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Messages are required' }, { status: 400 });
     }
 
+    const lastMessage = messages[messages.length - 1]?.content || '';
+    const cacheKey = `copilot:q:${createHash('sha256').update(`${userId}:${lastMessage.trim().toLowerCase()}`).digest('hex').slice(0, 32)}`;
+
+    // Fast-path cache lookup (< 15ms)
+    const cachedResponse = await getCachedChat(cacheKey);
+    if (cachedResponse) {
+      return NextResponse.json({
+        content: cachedResponse,
+        provider: 'Fast Cache (Valkey/Memory)',
+      });
+    }
+
     // 3. Fetch user profile context
     const profileRows = await sql`
       SELECT resume_context, targeting_keywords, hf_token, openai_key
@@ -74,15 +165,12 @@ export async function POST(req: NextRequest) {
     const targetingKeywords = profile.targeting_keywords || { positive: [], negative: [] };
     const userHfToken = profile.hf_token || '';
 
-    // 4. Construct System Instructions
+    // 4. Construct System Instructions (Compact Profile Digest for <150ms TTFT)
+    const profileDigest = buildProfileDigest(resumeContext, targetingKeywords);
     const systemPrompt = `You are Career-Ops Copilot, an elite AI career strategist and job coach. Your job is to help the user navigate their job search, prepare for interviews, analyze skill gaps, draft cover letters, and suggest outreach messages (e.g., for LinkedIn).
 
-Here is the user's uploaded career profile (resume context):
-${JSON.stringify(resumeContext, null, 2)}
-
-Here are their targeting keywords (keywords they look for or avoid in jobs):
-Positive: ${JSON.stringify(targetingKeywords.positive || [])}
-Negative: ${JSON.stringify(targetingKeywords.negative || [])}
+Candidate Profile Digest:
+${profileDigest}
 
 Instructions:
 1. Always reference the user's specific experience and skills naturally.
@@ -132,42 +220,55 @@ Instructions:
       model: string,
       extraHeaders: Record<string, string> = {},
       skipIf?: (status: number, body: string) => boolean,
+      timeoutMs: number = 7000,
     ) => {
       if (!apiKey || isPlaceholderKey(apiKey) || isGithubModelsUrl(baseUrl)) return;
       attempts.push(async () => {
         let url = baseUrl.trim().replace(/\/$/, '');
         if (!url.endsWith('/chat/completions')) url = `${url}/chat/completions`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-            ...extraHeaders,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages.map((m: { role: string; content: string }) => ({
-                role: m.role,
-                content: m.content,
-              })),
-            ],
-            temperature: 0.7,
-          }),
-        });
-        const bodyText = await response.text();
-        if (!response.ok) {
-          if (skipIf?.(response.status, bodyText)) {
-            throw new Error(`${name} skipped (${response.status})`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+              ...extraHeaders,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                ...messages.slice(-4).map((m: { role: string; content: string }) => ({
+                  role: m.role,
+                  content: m.content,
+                })),
+              ],
+              temperature: 0.7,
+            }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          const bodyText = await response.text();
+          if (!response.ok) {
+            if (skipIf?.(response.status, bodyText)) {
+              throw new Error(`${name} skipped (${response.status})`);
+            }
+            throw new Error(`${name} failed with status ${response.status}: ${bodyText}`);
           }
-          throw new Error(`${name} failed with status ${response.status}: ${bodyText}`);
+          const result = JSON.parse(bodyText);
+          return {
+            content: result.choices?.[0]?.message?.content || '',
+            provider: `${name} (${model})`,
+          };
+        } catch (err: unknown) {
+          clearTimeout(timeoutId);
+          if (err instanceof Error && err.name === 'AbortError') {
+            throw new Error(`${name} timed out after ${timeoutMs}ms`);
+          }
+          throw err;
         }
-        const result = JSON.parse(bodyText);
-        return {
-          content: result.choices?.[0]?.message?.content || '',
-          provider: `${name} (${model})`,
-        };
       });
     };
 
@@ -176,12 +277,15 @@ Instructions:
       'X-Title': process.env.OPENROUTER_APP_NAME || 'career-ops',
     };
 
-    // ── Mistral AI (primary when MISTRAL_API_KEY is set) ──
+    // ── Mistral AI (primary when MISTRAL_API_KEY is set, fast 3.5s timeout for failover) ──
     pushOpenAiCompat(
       'Mistral',
       mistralKey,
       'https://api.mistral.ai/v1',
       process.env.MISTRAL_MODEL || 'mistral-small-latest',
+      {},
+      undefined,
+      3500,
     );
 
     // ── OpenRouter free models ──
@@ -324,6 +428,9 @@ Instructions:
     }
 
     if (finalResult) {
+      if (finalResult.content) {
+        void setCachedChat(cacheKey, finalResult.content, 86400);
+      }
       return NextResponse.json(finalResult);
     }
 
