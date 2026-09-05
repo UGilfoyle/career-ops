@@ -94,7 +94,7 @@ Instructions:
     const deepseekKey = process.env.DEEPSEEK_API_KEY || '';
     const geminiKey = process.env.GEMINI_API_KEY || '';
     const hfToken = process.env.HUGGINGFACE_TOKEN || userHfToken || '';
-    const openrouterKey = process.env.OPENROUTER_API_KEY || '';
+    let openrouterKey = process.env.OPENROUTER_API_KEY || '';
     const groqKey = process.env.GROQ_API_KEY || '';
     const togetherKey = process.env.TOGETHER_API_KEY || '';
     const fallbackUrl = process.env.FALLBACK_BASE_URL || '';
@@ -106,6 +106,20 @@ Instructions:
       console.warn(
         'Ignoring FALLBACK_API_KEY: GitHub PAT cannot auth against non-GitHub LLM APIs. Use OPENROUTER_API_KEY / DEEPSEEK_API_KEY instead.',
       );
+    }
+
+    // Resolve system OpenRouter key from Neon DB if not present in env
+    if (!openrouterKey) {
+      try {
+        const sysRows = await sql`
+          SELECT value FROM system_config WHERE key = 'system_openrouter_key' LIMIT 1
+        `;
+        if (sysRows?.[0]?.value) {
+          openrouterKey = String(sysRows[0].value).trim();
+        }
+      } catch (e) {
+        console.warn('[chat] Failed to resolve system_openrouter_key from DB:', e);
+      }
     }
 
     // GitHub Models retired 2026-07-30. Prefer OpenRouter free tier, then other live providers.
@@ -174,7 +188,7 @@ Instructions:
     const openRouterModels = (
       process.env.OPENROUTER_MODELS
       || process.env.OPENROUTER_MODEL
-      || 'openrouter/free,google/gemma-2-9b-it:free,meta-llama/llama-3.2-3b-instruct:free,qwen/qwen-2.5-7b-instruct:free'
+      || 'openrouter/free,nvidia/nemotron-3.5-lightning:free,liquid/lfm-2.5-2.6b:free,minimax/minimax-m3:free'
     )
       .split(',')
       .map((m) => m.trim())
