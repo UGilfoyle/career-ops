@@ -61,6 +61,7 @@ import {
   Tooltip as AntdTooltip,
 } from 'antd';
 import { PageSectionHeader, AiScoreBadge } from './PageSectionHeader';
+import InstantTailorCard from './InstantTailorCard';
 import { JobAvatar } from './JobAvatar';
 import ProPaywall, { type PendingPayment } from './ProPaywall';
 import { defaultGccCampaign, type GccCampaign } from './gcc-campaign';
@@ -801,7 +802,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         if (data.type === 'stderr' && /GITHUB_PAT not configured/i.test(content)) {
           setToast({
             show: true,
-            message: 'Add a GitHub PAT in Settings (workflow scope) to run deep scan/tailor.',
+            message: isAdmin ? 'Add a GitHub PAT in Settings (workflow scope) to run deep scan/tailor.' : 'Cloud execution worker is busy. Please try again shortly.',
           });
         }
         setLogs(prev => [...prev, data]);
@@ -2149,6 +2150,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 welcomeName={displayName}
                 actions={searchActions}
               />
+              <InstantTailorCard 
+                onOpenStudio={() => setActiveTab('resume-studio')}
+                onRefresh={() => { if (typeof window !== 'undefined') window.location.reload(); }}
+              />
               {showBetaBanner ? (
                 <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
@@ -2159,7 +2164,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       <span className="text-sm font-bold text-[#1C1C1E]">Aug 1 preview — try this path</span>
                     </div>
                     <p className="text-xs text-[#6B6B6B] font-medium leading-relaxed">
-                      1) Resume Studio → pick a template · 2) Select a pipeline job for JD match + ATS · 3) Tailor → Generated Docs. PDF uses deep tailor when your GitHub PAT is set.
+                      1) Resume Studio → pick a template · 2) Select a pipeline job for JD match + ATS · 3) Tailor → Generated Docs. High-accuracy ATS scoring & cloud tailoring enabled.
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -2214,10 +2219,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    },
                    {
                      id: 'github',
-                     label: 'Connect GitHub automation',
-                     hint: 'PAT (workflow scope) required for deep scan & tailor',
-                     done: githubDone,
-                     onClick: () => setActiveTab('settings'),
+                     label: isAdmin ? 'Connect GitHub automation' : 'Cloud AI Tailoring Engine',
+                     hint: isAdmin 
+                       ? (githubDone ? 'PAT active for deep scan & tailor' : 'PAT (workflow scope) required for deep scan & tailor')
+                       : 'High-performance cloud worker active & ready',
+                     done: isAdmin ? githubDone : true,
+                     onClick: () => { if (isAdmin) setActiveTab('settings'); },
                    },
                    {
                      id: 'gcc-scan',

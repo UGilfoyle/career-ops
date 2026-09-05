@@ -1,3 +1,4 @@
+import { resolveGitHubPat } from "@/lib/github-pat";
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomUUID } from 'crypto';
 import { auth } from '@/auth';
@@ -178,19 +179,7 @@ async function renderPdfLocal(html: string): Promise<Buffer | null> {
 }
 
 async function resolveGithub(userId: string): Promise<{ pat: string; repo: string } | null> {
-  let pat = process.env.GITHUB_PAT || '';
-  let repo = process.env.GITHUB_REPO || 'UGilfoyle/career-ops';
-  try {
-    const [row] = await sql`
-      SELECT resume_context FROM user_profiles WHERE user_id = ${userId} LIMIT 1
-    `;
-    const settings = (row?.resume_context as { github_settings?: GithubSettings } | undefined)
-      ?.github_settings;
-    if (settings?.pat) pat = settings.pat;
-    if (settings?.repo) repo = settings.repo;
-  } catch {
-    /* keep env defaults */
-  }
+  const { pat, repo } = await resolveGitHubPat(userId);
   if (!pat) return null;
   return { pat, repo };
 }

@@ -1,3 +1,4 @@
+import { resolveGitHubPat } from "@/lib/github-pat";
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -378,33 +379,12 @@ Tip: gcc-scan results show in Job Pipeline (GCC badge) and GCC Campaign tab.
   });
 }
 async function triggerGitHubAction(send: any, controller: any, userId: string, script: string, args: string) {
-  let pat = process.env.GITHUB_PAT;
-  let repo = 'UGilfoyle/career-ops';
-
-  try {
-    const profileRows = await sql`
-      SELECT resume_context FROM user_profiles WHERE user_id = ${userId}
-    `;
-    if (profileRows && profileRows.length > 0) {
-      const resumeContext = profileRows[0].resume_context || {};
-      if (resumeContext.github_settings?.pat) {
-        pat = resumeContext.github_settings.pat;
-      }
-      if (resumeContext.github_settings?.repo) {
-        repo = resumeContext.github_settings.repo;
-      }
-    }
-  } catch (dbErr) {
-    console.error('Failed to fetch user profile for GITHUB_PAT:', dbErr);
-  }
+  const { pat, repo } = await resolveGitHubPat(userId);
 
   if (!pat) {
     send({
       type: 'stderr',
-      content:
-        'GITHUB_PAT not configured.\n' +
-        'Open Settings → GitHub Automation, paste a classic PAT with the workflow scope, save, then retry.\n' +
-        'Deep scan/tailor needs this to dispatch GitHub Actions.\n',
+      content: 'Execution service temporarily unavailable. Please try again shortly.\n',
     });
     send({ type: 'done', code: 1 });
     controller.close();
@@ -661,33 +641,15 @@ export async function POST(req: NextRequest) {
       }
 
       // Trigger GitHub Action and wait for it
-      let pat = process.env.GITHUB_PAT;
-      let repo = 'UGilfoyle/career-ops';
-
-      try {
-        const profileRows = await sql`
-          SELECT resume_context FROM user_profiles WHERE user_id = ${userId}
-        `;
-        if (profileRows && profileRows.length > 0) {
-          const resumeContext = profileRows[0].resume_context || {};
-          if (resumeContext.github_settings?.pat) {
-            pat = resumeContext.github_settings.pat;
-          }
-          if (resumeContext.github_settings?.repo) {
-            repo = resumeContext.github_settings.repo;
-          }
-        }
-      } catch (dbErr) {
-        console.error('Failed to fetch user profile for GITHUB_PAT:', dbErr);
-      }
+      const { pat, repo } = await resolveGitHubPat(userId);
 
       if (!pat) {
         return NextResponse.json(
           {
             error:
-              'GITHUB_PAT not configured. Open Settings → GitHub Automation, add a classic PAT with workflow scope, then retry deep scan/tailor.',
+              'Execution service temporarily unavailable. Please try again shortly.',
           },
-          { status: 400 }
+          { status: 503 }
         );
       }
 
