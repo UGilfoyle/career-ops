@@ -291,7 +291,7 @@ function sanitizeBrevoSenderName(raw) {
 }
 
 /** Send via Brevo REST (no SDK required in Actions). */
-export async function sendViaBrevo({ to, subject, htmlContent }) {
+export async function sendViaBrevo({ to, subject, htmlContent, textContent, unsubscribeUrl }) {
   const apiKey = process.env.BREVO_API_KEY || '';
   if (!apiKey) {
     console.warn('[newsletter] BREVO_API_KEY missing — skip send to', to);
@@ -303,6 +303,34 @@ export async function sendViaBrevo({ to, subject, htmlContent }) {
     console.error('[newsletter] BREVO_SENDER_EMAIL missing.');
     return false;
   }
+
+  // Generate plain text fallback if not provided (prevents MIME_HTML_ONLY spam penalty)
+  const plainText = textContent || htmlContent
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  const customHeaders = {};
+  if (unsubscribeUrl) {
+    customHeaders['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    customHeaders['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  const payload = {
+    sender: { name: senderName, email: senderEmail },
+    to: [{ email: to }],
+    replyTo: { email: senderEmail, name: senderName },
+    subject,
+    htmlContent,
+    textContent: plainText,
+  };
+
+  if (Object.keys(customHeaders).length > 0) {
+    payload.headers = customHeaders;
+  }
+
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -310,12 +338,7 @@ export async function sendViaBrevo({ to, subject, htmlContent }) {
       'content-type': 'application/json',
       'api-key': apiKey,
     },
-    body: JSON.stringify({
-      sender: { name: senderName, email: senderEmail },
-      to: [{ email: to }],
-      subject,
-      htmlContent,
-    }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

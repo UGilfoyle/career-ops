@@ -138,6 +138,7 @@ async function main() {
         to: user.email,
         subject,
         htmlContent,
+        unsubscribeUrl: unsubscribeUrl(uid),
       });
 
       if (!ok) {
