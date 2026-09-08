@@ -92,6 +92,10 @@ import {
   scrubInventedStackFromMutableRoles,
   finalizeCoverLetter,
 } from './resume-tailoring-plan.mjs';
+import {
+  detectPersonaTrack,
+  applyPersonaTrackToProfile,
+} from './resume-persona-track.mjs';
 
 let hf = null;
 let hfUnavailable = false;
@@ -1336,6 +1340,15 @@ function coverLetterBodyToHtml(text) {
 }
 
 async function tailorPackage(jd, profile, companyName, passedCompanyType) {
+  // Multi-Track Persona Preset Resolution (Track A: Data/Systems vs Track B: Node/Cloud)
+  const trackArg = process.argv.find((a) => a.startsWith('--track='))?.split('=')[1]
+    || (process.argv.includes('--track-a') ? 'track_a' : (process.argv.includes('--track-b') ? 'track_b' : null));
+  const persona = detectPersonaTrack(jd, trackArg, profile);
+  console.log(`🎯 Active Persona Track: [${persona.trackName}] (source: ${persona.source}, scores: A=${persona.scoreA}, B=${persona.scoreB})`);
+
+  // Reframe profile with the active track preset before planning & tailoring
+  profile = applyPersonaTrackToProfile(profile, persona.trackId);
+
   const plan = buildTailoringPlan(jd, profile);
   const jdKeywords = plan.keywords.atsMirror;
   const jdTechKeywords = plan.parsed.jdTech;
@@ -1387,8 +1400,11 @@ Candidate name: ${candidateName}
 Candidate email: ${candidateEmail}
 Candidate phone: ${candidatePhone}
 
+Active Track: ${persona.trackName} (${persona.trackId})
 Headline: ${profile?.narrative?.headline || ''}
-Do NOT copy exit_story verbatim if it contains parenthetical keyword lists — use the role digest below as the only fact base.
+Exit story: ${profile?.narrative?.exit_story || ''}
+Superpowers: ${(profile?.narrative?.superpowers || []).join(', ')}
+Proof points: ${(profile?.narrative?.proof_points || []).map((p) => `${p.name}: ${p.hero_metric}`).join('; ')}
 
 Recent roles — fact base for what you worked on (paraphrase; do not fabricate employers or metrics):
 ${experienceDigest}`;
@@ -1440,6 +1456,32 @@ GLOBAL RULES:
 - CRITICAL ATS OPTIMIZATION (90+ ATS Score Target): Maximize exact keyword matching using JD wording (PostgreSQL not Postgres). Experience bullets should carry THIS JD's stack terms. Do not keep TypeScript/React/FastAPI on a posting that did not ask for them.
 - CRITICAL — QUANTIFIED IMPACT (90+ target): Enforce strong quantification. Wherever a metric is present in the candidate's experience digest (%, dollar amounts, latency, throughput, CPU reduction, uptime, speedups), preserve and highlight it in the rewritten bullets. Never invent or fabricate metrics.
 - CRITICAL — VERB VARIETY: Start each bullet with a unique, strong action verb (e.g., architected, engineered, streamlined, deployed, accelerated). Avoid repeating the same verb in consecutive bullet points.
+
+DEEP ARCHITECTURAL REFRAMING & HIRING MANAGER PSYCHOLOGY (CRITICAL):
+- Active Target Track: ${persona.trackName} (${persona.trackId})
+- FIRST-PRINCIPLES ARCHITECTURE OVER KEYWORD WEAVING:
+  Do NOT merely append or stitch keywords to generic sentences. Reframe the candidate's actual engineering experience through the lens of THIS role's architectural demands:
+  ${persona.trackId === 'track_a' ? `* TRACK A (Linux, Python & Distributed Data Platform):
+    - Quest (SKF Telemetry Platform): Focus on the in-house telemetry ingestion engine on Linux, handling tens of millions of high-frequency events daily into PostgreSQL at 99.9% uptime.
+    - Highlight low-level mechanisms: PgBouncer in transaction pooling mode, declarative time-bucket table partitioning, autovacuum scale factor tuning to eliminate table bloat, query plan profiling, reducing lock contention under peak batch ingest bursts, and cutting p99 write latency from 3.8s down to <110ms with 35% DB CPU reduction.
+    - Zero vendor crutches: emphasize building in-house scalable systems rather than superficial vendor wrappers.
+    - INTVERSE (Kenvue): High-throughput Python microservices, multiprocessing workers, Pydantic validation schemas, and Redis caching.
+    - Glidewell: RedHat Linux SRE, distributed telemetry tracing (ELK), database connection pooling, and SQL optimization.` : `* TRACK B (Node.js, Bun, TypeScript & Cloud Microservices):
+    - Quest (SKF Lubrication Cloud): Focus on event-driven microservices: Node.js event-loop optimization, Bun runtime benchmarking (~30% lower memory, ~2x speedup on hot ingestion paths), Redis multi-layer caching, cutting p99 API latency by ~40%, Docker/LXC deployment acceleration (from ~40m to <8m), and API contracts/mentorship.
+    - INTVERSE (Kenvue): Reusable TypeScript components, streaming backend APIs, and Terraform/Jenkins CI/CD automation.
+    - Glidewell: Resilient third-party integrations, tenacity-based exponential backoff, and enterprise WFM systems.`}
+- HIRING MANAGER PSYCHOLOGY (What broke, what was fixed):
+  Engineers and Hiring Managers care about root-cause operational solutions, not marketing fluff.
+  Structure bullets using the Senior Engineering Formula:
+  [System Scope & Context] + [Specific Low-Level Mechanism / Engineering Action] + [Quantified Production Outcome / Latency / Scale Metric]
+- STRICT 1-PAGE DENSITY BUDGET:
+  Output must strictly fit on a single-page A4 format without overflowing.
+  - Return exactly 3 to 4 impactful bullets per role for the top 4 roles (indices 0, 1, 2, 3).
+  - Keep each bullet punchy, active, and dense (1-2 lines maximum).
+  - Summary must be exactly 3-4 lines, under 85 words.
+- STEM DEGREE NOTATION:
+  Candidate holds Master of Computer Applications (MCA) and Bachelor of Computer Applications (BCA).
+  Ensure all degree references preserve the formal " — STEM" accredited designation.
 
 
 TASK:
@@ -1885,6 +1927,7 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     }
     data.alignment_confirmation = alignment;
   }
+  data.activeProfile = profile;
   return data;
 }
 
@@ -2068,6 +2111,9 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     }
     const canonicalUrl = canonicalizeUrl(entry.url);
     const result = await tailorPackage(jdText, profile, entry.company, entry.company_type);
+    if (result?.activeProfile) {
+      profile = result.activeProfile;
+    }
     let tailoring = stripUnsolicitedAiFromResume(result.resume, jdText);
     result.resume = tailoring;
     if (Array.isArray(profile.experience)) {
