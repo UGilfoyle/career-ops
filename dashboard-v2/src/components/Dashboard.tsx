@@ -2545,22 +2545,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <div className="overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white shadow-sm">
                 {/* Reminders Panel */}
                 {followUpReminders.length > 0 && (
-                  <div className="mx-4 mt-4 p-4 bg-amber-50/85 border border-amber-200/80 rounded-xl flex items-start gap-3">
-                    <AlertCircle className="text-amber-600 mt-0.5 shrink-0" size={18} />
-                    <div>
-                      <h3 className="text-sm font-bold text-amber-900">Follow-Up Reminders</h3>
-                      <p className="text-xs text-amber-700 mt-1 font-medium">
-                        You applied to these roles more than 7 days ago. Consider checking in or sending a follow-up email:
-                      </p>
-                      <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="mx-3 mt-3 p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-lg flex items-start gap-2">
+                    <AlertCircle className="text-amber-600 mt-0.5 shrink-0" size={15} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <h3 className="text-xs font-bold text-amber-900">Follow-Up Reminders</h3>
+                        <span className="text-[11px] text-amber-700 font-medium">Applied &gt; 7 days ago:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {followUpReminders.map((app: any, idx: number) => {
                           const days = Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24));
                           return (
-                            <div key={idx} className="bg-white border border-amber-200 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700 flex items-center gap-2 shadow-sm">
+                            <div key={idx} className="bg-white border border-amber-200/80 px-2 py-0.5 rounded-md text-[11px] font-medium text-stone-700 flex items-center gap-1.5 shadow-xs">
                               <span className="font-bold text-[#1C1C1E]">{app.company}</span>
                               <span className="text-stone-300">|</span>
-                              <span className="text-stone-500 font-medium">{app.role}</span>
-                              <span className="bg-amber-100 text-amber-800 caps-mono px-2 py-0.5 rounded-full">{days}d ago</span>
+                              <span className="text-stone-600 truncate max-w-[160px]">{app.role}</span>
+                              <span className="bg-amber-100 text-amber-800 caps-mono px-1.5 py-0.2 rounded text-[10px] font-semibold">{days}d ago</span>
                             </div>
                           );
                         })}
@@ -4200,12 +4200,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                  </ConfigSection>
 
                  <ConfigSection title="Experience" icon={<Briefcase size={18} className="text-[#1C1C1E]" />}>
-                   <div className="space-y-4">
-                     <div className="max-h-[min(60dvh,calc(100dvh-16rem))] overflow-y-auto pr-2 space-y-4">
+                   <div className="space-y-3">
+                     <div className="max-h-[min(60dvh,calc(100dvh-16rem))] overflow-y-auto pr-1 space-y-3">
                      {(profileFormData.experience || []).map((exp: any, idx: number) => (
-                       <div key={idx} className="p-5 bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl">
-                         <div className="flex items-start justify-between gap-4 mb-4">
-                           <div className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">
+                       <div key={idx} className="p-3.5 bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-xl space-y-2">
+                         <div className="flex items-start justify-between gap-4">
+                           <div className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">
                              Role {idx + 1}
                            </div>
                            <button
@@ -4215,13 +4215,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                  experience: (profileFormData.experience || []).filter((_: any, i: number) => i !== idx),
                                })
                              }
-                             className="text-[10px] font-bold uppercase tracking-widest text-rose-700 hover:underline underline-offset-4"
+                             className="text-[10px] font-bold uppercase tracking-wider text-rose-700 hover:underline underline-offset-4"
                            >
                              Remove
                            </button>
                          </div>
 
-                         <div className="grid grid-cols-2 gap-4">
+                         <div className="grid grid-cols-2 gap-3">
                            <Input
                              label="Company"
                              value={exp.company || ''}
@@ -4241,7 +4241,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                              }}
                            />
                          </div>
-                         <div className="grid grid-cols-2 gap-4 mt-4">
+                         <div className="grid grid-cols-2 gap-3">
                            <Input
                              label="Period (e.g., 2022–Present)"
                              value={exp.period || ''}
@@ -4262,12 +4262,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                            />
                          </div>
 
-                         <div className="mt-4">
-                           <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-2 block">
+                         <div>
+                           <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1 block pl-0.5">
                              Bullets (one per line)
                            </label>
                            <textarea
-                             rows={5}
+                             rows={4}
                              value={(Array.isArray(exp.bullets) ? exp.bullets : []).join('\n')}
                              onChange={(e) => {
                                const next = [...(profileFormData.experience || [])];
@@ -4278,7 +4278,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                next[idx] = { ...(next[idx] || {}), bullets };
                                setProfileFormData({ ...profileFormData, experience: next });
                              }}
-                             className="w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl p-4 outline-none focus:border-[#1C1C1E] transition-all text-sm font-medium leading-relaxed"
+                             className="w-full bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-lg p-2.5 outline-none focus:border-[#1C1C1E] transition-all text-xs font-medium leading-relaxed"
                            />
                          </div>
                        </div>
@@ -4295,7 +4295,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                            ],
                          })
                        }
-                       className="w-full px-6 py-3 rounded-2xl border border-[#E5E5E0] bg-white hover:bg-[#F5F5F0] transition-colors text-sm font-bold text-[#1C1C1E]"
+                       className="w-full px-4 py-2 rounded-lg border border-[#E5E5E0] bg-white hover:bg-[#F5F5F0] transition-colors text-xs font-bold text-[#1C1C1E]"
                      >
                        Add Experience
                      </button>
@@ -4303,12 +4303,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                  </ConfigSection>
 
                  <ConfigSection title="Education" icon={<FileText size={18} className="text-[#1C1C1E]" />}>
-                   <div className="space-y-4">
-                     <div className="max-h-[min(50dvh,calc(100dvh-18rem))] overflow-y-auto pr-2 space-y-4">
+                   <div className="space-y-3">
+                     <div className="max-h-[min(50dvh,calc(100dvh-18rem))] overflow-y-auto pr-1 space-y-3">
                      {(profileFormData.education || []).map((edu: any, idx: number) => (
-                       <div key={idx} className="p-5 bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl">
-                         <div className="flex items-start justify-between gap-4 mb-4">
-                           <div className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">
+                       <div key={idx} className="p-3.5 bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-xl space-y-2">
+                         <div className="flex items-start justify-between gap-4">
+                           <div className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">
                              Entry {idx + 1}
                            </div>
                            <button
@@ -4318,12 +4318,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                  education: (profileFormData.education || []).filter((_: any, i: number) => i !== idx),
                                })
                              }
-                             className="text-[10px] font-bold uppercase tracking-widest text-rose-700 hover:underline underline-offset-4"
+                             className="text-[10px] font-bold uppercase tracking-wider text-rose-700 hover:underline underline-offset-4"
                            >
                              Remove
                            </button>
                          </div>
-                         <div className="grid grid-cols-2 gap-4">
+                         <div className="grid grid-cols-2 gap-3">
                            <Input
                              label="School"
                              value={edu.school || ''}
@@ -4343,7 +4343,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                              }}
                            />
                          </div>
-                         <div className="grid grid-cols-2 gap-4 mt-4">
+                         <div className="grid grid-cols-2 gap-3">
                            <Input
                              label="Period (e.g., 2016–2020)"
                              value={edu.period || ''}
@@ -4373,7 +4373,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                            education: [...(profileFormData.education || []), { school: '', degree: '', period: '' }],
                          })
                        }
-                       className="w-full px-6 py-3 rounded-2xl border border-[#E5E5E0] bg-white hover:bg-[#F5F5F0] transition-colors text-sm font-bold text-[#1C1C1E]"
+                       className="w-full px-4 py-2 rounded-lg border border-[#E5E5E0] bg-white hover:bg-[#F5F5F0] transition-colors text-xs font-bold text-[#1C1C1E]"
                      >
                        Add Education
                      </button>
@@ -4383,12 +4383,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                  <ConfigSection id="config-narrative" title="Core Narrative" icon={<FileText size={18} className="text-[#1C1C1E]" />}>
                     <Input label="Strategic Headline" value={profileFormData.narrative.headline} onChange={(v) => setProfileFormData({...profileFormData, narrative: {...profileFormData.narrative, headline: v}})} />
                     <div>
-                       <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-2 block">Executive Story</label>
+                       <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1 block pl-0.5">Executive Story</label>
                        <textarea
-                         rows={4}
+                         rows={3}
                          value={profileFormData.narrative.exit_story}
                          onChange={(e) => setProfileFormData({...profileFormData, narrative: {...profileFormData.narrative, exit_story: e.target.value}})}
-                         className="w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl p-4 outline-none focus:border-[#1C1C1E] transition-all text-sm font-medium leading-relaxed"
+                         className="w-full bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-lg p-2.5 outline-none focus:border-[#1C1C1E] transition-all text-xs font-medium leading-relaxed"
                        />
                     </div>
                  </ConfigSection>
@@ -5136,8 +5136,8 @@ function StatCard({ icon, label, value, color = 'stone' }: { icon: any, label: s
 
 function ConfigSection({ id, title, icon, children }: { id?: string, title: string, icon: any, children: React.ReactNode }) {
   return (
-    <div id={id} className="mb-5 break-inside-avoid h-fit bg-white border border-[#E5E5E0] rounded-[1.75rem] p-4 space-y-3 scroll-mt-10">
-      <h3 className="font-bold text-lg flex items-center gap-3 text-[#1C1C1E] border-b border-[#F5F5F0] pb-3">{icon} {title}</h3>
+    <div id={id} className="mb-4 break-inside-avoid h-fit bg-white border border-[#E5E5E0] rounded-xl p-3.5 space-y-2.5 scroll-mt-8 shadow-xs">
+      <h3 className="font-bold text-sm flex items-center gap-2 text-[#1C1C1E] border-b border-[#F5F5F0] pb-2">{icon} {title}</h3>
       {children}
     </div>
   );
@@ -5161,9 +5161,9 @@ function Input({
   required?: boolean;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest block pl-1">
+        <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider block pl-0.5">
           {label}
           {required && <span className="text-rose-500 ml-1">*</span>}
         </label>
@@ -5173,7 +5173,7 @@ function Input({
         type={type}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full bg-[#FAFAF8]/50 border rounded-2xl p-4 outline-none focus:border-[#1C1C1E] transition-all text-sm font-bold text-[#1C1C1E] ${
+        className={`w-full bg-[#FAFAF8]/60 border rounded-lg px-3 py-1.5 outline-none focus:border-[#1C1C1E] transition-all text-xs font-semibold text-[#1C1C1E] ${
           (value ?? '').trim() ? 'border-[#E5E5E0]' : required ? 'border-rose-200 focus:border-rose-400' : 'border-[#E5E5E0]'
         }`}
         placeholder={placeholder}
@@ -5219,10 +5219,10 @@ function TagInput({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest block pl-1">{label}</label>
+    <div className="space-y-1">
+      <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider block pl-0.5">{label}</label>
       <div
-        className="min-h-[52px] w-full bg-[#FAFAF8]/50 border border-[#E5E5E0] rounded-2xl p-3 flex flex-wrap gap-2 items-center cursor-text focus-within:border-[#1C1C1E] transition-all"
+        className="min-h-[38px] w-full bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-lg px-2.5 py-1.5 flex flex-wrap gap-1.5 items-center cursor-text focus-within:border-[#1C1C1E] transition-all"
         onClick={() => inputRef.current?.focus()}
       >
         {tags.map((tag, i) => (
@@ -5231,7 +5231,7 @@ function TagInput({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold ${tagColors[color]}`}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-semibold ${tagColors[color]}`}
           >
             {tag}
             <button
