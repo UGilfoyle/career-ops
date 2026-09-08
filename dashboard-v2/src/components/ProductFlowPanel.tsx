@@ -102,7 +102,7 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="rounded-[1.5rem] border border-[#E5E5E0] bg-[#FAFAF8] p-6 md:p-8 min-h-[200px]"
+              className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 sm:p-5 min-h-[160px]"
             >
               <FlowDetail step={active} copiedCmd={copiedCmd} onCopy={copyCommand} />
             </motion.div>

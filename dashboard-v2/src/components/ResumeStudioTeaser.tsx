@@ -103,12 +103,12 @@ export default function ResumeStudioTeaser({
         ))}
       </div>
 
-      <div className="rounded-[2rem] border border-[#E5E5E0] bg-[#FAFAF8] p-8 sm:p-10">
-        <h3 className="text-lg font-bold text-[#1C1C1E] mb-2">What works today</h3>
-        <p className="text-sm text-[#6B6B6B] mb-6">
+      <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 sm:p-5">
+        <h3 className="text-base font-bold text-[#1C1C1E] mb-1.5">What works today</h3>
+        <p className="text-xs text-[#6B6B6B] mb-3.5">
           You don&apos;t need to wait — run the pipeline now and generated PDFs land in Resume Manager.
         </p>
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-3 gap-2.5">
           {availableNow.map((item) => (
             <button
               key={item.label}
@@ -117,13 +117,13 @@ export default function ResumeStudioTeaser({
                 if (item.action === 'terminal') onOpenTerminal?.();
                 else onOpenSettings?.();
               }}
-              className="text-left p-4 rounded-xl bg-white border border-[#E5E5E0] hover:border-[#1C1C1E] hover:shadow-sm transition-all group"
+              className="text-left p-3 rounded-xl bg-white border border-[#E5E5E0] hover:border-[#1C1C1E] hover:shadow-sm transition-all group"
             >
-              <div className="flex items-center gap-2 text-[#1C1C1E] font-bold text-sm mb-1">
+              <div className="flex items-center gap-2 text-[#1C1C1E] font-bold text-xs mb-1">
                 <span className="text-[#9CA3AF] group-hover:text-[#1C1C1E] transition-colors">{item.icon}</span>
                 {item.label}
               </div>
-              <p className="text-[11px] font-mono text-[#9CA3AF]">{item.hint}</p>
+              <p className="text-[10px] font-mono text-[#9CA3AF]">{item.hint}</p>
             </button>
           ))}
         </div>
