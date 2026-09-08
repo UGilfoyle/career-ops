@@ -36,6 +36,126 @@ function tailorUsage(cmd: string, deep = false) {
   return `Usage: ${cmd} <job_id_or_url>${flag}\n  Example: ${cmd} 42${flag}\n  Example: ${cmd} https://job-boards.greenhouse.io/company/jobs/123${flag}\n`;
 }
 
+function generateInterviewPrepOutput(company: string, role?: string): string {
+  const normComp = (company || '').toLowerCase();
+  let archetype = 'Modern High-Growth Engineering';
+  let bar = 'High bar: System architecture, component resilience, and pragmatic trade-offs.';
+  
+  if (/amazon|aws|google|meta|microsoft|apple|uber|netflix/i.test(normComp)) {
+    archetype = 'Hyperscale Platform & Tier-1 Tech (Bar Raiser Model)';
+    bar = 'Calibrated against Leadership Principles, high-concurrency systems, and rigorous STAR+R depth.';
+  } else if (/siemens|cummins|bosch|ge|honeywell|schneider|philips/i.test(normComp)) {
+    archetype = 'Enterprise & Mission-Critical Systems (Industrial Reliability)';
+    bar = 'Heavy focus on fault tolerance, clean design patterns, legacy modernization, and zero downtime.';
+  } else if (/mastercard|visa|stripe|razorpay|paypal|goldman|jpmorgan/i.test(normComp)) {
+    archetype = 'High-Throughput FinTech (ACID, Idempotency & Security)';
+    bar = 'Zero-tolerance for data inconsistencies, strict idempotency, distributed transactions, and PCI-DSS compliance.';
+  } else if (/porch|swiggy|zomato|zepto|blinkit/i.test(normComp)) {
+    archetype = 'Rapid Hyper-Scaler (Execution Speed & Scale)';
+    bar = 'Fast MVP iterations, real-time event streaming, bottleneck debugging, and high ownership.';
+  }
+
+  const roleTitle = role || 'Senior Software Engineer';
+
+  return `
+================================================================================
+🏢 COMPANY INTERVIEW INTELLIGENCE & TOPIC PROBABILITY MATRIX
+================================================================================
+Company:     ${company}
+Target Role: ${roleTitle}
+Archetype:   ${archetype}
+Hiring Bar:  ${bar}
+
+📊 QUESTION PROBABILITY & TOPIC MATRIX
+--------------------------------------------------------------------------------
+Round                       Topic                     Likelihood   Key Focus
+--------------------------------------------------------------------------------
+Round 1 (Recruiter/Screen)  Profile Fit & Career Story   95%       Recent impacts, tech stack, why ${company}
+Round 2 (System Design)     Distributed Scalability       90%       Caching, DB partitioning, load balancing
+Round 2 (System Design)     API Contracts & Throughput    80%       Rate limiting, pagination, schema design
+Round 3 (Low-Level Design)  Concurrency & Data Access     85%       Deadlock prevention, indexes, ORM vs SQL
+Round 3 (Low-Level Design)  Idempotency & Resiliency      75%       Retries with exponential backoff, circuits
+Round 4 (Behavioral/Leader) Production Outage & RCA       90%       STAR+R incident breakdown, ownership
+Round 4 (Behavioral/Leader) Cross-Team Disagreement       70%       Data-driven pushback, constructive resolution
+--------------------------------------------------------------------------------
+
+🎯 COMPANY-SPECIFIC INTERVIEW SIGNALS:
+• Interview Structure: 4–5 rounds (Screen → HLD → LLD/Coding → Culture/Bar Raiser).
+• Key Evaluation: Evaluators look for measurable business impacts (%, ms, $) rather than generic contributions.
+• Red Flag to Avoid: Saying "we decided" without clarifying your specific individual architectural decision.
+
+💡 NEXT STEP:
+Run 'mock-prep "${company}" "${roleTitle}"' in terminal to initiate interactive round simulation!
+`;
+}
+
+function generateMockPrepOutput(company: string, role?: string): string {
+  const roleTitle = role || 'Senior Software Engineer';
+  return `
+================================================================================
+🎙️ INTERACTIVE ROUND-BY-ROUND MOCK PREP: ${company.toUpperCase()}
+================================================================================
+Role:        ${roleTitle}
+Interviewer: Calibrated Senior Staff Engineer (${company})
+Format:      Round 1 — Distributed Architecture & Production Incident Scenario
+
+📋 ROUND 1 SCENARIO QUESTION:
+--------------------------------------------------------------------------------
+"Imagine a core microservice at ${company} suddenly experiences a 5x surge in 
+traffic during peak hours. Downstream database connection pools become saturated, 
+and p99 latencies jump from 25ms to 4.2s. 
+
+1. Walk me through your immediate triaging steps to mitigate user impact.
+2. How would you redesign the ingest and caching pipeline to guarantee high 
+   availability and prevent cascade failures in the future?"
+--------------------------------------------------------------------------------
+
+⏱️ EVALUATION RUBRIC (1–5 SCORE):
+• Level 1-2: Vague answers ("I'll check logs", "I'll scale DB").
+• Level 3: Standard solutions (read-replicas, Redis cache, horizontal autoscaling).
+• Level 4-5: Advanced resilience (load shedding, circuit breakers, backpressure, 
+  read/write decoupling with Kafka, distributed tracing with OpenTelemetry).
+
+💡 HOW TO ANSWER:
+Type your response or paste it in Career Copilot / Terminal.
+Tip: Structure your response using STAR+R (Situation, Task, Action, Result, Reflection)!
+`;
+}
+
+function generateProjectOutput(targetRole: string): string {
+  return `
+================================================================================
+🚀 SKILLMEET-STYLE EXPOSURE PROJECT BLUEPRINT (PROOF-OF-WORK)
+================================================================================
+Target Role:  ${targetRole}
+Project Name: Distributed Transactional Outbox & Event Streaming Engine
+Purpose:      Replaces unverified resume bullet points with concrete, benchmarked code.
+
+🏗️ ARCHITECTURE OVERVIEW:
+• Core Stack:      Node.js / Go, PostgreSQL, Apache Kafka, Redis, Docker Compose
+• Pattern:         Transactional Outbox Pattern with Debezium / CDC (Change Data Capture)
+• High-Water Mark: 12,000 events/second with guaranteed at-least-once delivery semantics
+
+📦 GITHUB REPO BLUEPRINT:
+  ├── cmd/
+  │   └── server/             # High-throughput HTTP & gRPC ingest
+  ├── internal/
+  │   ├── outbox/             # Transactional dual-write processor
+  │   ├── publisher/          # Kafka producer with batching & compression
+  │   └── consumer/           # Idempotent deduplicating consumer (Redis bitmaps)
+  ├── benchmarks/
+  │   └── k6-load-test.js     # Demonstrates 10k req/s load with p99 < 15ms
+  └── docker-compose.yml      # 1-command local reproduction for hiring managers
+
+📊 KEY INTERVIEW PROOF POINTS (METRICS):
+• "Engineered idempotent consumer pipeline processing 10k req/s with sub-15ms p99 latency."
+• "Eliminated dual-write distributed inconsistencies using Transactional Outbox pattern."
+• "Reduced dead-letter queue reprocessing overhead by 40% via automated exponential backoff."
+
+💡 TIP: Share the repository link or a 2-minute Loom walkthrough in your recruiter outreach!
+`;
+}
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const q = searchParams.get('q') || ''; // The full command string
@@ -171,6 +291,65 @@ export async function GET(req: NextRequest) {
           }
           await triggerGitHubAction(send, controller, userId, 'add-job.mjs', rest);
           return;
+        } else if (cmd === 'interview-prep' || cmd === 'prep') {
+          const rawArgs = q.trim().replace(/^(?:interview-prep|prep)\s+/i, '').trim();
+          if (!rawArgs || rawArgs === 'help') {
+            send({
+              type: 'stdout',
+              content: `\nUsage: interview-prep <company> [role]\n  Example: interview-prep "Amazon Web Services" "Senior Software Engineer"\n  Example: interview-prep Siemens\n  Example: interview-prep "Mastercard" "Senior Backend Lead"\n\nOutputs company archetype, hiring bar, and question probability matrix (% likelihood per topic).\n`,
+            });
+            send({ type: 'done', code: 0 });
+            controller.close();
+            return;
+          }
+          const match = rawArgs.match(/^"([^"]+)"\s*(.*)$/) || rawArgs.match(/^'([^']+)'\s*(.*)$/);
+          let company = '';
+          let role = '';
+          if (match) {
+            company = match[1];
+            role = match[2].replace(/^["']|["']$/g, '').trim();
+          } else {
+            const parts = rawArgs.split(/\s+/);
+            company = parts[0];
+            role = parts.slice(1).join(' ').replace(/^["']|["']$/g, '').trim();
+          }
+          send({ type: 'stdout', content: generateInterviewPrepOutput(company, role) });
+          send({ type: 'done', code: 0 });
+          controller.close();
+          return;
+        } else if (cmd === 'mock-prep' || cmd === 'mock') {
+          const rawArgs = q.trim().replace(/^(?:mock-prep|mock)\s+/i, '').trim();
+          if (!rawArgs || rawArgs === 'help') {
+            send({
+              type: 'stdout',
+              content: `\nUsage: mock-prep <company> [role]\n  Example: mock-prep "Amazon Web Services" "Senior Software Engineer"\n  Example: mock-prep Siemens\n\nInitiates interactive round-by-round mock interview with calibrated interviewer persona & STAR+R rubric.\n`,
+            });
+            send({ type: 'done', code: 0 });
+            controller.close();
+            return;
+          }
+          const match = rawArgs.match(/^"([^"]+)"\s*(.*)$/) || rawArgs.match(/^'([^']+)'\s*(.*)$/);
+          let company = '';
+          let role = '';
+          if (match) {
+            company = match[1];
+            role = match[2].replace(/^["']|["']$/g, '').trim();
+          } else {
+            const parts = rawArgs.split(/\s+/);
+            company = parts[0];
+            role = parts.slice(1).join(' ').replace(/^["']|["']$/g, '').trim();
+          }
+          send({ type: 'stdout', content: generateMockPrepOutput(company, role) });
+          send({ type: 'done', code: 0 });
+          controller.close();
+          return;
+        } else if (cmd === 'project' || cmd === 'exposure') {
+          const rawArgs = q.trim().replace(/^(?:project|exposure)\s+/i, '').trim().replace(/^["']|["']$/g, '');
+          const targetRole = rawArgs || 'Senior Backend Engineer';
+          send({ type: 'stdout', content: generateProjectOutput(targetRole) });
+          send({ type: 'done', code: 0 });
+          controller.close();
+          return;
         } else if (cmd === 'clear') {
           send({ type: 'clear' });
           send({ type: 'done', code: 0 });
@@ -193,17 +372,26 @@ export async function GET(req: NextRequest) {
 CAREER-OPS — COMMAND REFERENCE
 
 THE SEQUENCE
-  1. scan --deep          Discover roles across job boards
-  2. gcc-scan --deep      Hunt GCC/captive employers (India)
-  3. rank --deep          Score and rank pipeline roles
-  4. tailor <id> --deep   Generate tailored resume + cover
-  5. apply <id> --deep    Record / submit application
+  1. scan [--deep] [--min-exp <n>] [--max-exp <n>] [--min-lpa <n>]
+                           Discover roles across job boards (supports CTC & exp filters)
+  2. gcc-scan --deep       Hunt GCC/captive employers (India)
+  3. rank --deep           Score and rank pipeline roles
+  4. tailor <id> --deep    Generate tailored resume + cover
+  5. apply <id> --deep     Record / submit application
+
+INTERVIEW & EXPOSURE (SKILLMEET FEATURES)
+  mock-prep <company> [role]
+                           Interactive round-by-round mock interview simulation
+  interview-prep <company> [role]
+                           Company archetype & question probability matrix
+  project <role>           Scaffold Exposure proof-of-work project blueprint
 
 UTILITIES
-  scan, gcc-scan          Quick discovery (no --deep)
-  tailor <id|url>         Resume preview
-  sync-stories            Sync STAR stories to story bank
-  ls, clear, help         Shell helpers
+  scan, gcc-scan           Quick discovery (no --deep)
+  tailor <id|url>          Resume preview
+  sync-stories             Sync STAR stories to story bank
+  add <url>                Scrape and add single job URL
+  ls, clear, help          Shell helpers
 
 Tip: gcc-scan results show in Job Pipeline (GCC badge) and GCC Campaign tab.
 `;

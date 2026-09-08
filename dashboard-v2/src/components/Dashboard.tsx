@@ -2653,6 +2653,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 >
                                   <Play size={13} />
                                 </button>
+                                <button
+                                  onClick={() => {
+                                    setActiveTab('terminal');
+                                    runCommand(`interview-prep "${app.company}" "${app.role}"`);
+                                  }}
+                                  title="Run Interview Prep & Question Probability"
+                                  className="p-1.5 border border-[#E5E5E0] rounded-lg hover:bg-[#1C1C1E] hover:text-white transition-all text-[#1C1C1E]"
+                                >
+                                  <Sparkles size={13} />
+                                </button>
                                 {app?.url && (
                                   <a
                                     href={app.url}
@@ -2804,6 +2814,17 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                         ) : (
                                           <Link2 size={10} />
                                         )}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveTab('terminal');
+                                          runCommand(`interview-prep "${app.company}" "${app.role}"`);
+                                        }}
+                                        className="p-1 border border-[#E5E5E0] rounded hover:bg-[#1C1C1E] hover:text-white text-[#6B6B6B] transition-all"
+                                        title="Interview Prep & Probability Matrix"
+                                      >
+                                        <Sparkles size={10} />
                                       </button>
                                       {app?.url && (
                                         <a
@@ -3631,6 +3652,34 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {[
                     {
+                      cmd: 'mock-prep "Amazon Web Services" "Senior Software Engineer"',
+                      desc: 'Interactive round-by-round mock interview simulation with calibrated interviewer persona & STAR+R scoring.',
+                      usage: 'mock-prep <company> [role]',
+                      badge: 'Mock Prep',
+                      badgeColor: 'rose'
+                    },
+                    {
+                      cmd: 'interview-prep "Siemens" "Senior Software Engineer"',
+                      desc: 'Company archetype intelligence, interview breakdown & topic probability matrix (% likelihood per topic).',
+                      usage: 'interview-prep <company> [role]',
+                      badge: 'Probability Matrix',
+                      badgeColor: 'indigo'
+                    },
+                    {
+                      cmd: 'project "Senior Backend Engineer"',
+                      desc: 'Scaffold SkillMeet-style Exposure proof-of-work project blueprint to prove technical competence.',
+                      usage: 'project <target_role_or_tech>',
+                      badge: 'Exposure Project',
+                      badgeColor: 'teal'
+                    },
+                    {
+                      cmd: 'scan --min-exp 3 --max-exp 8',
+                      desc: 'Scan job portals with minimum/maximum experience filters and India CTC/LPA parsing.',
+                      usage: 'scan [--min-exp <n>] [--max-exp <n>] [--min-lpa <n>]',
+                      badge: 'CTC & Exp Filter',
+                      badgeColor: 'emerald'
+                    },
+                    {
                       cmd: 'gcc-scan --deep',
                       desc: 'Hunt GCC/captive employers (Stripe, Google, JPMorgan…) in Pune, Bengaluru & Hyderabad.',
                       usage: 'Separate from generic scan — only adds verified GCC employers with signal scoring.',
@@ -3680,7 +3729,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       badgeColor: 'stone'
                     }
                   ].map((c) => (
-                    <div key={c.cmd} className="bg-white border border-[#E5E5E0] rounded-[2rem] p-6 hover:shadow-lg transition-all flex flex-col justify-between space-y-4">
+                    <div key={c.cmd} className="bg-white border border-[#E5E5E0] rounded-xl p-4 hover:shadow-md transition-all flex flex-col justify-between space-y-3">
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <code className="text-sm font-mono font-bold text-[#1C1C1E] bg-[#F5F5F0] px-2.5 py-1 rounded-xl">

@@ -523,25 +523,28 @@ export function MultiTerminalPanel({
               </pre>
               <div className="space-y-1.5 text-zinc-400 border-t border-zinc-800 pt-3">
                 <p>
-                  <strong className="text-emerald-400">1. gcc-scan --deep</strong> → Discover GCC & captive employer jobs (India hubs)
+                  <strong className="text-emerald-400">1. scan [--min-exp 3] [--max-exp 8]</strong> → Discover jobs with CTC &amp; exp filter
                 </p>
                 <p>
-                  <strong className="text-emerald-400">2. scan --deep</strong> → Broad job-board discovery (LinkedIn, Indeed, etc.)
+                  <strong className="text-emerald-400">2. gcc-scan --deep</strong> → Discover GCC &amp; captive employer jobs (India hubs)
                 </p>
                 <p>
                   <strong className="text-emerald-400">3. rank --deep</strong> → Score and rank discovered roles against your profile
                 </p>
                 <p>
-                  <strong className="text-emerald-400">4. tailor &lt;id&gt; --deep</strong> → Generate customized ATS resume & cover letter
+                  <strong className="text-emerald-400">4. tailor &lt;id&gt; --deep</strong> → Generate customized ATS resume &amp; cover letter
                 </p>
                 <p>
-                  <strong className="text-emerald-400">5. apply &lt;id&gt; --deep</strong> → Automatically apply to tracked role
+                  <strong className="text-emerald-400">5. mock-prep &lt;company&gt; [role]</strong> → Interactive round-by-round mock interview
                 </p>
                 <p>
-                  <strong className="text-emerald-400">6. add &lt;url&gt;</strong> → Scrape and ingest job URL into pipeline
+                  <strong className="text-emerald-400">6. interview-prep &lt;company&gt;</strong> → Company archetype &amp; question probability matrix
                 </p>
                 <p>
-                  <strong className="text-emerald-400">help</strong> → Print command reference
+                  <strong className="text-emerald-400">7. project &lt;role&gt;</strong> → Scaffold Exposure proof-of-work project blueprint
+                </p>
+                <p>
+                  <strong className="text-emerald-400">help</strong> → Print full command reference &amp; syntax
                 </p>
                 <p className="text-zinc-400 pt-1 border-t border-zinc-900">
                   ⚡ <strong className="text-emerald-400">Parallel Execution:</strong> Click <span className="text-emerald-300 font-bold bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-700">[+ New Tab]</span> to run up to 6 concurrent sessions in parallel.
