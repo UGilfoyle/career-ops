@@ -90,6 +90,12 @@
 #   min: 100000
 #   max: 0
 #   currency: "USD"
+#
+# Example (India / LPA): target roles paying at least 30 LPA (up to 60 LPA)
+# salary_filter:
+#   min: "30 LPA"     # supports "30 LPA", "30L", "30 Lakhs", or 3000000
+#   max: "60 LPA"     # supports "60 LPA", or 0 for no upper limit
+#   currency: "INR"   # matches INR, ₹, Rs.
 
 # -- Experience filter (optional) --
 # Filter scanned jobs by years of experience required. Applied AFTER salary

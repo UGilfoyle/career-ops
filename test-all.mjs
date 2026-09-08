@@ -88,6 +88,7 @@ const scripts = [
   { name: 'resume-engine-mcdc-tests.mjs', expectExit: 0 },
   { name: 'resume-skills-editor-block-tests.mjs', expectExit: 0 },
   { name: 'test-experience-filter.mjs', expectExit: 0 },
+  { name: 'test-ctc-lpa-filter.mjs', expectExit: 0 },
 ];
 
 for (const { name, allowFail } of scripts) {

@@ -232,23 +232,118 @@ export function buildContentFilter(contentFilter) {
   };
 }
 
-// ── Salary filter ───────────────────────────────────────────────────
+// ── Salary filter & Indian CTC / LPA parser ─────────────────────────
 // Optional. If `salary_filter` is absent from portals.yml, all salaries pass.
-// Semantics:
-//   - min/max are annual compensation filters (use annualized values)
-//   - max: 0 means "no upper limit"
-//   - If no salary data exists on a job, it passes (conservative behavior)
-//   - If both currencies are known and mismatch (e.g., USD filter, EUR job), it fails
-//   - Partial ranges (min only or max only) work correctly via overlap logic
-// Uses null-safe checks (!= null, ??) to preserve 0 values correctly.
+// Supports:
+//   - Numeric annual amounts (e.g. 100000, 3000000)
+//   - Indian CTC expressions in LPA / Lakhs (e.g. "30 LPA", "25.5 Lacs", "30L")
+//   - Western 'k' expressions (e.g. "150k", "$120k - $160k")
+//   - Freeform salary strings on job postings (e.g. "25 - 40 LPA", "₹30,00,000 - ₹45,00,000")
+//   - Currency matching and normalization (INR / ₹, USD / $, EUR / €, GBP / £)
+
+export function normalizeCurrency(curr) {
+  if (!curr || typeof curr !== 'string') return '';
+  const c = curr.trim().toUpperCase();
+  if (c === '₹' || c === 'RS' || c === 'RS.' || c === 'INR') return 'INR';
+  if (c === '$' || c === 'USD') return 'USD';
+  if (c === '€' || c === 'EUR') return 'EUR';
+  if (c === '£' || c === 'GBP') return 'GBP';
+  return c;
+}
+
+export function parseSalaryNumber(val) {
+  if (val == null) return 0;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+  const s = String(val).trim();
+  if (!s) return 0;
+
+  // Indian LPA / Lakhs: e.g. "30 LPA", "30L", "25 Lakhs", "25.5 Lacs"
+  const lpaMatch = s.match(/^([\d.]+)\s*(?:lpa|lacs?|lakhs?|l)$/i);
+  if (lpaMatch) {
+    const n = parseFloat(lpaMatch[1]);
+    return Number.isFinite(n) ? Math.round(n * 100000) : 0;
+  }
+
+  // Western 'k': e.g. "150k"
+  const kMatch = s.match(/^([\d.]+)\s*k$/i);
+  if (kMatch) {
+    const n = parseFloat(kMatch[1]);
+    return Number.isFinite(n) ? Math.round(n * 1000) : 0;
+  }
+
+  // Strip currency symbols, commas, spaces
+  const cleaned = s.replace(/,/g, '').replace(/[^\d.]/g, '');
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function parseSalaryString(text) {
+  if (!text || typeof text !== 'string') return null;
+  const raw = text.trim();
+  if (!raw) return null;
+
+  let currency = null;
+  if (/[₹]|INR|LPA|Lacs|Lakh/i.test(raw)) {
+    currency = 'INR';
+  } else if (/[$]|USD/i.test(raw)) {
+    currency = 'USD';
+  } else if (/[€]|EUR/i.test(raw)) {
+    currency = 'EUR';
+  } else if (/[£]|GBP/i.test(raw)) {
+    currency = 'GBP';
+  }
+
+  // Strip currency symbols
+  const stripped = raw.replace(/[$€£₹]/g, ' ').trim();
+
+  // Range with LPA / Lakhs: e.g. "25 - 40 LPA", "20 to 35 Lacs P.A.", "20-35 LPA"
+  const lpaRangeMatch = stripped.match(/([\d.]+)\s*(?:-|–|to)\s*([\d.]+)\s*(?:lpa|lacs?|lakhs?|l\b)/i);
+  if (lpaRangeMatch) {
+    const min = Math.round(parseFloat(lpaRangeMatch[1]) * 100000);
+    const max = Math.round(parseFloat(lpaRangeMatch[2]) * 100000);
+    return { min, max, currency: currency || 'INR' };
+  }
+
+  // Single LPA: e.g. "35 LPA", "30 Lakhs"
+  const singleLpaMatch = stripped.match(/([\d.]+)\s*(?:lpa|lacs?|lakhs?|l\b)/i);
+  if (singleLpaMatch) {
+    const val = Math.round(parseFloat(singleLpaMatch[1]) * 100000);
+    return { min: val, max: val, currency: currency || 'INR' };
+  }
+
+  // 'k' Range: e.g. "120k - 160k", "120 - 160k"
+  const kRangeMatch = stripped.match(/([\d.]+)\s*k?\s*(?:-|–|to)\s*([\d.]+)\s*k\b/i);
+  if (kRangeMatch) {
+    const min = Math.round(parseFloat(kRangeMatch[1]) * 1000);
+    const max = Math.round(parseFloat(kRangeMatch[2]) * 1000);
+    return { min, max, currency: currency || (raw.includes('$') ? 'USD' : null) };
+  }
+
+  // Standard numeric range with commas: e.g. "25,00,000 - 40,00,000" or "120,000 - 160,000"
+  const numRangeMatch = stripped.match(/([\d,]+(?:\.\d+)?)\s*(?:-|–|to)\s*([\d,]+(?:\.\d+)?)/);
+  if (numRangeMatch) {
+    const min = parseFloat(numRangeMatch[1].replace(/,/g, ''));
+    const max = parseFloat(numRangeMatch[2].replace(/,/g, ''));
+    if (Number.isFinite(min) && Number.isFinite(max)) {
+      return { min, max, currency };
+    }
+  }
+
+  return null;
+}
 
 export function buildSalaryFilter(salaryFilter) {
   if (!salaryFilter) return () => true;
 
   // Coerce and validate bounds — malformed YAML must not silently mis-filter
-  const min = Number(salaryFilter.min ?? 0);
-  const max = Number(salaryFilter.max ?? 0);
-  const filterCurrency = (salaryFilter.currency || '').trim().toUpperCase();
+  const min = parseSalaryNumber(salaryFilter.min ?? 0);
+  const max = parseSalaryNumber(salaryFilter.max ?? 0);
+  let filterCurrency = normalizeCurrency(salaryFilter.currency);
+  if (!filterCurrency && (typeof salaryFilter.min === 'string' || typeof salaryFilter.max === 'string')) {
+    const combined = `${salaryFilter.min || ''} ${salaryFilter.max || ''}`;
+    if (/lpa|lacs?|lakhs?|₹|inr/i.test(combined)) filterCurrency = 'INR';
+    else if (/[$]|usd/i.test(combined)) filterCurrency = 'USD';
+  }
 
   if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < 0) {
     console.error('Warning: salary_filter.min/max must be non-negative numbers — salary filter disabled');
@@ -266,25 +361,34 @@ export function buildSalaryFilter(salaryFilter) {
     // If no salary data exists, pass (conservative - many providers don't expose salary)
     if (!salary) return true;
 
-    const jobMin = salary.min ?? salary.max ?? null;
-    const jobMax = salary.max ?? salary.min ?? null;
+    let sObj = salary;
+    if (typeof salary === 'string') {
+      sObj = parseSalaryString(salary);
+    } else if (typeof salary === 'number') {
+      sObj = { min: salary, max: salary };
+    }
+
+    if (!sObj || typeof sObj !== 'object') return true;
+
+    const jobMin = parseSalaryNumber(sObj.min ?? sObj.max ?? null);
+    const jobMax = parseSalaryNumber(sObj.max ?? sObj.min ?? null);
 
     // If we have no usable salary values, pass conservatively
-    if (jobMin == null && jobMax == null) return true;
+    if (jobMin === 0 && jobMax === 0 && sObj.min == null && sObj.max == null) return true;
 
     // Currency handling - reject only if BOTH currencies exist and mismatch
-    const jobCurrency = (salary.currency || '').trim().toUpperCase();
+    const jobCurrency = normalizeCurrency(sObj.currency);
     if (filterCurrency && jobCurrency && filterCurrency !== jobCurrency) {
       return false;
     }
 
     // Range overlap logic - reject ONLY if job is completely outside filter range
     // Job entirely below user minimum
-    if (min > 0 && jobMax != null && jobMax < min) {
+    if (min > 0 && jobMax > 0 && jobMax < min) {
       return false;
     }
     // Job entirely above user maximum
-    if (max > 0 && jobMin != null && jobMin > max) {
+    if (max > 0 && jobMin > 0 && jobMin > max) {
       return false;
     }
 
