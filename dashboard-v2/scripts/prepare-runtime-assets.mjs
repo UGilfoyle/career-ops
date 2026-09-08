@@ -50,7 +50,6 @@ const postgresCandidates = [
 const foundPostgres = postgresCandidates.find((p) => fs.existsSync(p));
 if (foundPostgres) {
   copyDirIfExists(foundPostgres, path.join(appRoot, 'scripts', 'node_modules', 'postgres'));
-  copyDirIfExists(foundPostgres, path.join(runtimeRoot, 'node_modules', 'postgres'));
   console.log(`✓ Copied postgres package from ${foundPostgres} for standalone script execution.`);
 }
 
