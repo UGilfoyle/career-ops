@@ -59,6 +59,39 @@ For each round discovered in research:
 
 If round structure is unknown, state that and provide the best available intel on what types of rounds to expect based on company size, stage, and role level.
 
+## Step 3.5 — Company Archetype & Question Probability Matrix
+
+Classify the target employer into one of 4 company archetypes to calibrate the hiring bar:
+1. **Tier 1 Big Tech / Global Capability Center (GCC)** (e.g., Google, Amazon, Microsoft, Uber, Walmart Global Tech)
+   - *Heavy DSA (Medium/Hard) + Standard Distributed System Design + Structured STAR behavioral.*
+2. **High-Growth Scaleup / Unicorn** (e.g., Swiggy, Razorpay, Stripe, Zepto, Databricks)
+   - *High-throughput System Design + Practical Machine Coding/LLD + Deep tech stack internals.*
+3. **Early-Stage AI / Product Startup** (e.g., YC Seed / Series A)
+   - *Past project deep-dive architecture + live pairing on real stack + founder agency fit (low DSA).*
+4. **Enterprise Tech / Consulting** (e.g., Deloitte, Accenture, Banks, Enterprise SaaS)
+   - *Framework fundamentals + architectural scenario walkthroughs + stakeholder communication.*
+
+Generate the **Topic Likelihood & Frequency Matrix**:
+
+```markdown
+### Question Probability & Topic Matrix
+
+**Company Archetype:** {Tier 1 Big Tech | High-Growth Unicorn | Early-Stage Startup | Enterprise GCC}
+
+| Round / Domain Area | Probability (%) | Expected Depth | Primary Focus Areas |
+|:--------------------|:---------------:|:---------------|:--------------------|
+| **System Design (HLD)** | {X}% | {Staff / Senior / Intermediate} | Caching, event streams, partitioning, fault tolerance |
+| **Low-Level Design (LLD / Machine Coding)** | {X}% | {Clean Architecture} | Design patterns, concurrency, schema modeling, clean APIs |
+| **Data Structures & Algorithms** | {X}% | {LeetCode Medium / Hard} | HashMaps, Sliding Window, Trees, Graphs, BFS/DFS |
+| **Behavioral & Leadership (STAR+R)** | {X}% | {Strict rubric} | Ownership ("I" vs "we"), incident postmortem, conflict |
+| **Core Stack Internals** | {X}% | {Deep internals} | Event loop, memory layout, concurrency primitives, SQL indexing |
+
+### Top 5 High-Probability Questions
+| # | Predicted Question | Prob (%) | Why Predicted (Archetype + JD Signal) | What Interviewer Wants to Hear |
+|---|--------------------|:--------:|---------------------------------------|--------------------------------|
+| 1 | ... | 90%+ | ... | ... |
+```
+
 ## Step 4 — Likely Questions
 
 Categorize all discovered and inferred questions:
