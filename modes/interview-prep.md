@@ -133,6 +133,7 @@ After delivering the report:
 1. Ask the user if they want to draft stories for any gaps found in Step 5
 2. If they have a scheduled interview date, note it: "Your interview is in {X} days. Want me to set a reminder to review this prep?"
 3. Suggest running `deep` mode if the company research in Step 1 was thin — deep mode covers strategy, culture, and competitive landscape in more depth
+4. Offer an interactive mock prep session: "Want to practice a specific round? I can simulate the interviewer and score your answers round-by-round. Say `/career-ops mock-prep` or 'mock me for {company}' to begin."
 
 ## Rules
 

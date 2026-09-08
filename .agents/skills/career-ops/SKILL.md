@@ -4,7 +4,7 @@ description: AI job search command center -- evaluate offers, generate CVs, scan
 arguments: mode
 user_invocable: true
 user-invocable: true
-argument-hint: "[scan | deep | pdf | latex | cover | oferta | ofertas | apply | batch | tracker | pipeline | contacto | training | project | interview-prep | interview | patterns | followup | update]"
+argument-hint: "[scan | deep | pdf | latex | cover | oferta | ofertas | apply | batch | tracker | pipeline | contacto | training | project | interview-prep | mock-prep | interview | patterns | followup | update]"
 license: MIT
 ---
 
@@ -23,6 +23,7 @@ Determine the mode from `$mode`:
 | `contacto` | `contacto` |
 | `deep` | `deep` |
 | `interview-prep` | `interview-prep` |
+| `mock-prep` | `mock-prep` |
 | `interview` | `interview` |
 | `pdf` | `pdf` |
 | `latex` | `latex` |
@@ -59,12 +60,13 @@ Available commands:
   /career-ops contacto  → LinkedIn power move: find contacts + draft message
   /career-ops deep      → Deep research prompt about company
   /career-ops interview-prep → Generate company-specific interview prep doc
+  /career-ops mock-prep → Interactive round-by-round mock interview (1-5 score per answer)
   /career-ops interview    → Interactive profile/CV onboarding interview
   /career-ops pdf       → PDF only, ATS-optimized CV
   /career-ops latex     → Export CV as LaTeX/Overleaf .tex
   /career-ops cover     → Cover letter: standalone JD paste or /career-ops cover {slug}
   /career-ops training  → Evaluate course/cert against North Star
-  /career-ops project   → Evaluate portfolio project idea
+  /career-ops project   → Portfolio evaluation or Exposure proof-of-work project scaffolder
   /career-ops tracker   → Application status overview
   /career-ops apply     → Live application assistant (reads form + generates answers)
   /career-ops scan      → Scan portals and discover new offers
@@ -91,7 +93,7 @@ Applies to: `auto-pipeline`, `oferta`, `ofertas`, `pdf`, `contacto`, `apply`, `p
 ### Standalone modes (only their mode file):
 Read `modes/{mode}.md`
 
-Applies to: `tracker`, `deep`, `interview-prep`, `interview`, `latex`, `training`, `project`, `patterns`, `followup`, `cover`
+Applies to: `tracker`, `deep`, `interview-prep`, `mock-prep`, `interview`, `latex`, `training`, `project`, `patterns`, `followup`, `cover`
 
 ### Modes delegated to subagent:
 For `scan`, `apply` (with Playwright), and `pipeline` (3+ URLs): launch as Agent with the content of `_shared.md` + `modes/{mode}.md` injected into the subagent prompt.

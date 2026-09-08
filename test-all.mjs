@@ -87,6 +87,8 @@ const scripts = [
   { name: 'resume-engine-unit-tests.mjs', expectExit: 0 },
   { name: 'resume-engine-mcdc-tests.mjs', expectExit: 0 },
   { name: 'resume-skills-editor-block-tests.mjs', expectExit: 0 },
+  { name: 'test-experience-filter.mjs', expectExit: 0 },
+  { name: 'test-ctc-lpa-filter.mjs', expectExit: 0 },
 ];
 
 for (const { name, allowFail } of scripts) {
@@ -205,6 +207,7 @@ const expectedModes = [
   '_shared.md', '_profile.template.md', 'oferta.md', 'pdf.md', 'scan.md',
   'batch.md', 'apply.md', 'auto-pipeline.md', 'contacto.md', 'deep.md',
   'ofertas.md', 'pipeline.md', 'project.md', 'tracker.md', 'training.md',
+  'mock-prep.md',
 ];
 
 for (const mode of expectedModes) {
