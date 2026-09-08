@@ -91,6 +91,22 @@
 #   max: 0
 #   currency: "USD"
 
+# -- Experience filter (optional) --
+# Filter scanned jobs by years of experience required. Applied AFTER salary
+# filter, BEFORE dedup. Only applies when structured experience data exists.
+#
+# Semantics:
+#   - min_years / max_years define the candidate's target experience range
+#   - max_years: 0 means "no upper limit"
+#   - If no experience data exists on a job, it passes (conservative behavior)
+#   - Range overlap logic: reject only if job is completely outside filter range
+#   - If this entire block is absent, experience is not filtered (default behavior)
+#
+# Example: target roles requiring 4 to 12 years of experience
+# experience_filter:
+#   min_years: 4     # reject roles requiring less than 4 years (too junior)
+#   max_years: 12    # reject roles requiring more than 12 years (too senior)
+
 # -- Content filter (optional) --
 # Filters on the job DESCRIPTION text, not just the title — useful when
 # companies post generic titles ("Software Engineer") with very different

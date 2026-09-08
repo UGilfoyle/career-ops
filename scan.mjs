@@ -35,7 +35,13 @@ import { pathToFileURL, fileURLToPath } from 'url';
 import path from 'path';
 import yaml from 'js-yaml';
 
-import { makeHttpCtx } from './providers/_http.mjs';
+let makeHttpCtx = () => ({});
+try {
+  const httpMod = await import('./providers/_http.mjs');
+  if (httpMod?.makeHttpCtx) makeHttpCtx = httpMod.makeHttpCtx;
+} catch {
+  // providers/_http.mjs may be absent in lightweight setups
+}
 
 const parseYaml = yaml.load;
 
@@ -283,6 +289,61 @@ export function buildSalaryFilter(salaryFilter) {
     }
 
     // Otherwise pass (overlap exists or no valid range to compare)
+    return true;
+  };
+}
+
+// ── Experience filter ───────────────────────────────────────────────
+// Optional. If `experience_filter` is absent from portals.yml, all jobs pass.
+// Semantics:
+//   - min_years / max_years define the candidate's target experience range
+//   - If no experience data exists on a job, it passes (conservative)
+//   - Range overlap logic: reject only if job is completely outside filter range
+
+export function buildExperienceFilter(experienceFilter) {
+  if (!experienceFilter) return () => true;
+
+  const min = Number(experienceFilter.min_years ?? experienceFilter.min ?? 0);
+  const max = Number(experienceFilter.max_years ?? experienceFilter.max ?? 0);
+
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < 0) {
+    console.error('Warning: experience_filter.min_years/max_years must be non-negative numbers — experience filter disabled');
+    return () => true;
+  }
+  if (max > 0 && min > max) {
+    console.error('Warning: experience_filter.min_years cannot exceed max_years — experience filter disabled');
+    return () => true;
+  }
+
+  if (min === 0 && max === 0) return () => true;
+
+  return (exp) => {
+    if (!exp) return true;
+
+    let jobMin = null;
+    let jobMax = null;
+
+    if (typeof exp === 'number') {
+      jobMin = exp;
+      jobMax = exp;
+    } else if (typeof exp === 'object') {
+      jobMin = exp.min_years ?? exp.min ?? exp.years ?? null;
+      jobMax = exp.max_years ?? exp.max ?? exp.years ?? null;
+      if (jobMin == null && jobMax != null) jobMin = jobMax;
+      if (jobMax == null && jobMin != null) jobMax = jobMin;
+    }
+
+    if (jobMin == null && jobMax == null) return true;
+
+    // Job entirely below candidate minimum (too junior)
+    if (min > 0 && jobMax != null && jobMax < min) {
+      return false;
+    }
+    // Job entirely above candidate maximum (too senior)
+    if (max > 0 && jobMin != null && jobMin > max) {
+      return false;
+    }
+
     return true;
   };
 }
@@ -763,6 +824,7 @@ async function main() {
   const titleFilter = buildTitleFilter(config.title_filter);
   const locationFilter = buildLocationFilter(config.location_filter);
   const salaryFilter = buildSalaryFilter(config.salary_filter);
+  const experienceFilter = buildExperienceFilter(config.experience_filter);
   const contentFilter = buildContentFilter(config.content_filter);
 
   // 3. Resolve a provider for each enabled company / board
@@ -835,6 +897,7 @@ async function main() {
   let totalFilteredTitle = 0;
   let totalFilteredLocation = 0;
   let totalFilteredSalary = 0;
+  let totalFilteredExperience = 0;
   let totalFilteredContent = 0;
   let totalDupes = 0;
   const newOffers = [];
@@ -876,6 +939,10 @@ async function main() {
         }
         if (!salaryFilter(job.salary)) {
           totalFilteredSalary++;
+          continue;
+        }
+        if (!experienceFilter(job.experience)) {
+          totalFilteredExperience++;
           continue;
         }
         if (!contentFilter(job.description)) {
@@ -979,6 +1046,7 @@ async function main() {
   console.log(`Filtered by title:     ${totalFilteredTitle} removed`);
   console.log(`Filtered by location:  ${totalFilteredLocation} removed`);
   console.log(`Filtered by salary:   ${totalFilteredSalary} removed`);
+  console.log(`Filtered by experience: ${totalFilteredExperience} removed`);
   console.log(`Filtered by content:  ${totalFilteredContent} removed`);
   console.log(`Duplicates:            ${totalDupes} skipped`);
   if (historyPolicy.recheckAfterDays != null) {
