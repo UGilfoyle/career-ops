@@ -17,8 +17,8 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // Keep Chromium/Puppeteer out of the Turbopack/webpack bundle — load at runtime only.
-  serverExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core"],
+  // Keep Chromium/Puppeteer and postgres out of the Turbopack/webpack bundle — load at runtime only.
+  serverExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core", "postgres"],
   // Do NOT trace Chromium into the Serverless Function zip (symlink / invalid package on Vercel).
   outputFileTracingExcludes: {
     "/api/resume/export-pdf": [
@@ -31,6 +31,8 @@ const nextConfig: NextConfig = {
     "/*": [
       "./scripts/**/*",
       "./templates/**/*",
+      "./node_modules/postgres/**/*",
+      "../node_modules/postgres/**/*",
       "../gcc-classify.mjs",
       "../gcc-signal-engine.mjs",
       "../jd-keyword-align.mjs",

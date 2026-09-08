@@ -1,10 +1,42 @@
-import postgres from 'postgres';
-import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { createRequire } from 'module';
+import dotenv from 'dotenv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+
+async function loadPostgres() {
+  try {
+    const mod = await import('postgres');
+    return mod.default || mod;
+  } catch (err) {
+    const candidateDirs = [
+      path.resolve(__dirname, 'node_modules'),
+      path.resolve(__dirname, '../node_modules'),
+      path.resolve(__dirname, 'dashboard-v2/node_modules'),
+      path.resolve(__dirname, 'dashboard-v2/scripts/node_modules'),
+      path.resolve(__dirname, 'dashboard-v2/runtime-assets/node_modules'),
+      process.env.APP_ROOT && path.join(process.env.APP_ROOT, 'node_modules'),
+      '/var/task/dashboard-v2/node_modules',
+      '/var/task/node_modules',
+      process.cwd(),
+      path.join(process.cwd(), 'node_modules'),
+    ].filter(Boolean);
+
+    for (const dir of candidateDirs) {
+      try {
+        const resolved = require.resolve('postgres', { paths: [dir] });
+        const mod = await import(pathToFileURL(resolved).href);
+        return mod.default || mod;
+      } catch {}
+    }
+    throw err;
+  }
+}
+
+const postgres = await loadPostgres();
 const repoRoot = path.join(__dirname, '..');
 
 const envCandidates = [

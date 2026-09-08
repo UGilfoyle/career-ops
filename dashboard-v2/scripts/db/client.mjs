@@ -1,9 +1,44 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import postgres from 'postgres';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { createRequire } from 'module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+
+async function loadPostgres() {
+  try {
+    const mod = await import('postgres');
+    return mod.default || mod;
+  } catch (err) {
+    const candidateDirs = [
+      path.resolve(__dirname, '../node_modules'),
+      path.resolve(__dirname, '../../node_modules'),
+      path.resolve(__dirname, '../../../node_modules'),
+      path.resolve(__dirname, '../../runtime-assets/node_modules'),
+      process.env.APP_ROOT && path.join(process.env.APP_ROOT, 'node_modules'),
+      process.env.APP_ROOT && path.join(process.env.APP_ROOT, 'scripts', 'node_modules'),
+      '/var/task/dashboard-v2/scripts/node_modules',
+      '/var/task/dashboard-v2/node_modules',
+      '/var/task/node_modules',
+      process.cwd(),
+      path.join(process.cwd(), 'node_modules'),
+    ].filter(Boolean);
+
+    for (const dir of candidateDirs) {
+      try {
+        const resolved = require.resolve('postgres', { paths: [dir] });
+        const mod = await import(pathToFileURL(resolved).href);
+        return mod.default || mod;
+      } catch {}
+    }
+    throw new Error(
+      `Cannot find package 'postgres'. Searched in candidate paths: ${candidateDirs.join(', ')}. Original error: ${err.message}`
+    );
+  }
+}
+
+const postgres = await loadPostgres();
 const dashboardV2Root = path.resolve(__dirname, '../..');
 const repoRoot = path.resolve(dashboardV2Root, '..');
 

@@ -14,8 +14,13 @@ const copyFileIfExists = (src, dest) => {
 
 const copyDirIfExists = (src, dest) => {
   if (!fs.existsSync(src)) return false;
+  if (fs.existsSync(dest)) {
+    try {
+      fs.rmSync(dest, { recursive: true, force: true });
+    } catch {}
+  }
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.cpSync(src, dest, { recursive: true });
+  fs.cpSync(src, dest, { recursive: true, dereference: true });
   return true;
 };
 
@@ -36,5 +41,17 @@ copyDirIfExists(
 );
 copyFileIfExists(path.join(repoRoot, 'config', 'profile.yml'), path.join(runtimeRoot, 'config', 'profile.yml'));
 copyFileIfExists(path.join(repoRoot, 'cv.md'), path.join(runtimeRoot, 'cv.md'));
+
+// Ensure node_modules/postgres is present for standalone scripts spawned via /api/exec
+const postgresCandidates = [
+  path.join(appRoot, 'node_modules', 'postgres'),
+  path.join(repoRoot, 'node_modules', 'postgres'),
+];
+const foundPostgres = postgresCandidates.find((p) => fs.existsSync(p));
+if (foundPostgres) {
+  copyDirIfExists(foundPostgres, path.join(appRoot, 'scripts', 'node_modules', 'postgres'));
+  copyDirIfExists(foundPostgres, path.join(runtimeRoot, 'node_modules', 'postgres'));
+  console.log(`✓ Copied postgres package from ${foundPostgres} for standalone script execution.`);
+}
 
 console.log('Prepared runtime-assets bundle for serverless execution.');
