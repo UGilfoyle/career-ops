@@ -76,7 +76,7 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-4 sm:p-6 shadow-xs transition-all hover:border-zinc-300 hover:shadow-sm">
+    <div className="uiverse-glow-card">
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-zinc-900 to-blue-500" />
 
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 sm:gap-6">
@@ -107,24 +107,22 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="Paste job URL (e.g. LinkedIn, Greenhouse)..."
-                  className="w-full h-11 rounded-xl border border-zinc-200 bg-zinc-50/70 px-4 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:outline-none transition-all"
+                  className="uiverse-input"
                 />
               </div>
               <button
                 type="submit"
-                className="relative group overflow-hidden w-full sm:w-auto h-11 px-5 flex items-center justify-center gap-2 rounded-xl bg-zinc-900 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 active:scale-[0.98] transition-all shrink-0 cursor-pointer"
+                className="uiverse-btn w-full sm:w-auto shrink-0"
               >
-                <span className="relative z-10">Tailor Now</span>
-                <ArrowRight size={14} className="relative z-10 transition-transform group-hover:translate-x-0.5" />
-                <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 translate-x-[-150%] group-hover:translate-x-[300%] transition-transform duration-700 ease-out" />
+                <span>Tailor Now</span>
+                <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
               </button>
             </form>
           )}
 
           {status === 'running' && (
             <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
-              <div className="flex items-center gap-3">
-                <Loader2 size={18} className="animate-spin text-blue-600 shrink-0" />
+              <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-blue-950 truncate">
                     {stepMessage || 'Processing job posting...'}
@@ -132,6 +130,11 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
                   <p className="text-[11px] text-blue-700/90 mt-0.5 font-normal">
                     Analyzing requirements and tailoring competencies in cloud engine
                   </p>
+                </div>
+                <div className="uiverse-dot-loader shrink-0">
+                  <div className="uiverse-dot" />
+                  <div className="uiverse-dot" />
+                  <div className="uiverse-dot" />
                 </div>
               </div>
               <div className="mt-3 h-1 w-full rounded-full bg-blue-200/60 overflow-hidden">
