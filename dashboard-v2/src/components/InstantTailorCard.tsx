@@ -76,59 +76,61 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white p-4 sm:p-5 shadow-sm transition-all hover:border-[#1C1C1E]/20">
-      {/* Subtle modern top accent */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-[#1C1C1E] to-blue-500" />
+    <div className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-4 sm:p-6 shadow-xs transition-all hover:border-zinc-300 hover:shadow-sm">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-zinc-900 to-blue-500" />
 
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 sm:gap-6">
         <div className="max-w-xl">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200/80">
               <Sparkles size={12} className="text-emerald-600" />
-              1-Click AI Tailor
+              1 Click AI Tailor
             </span>
-            <span className="text-[11px] text-[#9CA3AF] font-medium">LinkedIn · Indeed · Greenhouse · Lever · Any URL</span>
+            <span className="text-[11px] text-zinc-400 font-medium">LinkedIn · Indeed · Greenhouse · Lever · Any URL</span>
           </div>
-          <h3 className="text-base sm:text-lg font-bold text-[#1C1C1E] tracking-tight">
-            Instant Resume & Cover Letter Tailor
+          <h3 className="text-base sm:text-lg font-semibold text-zinc-900 tracking-tight">
+            Instant Resume and Cover Letter Tailor
           </h3>
-          <p className="text-xs text-[#6B6B6B] mt-0.5 font-medium leading-relaxed">
-            Paste any job posting URL below. Our AI engine extracts requirements, matches your technical competencies, and builds a targeted ATS-ready resume in seconds.
+          <p className="text-xs text-zinc-500 mt-1 font-normal leading-relaxed">
+            Paste any job posting URL below. Our AI engine extracts requirements, matches your technical competencies, and builds a targeted ATS ready resume in seconds.
           </p>
         </div>
 
         {/* Action / Form area */}
         <div className="w-full lg:max-w-md">
           {status === 'idle' && (
-            <form onSubmit={handleTailor} className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="url"
-                required
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Paste job URL (e.g. LinkedIn, Greenhouse)..."
-                className="flex-1 rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3.5 py-2 text-xs text-[#1C1C1E] placeholder:text-[#9CA3AF] focus:border-[#1C1C1E] focus:bg-white focus:outline-none transition-all"
-              />
+            <form onSubmit={handleTailor} className="flex flex-col sm:flex-row items-center gap-2.5">
+              <div className="relative w-full flex-1">
+                <input
+                  type="url"
+                  required
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="Paste job URL (e.g. LinkedIn, Greenhouse)..."
+                  className="w-full h-11 rounded-xl border border-zinc-200 bg-zinc-50/70 px-4 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:outline-none transition-all"
+                />
+              </div>
               <button
                 type="submit"
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-[#1C1C1E] px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#27272a] shrink-0"
+                className="relative group overflow-hidden w-full sm:w-auto h-11 px-5 flex items-center justify-center gap-2 rounded-xl bg-zinc-900 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 active:scale-[0.98] transition-all shrink-0 cursor-pointer"
               >
-                <span>Tailor Now</span>
-                <ArrowRight size={14} />
+                <span className="relative z-10">Tailor Now</span>
+                <ArrowRight size={14} className="relative z-10 transition-transform group-hover:translate-x-0.5" />
+                <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 translate-x-[-150%] group-hover:translate-x-[300%] transition-transform duration-700 ease-out" />
               </button>
             </form>
           )}
 
           {status === 'running' && (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
               <div className="flex items-center gap-3">
                 <Loader2 size={18} className="animate-spin text-blue-600 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-blue-900 truncate">
+                  <p className="text-xs font-semibold text-blue-950 truncate">
                     {stepMessage || 'Processing job posting...'}
                   </p>
-                  <p className="text-[11px] text-blue-700/80 mt-0.5">
-                    Analyzing requirements & tailoring competencies in cloud engine
+                  <p className="text-[11px] text-blue-700/90 mt-0.5 font-normal">
+                    Analyzing requirements and tailoring competencies in cloud engine
                   </p>
                 </div>
               </div>
@@ -143,8 +145,8 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-emerald-900">Tailoring Dispatched Successfully!</p>
-                  <p className="text-[11px] text-emerald-700 font-medium">Ready in Resume Studio & Generated Docs</p>
+                  <p className="text-xs font-semibold text-emerald-950">Tailoring Dispatched Successfully!</p>
+                  <p className="text-[11px] text-emerald-700 font-medium">Ready in Resume Studio and Generated Docs</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -152,7 +154,7 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
                   <button
                     type="button"
                     onClick={onOpenStudio}
-                    className="flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 transition-colors"
+                    className="h-9 flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 text-xs font-semibold text-white hover:bg-emerald-800 active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <FileText size={13} />
                     View Studio
@@ -161,7 +163,7 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
                 <button
                   type="button"
                   onClick={() => { setStatus('idle'); setUrl(''); }}
-                  className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50 transition-colors"
+                  className="h-9 rounded-lg border border-emerald-300/80 bg-white px-3.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 active:scale-[0.98] transition-all cursor-pointer"
                 >
                   Tailor Another
                 </button>
@@ -180,7 +182,7 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
               <button
                 type="button"
                 onClick={() => setStatus('idle')}
-                className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700 transition-colors shrink-0"
+                className="h-9 px-3.5 rounded-lg bg-rose-600 text-xs font-semibold text-white hover:bg-rose-700 active:scale-[0.98] transition-all shrink-0 cursor-pointer"
               >
                 Retry
               </button>
