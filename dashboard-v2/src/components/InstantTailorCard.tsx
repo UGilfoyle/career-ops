@@ -20,7 +20,7 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
     const cleanUrl = url.trim();
     if (!cleanUrl) return;
 
-    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+    if (/[\r\n\t<>]/.test(cleanUrl) || (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://'))) {
       setErrorMessage('Please enter a valid job URL (e.g. https://linkedin.com/jobs/view/...)');
       setStatus('error');
       return;
@@ -34,11 +34,13 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
       eventSourceRef.current.close();
     }
 
+    let receivedEvents = false;
     const query = `tailor ${cleanUrl} --deep`;
     const es = new EventSource(`/api/exec?q=${encodeURIComponent(query)}`);
     eventSourceRef.current = es;
 
     es.onmessage = (event) => {
+      receivedEvents = true;
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'done') {
@@ -68,10 +70,15 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
 
     es.onerror = () => {
       es.close();
-      // Even on disconnect, the task runs in background on GitHub Actions
-      setStatus('success');
-      setStepMessage('Task dispatched to background engine. Results will appear in Resume Studio shortly!');
-      if (onRefresh) onRefresh();
+      if (!receivedEvents) {
+        setStatus('error');
+        setErrorMessage('Unable to connect to execution service. Please check your connection or sign in.');
+      } else {
+        // Even on disconnect, the task continues running in background
+        setStatus('success');
+        setStepMessage('Task dispatched to background engine. Results will appear in Resume Studio shortly!');
+        if (onRefresh) onRefresh();
+      }
     };
   };
 

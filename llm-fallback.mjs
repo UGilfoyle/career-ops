@@ -262,7 +262,12 @@ export async function callGeminiChat({ messages, maxTokens = 3000, temperature =
   if (!response.ok) {
     throw new Error(`Gemini API error ${response.status}: ${body.slice(0, 200)}`);
   }
-  const data = JSON.parse(body);
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    throw new Error(`Gemini returned non-JSON response (${body.slice(0, 100)})`);
+  }
   const content = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '';
   if (!content) throw new Error('Empty or malformed response from Gemini');
   // Shape a fake OpenAI-like payload so callers can stay simple

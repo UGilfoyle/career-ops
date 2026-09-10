@@ -20,10 +20,23 @@ function loadCompanySets() {
   return cached;
 }
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function matchesSet(name, set) {
-  if (set.has(name)) return true;
+  if (!name || typeof name !== 'string') return false;
+  const normName = name.toLowerCase().trim();
+  if (!normName) return false;
+
+  if (set.has(normName)) return true;
   for (const entry of set) {
-    if (name.includes(entry) || entry.includes(name)) return true;
+    if (entry.length <= 4) {
+      const boundaryRegex = new RegExp(`\\b${escapeRegex(entry)}\\b`, 'i');
+      if (boundaryRegex.test(normName)) return true;
+    } else {
+      if (normName.includes(entry) || entry.includes(normName)) return true;
+    }
   }
   return false;
 }

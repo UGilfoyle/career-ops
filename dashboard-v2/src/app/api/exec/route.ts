@@ -570,9 +570,28 @@ async function triggerGitHubAction(send: any, controller: any, userId: string, s
   const { pat, repo } = await resolveGitHubPat(userId);
 
   if (!pat) {
+    if (process.env.VERCEL !== '1') {
+      send({ type: 'stdout', content: `[LOCAL EXEC] Running ${script} in local environment...\n` });
+      const rootScriptPath = path.resolve(process.cwd(), '..', script);
+      const localScriptPath = fs.existsSync(rootScriptPath) ? rootScriptPath : path.resolve(process.cwd(), 'scripts', script);
+      if (fs.existsSync(localScriptPath)) {
+        const childArgs = args ? args.split(/\s+/).filter(Boolean) : [];
+        const child = spawn('node', [localScriptPath, ...childArgs], {
+          cwd: path.dirname(localScriptPath),
+          env: { ...process.env, FORCE_COLOR: '1' },
+        });
+        child.stdout.on('data', (d) => send({ type: 'stdout', content: d.toString() }));
+        child.stderr.on('data', (d) => send({ type: 'stderr', content: d.toString() }));
+        child.on('close', (code) => {
+          send({ type: 'done', code });
+          controller.close();
+        });
+        return;
+      }
+    }
     send({
       type: 'stderr',
-      content: 'Execution service temporarily unavailable. Please try again shortly.\n',
+      content: 'Execution service temporarily unavailable. Please configure GITHUB_PAT or run locally.\n',
     });
     send({ type: 'done', code: 1 });
     controller.close();
