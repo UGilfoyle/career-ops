@@ -46,7 +46,7 @@ import { renderContactBarHtml } from './resume-contact-html.mjs';
 import { gateResumeOnPostingAge, argvHasYes } from './job-posting-gate.mjs';
 import { fetchAshbyJobDescription, parseAshbyJobRef } from './ashby-jd.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
-import { classifyCompany } from './gcc-classify.mjs';
+import { classifyCompany, classifyGccOpportunity } from './gcc-classify.mjs';
 import { hydrateResumeProfile } from './profile-hydrate.mjs';
 import { formatEducationLine } from './education-format.mjs';
 import {
@@ -1339,7 +1339,7 @@ function coverLetterBodyToHtml(text) {
     .join('');
 }
 
-async function tailorPackage(jd, profile, companyName, passedCompanyType) {
+async function tailorPackage(jd, profile, companyName, passedCompanyType, jobUrl) {
   // Multi-Track Persona Preset Resolution (Track A: Data/Systems vs Track B: Node/Cloud)
   const trackArg = process.argv.find((a) => a.startsWith('--track='))?.split('=')[1]
     || (process.argv.includes('--track-a') ? 'track_a' : (process.argv.includes('--track-b') ? 'track_b' : null));
@@ -1419,16 +1419,48 @@ ${experienceDigest}`;
     return `  Role ${i}: "${role}" at "${company}" [${mode}]`;
   }).join('\n');
 
-  const companyType = passedCompanyType || classifyCompany(companyName);
+  const requestedGcc = process.argv.includes('--gcc');
+  const gccDetection = classifyGccOpportunity({
+    companyName,
+    jdText: jd,
+    url: jobUrl,
+    requestedGcc,
+  });
+
+  const companyType = passedCompanyType || gccDetection.type;
+  if (companyType === 'GCC') {
+    console.log('\n🏛️  [GCC RESUME ENGINE ACTIVATED] Global Capability Center Detected');
+    console.log(`   Target: ${companyName || gccDetection.company || 'Enterprise Captive'}`);
+    console.log(`   Signal: ${gccDetection.reason}`);
+    console.log('   Optimization: Enterprise Platform Ownership and PAR Scale Metrics (Talent500 Target: 90+)\n');
+  }
+
   let companyTypeRule = '';
   if (companyType === 'GCC') {
     companyTypeRule = `
-- GCC (Global Capability Center) / Captive Adaptation: The target company is a GCC/captive center of a global enterprise (e.g. financial institution, retail giant, tech product firm). Customize the summary, competencies, and experience bullets to emphasize:
-  1. Product ownership, high engineering standards, and long-term codebase ownership (avoid "client delivery" or "consultancy" framing).
-  2. Direct alignment and collaboration with global stakeholders (e.g. US/EU product and engineering teams).
-  3. Designing robust, highly scalable, and secure systems that directly solve global business objectives.
-  4. Technical leadership, mentoring team members, and taking accountability for end-to-end features.
-  5. PAR bullet structure for every rewritten experience bullet: [Problem context]. [Action I took]. [Quantified result]. Example: "Payment failures caused revenue leakage. I redesigned retry logic and monitoring. Failure rate dropped 42%."`;
+* GCC (GLOBAL CAPABILITY CENTER) DEDICATED TAILORING ENGINE:
+  The target company is a GCC or captive center of a global enterprise (such as Target, Walmart, Lowe's, JPMC, Nike, Goldman Sachs, or similar Fortune 500 firm).
+  GCC hiring managers and enterprise ATS parsers evaluate candidates on strict captive benchmarks:
+  1. Internal Product and Platform Ownership:
+     Frame all engineering work as internal platform and systems ownership.
+     Never use vendor, client delivery, or consultancy phrasing (do not say "worked for client", "client requirements", "service delivery", "client deliverables").
+     Position Quest/SKF and INTVERSE/Kenvue as high scale core platforms and internal distributed services.
+  2. Global Stakeholder Alignment and Architecture Leadership:
+     Highlight direct collaboration with global engineering counterparts (such as US and EU architecture and product teams).
+     Mention engineering standards, API contracts (REST and GraphQL), RFC reviews, cross team design alignment, and unblocking distributed teams.
+  3. Strict PAR and XYZ Metric Structure for Experience Bullets:
+     Every rewritten experience bullet must follow the high impact engineering formula:
+     [Problem or System Context] + [Specific Low Level Technical Action Taken] + [Quantified Production Result].
+     Every bullet must contain an explicit numerical metric from the candidate verified digest:
+     for example, latency reduction (cutting p99 latency by ~40% or down to <110ms), throughput scale (millions of daily telemetry events), CPU or resource savings (reducing DB CPU load by 35%), uptime (sustaining 99.9% availability), or deployment acceleration (from ~40m to <8m).
+  4. Enterprise Skills Categorization:
+     Organize core competencies into clear enterprise taxonomy blocks:
+     * Programming and Runtimes
+     * Databases and In Memory Caching
+     * Cloud and Distributed Systems Architecture
+     * SRE, Observability and Performance Tuning
+  5. High Concurrency and Zero Data Loss:
+     Emphasize data integrity, connection pooling (PgBouncer), declarative table partitioning, idempotent event ingestion, and resilient retry mechanisms against peak bursts.`;
   } else if (companyType === 'Services') {
     companyTypeRule = `
 - IT Services / Consulting Adaptation: The target company is an IT services/consulting/outsourcing firm. Customize the summary, competencies, and experience bullets to emphasize:
@@ -2110,7 +2142,7 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
       console.warn(`⚠️ JD text is very short (${jdText?.length || 0} chars). Resume tailoring may be generic. Re-scan or paste JD into pipeline.`);
     }
     const canonicalUrl = canonicalizeUrl(entry.url);
-    const result = await tailorPackage(jdText, profile, entry.company, entry.company_type);
+    const result = await tailorPackage(jdText, profile, entry.company, entry.company_type, entry.url);
     if (result?.activeProfile) {
       profile = result.activeProfile;
     }
