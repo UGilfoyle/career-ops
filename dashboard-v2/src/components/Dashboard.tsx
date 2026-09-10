@@ -48,7 +48,8 @@ import {
   Menu,
   GraduationCap,
   Link2,
-  Activity
+  Activity,
+  Palette
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -62,6 +63,7 @@ import {
 } from 'antd';
 import { PageSectionHeader, AiScoreBadge } from './PageSectionHeader';
 import InstantTailorCard from './InstantTailorCard';
+import { UiverseLabPanel } from './UiverseLabPanel';
 import { JobAvatar } from './JobAvatar';
 import ProPaywall, { type PendingPayment } from './ProPaywall';
 import { defaultGccCampaign, type GccCampaign } from './gcc-campaign';
@@ -2064,6 +2066,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <NavItem id="nav-analytics" icon={<Shield size={18}/>} label="Admin" active={activeTab === 'analytics'} collapsed={navCollapsed} onClick={() => goTab('analytics', () => { if (!adminOverview || !productAnalytics) { void loadAdminData(); } })} />
             )}
             <NavItem id="nav-docs" icon={<BookOpen size={18}/>} label="Tutorial & Docs" active={activeTab === 'docs'} collapsed={navCollapsed} onClick={() => goTab('docs')} />
+            <NavItem id="nav-uiverse" icon={<Palette size={18}/>} label="UIverse Lab" active={activeTab === 'uiverse'} collapsed={navCollapsed} onClick={() => goTab('uiverse')} badge="Lab" />
           </nav>
         </div>
 
@@ -3780,6 +3783,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   ))}
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'uiverse' && (
+            <motion.div key="uiverse" className="space-y-5">
+              <UiverseLabPanel
+                onOpenStudio={() => goTab('resume-studio')}
+                onRefresh={() => { if (typeof window !== 'undefined') window.location.reload(); }}
+              />
             </motion.div>
           )}
 
