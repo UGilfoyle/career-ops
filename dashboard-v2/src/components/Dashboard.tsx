@@ -3824,6 +3824,17 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               }}
               onAddToOutreach={(company: string, role: string) => addToGccCampaign(company, role)}
               onResearchDraft={(opts) => setOutreachTarget(opts)}
+              onRefresh={() => {
+                void (async () => {
+                  try {
+                    const res = await fetch('/api/data');
+                    if (res.ok) {
+                      const fresh = await res.json();
+                      setData(fresh);
+                    }
+                  } catch {}
+                })();
+              }}
               highValueCount={(data?.pipeline || []).filter((j: any) => j.gcc_high_value).length}
               isSaving={isSaving}
               saveStatus={saveStatus}
