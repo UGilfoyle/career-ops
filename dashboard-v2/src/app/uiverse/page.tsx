@@ -7,11 +7,8 @@ import {
   Sparkles, 
   Zap, 
   ArrowRight, 
-  CheckCircle2, 
-  Layers, 
   Copy, 
   Check, 
-  Cpu, 
   ExternalLink 
 } from 'lucide-react';
 import InstantTailorCard from '@/components/InstantTailorCard';
@@ -45,8 +42,8 @@ export default function UiverseShowcasePage() {
               <span className="text-xs font-bold uppercase tracking-wider text-zinc-900">
                 UIverse Lab
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                branch: feature/uiverse-ui-experiment
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 text-zinc-700 border border-zinc-200">
+                Showcase
               </span>
             </div>
           </div>
@@ -70,36 +67,22 @@ export default function UiverseShowcasePage() {
         <div className="space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-bold tracking-wide">
             <Sparkles size={13} />
-            <span>UIverse.io Design System Integration</span>
+            <span>UIverse Design System Integration</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-950">
             Interactive UIverse Component Suite
           </h1>
           <p className="text-sm sm:text-base text-zinc-600 max-w-2xl leading-relaxed font-normal">
-            Open-source CSS micro-animations, tactile shimmer buttons, glowing cards, and aligned input fields integrated into Career-Ops.
+            Open source CSS micro animations, tactile shimmer buttons, glowing cards, and aligned input fields integrated into Career Ops.
           </p>
         </div>
 
-        {/* Live Working Component: InstantTailorCard */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Cpu size={16} className="text-emerald-600" />
-              <h2 className="text-base font-bold text-zinc-900">
-                Live Working Feature: Instant Tailor Card
-              </h2>
-            </div>
-            <span className="text-xs text-zinc-500 font-medium">
-              Interactive test with mock trigger
-            </span>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-xs">
-            <InstantTailorCard 
-              onOpenStudio={() => alert('Resume Studio opened')}
-              onRefresh={() => alert('Refreshed')}
-            />
-          </div>
+        {/* Working Component: InstantTailorCard */}
+        <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-xs">
+          <InstantTailorCard 
+            onOpenStudio={() => alert('Resume Studio opened')}
+            onRefresh={() => alert('Refreshed')}
+          />
         </div>
 
         {/* Category Filter Tabs */}
@@ -131,7 +114,7 @@ export default function UiverseShowcasePage() {
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">.uiverse-btn</span>
                 </div>
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  Hardware-accelerated skew light sweep on hover with active depression feedback.
+                  Interactive action buttons with dynamic shimmer highlights and press states.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -160,12 +143,11 @@ export default function UiverseShowcasePage() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-between items-center text-xs text-zinc-400">
-                <span>Hover over buttons to see sweep light</span>
+              <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-end items-center text-xs">
                 <button 
                   type="button"
                   onClick={() => copyCode('btn', '<button className="uiverse-btn"><span>Action</span></button>')}
-                  className="inline-flex items-center gap-1 font-medium text-zinc-600 hover:text-zinc-900 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 font-medium text-zinc-500 hover:text-zinc-900 cursor-pointer text-xs"
                 >
                   {copiedKey === 'btn' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
                   <span>{copiedKey === 'btn' ? 'Copied' : 'Copy class'}</span>
@@ -183,7 +165,7 @@ export default function UiverseShowcasePage() {
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">.uiverse-input</span>
                 </div>
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  Fixed 44px touch target height matching buttons, inner inset depth, and soft focus halo.
+                  Clean input fields with subtle inner inset depth and smooth focus halos.
                 </p>
 
                 <div className="space-y-3 pt-2">
@@ -202,12 +184,11 @@ export default function UiverseShowcasePage() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-between items-center text-xs text-zinc-400">
-                <span>44px standardized height</span>
+              <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-end items-center text-xs">
                 <button 
                   type="button"
                   onClick={() => copyCode('inp', '<input className="uiverse-input" />')}
-                  className="inline-flex items-center gap-1 font-medium text-zinc-600 hover:text-zinc-900 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 font-medium text-zinc-500 hover:text-zinc-900 cursor-pointer text-xs"
                 >
                   {copiedKey === 'inp' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
                   <span>{copiedKey === 'inp' ? 'Copied' : 'Copy class'}</span>
@@ -225,7 +206,7 @@ export default function UiverseShowcasePage() {
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">.uiverse-glow-card</span>
                 </div>
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  Smooth border transition from zinc-200 to zinc-400 with 30px diffused shadow elevation.
+                  Elevated card surfaces featuring smooth ambient glow and subtle border highlights.
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
@@ -240,12 +221,11 @@ export default function UiverseShowcasePage() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-between items-center text-xs text-zinc-400">
-                <span>Elevation without heavy shadows</span>
+              <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-end items-center text-xs">
                 <button 
                   type="button"
                   onClick={() => copyCode('card', '<div className="uiverse-glow-card">...</div>')}
-                  className="inline-flex items-center gap-1 font-medium text-zinc-600 hover:text-zinc-900 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 font-medium text-zinc-500 hover:text-zinc-900 cursor-pointer text-xs"
                 >
                   {copiedKey === 'card' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
                   <span>{copiedKey === 'card' ? 'Copied' : 'Copy class'}</span>
@@ -263,7 +243,7 @@ export default function UiverseShowcasePage() {
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">.uiverse-dot-loader</span>
                 </div>
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  Smooth wave bounce animation with staggered negative delays for processing states.
+                  Animated rhythmic pulse indicators designed for active tasks and background processes.
                 </p>
 
                 <div className="p-4 rounded-xl bg-zinc-900 text-white flex items-center justify-between">
@@ -279,12 +259,11 @@ export default function UiverseShowcasePage() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-between items-center text-xs text-zinc-400">
-                <span>Pure CSS keyframe animation</span>
+              <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-end items-center text-xs">
                 <button 
                   type="button"
                   onClick={() => copyCode('loader', '<div className="uiverse-dot-loader"><div className="uiverse-dot" />...</div>')}
-                  className="inline-flex items-center gap-1 font-medium text-zinc-600 hover:text-zinc-900 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 font-medium text-zinc-500 hover:text-zinc-900 cursor-pointer text-xs"
                 >
                   {copiedKey === 'loader' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
                   <span>{copiedKey === 'loader' ? 'Copied' : 'Copy class'}</span>
@@ -292,16 +271,6 @@ export default function UiverseShowcasePage() {
               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer Note */}
-        <div className="p-4 rounded-xl bg-zinc-100/70 border border-zinc-200/80 text-xs text-zinc-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <span>
-            Branch: <strong className="font-mono text-zinc-900">feature/uiverse-ui-experiment</strong>. Isolated from main.
-          </span>
-          <span className="font-medium text-zinc-500">
-            Zero external npm runtime overhead
-          </span>
         </div>
       </div>
     </div>
