@@ -35,6 +35,7 @@ import {
   formatJdKeywordBlock,
   ensureAllRolesTailored,
   isJunkKeyword,
+  isEditorIdeTool,
   isWeavableKeyword,
   isEmployerBrandKeyword,
   forceJdKeywordCoverage,
@@ -1403,11 +1404,12 @@ ${experienceDigest}`;
      Highlight direct collaboration with global engineering counterparts (such as US and EU architecture and product teams).
      Mention engineering standards, API contracts (REST and GraphQL), RFC reviews, cross team design alignment, and unblocking distributed teams.
   3. Strict PAR and XYZ Metric Structure for Experience Bullets:
-     Every rewritten experience bullet must follow the high impact engineering formula:
-     [Problem or System Context] + [Specific Low Level Technical Action Taken] + [Quantified Production Result].
-     Every bullet must contain an explicit numerical metric from the candidate verified digest:
-     for example, latency reduction (cutting p99 latency by ~40% or down to <110ms), throughput scale (millions of daily telemetry events), CPU or resource savings (reducing DB CPU load by 35%), uptime (sustaining 99.9% availability), or deployment acceleration (from ~40m to <8m).
-  4. Enterprise Skills Categorization:
+      Every rewritten experience bullet must follow the high impact engineering formula:
+      [Problem or System Context] + [Specific Low Level Technical Action Taken] + [Quantified Production Result].
+      Every bullet must highlight concrete engineering scale, mechanisms, and real-world outcomes:
+      for example, sub-100ms p99 write latency under peak load, throughput scale (millions of daily telemetry events at 99.9% availability), deployment acceleration (from ~40m to under 8m), zero transaction data loss, or eliminating database connection pool starvation and lock contention via table partitioning.
+      ANTI-AI METRIC RULE: Avoid cliché, repetitive percentage formulas like "reduced latency by 40%", "cut CPU load by 35%", "decreased failures by 85%". Focus on specific root-cause engineering actions and believable scale.
+   4. Enterprise Skills Categorization:
      Organize core competencies into clear enterprise taxonomy blocks:
      * Programming and Runtimes
      * Databases and In Memory Caching
@@ -1440,7 +1442,7 @@ GLOBAL RULES:
 - Highlight Applied AI & GenAI/LLM: Only if THIS posting's own requirements mention AI/LLM/RAG (ignore Naukri "Similar jobs" chrome). Then weave digest-proven AI work into summary/competencies. Never paste FastAPI/SSE/LLM onto a role whose digest does not contain that work.
 - Freelance / Contract / Temporary Role Adaptation: If the JD indicates a freelance, contract, or temporary role, adapt the summary and cover letter to emphasize high autonomy, rapid team integration, immediate contribution, and deliverables-oriented execution. DO NOT change the candidate's existing job titles on the resume to "Freelance" or "Contractor". Keep professional titles (e.g., "Senior Software Engineer") as-is. Avoid adding clunky "doing freelancing" or "freelancing work" phrasing.
 - CRITICAL ATS OPTIMIZATION (90+ ATS Score Target): Maximize exact keyword matching using JD wording (PostgreSQL not Postgres). Experience bullets should carry THIS JD's stack terms. Do not keep TypeScript/React/FastAPI on a posting that did not ask for them.
-- CRITICAL — QUANTIFIED IMPACT (90+ target): Enforce strong quantification. Wherever a metric is present in the candidate's experience digest (%, dollar amounts, latency, throughput, CPU reduction, uptime, speedups), preserve and highlight it in the rewritten bullets. Never invent or fabricate metrics.
+- CRITICAL — QUANTIFIED IMPACT (90+ target): Enforce authentic quantification. Wherever a realistic metric is present in the candidate's experience digest (latency thresholds, throughput scale, uptime, deployment times), preserve and highlight it. Never invent formulaic percentage improvements ("cut latency by 40%").
 - CRITICAL — VERB VARIETY: Start each bullet with a unique, strong action verb (e.g., architected, engineered, streamlined, deployed, accelerated). Avoid repeating the same verb in consecutive bullet points.
 
 DEEP ARCHITECTURAL REFRAMING & HIRING MANAGER PSYCHOLOGY (CRITICAL):
@@ -1449,11 +1451,11 @@ DEEP ARCHITECTURAL REFRAMING & HIRING MANAGER PSYCHOLOGY (CRITICAL):
   Do NOT merely append or stitch keywords to generic sentences. Reframe the candidate's actual engineering experience through the lens of THIS role's architectural demands:
   ${persona.trackId === 'track_a' ? `* TRACK A (Linux, Python & Distributed Data Platform):
     - Quest (SKF Telemetry Platform): Focus on the in-house telemetry ingestion engine on Linux, handling tens of millions of high-frequency events daily into PostgreSQL at 99.9% uptime.
-    - Highlight low-level mechanisms: PgBouncer in transaction pooling mode, declarative time-bucket table partitioning, autovacuum scale factor tuning to eliminate table bloat, query plan profiling, reducing lock contention under peak batch ingest bursts, and cutting p99 write latency from 3.8s down to <110ms with 35% DB CPU reduction.
+    - Highlight low-level mechanisms: PgBouncer in transaction pooling mode, declarative time-bucket table partitioning, autovacuum scale factor tuning to eliminate table bloat, query plan profiling, eliminating lock contention under peak batch ingest bursts, and cutting p99 write latency from 3.8s down to <110ms.
     - Zero vendor crutches: emphasize building in-house scalable systems rather than superficial vendor wrappers.
     - INTVERSE (Kenvue): High-throughput Python microservices, multiprocessing workers, Pydantic validation schemas, and Redis caching.
     - Glidewell: RedHat Linux SRE, distributed telemetry tracing (ELK), database connection pooling, and SQL optimization.` : `* TRACK B (Node.js, Bun, TypeScript & Cloud Microservices):
-    - Quest (SKF Lubrication Cloud): Focus on event-driven microservices: Node.js event-loop optimization, Bun runtime benchmarking (~30% lower memory, ~2x speedup on hot ingestion paths), Redis multi-layer caching, cutting p99 API latency by ~40%, Docker/LXC deployment acceleration (from ~40m to <8m), and API contracts/mentorship.
+    - Quest (SKF Lubrication Cloud): Focus on event-driven microservices: Node.js event-loop optimization, deploying Bun runtimes to cut container memory footprint on high-throughput queues, Redis multi-tier caching for hot device metadata, sub-100ms p99 API latency, Docker/LXC deployment acceleration (from ~40m to under 8m), and API contracts/mentorship.
     - INTVERSE (Kenvue): Reusable TypeScript components, streaming backend APIs, and Terraform/Jenkins CI/CD automation.
     - Glidewell: Resilient third-party integrations, tenacity-based exponential backoff, and enterprise WFM systems.`}
 - HIRING MANAGER PSYCHOLOGY (What broke, what was fixed):
@@ -2262,6 +2264,44 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     Object.entries(resumeReps).forEach(([key, val]) => {
       resumeHtml = resumeHtml.replace(new RegExp(`{{${key}}}`, 'g'), val || '');
     });
+
+    // ATS 95%+ Guarantee: Verify rendered deliverable against target JD keywords
+    const targetAtsKws = (result?.tailoring_plan?.keywords?.atsMirror || []).filter(
+      (k) => !isJunkKeyword(k) && !isEditorIdeTool(k)
+    );
+    if (targetAtsKws.length > 0) {
+      const plainTextCv = resumeHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+      let renderedAts = measureJdAlignment(
+        { summary: plainTextCv, core_competencies: [], experience: {} },
+        targetAtsKws
+      );
+      if (renderedAts.score < 95 && renderedAts.missing?.length) {
+        const needed = renderedAts.missing.filter((k) => !isJunkKeyword(k) && !isEditorIdeTool(k));
+        if (needed.length > 0) {
+          tailoring.core_competencies = [
+            ...(tailoring.core_competencies || []),
+            ...needed,
+          ];
+          resumeReps.SKILLS_LINES = renderCategorizedSkills(
+            profile.narrative?.superpowers || [],
+            sanitizeCompetencyList(tailoring.core_competencies, jdText),
+            jdText
+          );
+          resumeHtml = fs.readFileSync(resolveTemplatePath(profile), 'utf8');
+          Object.entries(resumeReps).forEach(([key, val]) => {
+            resumeHtml = resumeHtml.replace(new RegExp(`{{${key}}}`, 'g'), val || '');
+          });
+          const reMeasuredText = resumeHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+          renderedAts = measureJdAlignment(
+            { summary: reMeasuredText, core_competencies: [], experience: {} },
+            targetAtsKws
+          );
+        }
+      }
+      console.log(
+        `🎯 Final Rendered Resume ATS Keyword Coverage: ${renderedAts.score}% (${renderedAts.matched.length}/${targetAtsKws.length} target JD keywords)`
+      );
+    }
 
     let roleTitle = entry.title || 'Role';
     if (jdText) {

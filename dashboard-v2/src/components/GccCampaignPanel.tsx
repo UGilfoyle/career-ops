@@ -290,7 +290,7 @@ export function GccCampaignPanel({
         <button
           type="button"
           onClick={onImportAllGcc}
-          className="uiverse-btn !h-9 !px-3.5 !text-xs !bg-white !text-zinc-900 !border-zinc-300 hover:!bg-zinc-50"
+          className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold rounded-xl border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 shadow-sm transition-colors"
         >
           <Target size={14} className="text-zinc-600" />
           <span>Import {pipelineGccJobs.length} to Outreach</span>
@@ -301,7 +301,7 @@ export function GccCampaignPanel({
         <button
           type="button"
           onClick={onImportHighValue}
-          className="uiverse-btn !h-9 !px-3.5 !text-xs !bg-purple-50 !text-purple-900 !border-purple-200 hover:!bg-purple-100"
+          className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold rounded-xl border border-purple-200 bg-purple-50 text-purple-900 hover:bg-purple-100 shadow-sm transition-colors"
         >
           <Sparkles size={14} className="text-purple-600" />
           <span>Import {highValueCount} High-Value</span>
@@ -312,7 +312,7 @@ export function GccCampaignPanel({
         type="button"
         onClick={onSave}
         disabled={isSaving}
-        className="uiverse-btn !h-9 !px-4 !text-xs"
+        className="inline-flex items-center gap-1.5 h-9 px-4 text-xs font-semibold rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm transition-colors disabled:opacity-60"
       >
         {isSaving ? (
           <Loader2 size={14} className="animate-spin text-zinc-400" />
@@ -340,8 +340,8 @@ export function GccCampaignPanel({
         actions={headerActions}
       />
 
-      {/* Feature 1: UIverse Live Action Center (Tailor & GCC Scanner) */}
-      <div className="uiverse-glow-card relative overflow-hidden">
+      {/* Feature 1: Live Action Center (Tailor & GCC Scanner) */}
+      <div className="relative rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6 shadow-sm overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-zinc-900 to-blue-500" />
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -367,11 +367,7 @@ export function GccCampaignPanel({
                 type="button"
                 onClick={handleRunGccScan}
                 disabled={actionStatus === 'running'}
-                className="uiverse-btn !h-9 !px-3.5 !text-xs"
-                style={{
-                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                  borderColor: 'rgba(255,255,255,0.2)',
-                }}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm transition-colors disabled:opacity-60"
               >
                 <span>Run GCC Scanner</span>
                 <Zap size={13} />
@@ -396,12 +392,12 @@ export function GccCampaignPanel({
                     value={gccUrl}
                     onChange={(e) => setGccUrl(e.target.value)}
                     placeholder="Paste GCC job URL (LinkedIn, Naukri, Portal)..."
-                    className="uiverse-input"
+                    className="w-full h-10 rounded-xl border border-zinc-200 bg-zinc-50/60 px-3.5 text-xs text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-all"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="uiverse-btn w-full sm:w-auto shrink-0"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 text-xs font-semibold text-white hover:bg-zinc-800 transition-colors shadow-sm w-full sm:w-auto shrink-0"
                 >
                   <span>Tailor GCC Role</span>
                   <ArrowRight size={14} />
@@ -422,11 +418,7 @@ export function GccCampaignPanel({
                         : 'Aligning competency signals and generating ATS resume documents'}
                     </p>
                   </div>
-                  <div className="uiverse-dot-loader shrink-0">
-                    <div className="uiverse-dot" />
-                    <div className="uiverse-dot" />
-                    <div className="uiverse-dot" />
-                  </div>
+                  <Loader2 size={18} className="animate-spin text-blue-600 shrink-0" />
                 </div>
                 <div className="mt-3 h-1 w-full rounded-full bg-blue-200/60 overflow-hidden">
                   <div className="h-full bg-blue-600 rounded-full animate-pulse w-3/4 transition-all duration-500" />
@@ -451,7 +443,7 @@ export function GccCampaignPanel({
                   <button
                     type="button"
                     onClick={resetActionState}
-                    className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-white !text-zinc-800 !border-zinc-200 hover:!bg-zinc-50 shrink-0"
+                    className="inline-flex items-center justify-center h-7 px-2.5 text-[11px] font-semibold rounded-lg border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 transition-colors shrink-0"
                   >
                     <span>Done</span>
                   </button>
@@ -476,7 +468,7 @@ export function GccCampaignPanel({
                   <button
                     type="button"
                     onClick={resetActionState}
-                    className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-white !text-zinc-800 !border-zinc-200 hover:!bg-zinc-50 shrink-0"
+                    className="inline-flex items-center justify-center h-7 px-2.5 text-[11px] font-semibold rounded-lg border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 transition-colors shrink-0"
                   >
                     <span>Try again</span>
                   </button>
@@ -487,10 +479,10 @@ export function GccCampaignPanel({
         </div>
       </div>
 
-      {/* Feature 2: Top 3 Metric Cards with UIverse glow */}
+      {/* Feature 2: Top 3 Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Card 1: 30-Day Campaign Progress */}
-        <div className="uiverse-glow-card flex flex-col justify-between">
+        <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
@@ -525,7 +517,7 @@ export function GccCampaignPanel({
         </div>
 
         {/* Card 2: Today's Daily Targets */}
-        <div className="uiverse-glow-card flex flex-col justify-between space-y-4">
+        <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2.5">
               Daily Execution Targets
@@ -543,7 +535,7 @@ export function GccCampaignPanel({
                   max={99}
                   value={daily.connections}
                   onChange={(e) => updateDaily({ connections: Number(e.target.value) || 0 })}
-                  className="uiverse-input !h-7 !w-16 !px-2 text-center font-bold text-xs"
+                  className="h-7 w-16 px-2 text-center font-bold text-xs rounded-lg border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-all"
                 />
               </div>
 
@@ -558,7 +550,7 @@ export function GccCampaignPanel({
                   max={99}
                   value={daily.applications}
                   onChange={(e) => updateDaily({ applications: Number(e.target.value) || 0 })}
-                  className="uiverse-input !h-7 !w-16 !px-2 text-center font-bold text-xs"
+                  className="h-7 w-16 px-2 text-center font-bold text-xs rounded-lg border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-all"
                 />
               </div>
             </div>
@@ -580,7 +572,7 @@ export function GccCampaignPanel({
         </div>
 
         {/* Card 3: Signal Engine Briefing */}
-        <div className="uiverse-glow-card bg-zinc-950 text-white border-zinc-800 flex flex-col justify-between">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-sm text-white flex flex-col justify-between">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
@@ -610,7 +602,7 @@ export function GccCampaignPanel({
       </div>
 
       {/* Feature 3: Discovered GCC Roles */}
-      <div className="uiverse-glow-card space-y-4">
+      <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
           <div className="flex items-center gap-2.5">
             <Building2 size={16} className="text-zinc-800" />
@@ -626,7 +618,7 @@ export function GccCampaignPanel({
             <button
               type="button"
               onClick={onOpenPipeline}
-              className="uiverse-btn !h-8 !px-3 !text-xs !bg-white !text-zinc-900 !border-zinc-300 hover:!bg-zinc-50"
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-xl border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 shadow-sm transition-colors"
             >
               <span>Open Job Pipeline</span>
               <ArrowRight size={13} />
@@ -642,7 +634,7 @@ export function GccCampaignPanel({
             <button
               type="button"
               onClick={handleRunGccScan}
-              className="uiverse-btn !h-8 !px-3.5 !text-xs mx-auto"
+              className="inline-flex items-center gap-1.5 h-8 px-3.5 text-xs font-semibold rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm transition-colors mx-auto"
             >
               <Zap size={13} />
               <span>Run GCC Scanner Now</span>
@@ -691,7 +683,7 @@ export function GccCampaignPanel({
                             onClick={() =>
                               onAddToOutreach(String(job.company || ''), String(job.title || ''))
                             }
-                            className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-zinc-100 !text-zinc-800 !border-zinc-200 hover:!bg-zinc-200"
+                            className="inline-flex items-center justify-center h-7 px-2.5 text-[11px] font-semibold rounded-lg border border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 transition-colors"
                           >
                             <span>Track</span>
                           </button>
@@ -708,7 +700,7 @@ export function GccCampaignPanel({
                                 url: job.url,
                               })
                             }
-                            className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-blue-50 !text-blue-700 !border-blue-200 hover:!bg-blue-100"
+                            className="inline-flex items-center justify-center h-7 px-2.5 text-[11px] font-semibold rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
                           >
                             <span>Draft</span>
                           </button>
@@ -724,7 +716,7 @@ export function GccCampaignPanel({
                               onTailorJob(Number(job.pipeline_id));
                             }
                           }}
-                          className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-emerald-600 !text-white !border-emerald-500 hover:!bg-emerald-500"
+                          className="inline-flex items-center justify-center gap-1 h-7 px-2.5 text-[11px] font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
                         >
                           <Zap size={11} />
                           <span>Tailor</span>
@@ -740,7 +732,7 @@ export function GccCampaignPanel({
       </div>
 
       {/* Feature 4: Outreach Tracker Table */}
-      <div className="uiverse-glow-card space-y-4">
+      <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
           <div className="flex items-center gap-2">
             <Target size={16} className="text-zinc-800" />
@@ -755,7 +747,7 @@ export function GccCampaignPanel({
           <button
             type="button"
             onClick={addTarget}
-            className="uiverse-btn !h-8 !px-3 !text-xs"
+            className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm transition-colors"
           >
             <Plus size={13} />
             <span>Add Target</span>
@@ -791,7 +783,7 @@ export function GccCampaignPanel({
                         value={t.company}
                         onChange={(e) => updateTarget(t.id, { company: e.target.value })}
                         placeholder="e.g. Acme GCC"
-                        className="uiverse-input !h-8 !w-32 !px-2.5 !text-xs font-semibold"
+                        className="h-8 w-32 px-2.5 text-xs font-semibold rounded-lg border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-zinc-900 focus:outline-none transition-all"
                       />
                     </td>
                     <td className="py-2 px-3">
@@ -800,7 +792,7 @@ export function GccCampaignPanel({
                         value={t.role}
                         onChange={(e) => updateTarget(t.id, { role: e.target.value })}
                         placeholder="Target role"
-                        className="uiverse-input !h-8 !w-32 !px-2.5 !text-xs"
+                        className="h-8 w-32 px-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-zinc-900 focus:outline-none transition-all"
                       />
                     </td>
                     <td className="py-2 px-2 text-center">
@@ -833,7 +825,7 @@ export function GccCampaignPanel({
                         value={t.story_used}
                         onChange={(e) => updateTarget(t.id, { story_used: e.target.value })}
                         placeholder="PAR story used"
-                        className="uiverse-input !h-8 !w-36 !px-2.5 !text-xs"
+                        className="h-8 w-36 px-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-zinc-900 focus:outline-none transition-all"
                       />
                     </td>
                     <td className="py-2 px-2 text-center">
@@ -850,7 +842,7 @@ export function GccCampaignPanel({
                         value={t.follow_up}
                         onChange={(e) => updateTarget(t.id, { follow_up: e.target.value })}
                         placeholder="Next follow-up date"
-                        className="uiverse-input !h-8 !w-32 !px-2.5 !text-xs"
+                        className="h-8 w-32 px-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-zinc-900 focus:outline-none transition-all"
                       />
                     </td>
                     <td className="py-2 px-2 text-right">
@@ -859,7 +851,7 @@ export function GccCampaignPanel({
                           <button
                             type="button"
                             onClick={() => onResearchDraft({ company: t.company, role: t.role })}
-                            className="uiverse-btn !h-7 !px-2 !text-[11px] !bg-zinc-100 !text-zinc-800 !border-zinc-200 hover:!bg-zinc-200"
+                            className="inline-flex items-center justify-center h-7 px-2 text-[11px] font-semibold rounded-lg border border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 transition-colors"
                           >
                             <span>Draft</span>
                           </button>

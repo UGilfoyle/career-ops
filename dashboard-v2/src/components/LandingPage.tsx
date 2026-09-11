@@ -80,12 +80,6 @@ export default function LandingPage() {
 
           {/* Right Navigation */}
           <div className="flex items-center gap-4 sm:gap-6">
-            <Link
-              href="/uiverse"
-              className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full hover:bg-amber-100 transition-colors"
-            >
-              UIverse Lab
-            </Link>
             <button
               type="button"
               onClick={() => { setTourTab('flow'); setShowTourModal(true); }}
