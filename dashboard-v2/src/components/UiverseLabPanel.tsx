@@ -1,13 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { 
-  Sparkles, 
-  Zap, 
   ArrowRight, 
   ExternalLink, 
-  Copy, 
-  Check 
+  Target,
+  Sparkles
 } from 'lucide-react';
 import { PageSectionHeader } from './PageSectionHeader';
 import InstantTailorCard from './InstantTailorCard';
@@ -15,19 +12,10 @@ import InstantTailorCard from './InstantTailorCard';
 interface UiverseLabPanelProps {
   onOpenStudio?: () => void;
   onRefresh?: () => void;
+  onOpenGcc?: () => void;
 }
 
-export function UiverseLabPanel({ onOpenStudio, onRefresh }: UiverseLabPanelProps) {
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'buttons' | 'cards' | 'inputs' | 'loaders'>('all');
-  const [sampleUrl, setSampleUrl] = useState('https://jobs.lever.co/target/lead-engineer');
-
-  const copyCode = (key: string, snippet: string) => {
-    navigator.clipboard?.writeText(snippet);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
-  };
-
+export function UiverseLabPanel({ onOpenStudio, onRefresh, onOpenGcc }: UiverseLabPanelProps) {
   const headerActions = (
     <div className="flex items-center gap-2">
       <a
@@ -54,203 +42,50 @@ export function UiverseLabPanel({ onOpenStudio, onRefresh }: UiverseLabPanelProp
   return (
     <div className="space-y-6">
       <PageSectionHeader
-        title="UIverse Component Lab"
-        subtitle="Open-source micro-interactions and tactile CSS controls integrated into Career-Ops"
+        title="UIverse Design System"
+        subtitle="Tactile micro-interactions, ambient glow surfaces, and instant AI resume tailoring"
         actions={headerActions}
       />
 
-      {/* Feature Showcase: Instant Tailor Card */}
+      {/* Instant Tailor Card */}
       <InstantTailorCard
         onOpenStudio={onOpenStudio}
         onRefresh={onRefresh}
       />
 
-      {/* Category Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-200 pb-3">
-        {(['all', 'buttons', 'cards', 'inputs', 'loaders'] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
-              activeTab === tab
-                ? 'bg-zinc-900 text-white shadow-xs'
-                : 'text-zinc-600 hover:bg-zinc-100'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {/* Showcase Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Buttons */}
-        {(activeTab === 'all' || activeTab === 'buttons') && (
-          <div className="uiverse-glow-card flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-zinc-900">Tactile Shimmer Buttons</h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">.uiverse-btn</span>
-              </div>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Interactive action buttons with dynamic shimmer highlights and press states.
-              </p>
-
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                <button type="button" className="uiverse-btn">
-                  <span>Tailor Job</span>
-                  <ArrowRight size={14} />
-                </button>
-
-                <button 
-                  type="button" 
-                  className="uiverse-btn"
-                  style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', borderColor: 'rgba(255,255,255,0.2)' }}
-                >
-                  <span>Run Scanner</span>
-                  <Zap size={14} />
-                </button>
-
-                <button 
-                  type="button" 
-                  className="uiverse-btn"
-                  style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', borderColor: 'rgba(255,255,255,0.2)' }}
-                >
-                  <span>Analyze ATS</span>
-                  <Sparkles size={14} />
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-end items-center text-xs">
-              <button 
-                type="button"
-                onClick={() => copyCode('btn', '<button className="uiverse-btn"><span>Action</span></button>')}
-                className="inline-flex items-center gap-1.5 font-medium text-zinc-500 hover:text-zinc-900 cursor-pointer text-xs"
-              >
-                {copiedKey === 'btn' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                <span>{copiedKey === 'btn' ? 'Copied' : 'Copy class'}</span>
-              </button>
-            </div>
+      {/* GCC Campaign Feature Card */}
+      <div className="uiverse-glow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-emerald-200/70 bg-gradient-to-r from-emerald-50/40 via-white to-zinc-50">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+              Active Feature
+            </span>
+            <h3 className="text-sm font-bold text-zinc-900">
+              GCC Campaign Integration
+            </h3>
           </div>
-        )}
+          <p className="text-xs text-zinc-600 font-normal leading-relaxed">
+            The full UIverse UX is now natively running in GCC Campaign with 1-click captive scans, live SSE progress, and outreach tracking.
+          </p>
+        </div>
 
-        {/* Inputs */}
-        {(activeTab === 'all' || activeTab === 'inputs') && (
-          <div className="uiverse-glow-card flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-zinc-900">Aligned Input Controls</h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">.uiverse-input</span>
-              </div>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Clean input fields with subtle inner inset depth and smooth focus halos.
-              </p>
-
-              <div className="space-y-3 pt-2">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                    Job Posting URL
-                  </label>
-                  <input 
-                    type="text" 
-                    value={sampleUrl}
-                    onChange={(e) => setSampleUrl(e.target.value)}
-                    placeholder="https://jobs.lever.co/company/role"
-                    className="uiverse-input"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-end items-center text-xs">
-              <button 
-                type="button"
-                onClick={() => copyCode('inp', '<input className="uiverse-input" />')}
-                className="inline-flex items-center gap-1.5 font-medium text-zinc-500 hover:text-zinc-900 cursor-pointer text-xs"
-              >
-                {copiedKey === 'inp' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                <span>{copiedKey === 'inp' ? 'Copied' : 'Copy class'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Cards */}
-        {(activeTab === 'all' || activeTab === 'cards') && (
-          <div className="uiverse-glow-card flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-zinc-900">Depth Glow Surface</h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">.uiverse-glow-card</span>
-              </div>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Elevated card surfaces featuring smooth ambient glow and subtle border highlights.
-              </p>
-
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200/70 space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-zinc-400">Match Score</span>
-                  <p className="text-lg font-extrabold text-emerald-600">94% ATS</p>
-                </div>
-                <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200/70 space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-zinc-400">GCC Status</span>
-                  <p className="text-lg font-extrabold text-blue-600">Verified GDC</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-end items-center text-xs">
-              <button 
-                type="button"
-                onClick={() => copyCode('card', '<div className="uiverse-glow-card">...</div>')}
-                className="inline-flex items-center gap-1.5 font-medium text-zinc-500 hover:text-zinc-900 cursor-pointer text-xs"
-              >
-                {copiedKey === 'card' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                <span>{copiedKey === 'card' ? 'Copied' : 'Copy class'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Loaders */}
-        {(activeTab === 'all' || activeTab === 'loaders') && (
-          <div className="uiverse-glow-card flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-zinc-900">Multi-Dot Engine Loader</h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">.uiverse-dot-loader</span>
-              </div>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Animated rhythmic pulse indicators designed for active tasks and background processes.
-              </p>
-
-              <div className="p-4 rounded-xl bg-zinc-900 text-white flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-zinc-100">Tailoring Resume for ODC</p>
-                  <p className="text-[11px] text-zinc-400 font-normal">Extracting competency signals</p>
-                </div>
-                <div className="uiverse-dot-loader">
-                  <div className="uiverse-dot" style={{ backgroundColor: '#10b981' }} />
-                  <div className="uiverse-dot" style={{ backgroundColor: '#10b981' }} />
-                  <div className="uiverse-dot" style={{ backgroundColor: '#10b981' }} />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-6 border-t border-zinc-100 mt-6 flex justify-end items-center text-xs">
-              <button 
-                type="button"
-                onClick={() => copyCode('loader', '<div className="uiverse-dot-loader"><div className="uiverse-dot" />...</div>')}
-                className="inline-flex items-center gap-1.5 font-medium text-zinc-500 hover:text-zinc-900 cursor-pointer text-xs"
-              >
-                {copiedKey === 'loader' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                <span>{copiedKey === 'loader' ? 'Copied' : 'Copy class'}</span>
-              </button>
-            </div>
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            if (onOpenGcc) {
+              onOpenGcc();
+            } else {
+              const gccNav = document.getElementById('nav-gcc');
+              if (gccNav) gccNav.click();
+            }
+          }}
+          className="uiverse-btn !h-9 !px-4 !text-xs shrink-0"
+          style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' }}
+        >
+          <Target size={14} />
+          <span>Open GCC Campaign</span>
+          <ArrowRight size={13} />
+        </button>
       </div>
     </div>
   );

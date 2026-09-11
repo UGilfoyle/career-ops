@@ -3792,6 +3792,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <UiverseLabPanel
                 onOpenStudio={() => goTab('resume-studio')}
                 onRefresh={() => { if (typeof window !== 'undefined') window.location.reload(); }}
+                onOpenGcc={() => goTab('gcc')}
               />
             </motion.div>
           )}
