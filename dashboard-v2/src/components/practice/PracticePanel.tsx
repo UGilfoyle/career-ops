@@ -31,6 +31,7 @@ import PracticeComingSoon from './PracticeComingSoon';
 import HandbookCard from './HandbookCard';
 import PracticePackView, { type PracticePackContent } from './PracticePackView';
 import { PracticeIdeView } from './PracticeIdeView';
+import VoiceMockPanel from './VoiceMockPanel';
 
 type PipelineJob = {
   pipeline_id?: number | string;
@@ -98,6 +99,7 @@ export default function PracticePanel({
   onUpgrade,
 }: Props) {
   const { data: session, status: sessionStatus } = useSession();
+  const [viewMode, setViewMode] = useState<'voice' | 'ide'>('voice');
   const [mode, setMode] = useState<'job' | 'paste'>('job');
   const [jobId, setJobId] = useState<string>('');
   const [jdText, setJdText] = useState('');
@@ -267,217 +269,262 @@ export default function PracticePanel({
     );
   }
 
+  if (bootLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
+          <div className="space-y-2">
+            <div className="h-6 w-52 rounded-md skeleton-shimmer" />
+            <div className="h-3.5 w-80 rounded-md skeleton-shimmer" />
+          </div>
+          <div className="h-8 w-44 rounded-lg skeleton-shimmer" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div className="lg:col-span-5 space-y-4">
+            <div className="h-64 rounded-xl border border-zinc-200 p-4 space-y-3 skeleton-shimmer" />
+            <div className="h-44 rounded-xl border border-zinc-200 p-4 skeleton-shimmer" />
+          </div>
+          <div className="lg:col-span-7">
+            <div className="h-96 rounded-xl border border-zinc-200 skeleton-shimmer" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Top Header & Quota */}
+      {/* Top Header & Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-zinc-900">Interview Practice IDE</h1>
-            <Tag color="purple" className="font-bold text-[10px] uppercase">
-              AI Coach
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900">
+              {viewMode === 'voice' ? 'Voice Mock Interview' : 'Interview Practice IDE'}
+            </h1>
+            <Tag color={viewMode === 'voice' ? 'purple' : 'blue'} className="font-bold text-[10px] uppercase">
+              {viewMode === 'voice' ? 'Real-Time Voice AI' : 'AI Coach'}
             </Tag>
           </div>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Generate customized coding problems, system design challenges, and STAR behavioral prompts from any job posting.
+            {viewMode === 'voice'
+              ? 'Live spoken interview simulation with hold-to-talk, real-time transcript, and Bar-Raiser scorecard evaluation.'
+              : 'Generate customized coding problems, system design challenges, and STAR behavioral prompts from any job posting.'}
           </p>
         </div>
 
-        {quota && (
-          <div className="flex items-center gap-2">
-            <Tag color={quota.pro ? 'success' : quota.remaining > 0 ? 'blue' : 'warning'} className="text-xs font-semibold py-1 px-2.5">
+        <div className="flex flex-wrap items-center gap-3">
+          <Segmented
+            options={[
+              { label: '🎙️ Voice Mock', value: 'voice' },
+              { label: '💻 Coding / Prompts IDE', value: 'ide' },
+            ]}
+            value={viewMode}
+            onChange={(val) => setViewMode(val as 'voice' | 'ide')}
+            className="font-medium bg-zinc-100 p-0.5 rounded-lg shadow-2xs"
+          />
+
+          {quota && (
+            <Tag color={quota.pro ? 'success' : quota.remaining > 0 ? 'blue' : 'warning'} className="text-xs font-semibold py-1 px-2.5 m-0">
               {quota.pro
-                ? 'Pro Member — Unlimited Packs'
-                : `${quota.remaining} / ${quota.freeLimit} Weekly Pack Remaining`}
+                ? 'Pro Member'
+                : `${quota.remaining} / ${quota.freeLimit} Weekly`}
             </Tag>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {error && <Alert type="error" message={error} showIcon closable onClose={() => setError('')} />}
 
-      {/* Main 2-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column: Generate Pack + Saved Packs (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          {/* Generator Card */}
-          <Card
-            size="small"
-            className="border-zinc-200 shadow-xs"
-            title={<span className="text-xs font-bold text-zinc-900">Generate New Practice Pack</span>}
-          >
-            <div className="space-y-3">
-              <Segmented
-                block
-                options={[
-                  { label: 'From Pipeline Job', value: 'job' },
-                  { label: 'Paste Job Description', value: 'paste' },
-                ]}
-                value={mode}
-                onChange={(val) => setMode(val as 'job' | 'paste')}
-              />
+      {viewMode === 'voice' ? (
+        <VoiceMockPanel pipeline={jobs} onBackToPacks={() => setViewMode('ide')} />
+      ) : (
+        /* Main 2-Column Grid */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Left Column: Generate Pack + Saved Packs (5 cols) */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Generator Card */}
+            <Card
+              size="small"
+              className="border-zinc-200 shadow-xs"
+              title={<span className="text-xs font-bold text-zinc-900">Generate New Practice Pack</span>}
+            >
+              <div className="space-y-3">
+                <Segmented
+                  block
+                  options={[
+                    { label: 'From Pipeline Job', value: 'job' },
+                    { label: 'Paste Job Description', value: 'paste' },
+                  ]}
+                  value={mode}
+                  onChange={(val) => setMode(val as 'job' | 'paste')}
+                />
 
-              {mode === 'job' ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-zinc-500 uppercase">Select Job</span>
-                    <Segmented
-                      size="small"
-                      options={[
-                        { label: 'Applied', value: 'applied' },
-                        { label: 'All Jobs', value: 'all' },
-                      ]}
-                      value={jobFilter}
-                      onChange={(val) => setJobFilter(val as 'applied' | 'all')}
-                    />
-                  </div>
-                  <Select
-                    className="w-full"
-                    placeholder="Choose a pipeline role…"
-                    value={jobId || undefined}
-                    onChange={(val) => setJobId(val)}
-                    options={jobs.map((j) => ({
-                      label: `${j.company} — ${j.title} ${j.applied ? '(Applied)' : ''}`,
-                      value: j.id,
-                    }))}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder="Company (optional)"
-                      value={company}
-                      onChange={(e) => setCompany(e.target.value)}
-                    />
-                    <Input
-                      placeholder="Role Title (optional)"
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                    />
-                  </div>
-                  <Input.TextArea
-                    rows={4}
-                    placeholder="Paste the full job description or key requirements here…"
-                    value={jdText}
-                    onChange={(e) => setJdText(e.target.value)}
-                  />
-                </div>
-              )}
-
-              <Button
-                type="primary"
-                block
-                icon={loading ? <LoadingOutlined /> : <ThunderboltOutlined />}
-                loading={loading}
-                onClick={handleGenerate}
-              >
-                {loading ? 'Analyzing JD & Generating Pack…' : 'Generate Interview Pack'}
-              </Button>
-            </div>
-          </Card>
-
-          {/* Saved Practice Packs List */}
-          <Card
-            size="small"
-            className="border-zinc-200 shadow-xs"
-            title={
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-zinc-900">Saved Practice Packs</span>
-                <Tag color="default" className="font-mono text-[10px]">
-                  {packs.length}
-                </Tag>
-              </div>
-            }
-          >
-            {packs.length === 0 ? (
-              <div className="text-center py-6 text-xs text-zinc-400">
-                No practice packs generated yet. Generate your first pack above!
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto pr-0.5">
-                {packs.map((p) => {
-                  const isSelected = activePack?.id === p.id;
-                  const total = packTotal(p.counts);
-                  return (
-                    <div
-                      key={p.id}
-                      onClick={() => openPack(p.id)}
-                      className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
-                        isSelected
-                          ? 'border-zinc-900 bg-zinc-50 shadow-xs'
-                          : 'border-zinc-100 bg-white hover:border-zinc-300 hover:bg-zinc-50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-zinc-900 truncate">
-                            {p.company || 'Custom Job'}
-                          </div>
-                          <div className="text-[11px] text-zinc-500 truncate">
-                            {p.role || 'Software Engineering'}
-                          </div>
-                        </div>
-                        <Tag color="blue" className="text-[10px] font-mono">
-                          {total} Prompts
-                        </Tag>
-                      </div>
-                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                        <Tag color="default" className="text-[9px] m-0">
-                          Code: {p.counts.coding}
-                        </Tag>
-                        <Tag color="default" className="text-[9px] m-0">
-                          Sys: {p.counts.systemDesign}
-                        </Tag>
-                        <Tag color="default" className="text-[9px] m-0">
-                          STAR: {p.counts.behavioral}
-                        </Tag>
-                      </div>
+                {mode === 'job' ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-zinc-500 uppercase">Select Job</span>
+                      <Segmented
+                        size="small"
+                        options={[
+                          { label: 'Applied', value: 'applied' },
+                          { label: 'All Jobs', value: 'all' },
+                        ]}
+                        value={jobFilter}
+                        onChange={(val) => setJobFilter(val as 'applied' | 'all')}
+                      />
                     </div>
-                  );
-                })}
+                    <Select
+                      className="w-full"
+                      placeholder="Choose a pipeline role…"
+                      value={jobId || undefined}
+                      onChange={(val) => setJobId(val)}
+                      options={jobs.map((j) => ({
+                        label: `${j.company} — ${j.title} ${j.applied ? '(Applied)' : ''}`,
+                        value: j.id,
+                      }))}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Company (optional)"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Role Title (optional)"
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                      />
+                    </div>
+                    <Input.TextArea
+                      rows={4}
+                      placeholder="Paste the full job description or key requirements here…"
+                      value={jdText}
+                      onChange={(e) => setJdText(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <Button
+                  type="primary"
+                  block
+                  icon={loading ? <LoadingOutlined /> : <ThunderboltOutlined />}
+                  loading={loading}
+                  onClick={handleGenerate}
+                >
+                  {loading ? 'Analyzing JD & Generating Pack…' : 'Generate Interview Pack'}
+                </Button>
               </div>
-            )}
-          </Card>
+            </Card>
 
-          {/* Curated Interview Handbook */}
-          <HandbookCard />
-        </div>
-
-        {/* Right Column: Active Pack View or Standalone IDE (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
-          {activePack ? (
+            {/* Saved Practice Packs List */}
             <Card
               size="small"
               className="border-zinc-200 shadow-xs"
               title={
-                <div>
-                  <div className="text-sm font-bold text-zinc-900">
-                    {activePack.company || 'Role Practice Pack'} — {activePack.role || 'Interview Prep'}
-                  </div>
-                  <div className="text-xs text-zinc-400 font-normal">
-                    Interactive coding sandbox & interview prompt evaluation
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-900">Saved Practice Packs</span>
+                  <Tag color="default" className="font-mono text-[10px]">
+                    {packs.length}
+                  </Tag>
                 </div>
               }
             >
-              <PracticePackView
-                content={activePack.content}
-                company={activePack.company}
-                role={activePack.role}
-              />
+              {packs.length === 0 ? (
+                <div className="text-center py-8 text-xs text-zinc-400 space-y-1">
+                  <div className="text-xl">🎯</div>
+                  <div className="font-medium text-zinc-600">No practice packs generated yet</div>
+                  <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
+                    Pick a job or paste a JD above to generate your customized interview questions.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-0.5">
+                  {packs.map((p) => {
+                    const isSelected = activePack?.id === p.id;
+                    const total = packTotal(p.counts);
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => openPack(p.id)}
+                        className={`p-2.5 rounded-xl border cursor-pointer transition-all card-hover-lift ${
+                          isSelected
+                            ? 'border-zinc-900 bg-zinc-50 shadow-xs'
+                            : 'border-zinc-100 bg-white hover:border-zinc-300 hover:bg-zinc-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-zinc-900 truncate">
+                              {p.company || 'Custom Job'}
+                            </div>
+                            <div className="text-[11px] text-zinc-500 truncate">
+                              {p.role || 'Software Engineering'}
+                            </div>
+                          </div>
+                          <Tag color="blue" className="text-[10px] font-mono">
+                            {total} Prompts
+                          </Tag>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                          <Tag color="default" className="text-[9px] m-0">
+                            Code: {p.counts.coding}
+                          </Tag>
+                          <Tag color="default" className="text-[9px] m-0">
+                            Sys: {p.counts.systemDesign}
+                          </Tag>
+                          <Tag color="default" className="text-[9px] m-0">
+                            STAR: {p.counts.behavioral}
+                          </Tag>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </Card>
-          ) : (
-            <Card
-              size="small"
-              className="border-zinc-200 shadow-xs"
-              title={<span className="text-xs font-bold text-zinc-900">Interactive Coding Sandbox (Deno / Py / Node)</span>}
-            >
-              <PracticeIdeView />
-            </Card>
-          )}
+
+            {/* Curated Interview Handbook */}
+            <HandbookCard />
+          </div>
+
+          {/* Right Column: Active Pack View or Standalone IDE (7 cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            {activePack ? (
+              <Card
+                size="small"
+                className="border-zinc-200 shadow-xs"
+                title={
+                  <div>
+                    <div className="text-sm font-bold text-zinc-900">
+                      {activePack.company || 'Role Practice Pack'} — {activePack.role || 'Interview Prep'}
+                    </div>
+                    <div className="text-xs text-zinc-400 font-normal">
+                      Interactive coding sandbox & interview prompt evaluation
+                    </div>
+                  </div>
+                }
+              >
+                <PracticePackView
+                  content={activePack.content}
+                  company={activePack.company}
+                  role={activePack.role}
+                />
+              </Card>
+            ) : (
+              <Card
+                size="small"
+                className="border-zinc-200 shadow-xs"
+                title={<span className="text-xs font-bold text-zinc-900">Interactive Coding Sandbox (Deno / Py / Node)</span>}
+              >
+                <PracticeIdeView />
+              </Card>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
