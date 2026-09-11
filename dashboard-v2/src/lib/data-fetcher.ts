@@ -176,6 +176,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
         extras.ats_content_score != null ? Number(extras.ats_content_score) : null,
       jd_alignment_score:
         extras.jd_alignment_score != null ? Number(extras.jd_alignment_score) : null,
+      jd_text: p.jd_text ? String(p.jd_text) : null,
     };
     };
 
@@ -198,6 +199,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           j.company_type,
           j.gcc_signal_score,
           j.gcc_high_value,
+          j.jd_text,
           j.ats_content_score,
           j.jd_alignment_score,
           (j.resume_html IS NOT NULL) AS has_resume_html,
@@ -252,6 +254,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           j.company_type,
           j.gcc_signal_score,
           j.gcc_high_value,
+          j.jd_text,
           a.id AS app_id,
           a.status AS application_status,
           a.applied_at,
@@ -287,6 +290,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           j.logo_url,
           j.logo_source,
           j.created_at,
+          j.jd_text,
           a.id AS app_id,
           a.status AS application_status,
           a.applied_at,

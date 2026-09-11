@@ -15,6 +15,7 @@ import {
   extractLogoCandidatesInBrowser,
   resolveJobLogoFields,
 } from './dashboard-v2/scripts/lib/job-logos.mjs';
+import { htmlToPlainJd } from './ashby-jd.mjs';
 
 const url = process.argv[2];
 const userId = process.env.SCAN_USER_ID || 1;
@@ -225,15 +226,8 @@ async function scrapeJD(url) {
         const department = json.result?.jobOpening?.departmentLabel || '';
         const descriptionHtml = json.result?.jobOpening?.description || '';
         
-        // Convert descriptionHtml to clean plain text
-        const descriptionText = descriptionHtml
-          .replace(/<br\s*\/?>/gi, '\n')
-          .replace(/<\/p>/gi, '\n\n')
-          .replace(/<\/li>/gi, '\n')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/\n\s*\n/g, '\n\n')
-          .trim();
+        // Convert descriptionHtml to clean structured text
+        const descriptionText = htmlToPlainJd(descriptionHtml);
           
         const text = `Job Title: ${title}\nDepartment: ${department}\n\nDescription:\n${descriptionText}`;
         console.log(`✅ Successfully extracted job description via BambooHR detail API (${text.length} chars).`);

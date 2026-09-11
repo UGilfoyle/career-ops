@@ -20,26 +20,162 @@ function loadCompanySets() {
   return cached;
 }
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function matchesSet(name, set) {
-  if (set.has(name)) return true;
+  if (!name || typeof name !== 'string') return false;
+  const normName = name.toLowerCase().trim();
+  if (!normName) return false;
+
+  if (set.has(normName)) return true;
   for (const entry of set) {
-    if (name.includes(entry) || entry.includes(name)) return true;
+    if (entry.length <= 4) {
+      const boundaryRegex = new RegExp(`\\b${escapeRegex(entry)}\\b`, 'i');
+      if (boundaryRegex.test(normName)) return true;
+    } else {
+      if (normName.includes(entry) || entry.includes(normName)) return true;
+    }
   }
   return false;
 }
 
+const GCC_JD_PATTERNS = [
+  { pattern: /\bglobal capability cent(?:er|re)s?\b/i, label: 'Global Capability Center' },
+  { pattern: /\bgcc\b/i, label: 'GCC' },
+  { pattern: /\bgdc\b/i, label: 'Global Development Center (GDC)' },
+  { pattern: /\bglobal delivery cent(?:er|re)s?\b/i, label: 'Global Delivery Center' },
+  { pattern: /\bodc\b/i, label: 'Offshore Development Center (ODC)' },
+  { pattern: /\boffshore development cent(?:er|re)s?\b/i, label: 'Offshore Development Center' },
+  { pattern: /\b(?:india|global) technology cent(?:er|re)s?\b/i, label: 'Technology Center' },
+  { pattern: /\b(?:india|global) development cent(?:er|re)s?\b/i, label: 'Development Center' },
+  { pattern: /\bcenter of excellence\b/i, label: 'Center of Excellence' },
+  { pattern: /\bcentre of excellence\b/i, label: 'Centre of Excellence' },
+  { pattern: /\bcaptive (?:tech(?:nology)?|engineering|center|centre|offshore)\b/i, label: 'Captive Engineering Center' },
+  { pattern: /\bglobal in-?house cent(?:er|re)s?\b/i, label: 'Global In-House Center' },
+  { pattern: /\bfortune (?:500|100|50)\b/i, label: 'Fortune 500 Captive' },
+];
+
+/**
+ * Multi-signal classification for GCC vs IT Services vs Other.
+ * Evaluates explicit override, company registry, URL domain, and JD captive signals.
+ * @param {object} [params]
+ * @param {string} [params.companyName]
+ * @param {string} [params.jdText]
+ * @param {string} [params.url]
+ * @param {boolean} [params.requestedGcc]
+ * @returns {{ isGcc: boolean, type: 'GCC' | 'Services' | 'Other', reason: string, company: string, signals: string[] }}
+ */
+export function classifyGccOpportunity(params = {}) {
+  const { companyName, jdText, url, requestedGcc } = params;
+
+  if (requestedGcc) {
+    return {
+      isGcc: true,
+      type: 'GCC',
+      reason: 'Explicit CLI flag override',
+      company: companyName || 'GCC Employer',
+      signals: ['cli_flag'],
+    };
+  }
+
+  const { gcc, services } = loadCompanySets();
+  const name = String(companyName || '').toLowerCase().trim();
+
+  // 1. Direct company name check
+  if (name) {
+    if (matchesSet(name, gcc)) {
+      return {
+        isGcc: true,
+        type: 'GCC',
+        reason: `Company ${companyName} matched GCC registry`,
+        company: companyName,
+        signals: ['registry_match'],
+      };
+    }
+  }
+
+  // 2. URL Hostname check
+  if (url) {
+    try {
+      const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
+      const host = parsedUrl.hostname.toLowerCase();
+      for (const entry of gcc) {
+        if (entry.length >= 3 && (host.includes(entry) || parsedUrl.pathname.toLowerCase().includes(entry))) {
+          return {
+            isGcc: true,
+            type: 'GCC',
+            reason: `URL hostname (${host}) matched GCC employer (${entry})`,
+            company: companyName || entry,
+            signals: ['domain_match'],
+          };
+        }
+      }
+    } catch {
+      // ignore invalid URL
+    }
+  }
+
+  // 3. JD text pattern signals
+  if (jdText && typeof jdText === 'string') {
+    const matchedSignals = [];
+    for (const item of GCC_JD_PATTERNS) {
+      if (item.pattern.test(jdText)) {
+        matchedSignals.push(item.label);
+      }
+    }
+    if (matchedSignals.length > 0) {
+      if (name && matchesSet(name, services)) {
+        return {
+          isGcc: false,
+          type: 'Services',
+          reason: `Company ${companyName} identified as IT Services / Consulting`,
+          company: companyName,
+          signals: ['services_registry'],
+        };
+      }
+      return {
+        isGcc: true,
+        type: 'GCC',
+        reason: `JD contains captive GCC signals: ${matchedSignals.join(', ')}`,
+        company: companyName || 'GCC Employer',
+        signals: matchedSignals,
+      };
+    }
+  }
+
+  // 4. IT Services check
+  if (name && matchesSet(name, services)) {
+    return {
+      isGcc: false,
+      type: 'Services',
+      reason: `Company ${companyName} identified as IT Services / Consulting`,
+      company: companyName,
+      signals: ['services_registry'],
+    };
+  }
+
+  return {
+    isGcc: false,
+    type: 'Other',
+    reason: 'No GCC or Services markers detected',
+    company: companyName || '',
+    signals: [],
+  };
+}
+
 /**
  * Classify employer as GCC (captive), Services (IT consulting), or Other.
+ * Backward compatible with single argument calls.
  * @param {string | null | undefined} companyName
+ * @param {string | null | undefined} [jdText]
+ * @param {string | null | undefined} [url]
  * @returns {'GCC' | 'Services' | 'Other'}
  */
-export function classifyCompany(companyName) {
-  if (!companyName) return 'Other';
-  const name = String(companyName).toLowerCase().trim();
-  const { gcc, services } = loadCompanySets();
-  if (matchesSet(name, gcc)) return 'GCC';
-  if (matchesSet(name, services)) return 'Services';
-  return 'Other';
+export function classifyCompany(companyName, jdText, url) {
+  const result = classifyGccOpportunity({ companyName, jdText, url });
+  return result.type;
 }
 
 export function getGccCompanyList() {

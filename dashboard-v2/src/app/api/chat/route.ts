@@ -258,8 +258,12 @@ Instructions:
             throw new Error(`${name} failed with status ${response.status}: ${bodyText}`);
           }
           const result = JSON.parse(bodyText);
+          const content = String(result.choices?.[0]?.message?.content || '').trim();
+          if (!content) {
+            throw new Error(`${name} returned empty content`);
+          }
           return {
-            content: result.choices?.[0]?.message?.content || '',
+            content,
             provider: `${name} (${model})`,
           };
         } catch (err: unknown) {
@@ -340,7 +344,11 @@ Instructions:
           throw new Error(`Gemini API failed with status ${response.status}: ${await response.text()}`);
         }
         const result = await response.json();
-        return { content: result.candidates?.[0]?.content?.parts?.[0]?.text || '', provider: 'Gemini' };
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+        if (!text) {
+          throw new Error('Gemini returned empty or blocked response');
+        }
+        return { content: text, provider: 'Gemini' };
       });
     }
 
@@ -416,8 +424,12 @@ Instructions:
 
     for (let i = 0; i < attempts.length; i++) {
       try {
-        finalResult = await attempts[i]();
-        break;
+        const res = await attempts[i]();
+        if (res && res.content && String(res.content).trim()) {
+          finalResult = res;
+          break;
+        }
+        throw new Error(`Attempt ${i + 1} returned empty content`);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         console.warn(`Attempt ${i + 1} failed: ${message}`);

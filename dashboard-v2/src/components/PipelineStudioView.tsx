@@ -35,6 +35,7 @@ import {
   MailOutlined,
 } from '@ant-design/icons';
 import { JobAvatar } from './JobAvatar';
+import { JdViewer } from './JdViewer';
 
 export type PipelineJob = {
   pipeline_id?: number | string;
@@ -54,6 +55,7 @@ export type PipelineJob = {
   score_raw?: number | null;
   status?: string;
   notes?: string;
+  jd_text?: string | null;
   is_applied?: boolean;
   has_resume_html?: boolean;
   has_resume_pdf?: boolean;
@@ -761,7 +763,7 @@ export function PipelineStudioView({
       <Drawer
         open={Boolean(inspectingJob)}
         onClose={() => setInspectingJob(null)}
-        width={480}
+        width={560}
         destroyOnClose
         title={
           inspectingJob ? (
@@ -869,14 +871,18 @@ export function PipelineStudioView({
               </div>
             </div>
 
-            {/* Posting Overview */}
+            {/* Job Description & Requirements */}
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">
-                Posting Details & Notes
+                Job Description & Requirements
               </div>
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3.5 text-xs text-zinc-600 leading-relaxed max-h-64 overflow-y-auto font-sans">
-                {inspectingJob.notes || 'Full JD ingested and ready for AI tailoring.'}
-              </div>
+              <JdViewer
+                jdText={inspectingJob.jd_text || inspectingJob.notes}
+                jobTitle={inspectingJob.title}
+                company={inspectingJob.company}
+                jobUrl={inspectingJob.url}
+                maxHeight="44vh"
+              />
             </div>
           </div>
         )}

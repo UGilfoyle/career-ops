@@ -76,12 +76,14 @@ gcc:
   - crowdstrike
   - cloudflare
 
-  # Retail / consumer / manufacturing GCCs
+  # Retail / consumer / manufacturing / healthcare GCCs
   - walmart
   - target
   - costco
   - home depot
   - lowe
+  - lowes
+  - tesco
   - nike
   - adidas
   - ikea
@@ -90,9 +92,20 @@ gcc:
   - johnson
   - merck
   - pfizer
+  - optum
+  - unitedhealth
+  - novartis
+  - astrazeneca
+  - sanofi
+  - abbott
   - boeing
   - ge aerospace
   - general electric
+  - honeywell
+  - schneider electric
+  - eaton
+  - john deere
+  - caterpillar
   - ford
   - gm
   - general motors
@@ -108,6 +121,12 @@ gcc:
   - nestle
   - coca-cola
   - pepsico
+  - northern trust
+  - bnp paribas
+  - societe generale
+  - lseg
+  - fiserv
+  - broadridge
 
   # India-born / India-heavy product GCCs
   - flipkart

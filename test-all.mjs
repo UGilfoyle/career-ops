@@ -90,6 +90,10 @@ const scripts = [
   { name: 'resume-skills-editor-block-tests.mjs', expectExit: 0 },
   { name: 'test-experience-filter.mjs', expectExit: 0 },
   { name: 'test-ctc-lpa-filter.mjs', expectExit: 0 },
+  { name: 'gcc-engine-tests.mjs', expectExit: 0 },
+  { name: 'gcc-classify-mcdc-tests.mjs', expectExit: 0 },
+  { name: 'jd-rendering-tests.mjs', expectExit: 0 },
+  { name: 'jd-engine-stress-tests.mjs', expectExit: 0 },
 ];
 
 for (const { name, allowFail } of scripts) {

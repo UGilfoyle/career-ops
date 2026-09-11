@@ -5,6 +5,7 @@ import { Download, FileCheck2, FileUp, Lightbulb, Loader2, Plus, Target, Zap } f
 import type { ResumeContext } from '@/lib/resume/types';
 import { getCompetencies } from '@/lib/resume/types';
 import { MatchProgressRing } from './MatchProgressRing';
+import { JdViewer } from '../JdViewer';
 
 export type PipelineJobOption = {
   pipeline_id?: number | string;
@@ -15,6 +16,7 @@ export type PipelineJobOption = {
   has_jd?: boolean;
   has_resume_html?: boolean;
   has_resume_pdf?: boolean;
+  jd_text?: string | null;
 };
 
 type JdMatchPanelProps = {
@@ -103,6 +105,8 @@ export function JdMatchPanel({
   const [ingesting, setIngesting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [mirroring, setMirroring] = useState(false);
+  const [previewPasted, setPreviewPasted] = useState(false);
+  const [showPipelineJd, setShowPipelineJd] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const autoMirrorKeyRef = useRef<string | null>(null);
 
@@ -497,16 +501,22 @@ export function JdMatchPanel({
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
               Job description
             </span>
-            <textarea
-              value={pastedJd}
-              onChange={(e) => {
-                setPasteJobId(null);
-                setPastedJd(e.target.value);
-              }}
-              rows={7}
-              placeholder="Paste the full job description here — responsibilities, requirements, qualifications…"
-              className="w-full resize-y rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#1C1C1E]"
-            />
+            {previewPasted ? (
+              <div className="space-y-2">
+                <JdViewer jdText={pastedJd} maxHeight="36vh" />
+              </div>
+            ) : (
+              <textarea
+                value={pastedJd}
+                onChange={(e) => {
+                  setPasteJobId(null);
+                  setPastedJd(e.target.value);
+                }}
+                rows={7}
+                placeholder="Paste the full job description here — responsibilities, requirements, qualifications…"
+                className="w-full resize-y rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#1C1C1E]"
+              />
+            )}
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -529,6 +539,15 @@ export function JdMatchPanel({
               <FileUp size={12} />
               Upload .txt / .pdf / .docx
             </button>
+            {pastedReady && (
+              <button
+                type="button"
+                onClick={() => setPreviewPasted((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5E0] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:bg-[#F5F5F0]"
+              >
+                {previewPasted ? 'Edit Raw JD' : 'Structured Preview'}
+              </button>
+            )}
             <span className="text-[10px] font-medium text-[#9CA3AF]">
               {pastedReady ? `${pastedJd.trim().length} chars · match ready` : `Min ${MIN_JD_LEN} chars`}
             </span>
@@ -558,6 +577,32 @@ export function JdMatchPanel({
               );
             })}
           </select>
+          {selectedJobId && (() => {
+            const selectedJob = options.find((j) => Number(j.pipeline_id ?? j.id) === selectedJobId);
+            const jdContent = selectedJob?.jd_text;
+            if (!jdContent) return null;
+            return (
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setShowPipelineJd((v) => !v)}
+                    className="text-[11px] font-bold text-zinc-700 hover:text-zinc-900 underline underline-offset-2"
+                  >
+                    {showPipelineJd ? 'Hide Full Job Description' : 'View Full Job Description'}
+                  </button>
+                </div>
+                {showPipelineJd && (
+                  <JdViewer
+                    jdText={jdContent}
+                    jobTitle={selectedJob?.title}
+                    company={selectedJob?.company}
+                    maxHeight="34vh"
+                  />
+                )}
+              </div>
+            );
+          })()}
           {!selectedJobId ? (
             <p className="text-xs font-medium text-[#6B6B6B]">
               {options.length === 0
