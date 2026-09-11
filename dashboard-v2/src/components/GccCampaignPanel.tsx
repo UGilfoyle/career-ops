@@ -1,31 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  Card,
-  Button,
-  Tag,
-  Input,
-  InputNumber,
-  Checkbox,
-  Space,
-  Statistic,
-  Popconfirm,
-  Badge,
-} from 'antd';
-import {
-  AimOutlined,
-  PlusOutlined,
-  DeleteOutlined,
-  CheckCircleOutlined,
-  CalendarOutlined,
-  UserAddOutlined,
-  MailOutlined,
-  ThunderboltOutlined,
-  EditOutlined,
-  CheckOutlined,
-  SaveOutlined,
-} from '@ant-design/icons';
+  Target,
+  Sparkles,
+  Zap,
+  ArrowRight,
+  Plus,
+  Trash2,
+  Calendar,
+  UserPlus,
+  Mail,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Save,
+  Check,
+  RefreshCw,
+  ExternalLink,
+  Building2,
+} from 'lucide-react';
 import { PageSectionHeader, AiScoreBadge } from './PageSectionHeader';
 import { JobAvatar } from './JobAvatar';
 import type { GccCampaign, GccTarget } from './gcc-campaign';
@@ -35,6 +29,19 @@ export { defaultGccCampaign } from './gcc-campaign';
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function formatRelativeTime(dateStr?: string | null) {
+  if (!dateStr) return 'Never';
+  const then = new Date(dateStr).getTime();
+  if (!Number.isFinite(then)) return 'Never';
+  const days = Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
+  if (days < 0) return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 type PipelineGccJob = {
@@ -62,6 +69,7 @@ type Props = {
   onTailorJob?: (jobId: number) => void;
   onAddToOutreach?: (company: string, role: string) => void;
   onResearchDraft?: (opts: { jobId?: number; company: string; role: string; url?: string }) => void;
+  onRefresh?: () => void;
   lastGccScanAdded?: number | null;
   lastGccScanAt?: string | null;
   gccPipelineTotal?: number;
@@ -81,6 +89,7 @@ export function GccCampaignPanel({
   onTailorJob,
   onAddToOutreach,
   onResearchDraft,
+  onRefresh,
   lastGccScanAdded = null,
   lastGccScanAt = null,
   gccPipelineTotal = 0,
@@ -90,6 +99,13 @@ export function GccCampaignPanel({
 }: Props) {
   const day = todayKey();
   const daily = campaign.daily_log[day] || { connections: 0, applications: 0, mock_interview: false };
+
+  const [gccUrl, setGccUrl] = useState('');
+  const [actionStatus, setActionStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [actionType, setActionType] = useState<'tailor' | 'scan' | null>(null);
+  const [stepMessage, setStepMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   const updateDaily = (patch: Partial<typeof daily>) => {
     onChange({
@@ -141,142 +157,501 @@ export function GccCampaignPanel({
     Math.floor((Date.now() - new Date(campaign.started_at).getTime()) / 86400000) + 1
   );
 
+  const handleInstantTailor = (targetUrl?: string) => {
+    const rawUrl = (targetUrl || gccUrl).trim();
+    if (!rawUrl) return;
+
+    if (/[\r\n\t<>]/.test(rawUrl) || (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://'))) {
+      setErrorMessage('Please enter a valid job URL (e.g. https://linkedin.com/jobs/view/...)');
+      setActionStatus('error');
+      return;
+    }
+
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    setActionType('tailor');
+    setActionStatus('running');
+    setErrorMessage('');
+    setStepMessage('Extracting GCC competency signals from job posting...');
+
+    let receivedEvents = false;
+    const query = `tailor ${rawUrl} --deep`;
+    const es = new EventSource(`/api/exec?q=${encodeURIComponent(query)}`);
+    eventSourceRef.current = es;
+
+    es.onmessage = (event) => {
+      receivedEvents = true;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'done') {
+          es.close();
+          setActionStatus('success');
+          setStepMessage('GCC resume and tailored leadership pitch ready!');
+          if (onRefresh) onRefresh();
+        } else if (data.type === 'stderr') {
+          const content = String(data.content || '');
+          if (content.toLowerCase().includes('error') || content.toLowerCase().includes('fail')) {
+            setErrorMessage(content.slice(0, 160));
+          }
+        } else if (data.type === 'stdout') {
+          const content = String(data.content || '');
+          if (content.includes('task accepted') || content.includes('working')) {
+            setStepMessage('Task queued in high-performance cloud engine...');
+          } else if (content.includes('crafting') || content.includes('tailored resume')) {
+            setStepMessage('Aligning skills, experience & generating ATS documents...');
+          } else if (content.includes('Processing')) {
+            setStepMessage('Matching profile against GCC requirements...');
+          }
+        }
+      } catch {}
+    };
+
+    es.onerror = () => {
+      es.close();
+      if (!receivedEvents) {
+        setActionStatus('error');
+        setErrorMessage('Unable to connect to execution service. Please check your connection.');
+      } else {
+        setActionStatus('success');
+        setStepMessage('Task dispatched to background engine. Results will appear in Resume Studio shortly!');
+        if (onRefresh) onRefresh();
+      }
+    };
+  };
+
+  const handleRunGccScan = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    setActionType('scan');
+    setActionStatus('running');
+    setErrorMessage('');
+    setStepMessage('Warming up GCC captive employer crawler (India tech hubs)...');
+
+    let receivedEvents = false;
+    const query = `gcc-scan --deep`;
+    const es = new EventSource(`/api/exec?q=${encodeURIComponent(query)}`);
+    eventSourceRef.current = es;
+
+    es.onmessage = (event) => {
+      receivedEvents = true;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'done') {
+          es.close();
+          setActionStatus('success');
+          setStepMessage('GCC Scan completed! Discovered captive roles updated in pipeline.');
+          if (onRefresh) onRefresh();
+        } else if (data.type === 'stderr') {
+          const content = String(data.content || '');
+          if (content.toLowerCase().includes('error') || content.toLowerCase().includes('fail')) {
+            setErrorMessage(content.slice(0, 160));
+          }
+        } else if (data.type === 'stdout') {
+          const content = String(data.content || '');
+          if (content.includes('Warming up') || content.includes('Searching')) {
+            setStepMessage('Searching captive MNC employers on LinkedIn & job boards...');
+          } else if (content.includes('Scanned') || content.includes('Found')) {
+            setStepMessage(content.trim().slice(0, 100));
+          }
+        }
+      } catch {}
+    };
+
+    es.onerror = () => {
+      es.close();
+      if (!receivedEvents) {
+        setActionStatus('error');
+        setErrorMessage('Scanner connection interrupted. Check your network.');
+      } else {
+        setActionStatus('success');
+        setStepMessage('GCC Scanner completed background run. Refreshing discovered roles...');
+        if (onRefresh) onRefresh();
+      }
+    };
+  };
+
+  const resetActionState = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+    setActionStatus('idle');
+    setActionType(null);
+    setStepMessage('');
+    setErrorMessage('');
+  };
+
+  const headerActions = (
+    <div className="flex flex-wrap items-center gap-2.5">
+      {onImportAllGcc && pipelineGccJobs.length > 0 && (
+        <button
+          type="button"
+          onClick={onImportAllGcc}
+          className="uiverse-btn !h-9 !px-3.5 !text-xs !bg-white !text-zinc-900 !border-zinc-300 hover:!bg-zinc-50"
+        >
+          <Target size={14} className="text-zinc-600" />
+          <span>Import {pipelineGccJobs.length} to Outreach</span>
+        </button>
+      )}
+
+      {onImportHighValue && highValueCount > 0 && (
+        <button
+          type="button"
+          onClick={onImportHighValue}
+          className="uiverse-btn !h-9 !px-3.5 !text-xs !bg-purple-50 !text-purple-900 !border-purple-200 hover:!bg-purple-100"
+        >
+          <Sparkles size={14} className="text-purple-600" />
+          <span>Import {highValueCount} High-Value</span>
+        </button>
+      )}
+
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={isSaving}
+        className="uiverse-btn !h-9 !px-4 !text-xs"
+      >
+        {isSaving ? (
+          <Loader2 size={14} className="animate-spin text-zinc-400" />
+        ) : saveStatus === 'success' ? (
+          <CheckCircle2 size={14} className="text-emerald-400" />
+        ) : (
+          <Save size={14} />
+        )}
+        <span>
+          {isSaving
+            ? 'Saving...'
+            : saveStatus === 'success'
+            ? 'Saved'
+            : 'Save Campaign'}
+        </span>
+      </button>
+    </div>
+  );
+
   return (
     <div className="w-full max-w-6xl space-y-6">
       <PageSectionHeader
         title="GCC Campaign"
-        subtitle="30-day break-in system: connections, curated outreach, and interview tracking"
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {onImportAllGcc && pipelineGccJobs.length > 0 && (
-              <Button
-                icon={<AimOutlined />}
-                onClick={onImportAllGcc}
-              >
-                Import {pipelineGccJobs.length} to Outreach
-              </Button>
-            )}
-            {onImportHighValue && highValueCount > 0 && (
-              <Button
-                icon={<AimOutlined />}
-                onClick={onImportHighValue}
-              >
-                Import {highValueCount} High-Value
-              </Button>
-            )}
-            <Button
-              type="primary"
-              icon={saveStatus === 'success' ? <CheckCircleOutlined /> : <SaveOutlined />}
-              onClick={onSave}
-              loading={isSaving}
-            >
-              {saveStatus === 'saving'
-                ? 'Saving...'
-                : saveStatus === 'success'
-                ? 'Saved'
-                : 'Save Campaign'}
-            </Button>
-          </div>
-        }
+        subtitle="30-day captive break-in system: leadership connections, curated outreach, and interview acceleration"
+        actions={headerActions}
       />
 
-      {/* Top 3 Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card size="small" className="border-zinc-200 shadow-xs">
-          <Statistic
-            title={
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                <CalendarOutlined className="mr-1" /> DAY {dayNumber} / 30
-              </span>
-            }
-            value={`Day ${dayNumber}`}
-            valueStyle={{ fontSize: 18, fontWeight: 700 }}
-          />
-          <div className="text-xs text-zinc-500 mt-1">Started {campaign.started_at}</div>
-        </Card>
+      {/* Feature 1: UIverse Live Action Center (Tailor & GCC Scanner) */}
+      <div className="uiverse-glow-card relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-zinc-900 to-blue-500" />
 
-        <Card size="small" className="border-zinc-200 shadow-xs">
-          <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2.5">
-            Today&apos;s Targets
-          </div>
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-zinc-700">
-                <UserAddOutlined /> Connections (Goal: 10)
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="max-w-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200/80">
+                <Sparkles size={12} className="text-emerald-600" />
+                GCC Break-in Engine
               </span>
-              <InputNumber
-                min={0}
-                max={99}
-                size="small"
-                value={daily.connections}
-                onChange={(val) => updateDaily({ connections: Number(val) || 0 })}
-                style={{ width: 60 }}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-zinc-700">
-                <MailOutlined /> Curated Apps (Goal: 3–5)
+              <span className="text-[11px] text-zinc-400 font-medium">
+                India Hubs: Bengaluru · Hyderabad · Pune · Gurugram
               </span>
-              <InputNumber
-                min={0}
-                max={99}
-                size="small"
-                value={daily.applications}
-                onChange={(val) => updateDaily({ applications: Number(val) || 0 })}
-                style={{ width: 60 }}
-              />
             </div>
-            <div className="pt-1">
-              <Checkbox
-                checked={daily.mock_interview}
-                onChange={(e) => updateDaily({ mock_interview: e.target.checked })}
+            <h3 className="text-base sm:text-lg font-bold text-zinc-900 tracking-tight">
+              Instant GCC Resume Tailor & Captive Discovery
+            </h3>
+            <p className="text-xs text-zinc-500 mt-1 font-normal leading-relaxed">
+              Paste any GCC job URL or trigger the captive employer crawler to extract competency signals and generate targeted ATS resumes in seconds.
+            </p>
+
+            <div className="pt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRunGccScan}
+                disabled={actionStatus === 'running'}
+                className="uiverse-btn !h-9 !px-3.5 !text-xs"
+                style={{
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  borderColor: 'rgba(255,255,255,0.2)',
+                }}
               >
-                <span className="text-xs text-zinc-700">Mock interview completed this week</span>
-              </Checkbox>
+                <span>Run GCC Scanner</span>
+                <Zap size={13} />
+              </button>
             </div>
           </div>
-        </Card>
 
-        <Card size="small" className="bg-zinc-900 text-white border-zinc-900 shadow-xs">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5">
-            Signal Engine
-          </div>
-          <p className="text-xs text-zinc-300 leading-relaxed m-0">
-            Score targets 3+ on: expansion news, hiring velocity, platform language, leadership hires, and future captive tech domains.
-          </p>
-        </Card>
-      </div>
+          {/* Form / Execution Status */}
+          <div className="w-full lg:max-w-md">
+            {actionStatus === 'idle' && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleInstantTailor();
+                }}
+                className="flex flex-col sm:flex-row items-center gap-2.5"
+              >
+                <div className="relative w-full flex-1">
+                  <input
+                    type="url"
+                    required
+                    value={gccUrl}
+                    onChange={(e) => setGccUrl(e.target.value)}
+                    placeholder="Paste GCC job URL (LinkedIn, Naukri, Portal)..."
+                    className="uiverse-input"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="uiverse-btn w-full sm:w-auto shrink-0"
+                >
+                  <span>Tailor GCC Role</span>
+                  <ArrowRight size={14} />
+                </button>
+              </form>
+            )}
 
-      {/* Discovered GCC Roles */}
-      <Card
-        size="small"
-        className="border-zinc-200 shadow-xs overflow-hidden"
-        title={
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-zinc-900">Discovered GCC Roles</span>
-              <Tag color="blue" className="font-mono text-[10px]">
-                {pipelineGccJobs.length}
-              </Tag>
-            </div>
-            {onOpenPipeline && pipelineGccJobs.length > 0 && (
-              <Button size="small" onClick={onOpenPipeline}>
-                Open Job Pipeline
-              </Button>
+            {actionStatus === 'running' && (
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-blue-950 truncate">
+                      {stepMessage || (actionType === 'scan' ? 'Crawling captive employers...' : 'Processing GCC job posting...')}
+                    </p>
+                    <p className="text-[11px] text-blue-700/90 mt-0.5 font-normal">
+                      {actionType === 'scan'
+                        ? 'Executing gcc-scan --deep in high-performance cloud engine'
+                        : 'Aligning competency signals and generating ATS resume documents'}
+                    </p>
+                  </div>
+                  <div className="uiverse-dot-loader shrink-0">
+                    <div className="uiverse-dot" />
+                    <div className="uiverse-dot" />
+                    <div className="uiverse-dot" />
+                  </div>
+                </div>
+                <div className="mt-3 h-1 w-full rounded-full bg-blue-200/60 overflow-hidden">
+                  <div className="h-full bg-blue-600 rounded-full animate-pulse w-3/4 transition-all duration-500" />
+                </div>
+              </div>
+            )}
+
+            {actionStatus === 'success' && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-emerald-950 truncate">
+                        {actionType === 'scan' ? 'GCC Scan Completed' : 'GCC Resume Tailored'}
+                      </p>
+                      <p className="text-[11px] text-emerald-700 mt-0.5 truncate">
+                        {stepMessage}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetActionState}
+                    className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-white !text-zinc-800 !border-zinc-200 hover:!bg-zinc-50 shrink-0"
+                  >
+                    <span>Done</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {actionStatus === 'error' && (
+              <div className="rounded-xl border border-red-200 bg-red-50/80 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <AlertCircle size={16} className="text-red-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-red-950 truncate">
+                        Action encountered an issue
+                      </p>
+                      <p className="text-[11px] text-red-700 mt-0.5 truncate">
+                        {errorMessage || 'Unable to complete task. Check URL or network.'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetActionState}
+                    className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-white !text-zinc-800 !border-zinc-200 hover:!bg-zinc-50 shrink-0"
+                  >
+                    <span>Try again</span>
+                  </button>
+                </div>
+              </div>
             )}
           </div>
-        }
-      >
+        </div>
+      </div>
+
+      {/* Feature 2: Top 3 Metric Cards with UIverse glow */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Card 1: 30-Day Campaign Progress */}
+        <div className="uiverse-glow-card flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                Timeline Progress
+              </span>
+              <span className="text-xs font-semibold text-zinc-500">
+                {Math.min(100, Math.round((dayNumber / 30) * 100))}% Completed
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold text-zinc-900 tracking-tight">
+                Day {dayNumber}
+              </span>
+              <span className="text-xs font-medium text-zinc-400">
+                / 30 Days
+              </span>
+            </div>
+
+            <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
+              <div
+                className="h-full bg-zinc-900 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.round((dayNumber / 30) * 100))}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-zinc-100 mt-4 flex items-center justify-between text-xs text-zinc-400">
+            <span>Started {campaign.started_at}</span>
+            <span className="font-medium text-zinc-600">{Math.max(0, 30 - dayNumber)} days left</span>
+          </div>
+        </div>
+
+        {/* Card 2: Today's Daily Targets */}
+        <div className="uiverse-glow-card flex flex-col justify-between space-y-4">
+          <div>
+            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2.5">
+              Daily Execution Targets
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-zinc-700 font-medium">
+                  <UserPlus size={13} className="text-zinc-500" />
+                  <span>Connections (Goal: 10)</span>
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={99}
+                  value={daily.connections}
+                  onChange={(e) => updateDaily({ connections: Number(e.target.value) || 0 })}
+                  className="uiverse-input !h-7 !w-16 !px-2 text-center font-bold text-xs"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-zinc-700 font-medium">
+                  <Mail size={13} className="text-zinc-500" />
+                  <span>Curated Apps (Goal: 3 to 5)</span>
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={99}
+                  value={daily.applications}
+                  onChange={(e) => updateDaily({ applications: Number(e.target.value) || 0 })}
+                  className="uiverse-input !h-7 !w-16 !px-2 text-center font-bold text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-zinc-100">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={daily.mock_interview}
+                onChange={(e) => updateDaily({ mock_interview: e.target.checked })}
+                className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+              />
+              <span className="text-xs text-zinc-700 font-medium">
+                Mock interview completed this week
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Card 3: Signal Engine Briefing */}
+        <div className="uiverse-glow-card bg-zinc-950 text-white border-zinc-800 flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                GCC Signal Engine
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300">
+                Live Scanner
+              </span>
+            </div>
+
+            <p className="text-xs text-zinc-300 leading-relaxed font-normal">
+              Score targets 3+ on expansion news, hiring velocity, platform modernization, leadership appointments, and emerging captive engineering domains.
+            </p>
+          </div>
+
+          <div className="pt-4 border-t border-zinc-800/80 mt-4 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span className="text-[10px] font-bold uppercase text-zinc-500 block">Discovered</span>
+              <span className="text-sm font-bold text-zinc-100">{gccPipelineTotal} roles</span>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase text-zinc-500 block">Last Crawl</span>
+              <span className="text-sm font-bold text-zinc-100">{formatRelativeTime(lastGccScanAt)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Feature 3: Discovered GCC Roles */}
+      <div className="uiverse-glow-card space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <Building2 size={16} className="text-zinc-800" />
+            <h3 className="text-sm font-bold text-zinc-900">
+              Discovered GCC Roles
+            </h3>
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+              {pipelineGccJobs.length}
+            </span>
+          </div>
+
+          {onOpenPipeline && pipelineGccJobs.length > 0 && (
+            <button
+              type="button"
+              onClick={onOpenPipeline}
+              className="uiverse-btn !h-8 !px-3 !text-xs !bg-white !text-zinc-900 !border-zinc-300 hover:!bg-zinc-50"
+            >
+              <span>Open Job Pipeline</span>
+              <ArrowRight size={13} />
+            </button>
+          )}
+        </div>
+
         {pipelineGccJobs.length === 0 ? (
-          <div className="py-8 text-center text-xs text-zinc-400">
-            No GCC captive roles detected in pipeline yet. Run{' '}
-            <code className="text-zinc-700 bg-zinc-100 px-1 py-0.5 rounded">gcc-scan --deep</code> in
-            Terminal.
+          <div className="py-12 text-center space-y-3">
+            <p className="text-xs text-zinc-500">
+              No GCC captive roles detected in pipeline yet.
+            </p>
+            <button
+              type="button"
+              onClick={handleRunGccScan}
+              className="uiverse-btn !h-8 !px-3.5 !text-xs mx-auto"
+            >
+              <Zap size={13} />
+              <span>Run GCC Scanner Now</span>
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="bg-zinc-50 text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-100">
+              <thead className="bg-zinc-50/70 text-[10px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-100">
                 <tr>
                   <th className="py-2.5 px-3 text-left">Company</th>
                   <th className="py-2.5 px-3 text-left">Role</th>
@@ -285,44 +660,46 @@ export function GccCampaignPanel({
                   <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-50">
+              <tbody className="divide-y divide-zinc-100/70">
                 {pipelineGccJobs.map((job, i) => (
-                  <tr key={job.pipeline_id ?? i} className="hover:bg-zinc-50 transition-colors">
-                    <td className="py-2.5 px-3">
+                  <tr key={job.pipeline_id ?? i} className="hover:bg-zinc-50/80 transition-colors">
+                    <td className="py-3 px-3">
                       <div className="flex items-center gap-2">
                         <JobAvatar company={job.company} size="sm" />
                         <span className="font-bold text-zinc-900">{job.company}</span>
                         {job.gcc_high_value && (
-                          <Tag color="purple" className="text-[9px] font-bold">
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
                             High
-                          </Tag>
+                          </span>
                         )}
                       </div>
                     </td>
-                    <td className="py-2.5 px-3 text-zinc-600 font-medium max-w-[200px] truncate">
+                    <td className="py-3 px-3 text-zinc-700 font-medium max-w-[240px] truncate">
                       {job.title}
                     </td>
-                    <td className="py-2.5 px-3 font-mono text-zinc-600">
-                      {job.gcc_signal_score ?? '—'}/5
+                    <td className="py-3 px-3 font-mono text-zinc-600">
+                      {job.gcc_signal_score != null ? `${job.gcc_signal_score}/5` : '—'}
                     </td>
-                    <td className="py-2.5 px-3">
+                    <td className="py-3 px-3">
                       <AiScoreBadge score={job.score} />
                     </td>
-                    <td className="py-2.5 px-3 text-right">
-                      <Space size="small">
+                    <td className="py-3 px-3 text-right">
+                      <div className="inline-flex items-center gap-1.5 justify-end">
                         {onAddToOutreach && (
-                          <Button
-                            size="small"
+                          <button
+                            type="button"
                             onClick={() =>
                               onAddToOutreach(String(job.company || ''), String(job.title || ''))
                             }
+                            className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-zinc-100 !text-zinc-800 !border-zinc-200 hover:!bg-zinc-200"
                           >
-                            Track
-                          </Button>
+                            <span>Track</span>
+                          </button>
                         )}
+
                         {onResearchDraft && (
-                          <Button
-                            size="small"
+                          <button
+                            type="button"
                             onClick={() =>
                               onResearchDraft({
                                 jobId: job.pipeline_id,
@@ -331,21 +708,28 @@ export function GccCampaignPanel({
                                 url: job.url,
                               })
                             }
+                            className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-blue-50 !text-blue-700 !border-blue-200 hover:!bg-blue-100"
                           >
-                            Draft
-                          </Button>
+                            <span>Draft</span>
+                          </button>
                         )}
-                        {onTailorJob && job.pipeline_id != null && (
-                          <Button
-                            type="primary"
-                            size="small"
-                            icon={<ThunderboltOutlined />}
-                            onClick={() => onTailorJob(Number(job.pipeline_id))}
-                          >
-                            Tailor
-                          </Button>
-                        )}
-                      </Space>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (job.url) {
+                              setGccUrl(job.url);
+                              handleInstantTailor(job.url);
+                            } else if (onTailorJob && job.pipeline_id != null) {
+                              onTailorJob(Number(job.pipeline_id));
+                            }
+                          }}
+                          className="uiverse-btn !h-7 !px-2.5 !text-[11px] !bg-emerald-600 !text-white !border-emerald-500 hover:!bg-emerald-500"
+                        >
+                          <Zap size={11} />
+                          <span>Tailor</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -353,124 +737,142 @@ export function GccCampaignPanel({
             </table>
           </div>
         )}
-      </Card>
+      </div>
 
-      {/* Outreach Tracker Table */}
-      <Card
-        size="small"
-        className="border-zinc-200 shadow-xs"
-        title={
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AimOutlined className="text-zinc-900" />
-              <span className="text-xs font-bold text-zinc-900">Outreach Tracker</span>
-            </div>
-            <Button size="small" icon={<PlusOutlined />} onClick={addTarget}>
-              Add Company
-            </Button>
+      {/* Feature 4: Outreach Tracker Table */}
+      <div className="uiverse-glow-card space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Target size={16} className="text-zinc-800" />
+            <h3 className="text-sm font-bold text-zinc-900">
+              Outreach Tracker
+            </h3>
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700">
+              {campaign.targets.length} targets
+            </span>
           </div>
-        }
-      >
+
+          <button
+            type="button"
+            onClick={addTarget}
+            className="uiverse-btn !h-8 !px-3 !text-xs"
+          >
+            <Plus size={13} />
+            <span>Add Target</span>
+          </button>
+        </div>
+
         {campaign.targets.length === 0 ? (
-          <div className="p-8 text-center text-xs text-zinc-400">
-            Outreach tracker is empty. Import roles from Discovered GCC roles above or add companies manually.
+          <div className="py-10 text-center text-xs text-zinc-400">
+            Outreach tracker is empty. Import roles from Discovered GCC roles above or click Add Target to log companies manually.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="bg-zinc-50 text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-100">
+              <thead className="bg-zinc-50/70 text-[10px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-100">
                 <tr>
                   <th className="py-2.5 px-3 text-left">Company</th>
                   <th className="py-2.5 px-3 text-left">Role</th>
                   <th className="py-2.5 px-2 text-center">Connected</th>
                   <th className="py-2.5 px-2 text-center">DM Sent</th>
                   <th className="py-2.5 px-2 text-center">Email Sent</th>
-                  <th className="py-2.5 px-3 text-left">PAR Story</th>
+                  <th className="py-2.5 px-3 text-left">PAR Story / Angle</th>
                   <th className="py-2.5 px-2 text-center">Interview</th>
-                  <th className="py-2.5 px-3 text-left">Follow-up</th>
+                  <th className="py-2.5 px-3 text-left">Next Follow-up</th>
                   <th className="py-2.5 px-2 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-50">
+              <tbody className="divide-y divide-zinc-100/70">
                 {campaign.targets.map((t) => (
-                  <tr key={t.id} className="hover:bg-zinc-50">
+                  <tr key={t.id} className="hover:bg-zinc-50/60 transition-colors">
                     <td className="py-2 px-3">
-                      <Input
-                        size="small"
+                      <input
+                        type="text"
                         value={t.company}
                         onChange={(e) => updateTarget(t.id, { company: e.target.value })}
-                        placeholder="e.g. Acme Corp"
-                        className="w-28 text-xs font-semibold"
+                        placeholder="e.g. Acme GCC"
+                        className="uiverse-input !h-8 !w-32 !px-2.5 !text-xs font-semibold"
                       />
                     </td>
                     <td className="py-2 px-3">
-                      <Input
-                        size="small"
+                      <input
+                        type="text"
                         value={t.role}
                         onChange={(e) => updateTarget(t.id, { role: e.target.value })}
-                        placeholder="Role"
-                        className="w-28 text-xs"
+                        placeholder="Target role"
+                        className="uiverse-input !h-8 !w-32 !px-2.5 !text-xs"
                       />
                     </td>
                     <td className="py-2 px-2 text-center">
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         checked={t.connection_sent}
                         onChange={(e) => updateTarget(t.id, { connection_sent: e.target.checked })}
+                        className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
                       />
                     </td>
                     <td className="py-2 px-2 text-center">
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         checked={t.dm_sent}
                         onChange={(e) => updateTarget(t.id, { dm_sent: e.target.checked })}
+                        className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
                       />
                     </td>
                     <td className="py-2 px-2 text-center">
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         checked={t.email_sent}
                         onChange={(e) => updateTarget(t.id, { email_sent: e.target.checked })}
+                        className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
                       />
                     </td>
                     <td className="py-2 px-3">
-                      <Input
-                        size="small"
+                      <input
+                        type="text"
                         value={t.story_used}
                         onChange={(e) => updateTarget(t.id, { story_used: e.target.value })}
                         placeholder="PAR story used"
-                        className="w-32 text-xs"
+                        className="uiverse-input !h-8 !w-36 !px-2.5 !text-xs"
                       />
                     </td>
                     <td className="py-2 px-2 text-center">
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         checked={t.interview}
                         onChange={(e) => updateTarget(t.id, { interview: e.target.checked })}
+                        className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
                       />
                     </td>
                     <td className="py-2 px-3">
-                      <Input
-                        size="small"
+                      <input
+                        type="text"
                         value={t.follow_up}
                         onChange={(e) => updateTarget(t.id, { follow_up: e.target.value })}
-                        placeholder="Next follow-up"
-                        className="w-28 text-xs"
+                        placeholder="Next follow-up date"
+                        className="uiverse-input !h-8 !w-32 !px-2.5 !text-xs"
                       />
                     </td>
                     <td className="py-2 px-2 text-right">
-                      <Space size="small">
+                      <div className="inline-flex items-center gap-1 justify-end">
                         {onResearchDraft && (
-                          <Button
-                            size="small"
+                          <button
+                            type="button"
                             onClick={() => onResearchDraft({ company: t.company, role: t.role })}
+                            className="uiverse-btn !h-7 !px-2 !text-[11px] !bg-zinc-100 !text-zinc-800 !border-zinc-200 hover:!bg-zinc-200"
                           >
-                            Draft
-                          </Button>
+                            <span>Draft</span>
+                          </button>
                         )}
-                        <Button
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
+                        <button
+                          type="button"
                           onClick={() => removeTarget(t.id)}
-                        />
-                      </Space>
+                          className="p-1.5 text-zinc-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                          title="Remove target"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -478,7 +880,7 @@ export function GccCampaignPanel({
             </table>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
