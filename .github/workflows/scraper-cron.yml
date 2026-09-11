@@ -1,4 +1,4 @@
-name: Scraper Worker (Cron)
+name: Cloud Background Worker (Tailor & Scan)
 
 on:
   schedule:
