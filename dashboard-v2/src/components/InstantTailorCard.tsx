@@ -83,7 +83,7 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
   };
 
   return (
-    <div className="uiverse-glow-card">
+    <div className="relative rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6 shadow-sm overflow-hidden">
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-zinc-900 to-blue-500" />
 
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 sm:gap-6">
@@ -114,12 +114,12 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="Paste job URL (e.g. LinkedIn, Greenhouse)..."
-                  className="uiverse-input"
+                  className="w-full h-10 rounded-xl border border-zinc-200 bg-zinc-50/60 px-3.5 text-xs text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-all"
                 />
               </div>
               <button
                 type="submit"
-                className="uiverse-btn w-full sm:w-auto shrink-0"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 text-xs font-semibold text-white hover:bg-zinc-800 transition-colors shadow-sm w-full sm:w-auto shrink-0"
               >
                 <span>Tailor Now</span>
                 <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
@@ -138,11 +138,7 @@ export default function InstantTailorCard({ onOpenStudio, onRefresh }: InstantTa
                     Analyzing requirements and tailoring competencies in cloud engine
                   </p>
                 </div>
-                <div className="uiverse-dot-loader shrink-0">
-                  <div className="uiverse-dot" />
-                  <div className="uiverse-dot" />
-                  <div className="uiverse-dot" />
-                </div>
+                <Loader2 size={18} className="animate-spin text-blue-600 shrink-0" />
               </div>
               <div className="mt-3 h-1 w-full rounded-full bg-blue-200/60 overflow-hidden">
                 <div className="h-full bg-blue-600 rounded-full animate-pulse w-3/4 transition-all duration-500" />

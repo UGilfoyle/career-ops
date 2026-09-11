@@ -5,8 +5,8 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth
-  const publicPages = ["/", "/login", "/signup", "/verify", "/forgot-password", "/reset-password", "/auth/continue", "/docs", "/privacy", "/status", "/billing/simulate", "/uiverse"]
-  const alwaysPublic = ["/billing/simulate", "/uiverse"]
+  const publicPages = ["/", "/login", "/signup", "/verify", "/forgot-password", "/reset-password", "/auth/continue", "/docs", "/privacy", "/status", "/billing/simulate"]
+  const alwaysPublic = ["/billing/simulate"]
   const pathname = req.nextUrl.pathname
   // Stealth companion + outbound redirects and public beacon script must be public (no auth wall)
   const isStealthPublic = pathname === "/v" || pathname.startsWith("/v/") || pathname === "/beacon.js"

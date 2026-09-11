@@ -11,6 +11,8 @@ import {
   isJunkKeyword,
   isWeavableKeyword,
   keywordAppearsInJd,
+  isDomainSkillPhrase,
+  isApprovedSkillPhrase,
 } from './jd-keyword-align.mjs';
 
 export { cleanSkillToken };
@@ -46,10 +48,10 @@ const TECH_PATTERNS = [
   /\b(postgres|postgresql|mysql|mariadb|mongo(?:db)?|redis|dynamodb|aurora|cockroach|cassandra|elastic|opensearch|sqlite|supabase|neon|firebase|firestore|couchdb|neo4j|memcached|influxdb)\b/i,
   /\b(aws|gcp|azure|cloudflare|vercel|heroku|digital\s?ocean|ecs|ec2|lambda|fargate|s3|cloudfront|route\s?53|iam|vpc|sqs|sns|step\s?functions|api\s?gateway|cloud\s?run|cloud\s?functions|bigquery|pubsub|terraform|pulumi|cdk|cloudformation|cloudwatch|cloudtrail|boto3|ansible)\b/i,
   /\b(docker|kubernetes|k8s|helm|istio|envoy|nginx|haproxy|traefik|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|circle\s?ci|argo\s?cd|flux|buildkite|drone|prometheus|grafana|datadog|new\s?relic|pagerduty|splunk|elk|loki|jaeger|opentelemetry|codepipeline|codebuild|secrets\s?manager|guardduty)\b/i,
-  /\b(kafka|rabbitmq|nats|pulsar|flink|spark|pyspark|airflow|dbt|snowflake|redshift|bigquery|databricks|azure\s?data\s?factory|\badf\b|mlflow|sagemaker|pytorch|tensorflow|langchain|openai|hugging\s?face|llm|rag|vector\s?db|pinecone|weaviate|qdrant|milvus|chromadb)\b/i,
-  /\b(jest|mocha|pytest|cypress|playwright|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack|gdb|valgrind|uml|3gpp)\b/i,
+  /\b(kafka|rabbitmq|nats|pulsar|flink|spark|pyspark|airflow|dbt|snowflake|redshift|bigquery|databricks|azure\s?data\s?factory|\badf\b|mlflow|sagemaker|pytorch|tensorflow|langchain|openai|hugging\s?face|llm|rag|vector\s?db|pinecone|weaviate|qdrant|milvus|chromadb|apache\s*camel)\b/i,
+  /\b(jest|mocha|pytest|cypress|playwright|puppeteer|cheerio|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack|gdb|valgrind|uml|3gpp|module\s*federation)\b/i,
   /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet|tcp\/ip)\b/i,
-  /\b(microservices?|system\s?design|event-?driven(?:\s+architecture)?|distributed\s+systems|observability|ci\/cd|devops|sre|etl|orm|scd|unit\s+testing|integration\s+testing)\b/i,
+  /\b(microservices?|system\s?design|system\s?architecture|software\s?architecture|backend\s?architecture|cloud\s?architecture|data\s?modeling|database\s?design|api\s?design|event-?driven(?:\s+architecture)?|distributed\s+systems|observability|ci\/cd|devops|sre|etl|orm|scd|unit\s+testing|integration\s+testing|agile|scrum|kanban|infrastructure\s+as\s+code|continuous\s+integration|decision\s+intelligence|industrial\s+systems)\b/i,
 ];
 
 /** Narrative / superpower phrases — not Technical Skills bullets. */
@@ -141,10 +143,10 @@ export function normalizeSkillLabel(text) {
   return s;
 }
 
-export function isTechStackSkill(text) {
+export function isTechStackSkill(text, jdText = '') {
   const t = cleanSkillToken(text);
-  if (!t || isEditorIdeTool(t) || isJunkKeyword(t) || !isWeavableKeyword(t)) return false;
-  if (isEmployerBrandKeyword(t)) return false;
+  if (!t || isEditorIdeTool(t) || isJunkKeyword(t)) return false;
+  if (isEmployerBrandKeyword(t, jdText)) return false;
   if (isNarrativeSuperpower(t)) return false;
   // Company chrome falsely matching Express inside "American Express"
   if (/\bamerican\s+express\b/i.test(t)) return false;
@@ -154,6 +156,8 @@ export function isTechStackSkill(text) {
   if (t.length > 42 && /\b(transition|optimization|optimisation|integration|ownership|design)\b/i.test(t)) {
     return false;
   }
+  if (isDomainSkillPhrase(t) || isApprovedSkillPhrase(t)) return true;
+  if (jdText && keywordAppearsInJd(t, jdText)) return true;
   if (t.length <= 30 && t.split(/\s+/).length <= 3) {
     return TECH_PATTERNS.some((p) => p.test(t));
   }
@@ -228,10 +232,10 @@ function skillsCategoryLines(items, jdText = '') {
   }
   return order
     .filter((name) => buckets[name].length)
-    .map(
-      (name) =>
-        `<div class="skill-line"><span class="skill-label">${name}:</span> ${escapeHtml(buckets[name].join(', '))}</div>`,
-    )
+    .map((name) => {
+      const displayLabel = name === 'Other' ? 'Architecture & Practices' : name;
+      return `<div class="skill-line"><span class="skill-label">${displayLabel}:</span> ${escapeHtml(buckets[name].join(', '))}</div>`;
+    })
     .join('');
 }
 
@@ -244,19 +248,20 @@ function skillCategory(label) {
     return 'Languages';
   }
   if (
-    /^(nodejs|node\.js|react|reactjs|react\.js|express|fastapi|flask|django|nextjs|next\.js|nestjs|nest\.js|vue|angular|spring|rails|laravel|fastify|hono|remix)$/i.test(k)
-    || /^(node\.?js|react|express|fastapi|django|flask|next|nest)/i.test(k)
+    /^(nodejs|node\.js|react|reactjs|react\.js|express|fastapi|flask|django|nextjs|next\.js|nestjs|nest\.js|vue|angular|spring|rails|laravel|fastify|hono|remix|puppeteer|cheerio|playwright|selenium|apache\s*camel)$/i.test(k)
+    || /^(node\.?js|react|express|fastapi|django|flask|next|nest|api\s*design)/i.test(k)
   ) {
     return 'Frameworks';
   }
   if (
     /^(postgres|postgresql|mysql|mariadb|mongo|mongodb|redis|oracle|dynamodb|sqlite|chromadb|cassandra|elasticsearch|opensearch|supabase|firestore)$/i.test(k)
+    || /\b(data\s*modeling|database\s*design)\b/i.test(k)
   ) {
     return 'Databases';
   }
   if (
     /^(aws|gcp|azure|docker|kubernetes|k8s|terraform|cloudformation|cloudwatch|iam|vpc|boto3|jenkins|linux|ci\/cd|ecs|ec2|lambda|s3)$/i.test(k)
-    || /^(aws|azure|gcp|docker|kubernetes|terraform|cloudformation|cloudwatch)\b/.test(k)
+    || /^(aws|azure|gcp|docker|kubernetes|terraform|cloudformation|cloudwatch|infrastructure\s*as\s*code|continuous\s*integration)\b/.test(k)
   ) {
     return 'Cloud';
   }
@@ -275,7 +280,7 @@ export function sanitizeCompetencyList(items, jdText = '') {
     const s = cleanSkillToken(raw);
     if (!s) continue;
     if (isEditorIdeTool(s) || isJunkKeyword(s) || isEmployerBrandKeyword(s, jdText)) continue;
-    if (isNarrativeSuperpower(s) || !isTechStackSkill(s)) continue;
+    if (isNarrativeSuperpower(s) || !isTechStackSkill(s, jdText)) continue;
     if (isUnprovenLanguageSkill(s)) {
       // Reject languages like Ruby, PHP, Django from footer spam unless JD explicitly requires it AND it's not a generic listing
       if (jdText && !keywordAppearsInJd(s, jdText)) continue;

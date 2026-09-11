@@ -77,7 +77,6 @@ export function CommandPaletteModal({
     { id: 'applications', label: 'Application Tracker', icon: <AppstoreOutlined />, category: 'Navigation', shortcut: 'G A' },
     { id: 'generated-docs', label: 'Generated Docs & Exports', icon: <FolderOpenOutlined />, category: 'Navigation', shortcut: 'G E' },
     { id: 'settings', label: 'Settings & Targeting Keywords', icon: <SettingOutlined />, category: 'Navigation', shortcut: 'G S' },
-    { id: 'uiverse', label: 'UIverse Component Lab', icon: <ThunderboltOutlined />, category: 'Navigation', shortcut: 'G U' },
   ];
 
   const actionItems = [

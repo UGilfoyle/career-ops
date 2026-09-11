@@ -84,16 +84,25 @@ const DOMAIN_PHRASES = [
   'observability',
   'incident response',
   'system design',
+  'system architecture',
+  'software architecture',
+  'backend architecture',
+  'data modeling',
+  'database design',
   'API design',
   'RESTful APIs',
   'message queues',
   'message brokers',
+  'decision intelligence',
+  'industrial systems',
   // Frontend / fullstack
   'state management',
   'component libraries',
   'responsive design',
+  'micro frontends',
   // DevOps / SRE
   'infrastructure as code',
+  'continuous integration',
   'continuous delivery',
   'container orchestration',
   'auto-scaling',
@@ -196,7 +205,7 @@ const JUNK_KEYWORD_RE =
 
 /** Soft JD prose that looks like a "skill" but is education/section chrome. */
 const JD_CHROME_PHRASE_RE =
-  /\b(what you|what you.?ll|you.?ll (do|bring)|who we are|the role|key skills|computer science|technology-related|related field|bachelor.?s?( degree)?|equivalent experience|full[-\s]?stack experience|hands-?on experience|years of (full[-\s]?stack )?experience|degree in|components and implement|user-friendly|providing technical guidance|cross-functional teams to gather|and ensure best practices|frameworks like|manage time|responsive and user|cloud migration and modernization)\b/i;
+  /\b(what you|what you.?ll|you.?ll (do|bring)|who we are|the role|key skills|computer science|technology-related|related field|bachelor.?s?( degree)?|equivalent experience|full[-\s]?stack experience|hands-?on experience|years of (full[-\s]?stack )?experience|degree in|components and implement|user-friendly|providing technical guidance|cross-functional teams to gather|and ensure best practices|frameworks like|manage time|responsive and user|cloud migration and modernization|technical skills|required skills|core skills|key qualifications|your tasks|your mission|your profile)\b/i;
 
 /** Equipment / WFH hardware boilerplate — not a candidate skill. */
 const JD_EQUIPMENT_PHRASE_RE =
