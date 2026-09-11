@@ -73,6 +73,7 @@ import {
   type EngagementIntelTarget,
 } from './EngagementIntelModal';
 import { PipelineStudioView } from './PipelineStudioView';
+import { JdViewer } from './JdViewer';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { MultiTerminalPanel } from './MultiTerminalPanel';
 import { MarkdownMessage } from './MarkdownMessage';
@@ -4815,12 +4816,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
           {!jobDetailsLoading && !jobDetailsError && (
             <div>
-              <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest mb-2">
-                Job Description
-              </div>
-              <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-zinc-800 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
-                {formatJdForDisplay(jobDetails?.jd_text)}
-              </pre>
+              <JdViewer
+                jdText={jobDetails?.jd_text}
+                jobTitle={jobDetails?.title}
+                company={jobDetails?.company}
+                jobUrl={jobDetails?.url}
+                maxHeight="58vh"
+              />
             </div>
           )}
         </div>

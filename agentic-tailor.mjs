@@ -44,7 +44,7 @@ import { callFirstAvailableFallback } from './llm-fallback.mjs';
 import { renderCategorizedSkills, sanitizeCompetencyList } from './resume-skills-html.mjs';
 import { renderContactBarHtml } from './resume-contact-html.mjs';
 import { gateResumeOnPostingAge, argvHasYes } from './job-posting-gate.mjs';
-import { fetchAshbyJobDescription, parseAshbyJobRef } from './ashby-jd.mjs';
+import { fetchAshbyJobDescription, parseAshbyJobRef, htmlToPlainJd } from './ashby-jd.mjs';
 import { buildApplicationDocumentPaths } from './document-filename.mjs';
 import { classifyCompany, classifyGccOpportunity } from './gcc-classify.mjs';
 import { hydrateResumeProfile } from './profile-hydrate.mjs';
@@ -835,15 +835,8 @@ async function scrapeJD(url) {
         const department = json.result?.jobOpening?.departmentLabel || '';
         const descriptionHtml = json.result?.jobOpening?.description || '';
         
-        // Convert descriptionHtml to clean plain text
-        const descriptionText = descriptionHtml
-          .replace(/<br\s*\/?>/gi, '\n')
-          .replace(/<\/p>/gi, '\n\n')
-          .replace(/<\/li>/gi, '\n')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/\n\s*\n/g, '\n\n')
-          .trim();
+        // Convert descriptionHtml to clean structured text
+        const descriptionText = htmlToPlainJd(descriptionHtml);
           
         const text = `Job Title: ${title}\nDepartment: ${department}\n\nDescription:\n${descriptionText}`;
         console.log(`✅ Successfully extracted job description via BambooHR detail API (${text.length} chars).`);
@@ -891,17 +884,7 @@ async function scrapeJD(url) {
         const location = json.location?.name || '';
         const contentHtml = json.content || '';
 
-        const contentText = contentHtml
-          .replace(/<br\s*\/?>/gi, '\n')
-          .replace(/<\/p>/gi, '\n\n')
-          .replace(/<\/li>/gi, '\n')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/\n\s*\n/g, '\n\n')
-          .trim();
+        const contentText = htmlToPlainJd(contentHtml);
 
         const text = `Job Title: ${title}\nLocation: ${location}\n\nDescription:\n${contentText}`;
         console.log(`✅ Successfully extracted job description via Greenhouse Board API (${text.length} chars).`);
@@ -943,23 +926,7 @@ async function scrapeJD(url) {
       if (res.ok) {
         const html = await res.text();
         // Lever pages have structured content in the HTML even without JS
-        const stripped = html
-          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-          .replace(/<header[\s\S]*?<\/header>/gi, ' ')
-          .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
-          .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
-          .replace(/<br\s*\/?>/gi, '\n')
-          .replace(/<\/p>/gi, '\n\n')
-          .replace(/<\/li>/gi, '\n')
-          .replace(/<\/div>/gi, '\n')
-          .replace(/<\/h[1-6]>/gi, '\n\n')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/\n\s*\n/g, '\n\n')
-          .replace(/[ \t]+/g, ' ')
-          .trim();
+        const stripped = htmlToPlainJd(html);
         if (stripped.length > 200) {
           console.log(`✅ Successfully extracted job description from Lever page (${stripped.length} chars).`);
           return stripped.slice(0, 15000);
@@ -993,12 +960,7 @@ async function scrapeJD(url) {
             if (item.title) parts.push(`Job Title: ${item.title}`);
             if (item.hiringOrganization?.name) parts.push(`Company: ${item.hiringOrganization.name}`);
             if (item.description) {
-              const descText = String(item.description)
-                .replace(/<br\s*\/?>/gi, '\n')
-                .replace(/<\/p>/gi, '\n\n')
-                .replace(/<[^>]+>/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
+              const descText = htmlToPlainJd(item.description);
               parts.push(`Description:\n${descText}`);
             }
             const text = parts.join('\n');
@@ -1009,15 +971,7 @@ async function scrapeJD(url) {
         /* try next block */
       }
     }
-    const stripped = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/p>/gi, '\n\n')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+\n/g, '\n')
-      .replace(/[ \t]+/g, ' ')
-      .trim();
+    const stripped = htmlToPlainJd(html);
     if (stripped.length > 200) return stripped.slice(0, 15000);
     throw new Error('HTML fetch returned insufficient content');
   }

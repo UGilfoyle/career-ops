@@ -40,23 +40,9 @@ export function parseAshbyJobRef(url) {
   return null;
 }
 
-export function htmlToPlainJd(html) {
-  return String(html || '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<\/h[1-6]>/gi, '\n\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n\s*\n/g, '\n\n')
-    .replace(/[ \t]+/g, ' ')
-    .trim();
-}
+import { cleanHtmlToStructuredJd } from './lib/jd-formatter-core.mjs';
+
+export const htmlToPlainJd = cleanHtmlToStructuredJd;
 
 export function formatAshbyJobText(job) {
   const title = job?.title || '';
