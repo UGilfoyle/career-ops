@@ -2057,7 +2057,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={navCollapsed} onClick={() => goTab('generated-docs')} />
             <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={navCollapsed} onClick={() => goTab('terminal')} />
             <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={navCollapsed} onClick={() => goTab('chat')} />
-            <NavItem id="nav-practice" icon={<GraduationCap size={18}/>} label="Interview Practice" active={activeTab === 'practice'} collapsed={navCollapsed} onClick={() => goTab('practice')} />
+            <NavItem id="nav-practice" icon={<GraduationCap size={18}/>} label="Interview Practice" active={activeTab === 'practice'} collapsed={navCollapsed} onClick={() => goTab('practice')} badge="Voice AI" />
             {SHOW_RESUME_MANAGER_NAV && (
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={navCollapsed} onClick={() => goTab('cv')} />
             )}
@@ -3187,8 +3187,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           {activeTab === 'resume-studio' && (
             <motion.div key="resume-studio" className="flex min-h-0 flex-1 flex-col">
               {billing === null ? (
-                <div className="flex justify-center py-24">
-                  <Loader2 className="animate-spin text-[#1C1C1E]" size={28} />
+                <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
+                  <div className="flex justify-between items-center pb-4 border-b border-zinc-200">
+                    <div className="space-y-2">
+                      <div className="h-6 w-48 rounded-lg skeleton-shimmer" />
+                      <div className="h-3.5 w-72 rounded-lg skeleton-shimmer" />
+                    </div>
+                    <div className="h-9 w-36 rounded-xl skeleton-shimmer" />
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-4 h-96 rounded-2xl border border-zinc-200 p-4 skeleton-shimmer" />
+                    <div className="lg:col-span-8 h-[600px] rounded-2xl border border-zinc-200 p-6 skeleton-shimmer" />
+                  </div>
                 </div>
               ) : hasPro ? (
               <div className="min-h-0 flex-1">
@@ -4681,7 +4691,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             </motion.div>
           )}
 
-          {activeTab === 'practice' && billing && (
+          {activeTab === 'practice' && (
             <motion.div
               key="practice"
               initial={{ opacity: 0, y: 15 }}
@@ -4693,9 +4703,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <PracticePanel
                 pipeline={data?.pipeline || []}
                 applications={data?.applications || []}
-                planDisplay={billing.plan.display}
-                planSubtitle={billing.plan.subtitle}
-                pendingPayment={billing.payment}
+                planDisplay={billing?.plan?.display || 'Pro Member'}
+                planSubtitle={billing?.plan?.subtitle || 'Unlimited Packs'}
+                pendingPayment={billing?.payment || null}
                 onUpgrade={() => {
                   void fetch('/api/billing/status').then(async (r) => {
                     if (r.ok) setBilling(await r.json());
@@ -4703,11 +4713,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 }}
               />
             </motion.div>
-          )}
-          {activeTab === 'practice' && !billing && (
-            <div className="flex items-center gap-2 text-sm text-[#6B6B6B]">
-              <Loader2 className="animate-spin" size={16} /> Loading billing…
-            </div>
           )}
         </AnimatePresence>
         </div>

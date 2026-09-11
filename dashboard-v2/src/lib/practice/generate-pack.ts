@@ -29,7 +29,7 @@ export function hashJdText(jdText: string): string {
   return createHash('sha256').update(String(jdText || '').trim()).digest('hex').slice(0, 32);
 }
 
-function stripJsonFence(raw: string): string {
+export function stripJsonFence(raw: string): string {
   let text = String(raw || '').trim();
   if (text.startsWith('```')) {
     text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
@@ -40,7 +40,7 @@ function stripJsonFence(raw: string): string {
   return text;
 }
 
-async function callLlm(systemPrompt: string, userPrompt: string): Promise<string> {
+export async function callLlm(systemPrompt: string, userPrompt: string): Promise<string> {
   const mistralKey = process.env.MISTRAL_API_KEY || '';
   const deepseekKey = process.env.DEEPSEEK_API_KEY || '';
   const geminiKey = process.env.GEMINI_API_KEY || '';

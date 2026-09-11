@@ -212,6 +212,10 @@ async function run() {
   const { GEMINI_HANDBOOK_VISUALS_FOLLOWUP } = await import('./handbook-prompt');
   assert.match(GEMINI_HANDBOOK_VISUALS_FOLLOWUP, /VISUAL PASS/);
 
+  const { stripJsonFence } = await import('./generate-pack');
+  assert.equal(stripJsonFence('```json\n{"score": 8.5}\n```'), '{"score": 8.5}');
+  assert.equal(stripJsonFence('  {"score": 9.0}  '), '{"score": 9.0}');
+
   console.log('practice tests passed');
 }
 

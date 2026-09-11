@@ -186,7 +186,7 @@ export default function LandingPage() {
         <div className="w-full mt-12 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Card 1: Smart Scoring */}
-            <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 hover:border-[#D4D4D0] hover:shadow-md transition-all">
+            <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all">
               <div className="h-12 w-12 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-sm">
                 <Target size={22} strokeWidth={2.2} />
               </div>
@@ -197,7 +197,7 @@ export default function LandingPage() {
             </div>
 
             {/* Card 2: Resume Studio */}
-            <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 hover:border-[#D4D4D0] hover:shadow-md transition-all">
+            <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all">
               <div className="h-12 w-12 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-sm">
                 <Eye size={22} strokeWidth={2.2} />
               </div>
@@ -207,14 +207,19 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Card 3: Interview Prep */}
-            <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 hover:border-[#D4D4D0] hover:shadow-md transition-all">
-              <div className="h-12 w-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm">
-                <ShieldCheck size={22} strokeWidth={2.2} />
+            {/* Card 3: Voice Mock & Practice */}
+            <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all relative overflow-hidden">
+              <div className="h-12 w-12 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-sm">
+                <span className="text-lg">🎙️</span>
               </div>
-              <h3 className="text-base font-extrabold text-[#1C1C1E]">Interview Prep</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-base font-extrabold text-[#1C1C1E]">Voice Mock Interviews</h3>
+                <span className="px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[9px] font-bold uppercase tracking-wider border border-purple-200">
+                  New
+                </span>
+              </div>
               <p className="text-xs text-[#6B6B6B] leading-relaxed max-w-xs font-normal">
-                Practice coding and behavioral questions with real-time AI feedback
+                Live spoken mock interviews with hold-to-talk voice AI, coding sandboxes, and instant Bar-Raiser scorecard evaluation
               </p>
             </div>
           </div>
