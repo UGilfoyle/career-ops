@@ -25,6 +25,7 @@ import {
   StarOutlined,
   LoadingOutlined,
 } from '@ant-design/icons';
+import { Mic, Code2, Target } from 'lucide-react';
 import { canAccessPracticeBeta } from '@/lib/lifetime-access';
 import ProPaywall, { type PendingPayment } from '../ProPaywall';
 import PracticeComingSoon from './PracticeComingSoon';
@@ -315,8 +316,24 @@ export default function PracticePanel({
         <div className="flex flex-wrap items-center gap-3">
           <Segmented
             options={[
-              { label: '🎙️ Voice Mock', value: 'voice' },
-              { label: '💻 Coding / Prompts IDE', value: 'ide' },
+              {
+                label: (
+                  <span className="inline-flex items-center gap-1.5 px-1 py-0.5">
+                    <Mic size={13} />
+                    <span>Voice Mock</span>
+                  </span>
+                ),
+                value: 'voice',
+              },
+              {
+                label: (
+                  <span className="inline-flex items-center gap-1.5 px-1 py-0.5">
+                    <Code2 size={13} />
+                    <span>Coding / Prompts IDE</span>
+                  </span>
+                ),
+                value: 'ide',
+              },
             ]}
             value={viewMode}
             onChange={(val) => setViewMode(val as 'voice' | 'ide')}
@@ -434,7 +451,9 @@ export default function PracticePanel({
             >
               {packs.length === 0 ? (
                 <div className="text-center py-8 text-xs text-zinc-400 space-y-1">
-                  <div className="text-xl">🎯</div>
+                  <div className="flex justify-center mb-1">
+                    <Target size={22} className="text-zinc-400" />
+                  </div>
                   <div className="font-medium text-zinc-600">No practice packs generated yet</div>
                   <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
                     Pick a job or paste a JD above to generate your customized interview questions.

@@ -18,6 +18,9 @@ import {
   TrendingUp,
   Users,
   ChevronRight,
+  Mic,
+  Monitor,
+  Smartphone,
 } from 'lucide-react';
 import { WhatsNewPanel } from '@/components/WhatsNewPanel';
 import { ProductFlowPanel } from '@/components/ProductFlowPanel';
@@ -210,7 +213,7 @@ export default function LandingPage() {
             {/* Card 3: Voice Mock & Practice */}
             <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all relative overflow-hidden">
               <div className="h-12 w-12 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-sm">
-                <span className="text-lg">🎙️</span>
+                <Mic size={22} strokeWidth={2.2} />
               </div>
               <div className="flex items-center gap-1.5">
                 <h3 className="text-base font-extrabold text-[#1C1C1E]">Voice Mock Interviews</h3>
@@ -409,7 +412,8 @@ export default function LandingPage() {
                               : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
                           }`}
                         >
-                          <span>🖥️ 16:9 Landscape</span>
+                          <Monitor size={13} strokeWidth={2} />
+                          <span>16:9 Landscape</span>
                         </button>
                         <button
                           type="button"
@@ -420,7 +424,8 @@ export default function LandingPage() {
                               : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
                           }`}
                         >
-                          <span>📱 9:16 Portrait Reel</span>
+                          <Smartphone size={13} strokeWidth={2} />
+                          <span>9:16 Portrait Reel</span>
                         </button>
                       </div>
 

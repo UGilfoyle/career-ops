@@ -12,6 +12,7 @@ import {
   StopOutlined,
   CheckCircleOutlined,
   WarningOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 
@@ -546,8 +547,11 @@ export function MultiTerminalPanel({
                 <p>
                   <strong className="text-emerald-400">help</strong> → Print full command reference &amp; syntax
                 </p>
-                <p className="text-zinc-400 pt-1 border-t border-zinc-900">
-                  ⚡ <strong className="text-emerald-400">Parallel Execution:</strong> Click <span className="text-emerald-300 font-bold bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-700">[+ New Tab]</span> to run up to 6 concurrent sessions in parallel.
+                <p className="text-zinc-400 pt-1 border-t border-zinc-900 flex items-center gap-1.5">
+                  <ThunderboltOutlined className="text-emerald-400" />
+                  <span>
+                    <strong className="text-emerald-400">Parallel Execution:</strong> Click <span className="text-emerald-300 font-bold bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-700">[+ New Tab]</span> to run up to 6 concurrent sessions in parallel.
+                  </span>
                 </p>
               </div>
               <div className="text-[11px] text-zinc-600 font-mono">
