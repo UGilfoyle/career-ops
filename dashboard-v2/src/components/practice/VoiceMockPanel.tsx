@@ -27,6 +27,18 @@ import {
   TrophyOutlined,
   FireOutlined,
 } from '@ant-design/icons';
+import {
+  Mic,
+  Bot,
+  User,
+  Volume2,
+  Sparkles,
+  Layers,
+  ShieldCheck,
+  Terminal,
+  UserCheck,
+  Zap,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useVoiceInterview,
@@ -270,8 +282,8 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
           title={
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-zinc-900 text-white text-xs">
-                  🎙️
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-zinc-900 text-white">
+                  <Mic size={13} strokeWidth={2.2} />
                 </span>
                 <span className="text-sm font-bold text-zinc-900">Voice Mock Interview Simulator</span>
               </div>
@@ -294,8 +306,9 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
             {/* Quick Scenario Presets */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
-                  ⚡ 1-Click Practice Scenarios
+                <span className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
+                  <Zap size={13} className="text-amber-500" />
+                  1-Click Practice Scenarios
                 </span>
                 <span className="text-[10px] text-zinc-400">Click to autofill setup</span>
               </div>
@@ -309,7 +322,7 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                     round: 'behavioral',
                     diff: 'hard',
                     dur: 10,
-                    icon: '📦',
+                    icon: <ShieldCheck size={15} className="text-amber-600" />,
                   },
                   {
                     title: 'Stripe Sys Design',
@@ -319,7 +332,7 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                     round: 'system-design',
                     diff: 'hard',
                     dur: 15,
-                    icon: '💳',
+                    icon: <Layers size={15} className="text-blue-600" />,
                   },
                   {
                     title: 'Tech Live Screen',
@@ -329,7 +342,7 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                     round: 'technical',
                     diff: 'medium',
                     dur: 10,
-                    icon: '⚡',
+                    icon: <Terminal size={15} className="text-emerald-600" />,
                   },
                   {
                     title: 'Hiring Manager',
@@ -339,7 +352,7 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                     round: 'hiring-manager',
                     diff: 'easy',
                     dur: 5,
-                    icon: '🎯',
+                    icon: <UserCheck size={15} className="text-purple-600" />,
                   },
                 ].map((preset, idx) => (
                   <button
@@ -354,7 +367,9 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                     }}
                     className="p-2.5 rounded-xl border border-zinc-200 bg-zinc-50/70 hover:bg-zinc-100/80 hover:border-zinc-300 text-left transition-all card-hover-lift cursor-pointer group"
                   >
-                    <div className="text-base mb-1">{preset.icon}</div>
+                    <div className="h-7 w-7 rounded-lg bg-white border border-zinc-200/80 flex items-center justify-center mb-1.5 shadow-2xs group-hover:border-zinc-300">
+                      {preset.icon}
+                    </div>
                     <div className="text-[11px] font-bold text-zinc-900 truncate group-hover:text-zinc-950">
                       {preset.title}
                     </div>
@@ -436,9 +451,9 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                   value={difficulty}
                   onChange={(val) => setDifficulty(val as any)}
                   options={[
-                    { label: '🌱 Easy', value: 'easy' },
-                    { label: '⚖️ Medium', value: 'medium' },
-                    { label: '🔥 Hard', value: 'hard' },
+                    { label: 'Easy', value: 'easy' },
+                    { label: 'Medium', value: 'medium' },
+                    { label: 'Hard (Bar-Raiser)', value: 'hard' },
                   ]}
                 />
               </div>
@@ -616,7 +631,7 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
               {/* Interviewer Avatar with Pulse */}
               <div className="relative">
                 <div
-                  className={`h-20 w-20 rounded-full flex items-center justify-center text-2xl transition-all ${
+                  className={`h-20 w-20 rounded-full flex items-center justify-center transition-all ${
                     status === 'speaking'
                       ? 'bg-zinc-900 text-white ring-8 ring-zinc-200'
                       : status === 'thinking'
@@ -624,7 +639,13 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                       : 'bg-zinc-800 text-white'
                   }`}
                 >
-                  {status === 'speaking' ? '🗣️' : status === 'thinking' ? '🧠' : '👔'}
+                  {status === 'speaking' ? (
+                    <Volume2 size={32} className="text-white" />
+                  ) : status === 'thinking' ? (
+                    <Sparkles size={30} className="text-purple-200 animate-spin" style={{ animationDuration: '3s' }} />
+                  ) : (
+                    <Bot size={32} className="text-white" />
+                  )}
                 </div>
 
                 {/* Sound wave rings when speaking */}
@@ -775,9 +796,19 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-[11px]">
-                        {msg.role === 'interviewer' ? `🤖 ${company} Interviewer` : '👤 You'}
-                      </span>
+                      <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                        {msg.role === 'interviewer' ? (
+                          <>
+                            <Bot size={13} className="text-zinc-500" />
+                            <span>{company} Interviewer</span>
+                          </>
+                        ) : (
+                          <>
+                            <User size={13} className="text-blue-600" />
+                            <span>You</span>
+                          </>
+                        )}
+                      </div>
                       <span className="text-[10px] text-zinc-400 font-mono">{msg.timestamp}</span>
                     </div>
                     <p className="leading-relaxed m-0">{msg.text}</p>

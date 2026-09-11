@@ -923,7 +923,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           setActiveTab('terminal');
           setLogs((prev) => [
             ...prev,
-            { type: 'stdout', content: `\n${terminalPrompt} ${cmd}\n📅 Posting check (--yes provided)…\n` },
+            { type: 'stdout', content: `\n${terminalPrompt} ${cmd}\n[posting-check] Verifying job listing (--yes provided)…\n` },
           ]);
           try {
             const isUrl = /^https?:\/\//i.test(target);
