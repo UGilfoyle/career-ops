@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   List,
   ChevronLeft,
@@ -26,6 +26,7 @@ import {
   X,
   Search,
   Check,
+  AlertCircle,
   Loader2,
   Cpu,
 } from 'lucide-react';
@@ -465,7 +466,7 @@ export function PracticeIdeView({
   const [selectedPromptIndex, setSelectedPromptIndex] = useState(0);
   const [leftTab, setLeftTab] = useState<'description' | 'editorial' | 'solutions' | 'submissions'>('description');
   const [language, setLanguage] = useState<PracticeRunLanguage>('python');
-  const [codeByLang, setCodeByLang] = useState<Partial<Record<PracticeRunLanguage, string>>>({});
+  const [codeStore, setCodeStore] = useState<Record<string, string>>({});
   const [systemDesignText, setSystemDesignText] = useState(SYSTEM_DESIGN_STARTER);
   const [behavioralText, setBehavioralText] = useState(BEHAVIORAL_STARTER);
   const [running, setRunning] = useState(false);
@@ -489,6 +490,60 @@ export function PracticeIdeView({
   const [genCompany, setGenCompany] = useState('');
   const [genRole, setGenRole] = useState('');
   const [copied, setCopied] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'problem' | 'code'>('problem');
+
+  const gutterRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+
+  // ── Edge Case 1: Prompt Clamping & Validation ──
+  const currentPrompts = useMemo(() => {
+    if (activeTab === 'systemDesign') {
+      return systemDesignPrompts.length ? systemDesignPrompts : DEFAULT_SYSTEM_DESIGN_PROMPTS;
+    }
+    if (activeTab === 'behavioral') {
+      return behavioralPrompts.length ? behavioralPrompts : DEFAULT_BEHAVIORAL_PROMPTS;
+    }
+    return codingPrompts.length ? codingPrompts : DEFAULT_CODING_PROMPTS;
+  }, [activeTab, codingPrompts, systemDesignPrompts, behavioralPrompts]);
+
+  useEffect(() => {
+    if (selectedPromptIndex >= currentPrompts.length) {
+      setSelectedPromptIndex(0);
+      setResult(null);
+      setAiReviewOutput(null);
+      setError(null);
+    }
+  }, [currentPrompts.length, selectedPromptIndex]);
+
+  const activePrompt = currentPrompts[selectedPromptIndex] || currentPrompts[0];
+
+  // ── Edge Case 2: Per-Question Code Isolation & Persistence ──
+  const promptKey = useMemo(() => {
+    return activePrompt?.id || `${activeTab}-${selectedPromptIndex}-${activePrompt?.title || 'default'}`;
+  }, [activePrompt?.id, activePrompt?.title, activeTab, selectedPromptIndex]);
+
+  const activeCode = useMemo(() => {
+    const key = `${promptKey}:${language}`;
+    return codeStore[key] ?? STARTERS[language] ?? '';
+  }, [codeStore, promptKey, language]);
+
+  const handleCodeChange = (newCode: string) => {
+    const key = `${promptKey}:${language}`;
+    setCodeStore((prev) => ({ ...prev, [key]: newCode }));
+  };
+
+  // ── Edge Case 3: Global Escape Key Handling (Modals, Drawers, Fullscreen) ──
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showGenerateModal) setShowGenerateModal(false);
+        else if (showProblemListDrawer) setShowProblemListDrawer(false);
+        else if (isFullscreen) setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isFullscreen, showProblemListDrawer, showGenerateModal]);
 
   // Timer countdown
   useEffect(() => {
@@ -505,25 +560,22 @@ export function PracticeIdeView({
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const currentPrompts = useMemo(() => {
-    if (activeTab === 'systemDesign') {
-      return systemDesignPrompts.length ? systemDesignPrompts : DEFAULT_SYSTEM_DESIGN_PROMPTS;
+  // ── Edge Case 4: Line Numbers Scroll Sync ──
+  const handleEditorScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (gutterRef.current) {
+      gutterRef.current.scrollTop = e.currentTarget.scrollTop;
     }
-    if (activeTab === 'behavioral') {
-      return behavioralPrompts.length ? behavioralPrompts : DEFAULT_BEHAVIORAL_PROMPTS;
-    }
-    return codingPrompts.length ? codingPrompts : DEFAULT_CODING_PROMPTS;
-  }, [activeTab, codingPrompts, systemDesignPrompts, behavioralPrompts]);
-
-  const activePrompt = currentPrompts[selectedPromptIndex] || currentPrompts[0];
-
-  const activeCode = codeByLang[language] ?? STARTERS[language] ?? '';
-
-  const handleCodeChange = (newCode: string) => {
-    setCodeByLang((prev) => ({ ...prev, [language]: newCode }));
   };
 
   const handleRunCode = async () => {
+    // Edge Case: Empty submission check
+    if (!activeCode.trim()) {
+      setError('Editor is empty. Write your solution before running tests.');
+      setConsoleOpen(true);
+      setConsoleTab('result');
+      return;
+    }
+
     setRunning(true);
     setError(null);
     setResult(null);
@@ -554,10 +606,20 @@ export function PracticeIdeView({
     if (activeTab === 'coding') {
       await handleRunCode();
     } else {
+      const text = activeTab === 'systemDesign' ? systemDesignText : behavioralText;
+      if (!text.trim()) {
+        setError('Please enter your response before submitting for AI review.');
+        setConsoleOpen(true);
+        setConsoleTab('result');
+        return;
+      }
+
       setReviewing(true);
       setConsoleOpen(true);
       setConsoleTab('result');
       setAiReviewOutput(null);
+      setError(null);
+
       setTimeout(() => {
         setReviewing(false);
         if (activeTab === 'systemDesign') {
@@ -594,8 +656,10 @@ export function PracticeIdeView({
     setSelectedPromptIndex(nextIdx);
     setAiReviewOutput(null);
     setResult(null);
+    setError(null);
   };
 
+  // ── Edge Case 5: Tab & Shift+Tab Indentation in Code Editor ──
   const handleKeyDownInEditor = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -603,11 +667,25 @@ export function PracticeIdeView({
       const start = target.selectionStart;
       const end = target.selectionEnd;
       const value = target.value;
-      const updated = value.substring(0, start) + '  ' + value.substring(end);
-      handleCodeChange(updated);
-      setTimeout(() => {
-        target.selectionStart = target.selectionEnd = start + 2;
-      }, 0);
+
+      if (e.shiftKey) {
+        // Shift+Tab: Dedent 2 spaces if present
+        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+        if (value.substring(lineStart, lineStart + 2) === '  ') {
+          const updated = value.substring(0, lineStart) + value.substring(lineStart + 2);
+          handleCodeChange(updated);
+          setTimeout(() => {
+            target.selectionStart = target.selectionEnd = Math.max(lineStart, start - 2);
+          }, 0);
+        }
+      } else {
+        // Tab: Insert 2 spaces
+        const updated = value.substring(0, start) + '  ' + value.substring(end);
+        handleCodeChange(updated);
+        setTimeout(() => {
+          target.selectionStart = target.selectionEnd = start + 2;
+        }, 0);
+      }
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       void handleSubmit();
@@ -622,6 +700,29 @@ export function PracticeIdeView({
     if (d.includes('easy')) return 'text-[#00b8a3] bg-[#00b8a3]/10 border-[#00b8a3]/30';
     if (d.includes('hard') || d.includes('raiser')) return 'text-[#ff375f] bg-[#ff375f]/10 border-[#ff375f]/30';
     return 'text-[#ffc01e] bg-[#ffc01e]/10 border-[#ffc01e]/30';
+  };
+
+  // ── Edge Case 6: LeetCode-Accurate Status Determination ──
+  const getExecutionStatus = (res: PracticeRunResult) => {
+    if (res.timedOut) {
+      return { label: 'Time Limit Exceeded (TLE)', color: 'text-amber-400' };
+    }
+    if (res.status === 'rate_limited') {
+      return { label: 'Rate Limited (Retry Shortly)', color: 'text-amber-400' };
+    }
+    if (!res.ok || (res.exitCode !== null && res.exitCode !== 0)) {
+      const errText = (res.stderr || '').toLowerCase();
+      const isCompile =
+        errText.includes('syntaxerror') ||
+        errText.includes('error: ') ||
+        errText.includes('cannot find') ||
+        errText.includes('compilation error');
+      return {
+        label: isCompile ? 'Compile Error' : 'Runtime Error',
+        color: 'text-rose-400',
+      };
+    }
+    return { label: 'Accepted', color: 'text-[#2cbb5d]' };
   };
 
   return (
@@ -640,7 +741,7 @@ export function PracticeIdeView({
             type="button"
             onClick={() => setShowProblemListDrawer(true)}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#262626] hover:bg-[#333333] text-zinc-200 hover:text-white border border-[#383838] text-xs font-semibold transition-colors cursor-pointer"
-            title="Open Problem List"
+            title="Open Problem List (Esc to close)"
           >
             <List size={13} className="text-zinc-400" />
             <span className="hidden sm:inline">Problem List</span>
@@ -659,6 +760,7 @@ export function PracticeIdeView({
                 setSelectedPromptIndex((prev) => Math.max(0, prev - 1));
                 setResult(null);
                 setAiReviewOutput(null);
+                setError(null);
               }}
               className="p-1 rounded hover:bg-[#262626] text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
               title="Previous Question"
@@ -672,6 +774,7 @@ export function PracticeIdeView({
                 setSelectedPromptIndex((prev) => Math.min(currentPrompts.length - 1, prev + 1));
                 setResult(null);
                 setAiReviewOutput(null);
+                setError(null);
               }}
               className="p-1 rounded hover:bg-[#262626] text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
               title="Next Question"
@@ -721,6 +824,7 @@ export function PracticeIdeView({
                     setSelectedPromptIndex(0);
                     setResult(null);
                     setAiReviewOutput(null);
+                    setError(null);
                   }}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
                     active ? 'bg-[#1a1a1a] text-white shadow-xs' : 'text-zinc-400 hover:text-zinc-200'
@@ -744,8 +848,30 @@ export function PracticeIdeView({
           </button>
         </div>
 
-        {/* Right: Actions, Run, Submit, Fullscreen */}
+        {/* Right: Actions, Mobile Switcher, Run, Submit, Fullscreen */}
         <div className="flex items-center gap-2">
+          {/* Mobile Screen Switcher */}
+          <div className="flex lg:hidden rounded bg-[#262626] p-0.5 border border-zinc-700">
+            <button
+              type="button"
+              onClick={() => setMobileTab('problem')}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                mobileTab === 'problem' ? 'bg-[#1a1a1a] text-white' : 'text-zinc-400'
+              }`}
+            >
+              Problem
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('code')}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                mobileTab === 'code' ? 'bg-[#1a1a1a] text-white' : 'text-zinc-400'
+              }`}
+            >
+              Code
+            </button>
+          </div>
+
           {company && (
             <span className="hidden xl:inline-block text-[11px] font-medium text-zinc-400 truncate max-w-[140px]">
               {company}
@@ -778,7 +904,7 @@ export function PracticeIdeView({
             type="button"
             onClick={() => setIsFullscreen((v) => !v)}
             className="p-1.5 rounded-md hover:bg-[#262626] text-zinc-400 hover:text-white transition-colors cursor-pointer ml-1"
-            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Enter Fullscreen'}
           >
             {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
@@ -788,7 +914,11 @@ export function PracticeIdeView({
       {/* ── 2. LeetCode Split Workspace (Problem Statement + Editor) ── */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#2e2e2e] relative overflow-hidden">
         {/* ── Left Pane: LeetCode Problem Description (5 cols) ── */}
-        <section className="lg:col-span-5 flex flex-col min-h-0 bg-[#1e1e1e] overflow-hidden">
+        <section
+          className={`lg:col-span-5 flex flex-col min-h-0 bg-[#1e1e1e] overflow-hidden ${
+            mobileTab === 'problem' ? 'flex' : 'hidden lg:flex'
+          }`}
+        >
           {/* LeetCode Sub-Tabs */}
           <div className="h-9 bg-[#1a1a1a] border-b border-[#2e2e2e] flex items-center px-2 gap-1 select-none shrink-0">
             {[
@@ -976,7 +1106,11 @@ export function PracticeIdeView({
         </section>
 
         {/* ── Right Pane: LeetCode Code Editor & Console (7 cols) ── */}
-        <section className="lg:col-span-7 flex flex-col min-h-0 bg-[#1e1e1e] overflow-hidden">
+        <section
+          className={`lg:col-span-7 flex flex-col min-h-0 bg-[#1e1e1e] overflow-hidden ${
+            mobileTab === 'code' ? 'flex' : 'hidden lg:flex'
+          }`}
+        >
           {/* Editor Header Toolbar */}
           <div className="h-9 bg-[#1a1a1a] border-b border-[#2e2e2e] flex items-center justify-between px-3 shrink-0 select-none">
             <div className="flex items-center gap-2">
@@ -1021,9 +1155,10 @@ export function PracticeIdeView({
                   if (activeTab === 'behavioral') setBehavioralText(BEHAVIORAL_STARTER);
                   setResult(null);
                   setAiReviewOutput(null);
+                  setError(null);
                 }}
                 className="p-1 rounded hover:bg-[#262626] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                title="Reset to starter code"
+                title="Reset to starter template"
               >
                 <RotateCcw size={13} />
               </button>
@@ -1043,18 +1178,23 @@ export function PracticeIdeView({
           <div className="flex-1 min-h-0 relative flex overflow-hidden font-mono text-xs bg-[#1e1e1e]">
             {activeTab === 'coding' ? (
               <>
-                {/* Line numbers gutter */}
-                <div className="w-10 select-none border-r border-[#2a2a2a] bg-[#1a1a1a] py-3 text-right pr-2 text-zinc-400 leading-6 font-mono text-[11px]">
-                  {Array.from({ length: Math.max(25, activeCode.split('\n').length) }).map((_, i) => (
+                {/* Line numbers gutter with synchronized scroll */}
+                <div
+                  ref={gutterRef}
+                  className="w-10 select-none border-r border-[#2a2a2a] bg-[#1a1a1a] py-3 text-right pr-2 text-zinc-400 leading-6 font-mono text-[11px] overflow-hidden"
+                >
+                  {Array.from({ length: Math.max(30, activeCode.split('\n').length) }).map((_, i) => (
                     <div key={i}>{i + 1}</div>
                   ))}
                 </div>
 
                 {/* Code Textarea */}
                 <textarea
+                  ref={editorRef}
                   value={activeCode}
                   onChange={(e) => handleCodeChange(e.target.value)}
                   onKeyDown={handleKeyDownInEditor}
+                  onScroll={handleEditorScroll}
                   spellCheck={false}
                   className="flex-1 resize-none bg-transparent p-3 text-[#d4d4d4] font-mono text-xs leading-6 outline-none selection:bg-[#264f78]"
                   placeholder="Write your solution here..."
@@ -1167,25 +1307,38 @@ export function PracticeIdeView({
                       </div>
                     ) : result ? (
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-base font-bold ${
-                                result.ok ? 'text-[#2cbb5d]' : 'text-rose-400'
-                              }`}
-                            >
-                              {result.ok ? 'Accepted' : 'Runtime Error'}
-                            </span>
-                            <span className="text-[11px] text-zinc-500">
-                              Exit Code: {result.exitCode ?? 0}
-                            </span>
-                          </div>
+                        {(() => {
+                          const statusInfo = getExecutionStatus(result);
+                          return (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-base font-bold ${statusInfo.color}`}>
+                                  {statusInfo.label}
+                                </span>
+                                <span className="text-[11px] text-zinc-500">
+                                  Exit Code: {result.exitCode ?? 0}
+                                </span>
+                              </div>
 
-                          <div className="flex items-center gap-3 text-[11px] text-zinc-400">
-                            <span>Runtime: <strong className="text-zinc-200">{result.timeSec ? `${Math.round(result.timeSec * 1000)} ms` : '42 ms'}</strong> (Beats 94.2%)</span>
-                            <span>Memory: <strong className="text-zinc-200">{result.memoryKb ? `${Math.round(result.memoryKb / 1024)} MB` : '41.2 MB'}</strong> (Beats 88.5%)</span>
-                          </div>
-                        </div>
+                              <div className="flex items-center gap-3 text-[11px] text-zinc-400">
+                                <span>
+                                  Runtime:{' '}
+                                  <strong className="text-zinc-200">
+                                    {result.timeSec ? `${Math.round(result.timeSec * 1000)} ms` : '42 ms'}
+                                  </strong>{' '}
+                                  (Beats 94.2%)
+                                </span>
+                                <span>
+                                  Memory:{' '}
+                                  <strong className="text-zinc-200">
+                                    {result.memoryKb ? `${Math.round(result.memoryKb / 1024)} MB` : '41.2 MB'}
+                                  </strong>{' '}
+                                  (Beats 88.5%)
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {result.stdout && (
                           <div className="space-y-1">
@@ -1206,9 +1359,12 @@ export function PracticeIdeView({
                         )}
                       </div>
                     ) : error ? (
-                      <div className="p-3 rounded bg-rose-950/30 border border-rose-900/50 text-rose-300">
-                        <div className="font-bold mb-1">Execution Failed:</div>
-                        <div>{error}</div>
+                      <div className="p-3 rounded bg-rose-950/30 border border-rose-900/50 text-rose-300 flex items-start gap-2">
+                        <AlertCircle size={14} className="shrink-0 mt-0.5 text-rose-400" />
+                        <div>
+                          <div className="font-bold text-xs mb-0.5">Execution Error:</div>
+                          <div className="text-xs font-mono">{error}</div>
+                        </div>
                       </div>
                     ) : (
                       <div className="py-6 text-center text-zinc-400">
@@ -1288,6 +1444,7 @@ export function PracticeIdeView({
                   type="button"
                   onClick={() => setShowProblemListDrawer(false)}
                   className="p-1 rounded hover:bg-[#262626] text-zinc-400 hover:text-white"
+                  title="Close (Esc)"
                 >
                   <X size={16} />
                 </button>
@@ -1414,6 +1571,7 @@ export function PracticeIdeView({
                   type="button"
                   onClick={() => setShowGenerateModal(false)}
                   className="p-1 rounded hover:bg-[#262626] text-zinc-400 hover:text-white"
+                  title="Close (Esc)"
                 >
                   <X size={16} />
                 </button>
