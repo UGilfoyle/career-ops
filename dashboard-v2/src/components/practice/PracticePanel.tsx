@@ -30,7 +30,7 @@ import { canAccessPracticeBeta } from '@/lib/lifetime-access';
 import ProPaywall, { type PendingPayment } from '../ProPaywall';
 import PracticeComingSoon from './PracticeComingSoon';
 import HandbookCard from './HandbookCard';
-import PracticePackView, { type PracticePackContent } from './PracticePackView';
+import { type PracticePackContent } from './PracticePackView';
 import { PracticeIdeView } from './PracticeIdeView';
 import VoiceMockPanel from './VoiceMockPanel';
 
@@ -166,6 +166,23 @@ export default function PracticePanel({
     return ordered.slice(0, 80);
   }, [pipeline, applications, appliedJobIds, jobFilter]);
 
+  const openPack = useCallback(async (packId: number) => {
+    setError('');
+    try {
+      const res = await fetch(`/api/practice/packs/${packId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error || 'Failed to load pack');
+      setActivePack({
+        id: data.pack.id,
+        company: data.pack.company,
+        role: data.pack.role,
+        content: data.pack.content,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open pack');
+    }
+  }, []);
+
   const loadQuotaAndPacks = useCallback(async () => {
     try {
       const [qRes, pRes] = await Promise.all([
@@ -182,50 +199,48 @@ export default function PracticePanel({
       }
       if (pRes.ok) {
         const pData = await pRes.json();
-        setPacks(pData.packs || []);
+        const loadedPacks = pData.packs || [];
+        setPacks(loadedPacks);
+        if (loadedPacks.length > 0) {
+          void openPack(loadedPacks[0].id);
+        }
       }
     } catch {
       // Offline or network error
     } finally {
       setBootLoading(false);
     }
-  }, []);
+  }, [openPack]);
 
   useEffect(() => {
     void loadQuotaAndPacks();
   }, [loadQuotaAndPacks]);
 
-  const openPack = async (packId: number) => {
-    setError('');
-    try {
-      const res = await fetch(`/api/practice/packs/${packId}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || 'Failed to load pack');
-      setActivePack({
-        id: data.pack.id,
-        company: data.pack.company,
-        role: data.pack.role,
-        content: data.pack.content,
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not open pack');
-    }
-  };
-
-  const handleGenerate = async () => {
+  const handleGenerate = async (params?: {
+    mode?: 'job' | 'paste';
+    jobId?: string;
+    jdText?: string;
+    company?: string;
+    role?: string;
+  }) => {
     setError('');
     setShowPaywall(false);
     setLoading(true);
     try {
-      const payload: Record<string, string> = { mode };
-      if (mode === 'job') {
-        if (!jobId) throw new Error('Select a job posting from the dropdown');
-        payload.jobId = jobId;
+      const activeMode = params?.mode || mode;
+      const payload: Record<string, string> = { mode: activeMode };
+      if (activeMode === 'job') {
+        const targetJobId = params?.jobId || jobId;
+        if (!targetJobId) throw new Error('Select a job posting from the dropdown');
+        payload.jobId = targetJobId;
       } else {
-        if (!jdText.trim()) throw new Error('Paste the job description text');
-        payload.jdText = jdText.trim();
-        if (company.trim()) payload.company = company.trim();
-        if (role.trim()) payload.role = role.trim();
+        const text = (params?.jdText ?? jdText).trim();
+        if (!text) throw new Error('Paste the job description text');
+        payload.jdText = text;
+        const comp = (params?.company ?? company).trim();
+        const r = (params?.role ?? role).trim();
+        if (comp) payload.company = comp;
+        if (r) payload.role = r;
       }
 
       const res = await fetch('/api/practice/generate', {
@@ -355,192 +370,31 @@ export default function PracticePanel({
       {viewMode === 'voice' ? (
         <VoiceMockPanel pipeline={jobs} onBackToPacks={() => setViewMode('ide')} />
       ) : (
-        /* Main 2-Column Grid */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          {/* Left Column: Generate Pack + Saved Packs (5 cols) */}
-          <div className="lg:col-span-5 space-y-4">
-            {/* Generator Card */}
-            <Card
-              size="small"
-              className="border-zinc-200 shadow-xs"
-              title={<span className="text-xs font-bold text-zinc-900">Generate New Practice Pack</span>}
-            >
-              <div className="space-y-3">
-                <Segmented
-                  block
-                  options={[
-                    { label: 'From Pipeline Job', value: 'job' },
-                    { label: 'Paste Job Description', value: 'paste' },
-                  ]}
-                  value={mode}
-                  onChange={(val) => setMode(val as 'job' | 'paste')}
-                />
+        <div className="space-y-6">
+          <PracticeIdeView
+            company={activePack?.company || (packs[0]?.company ?? 'Target Company')}
+            role={activePack?.role || (packs[0]?.role ?? 'Software Engineer')}
+            codingPrompts={activePack?.content?.coding || []}
+            systemDesignPrompts={activePack?.content?.systemDesign || []}
+            behavioralPrompts={activePack?.content?.behavioral || []}
+            questionCount={
+              activePack
+                ? (activePack.content.coding?.length || 0) +
+                  (activePack.content.systemDesign?.length || 0) +
+                  (activePack.content.behavioral?.length || 0)
+                : undefined
+            }
+            packs={packs}
+            activePackId={activePack?.id ?? null}
+            onSelectPack={openPack}
+            jobs={jobs}
+            onGenerateNewPack={handleGenerate}
+            generating={loading}
+          />
 
-                {mode === 'job' ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-zinc-500 uppercase">Select Job</span>
-                      <Segmented
-                        size="small"
-                        options={[
-                          { label: 'Applied', value: 'applied' },
-                          { label: 'All Jobs', value: 'all' },
-                        ]}
-                        value={jobFilter}
-                        onChange={(val) => setJobFilter(val as 'applied' | 'all')}
-                      />
-                    </div>
-                    <Select
-                      className="w-full"
-                      placeholder="Choose a pipeline role…"
-                      value={jobId || undefined}
-                      onChange={(val) => setJobId(val)}
-                      options={jobs.map((j) => ({
-                        label: `${j.company} — ${j.title} ${j.applied ? '(Applied)' : ''}`,
-                        value: j.id,
-                      }))}
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="Company (optional)"
-                        value={company}
-                        onChange={(e) => setCompany(e.target.value)}
-                      />
-                      <Input
-                        placeholder="Role Title (optional)"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                      />
-                    </div>
-                    <Input.TextArea
-                      rows={4}
-                      placeholder="Paste the full job description or key requirements here…"
-                      value={jdText}
-                      onChange={(e) => setJdText(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                <Button
-                  type="primary"
-                  block
-                  icon={loading ? <LoadingOutlined /> : <ThunderboltOutlined />}
-                  loading={loading}
-                  onClick={handleGenerate}
-                >
-                  {loading ? 'Analyzing JD & Generating Pack…' : 'Generate Interview Pack'}
-                </Button>
-              </div>
-            </Card>
-
-            {/* Saved Practice Packs List */}
-            <Card
-              size="small"
-              className="border-zinc-200 shadow-xs"
-              title={
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-zinc-900">Saved Practice Packs</span>
-                  <Tag color="default" className="font-mono text-[10px]">
-                    {packs.length}
-                  </Tag>
-                </div>
-              }
-            >
-              {packs.length === 0 ? (
-                <div className="text-center py-8 text-xs text-zinc-400 space-y-1">
-                  <div className="flex justify-center mb-1">
-                    <Target size={22} className="text-zinc-400" />
-                  </div>
-                  <div className="font-medium text-zinc-600">No practice packs generated yet</div>
-                  <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
-                    Pick a job or paste a JD above to generate your customized interview questions.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-0.5">
-                  {packs.map((p) => {
-                    const isSelected = activePack?.id === p.id;
-                    const total = packTotal(p.counts);
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => openPack(p.id)}
-                        className={`p-2.5 rounded-xl border cursor-pointer transition-all card-hover-lift ${
-                          isSelected
-                            ? 'border-zinc-900 bg-zinc-50 shadow-xs'
-                            : 'border-zinc-100 bg-white hover:border-zinc-300 hover:bg-zinc-50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-zinc-900 truncate">
-                              {p.company || 'Custom Job'}
-                            </div>
-                            <div className="text-[11px] text-zinc-500 truncate">
-                              {p.role || 'Software Engineering'}
-                            </div>
-                          </div>
-                          <Tag color="blue" className="text-[10px] font-mono">
-                            {total} Prompts
-                          </Tag>
-                        </div>
-                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                          <Tag color="default" className="text-[9px] m-0">
-                            Code: {p.counts.coding}
-                          </Tag>
-                          <Tag color="default" className="text-[9px] m-0">
-                            Sys: {p.counts.systemDesign}
-                          </Tag>
-                          <Tag color="default" className="text-[9px] m-0">
-                            STAR: {p.counts.behavioral}
-                          </Tag>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </Card>
-
-            {/* Curated Interview Handbook */}
+          {/* Curated AI + DSA Handbook */}
+          <div className="pt-2">
             <HandbookCard />
-          </div>
-
-          {/* Right Column: Active Pack View or Standalone IDE (7 cols) */}
-          <div className="lg:col-span-7 space-y-4">
-            {activePack ? (
-              <Card
-                size="small"
-                className="border-zinc-200 shadow-xs"
-                title={
-                  <div>
-                    <div className="text-sm font-bold text-zinc-900">
-                      {activePack.company || 'Role Practice Pack'} — {activePack.role || 'Interview Prep'}
-                    </div>
-                    <div className="text-xs text-zinc-400 font-normal">
-                      Interactive coding sandbox & interview prompt evaluation
-                    </div>
-                  </div>
-                }
-              >
-                <PracticePackView
-                  content={activePack.content}
-                  company={activePack.company}
-                  role={activePack.role}
-                />
-              </Card>
-            ) : (
-              <Card
-                size="small"
-                className="border-zinc-200 shadow-xs"
-                title={<span className="text-xs font-bold text-zinc-900">Interactive Coding Sandbox (Deno / Py / Node)</span>}
-              >
-                <PracticeIdeView />
-              </Card>
-            )}
           </div>
         </div>
       )}
