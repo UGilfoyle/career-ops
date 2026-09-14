@@ -8,8 +8,9 @@ export default auth((req) => {
   const publicPages = ["/", "/login", "/signup", "/verify", "/forgot-password", "/reset-password", "/auth/continue", "/docs", "/privacy", "/status", "/billing/simulate"]
   const alwaysPublic = ["/billing/simulate"]
   const pathname = req.nextUrl.pathname
-  // Stealth companion + outbound redirects and public beacon script must be public (no auth wall)
-  const isStealthPublic = pathname === "/v" || pathname.startsWith("/v/") || pathname === "/beacon.js"
+  // Stealth companion, public dossier, outbound redirects and public beacon script must be public (no auth wall)
+  const isDossierPublic = pathname === "/p" || pathname.startsWith("/p/" )
+  const isStealthPublic = pathname === "/v" || pathname.startsWith("/v/") || pathname === "/beacon.js" || isDossierPublic
   const isPublicPage = publicPages.includes(pathname) || isStealthPublic
   const isAlwaysPublic = alwaysPublic.includes(pathname) || isStealthPublic
 
