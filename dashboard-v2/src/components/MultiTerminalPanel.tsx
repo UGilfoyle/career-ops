@@ -39,6 +39,8 @@ type MultiTerminalPanelProps = {
   terminalPrompt: string;
   onToast: (msg: string) => void;
   externalCommand?: { command: string; id: number } | null;
+  onClearExternalCommand?: () => void;
+  isActive?: boolean;
 };
 
 const INITIAL_WELCOME = `   _____                           ____            
@@ -53,6 +55,8 @@ export function MultiTerminalPanel({
   terminalPrompt,
   onToast,
   externalCommand,
+  onClearExternalCommand,
+  isActive = true,
 }: MultiTerminalPanelProps) {
   const [sessions, setSessions] = useState<TerminalSession[]>([
     {
@@ -70,18 +74,19 @@ export function MultiTerminalPanel({
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const eventSourcesRef = useRef<Record<string, EventSource>>({});
 
-  // Auto-scroll when logs update
+  // Auto-scroll when logs update or tab becomes active
   useEffect(() => {
-    if (logContainerRef.current) {
+    if (isActive && logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [sessions, activeKey]);
+  }, [sessions, activeKey, isActive]);
 
-  // Focus input when tab changes
+  // Focus input when tab changes or terminal becomes active
   useEffect(() => {
+    if (!isActive) return;
     const t = setTimeout(() => inputRef.current?.focus(), 50);
     return () => clearTimeout(t);
-  }, [activeKey]);
+  }, [activeKey, isActive]);
 
   // Cleanup all EventSources on unmount
   useEffect(() => {
@@ -237,6 +242,7 @@ export function MultiTerminalPanel({
   useEffect(() => {
     if (externalCommand && externalCommand.id !== lastExternalIdRef.current) {
       lastExternalIdRef.current = externalCommand.id;
+      onClearExternalCommand?.();
       let targetId = activeKey;
       const cur = sessions.find((s) => s.id === activeKey);
       if (cur?.isExecuting) {

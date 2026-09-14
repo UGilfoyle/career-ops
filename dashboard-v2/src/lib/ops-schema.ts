@@ -165,3 +165,75 @@ export async function ensureApplicationTelemetrySchema(sql: postgres.Sql): Promi
     }
   });
 }
+
+/** Public candidate dossier schema (Phase 1). */
+export async function ensureDossierSchema(sql: postgres.Sql): Promise<void> {
+  await onceSchema('public_dossier_v1', async () => {
+    try {
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS public_slug TEXT;`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS public_dossier_enabled BOOLEAN DEFAULT true;`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS public_dossier_custom JSONB DEFAULT '{}';`;
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS users_public_slug_uidx
+        ON users (public_slug)
+        WHERE public_slug IS NOT NULL;
+      `;
+    } catch (e) {
+      console.warn('[ensureDossierSchema] migration warning:', (e as Error).message);
+    }
+  });
+}
+
+/** Community interview intel schema (Phase 3). */
+export async function ensureInterviewIntelSchema(sql: postgres.Sql): Promise<void> {
+  await onceSchema('interview_intel_v1', async () => {
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS interview_intel (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          company TEXT NOT NULL,
+          company_slug TEXT NOT NULL,
+          role TEXT NOT NULL,
+          round_type TEXT NOT NULL,
+          difficulty TEXT NOT NULL DEFAULT 'medium',
+          questions JSONB NOT NULL DEFAULT '[]',
+          tips TEXT,
+          offer_outcome TEXT,
+          upvotes INTEGER DEFAULT 1,
+          verified BOOLEAN DEFAULT true,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS idx_interview_intel_company_slug ON interview_intel (company_slug, created_at DESC);`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_interview_intel_round_type ON interview_intel (round_type);`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_interview_intel_user ON interview_intel (user_id, created_at DESC);`;
+
+      const [countRow] = await sql`SELECT COUNT(*)::int as count FROM interview_intel;`;
+      if (Number(countRow?.count || 0) === 0) {
+        await sql`
+          INSERT INTO interview_intel (user_id, company, company_slug, role, round_type, difficulty, questions, tips, offer_outcome, upvotes)
+          VALUES
+            ('system', 'Google', 'google', 'Senior Software Engineer (L5)', 'system_design', 'hard',
+             '["Design a globally distributed Rate Limiter for Google Cloud APIs handling 10M req/sec with regional failover.", "How do you handle clock drift across data centers with TrueTime vs Vector Clocks?"]'::jsonb,
+             'Focus on token bucket with Redis cluster + local in-memory token cache to avoid cross-region latency. Be ready for cross-datacenter partition discussion.', 'offer', 28),
+            ('system', 'Uber', 'uber', 'Staff Backend Engineer', 'system_design', 'hard',
+             '["Design the driver location tracking & dispatch service handling 1M active drivers sending GPS pings every 4 seconds.", "How would you partition geospatial data (H3 vs S2) and avoid hot spots?"]'::jsonb,
+             'Interviewers heavily test Uber H3 hexagonal spatial indexing and Redis geospatial pub/sub. Discuss push vs pull architecture for driver app.', 'offer', 24),
+            ('system', 'Amazon', 'amazon', 'Software Development Engineer II (SDE-2)', 'bar_raiser', 'medium',
+             '["Tell me about a time you made a critical architecture decision without complete data (Bias for Action).", "Describe a time when you had to dive deep to fix a severe production incident."]'::jsonb,
+             'Always structure answers in STAR format (Situation, Task, Action, Result). Mention exact numbers: "reduced p99 latency by 35%, prevented $50k/hr downtime".', 'offer', 32),
+            ('system', 'Razorpay', 'razorpay', 'Senior Backend Engineer', 'coding_dsa', 'medium',
+             '["Implement an idempotent webhook delivery system with exponential backoff and dead-letter queues.", "Design a transactional ledger system ensuring exactly-once processing with PostgreSQL & Kafka."]'::jsonb,
+             'Razorpay focuses on financial precision, distributed locks (Redlock caveats), idempotency keys, and database ACID properties.', 'offer', 19),
+            ('system', 'Swiggy', 'swiggy', 'Lead Engineer', 'system_design', 'hard',
+             '["Design a real-time order batching and delivery assignment engine for 50k delivery partners during peak rain hours.", "How do you handle dynamic surges and delivery SLA violations?"]'::jsonb,
+             'Discuss bipartite matching algorithms or Hungarian algorithm approximations for rider assignment. Mention Redis for state cache and Kafka for event logging.', 'offer', 21)
+          ON CONFLICT DO NOTHING;
+        `;
+      }
+    } catch (e) {
+      console.warn('[ensureInterviewIntelSchema] migration warning:', (e as Error).message);
+    }
+  });
+}

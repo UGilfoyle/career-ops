@@ -13,8 +13,11 @@
     "test:resume": "npx tsx src/lib/resume/fill-template.test.ts && npx tsx src/lib/resume/parse-resume-text.test.ts",
     "test:billing": "npx tsx src/lib/billing/billing.test.ts",
     "test:practice": "npx tsx src/lib/practice/practice.test.ts",
+    "test:dossier": "npx tsx src/lib/dossier/dossier.test.ts",
+    "test:readiness": "npx tsx src/lib/readiness/readiness.test.ts",
+    "test:intel": "npx tsx src/lib/intel/intel.test.ts",
     "test:outreach": "npx tsx src/lib/outreach/parse.test.ts",
-    "test:unit": "npm run test:billing && npm run test:practice && npm run test:resume && npm run test:outreach"
+    "test:unit": "npm run test:billing && npm run test:practice && npm run test:resume && npm run test:outreach && npm run test:dossier && npm run test:readiness && npm run test:intel"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.2",

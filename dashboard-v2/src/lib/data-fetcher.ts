@@ -1,4 +1,5 @@
 import sql from '@/lib/db';
+import { calculateMarketReadiness } from '@/lib/readiness/readiness-calculator';
 
 const PIPELINE_PAGE_SIZE = 200;
 const APPLICATIONS_PAGE_SIZE = 100;
@@ -499,6 +500,17 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
     };
   }
 
+  const fetchPracticePacksCount = async () => {
+    try {
+      const rows = await sql`
+        SELECT COUNT(*)::int as count FROM practice_packs WHERE user_id::text = ${userId}
+      `;
+      return Number(rows[0]?.count ?? 0);
+    } catch {
+      return 0;
+    }
+  };
+
   // Execute all queries concurrently in parallel
   const [
     jobMeta,
@@ -510,6 +522,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
     latestEvent,
     lastGccScan,
     gccPipelineCount,
+    practicePacksCount,
   ] = await Promise.all([
     fetchJobMeta(),
     fetchApplications(),
@@ -520,7 +533,16 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
     fetchLatestEvent(),
     fetchLastGccScan(),
     fetchGccPipelineCount(),
+    fetchPracticePacksCount(),
   ]);
+
+  const readiness = calculateMarketReadiness({
+    resumeContext: profile as any,
+    pipelineJobsCount: (pipeline || []).length,
+    applicationsCount: (applications || []).length,
+    practicePacksCount: Number(practicePacksCount || 0),
+    dossierEnabled: true,
+  });
 
   return {
     applications,
@@ -528,6 +550,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
     pdfs,
     stats: stats || { total: 0, applied: 0, interviews: 0, offers: 0 },
     profile,
+    readiness,
     meta: buildMeta(jobMeta, latestEvent, lastGccScan, gccPipelineCount),
     timestamp: new Date().toISOString()
   };
