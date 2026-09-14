@@ -30,6 +30,7 @@ import {
   MoreVertical,
   Eye,
   Globe,
+  Users,
   TrendingUp,
   BookOpen,
   Copy,
@@ -73,6 +74,9 @@ import {
 import { PipelineStudioView } from './PipelineStudioView';
 import { JdViewer } from './JdViewer';
 import { CommandPaletteModal } from './CommandPaletteModal';
+import { DossierModal } from './DossierModal';
+import { MarketReadinessWidget } from './MarketReadinessWidget';
+import { CommunityIntelPanel } from './CommunityIntelPanel';
 import { MultiTerminalPanel } from './MultiTerminalPanel';
 import { MarkdownMessage } from './MarkdownMessage';
 import { ONBOARDING_STORAGE_KEY, DASHBOARD_TOUR_STEPS } from '@/lib/onboarding-flow';
@@ -87,7 +91,7 @@ import {
 const SHOW_RESUME_MANAGER_NAV = false;
 
 /** Tabs that should fill leftover viewport height instead of using 13-inch vh math. */
-const FILL_TABS = new Set(['chat', 'terminal', 'resume-studio', 'practice']);
+const FILL_TABS = new Set(['chat', 'terminal', 'resume-studio', 'practice', 'intel']);
 
 const PANE_WIDTH = 'w-full min-w-0 max-w-5xl xl:max-w-6xl 2xl:max-w-7xl';
 
@@ -285,6 +289,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   }, [toast.show, toast.message]);
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [dossierModalOpen, setDossierModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -2058,6 +2063,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={navCollapsed} onClick={() => goTab('terminal')} />
             <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={navCollapsed} onClick={() => goTab('chat')} />
             <NavItem id="nav-practice" icon={<GraduationCap size={18}/>} label="Interview Practice" active={activeTab === 'practice'} collapsed={navCollapsed} onClick={() => goTab('practice')} badge="Voice AI" />
+            <NavItem id="nav-intel" icon={<Users size={18}/>} label="Company Intel" active={activeTab === 'intel'} collapsed={navCollapsed} onClick={() => goTab('intel')} badge="New" />
+            <NavItem id="nav-dossier" icon={<Globe size={18}/>} label="Public Dossier" active={false} collapsed={navCollapsed} onClick={() => setDossierModalOpen(true)} badge="Live" />
             {SHOW_RESUME_MANAGER_NAV && (
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={navCollapsed} onClick={() => goTab('cv')} />
             )}
@@ -2150,6 +2157,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 title="Dashboard"
                 welcomeName={displayName}
                 actions={searchActions}
+              />
+              <MarketReadinessWidget
+                readiness={(data as any)?.readiness}
+                onNavigateTab={(tab) => goTab(tab)}
+                onOpenDossier={() => setDossierModalOpen(true)}
               />
               <InstantTailorCard 
                 onOpenStudio={() => setActiveTab('resume-studio')}
@@ -4714,6 +4726,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               />
             </motion.div>
           )}
+
+          {activeTab === 'intel' && (
+            <motion.div
+              key="intel"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 15 }}
+              transition={{ duration: 0.25 }}
+              className={`${PANE_WIDTH} min-h-0 flex-1 overflow-x-hidden overflow-y-auto`}
+            >
+              <CommunityIntelPanel onPractice={() => goTab('practice')} />
+            </motion.div>
+          )}
         </AnimatePresence>
         </div>
         </div>
@@ -4952,12 +4977,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           void copyStealthLink(appId);
         }}
       />
+      <DossierModal
+        open={dossierModalOpen}
+        onClose={() => setDossierModalOpen(false)}
+      />
 
       {/* Command Palette */}
       <CommandPaletteModal
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
-        onNavigateTab={(tab) => goTab(tab)}
+        onNavigateTab={(tab) => {
+          if (tab === 'dossier') {
+            setDossierModalOpen(true);
+          } else {
+            goTab(tab);
+          }
+        }}
         onRunCommand={(cmd) => {
           goTab('terminal');
           runCommand(cmd);

@@ -18,6 +18,8 @@ import {
   PlayCircleOutlined,
   ArrowRightOutlined,
   RocketOutlined,
+  GlobalOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 
 export interface CommandPaletteProps {
@@ -71,6 +73,8 @@ export function CommandPaletteModal({
     { id: 'pipeline', label: 'Job Pipeline Studio', icon: <CompassOutlined />, category: 'Navigation', shortcut: 'G P' },
     { id: 'resume-studio', label: 'Resume Studio (15 ATS Templates)', icon: <FileDoneOutlined />, category: 'Navigation', shortcut: 'G R' },
     { id: 'practice', label: 'Interview Practice IDE', icon: <ReadOutlined />, category: 'Navigation', shortcut: 'G I' },
+    { id: 'intel', label: 'Company Interview Intel (Crowdsourced Questions)', icon: <TeamOutlined className="text-purple-500" />, category: 'Navigation', shortcut: 'G Q' },
+    { id: 'dossier', label: 'Public Candidate Dossier (Portfolio & CV)', icon: <GlobalOutlined className="text-emerald-500" />, category: 'Navigation', shortcut: 'G O' },
     { id: 'gcc-campaign', label: 'GCC Campaign Radar', icon: <AimOutlined />, category: 'Navigation', shortcut: 'G G' },
     { id: 'terminal', label: 'Command Terminal', icon: <CodeOutlined />, category: 'Navigation', shortcut: 'G T' },
     { id: 'chat', label: 'Career Copilot AI', icon: <MessageOutlined />, category: 'Navigation', shortcut: 'G C' },
