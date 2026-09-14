@@ -791,35 +791,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   };
 
   const runCommand = (query: string) => {
-    setLogs(prev => [...prev, { type: 'stdout', content: `\n${terminalPrompt} ${query}\n` }]);
-    setIsExecuting(true);
-    
-    const eventSource = new EventSource(`/api/exec?q=${encodeURIComponent(query)}`);
-    
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'done') {
-        setIsExecuting(false);
-        eventSource.close();
-      } else if (data.type === 'clear') {
-        setLogs([]);
-      } else {
-        const content = String(data.content || '');
-        if (data.type === 'stderr' && /GITHUB_PAT not configured/i.test(content)) {
-          setToast({
-            show: true,
-            message: isAdmin ? 'Add a GitHub PAT in Settings (workflow scope) to run deep scan/tailor.' : 'Cloud execution worker is busy. Please try again shortly.',
-          });
-        }
-        setLogs(prev => [...prev, data]);
-      }
-    };
-
-    eventSource.onerror = () => {
-      setLogs(prev => [...prev, { type: 'stderr', content: '\n✗ Connection lost or execution failed.' }]);
-      setIsExecuting(false);
-      eventSource.close();
-    };
+    setActiveTab('terminal');
+    setExternalTerminalCommand({ command: query, id: Date.now() });
   };
 
   /**
@@ -2150,7 +2123,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         </AnimatePresence>
 
         <div className={FILL_TABS.has(activeTab) ? 'flex min-h-0 flex-1 flex-col' : undefined}>
-        <AnimatePresence mode="wait">
+          {/* Persistent Terminal Container: keeps streaming background tasks alive across tab switches */}
+          <div className={`min-h-0 flex-1 flex-col ${activeTab === 'terminal' ? 'flex' : 'hidden'}`}>
+            <MultiTerminalPanel
+              terminalPrompt={terminalPrompt}
+              onToast={(msg) => setToast({ show: true, message: msg })}
+              externalCommand={externalTerminalCommand}
+              onClearExternalCommand={() => setExternalTerminalCommand(null)}
+              isActive={activeTab === 'terminal'}
+            />
+          </div>
+
+          <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <motion.div key="dash" className="space-y-4 sm:space-y-5">
               <PageSectionHeader
@@ -3807,15 +3791,6 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           )}
 
 
-          {activeTab === 'terminal' && (
-            <motion.div key="terminal" className="flex min-h-0 flex-1 flex-col">
-              <MultiTerminalPanel
-                terminalPrompt={terminalPrompt}
-                onToast={(msg) => setToast({ show: true, message: msg })}
-                externalCommand={externalTerminalCommand}
-              />
-            </motion.div>
-          )}
 
           {activeTab === 'gcc' && (
             <GccCampaignPanel
