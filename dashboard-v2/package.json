@@ -16,8 +16,9 @@
     "test:dossier": "npx tsx src/lib/dossier/dossier.test.ts",
     "test:readiness": "npx tsx src/lib/readiness/readiness.test.ts",
     "test:intel": "npx tsx src/lib/intel/intel.test.ts",
+    "test:security": "npx tsx src/lib/security.test.ts",
     "test:outreach": "npx tsx src/lib/outreach/parse.test.ts",
-    "test:unit": "npm run test:billing && npm run test:practice && npm run test:resume && npm run test:outreach && npm run test:dossier && npm run test:readiness && npm run test:intel"
+    "test:unit": "npm run test:billing && npm run test:practice && npm run test:resume && npm run test:outreach && npm run test:dossier && npm run test:readiness && npm run test:intel && npm run test:security"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.2",
