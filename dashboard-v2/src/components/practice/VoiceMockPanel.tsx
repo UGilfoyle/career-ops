@@ -58,6 +58,22 @@ interface Props {
   onBackToPacks?: () => void;
 }
 
+function ElevenLabsLogo({ size = 11, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={`inline-block shrink-0 ${className}`}
+      aria-label="ElevenLabs"
+    >
+      <rect x="7" y="3" width="3.2" height="18" rx="1.6" />
+      <rect x="13.8" y="3" width="3.2" height="18" rx="1.6" />
+    </svg>
+  );
+}
+
 export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) {
   const [company, setCompany] = useState('Stripe');
   const [role, setRole] = useState('Senior Full Stack Engineer');
@@ -288,9 +304,10 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                 </span>
                 <span className="text-sm font-bold text-zinc-900">Voice Mock Interview Simulator</span>
               </div>
-              <Tag color="purple" className="font-bold text-[10px] uppercase tracking-wider">
-                ⚡ Powered by ElevenLabs
-              </Tag>
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200">
+                <ElevenLabsLogo size={9} className="text-zinc-900" />
+                <span>Powered by ElevenLabs</span>
+              </div>
             </div>
           }
         >
@@ -482,8 +499,9 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                     <label className="text-xs font-semibold text-zinc-700">
                       Interviewer Voice
                     </label>
-                    <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 rounded px-1.5 py-0.5">
-                      ⚡ Powered by ElevenLabs
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-600 bg-zinc-100 border border-zinc-200 rounded px-1.5 py-0.5">
+                      <ElevenLabsLogo size={8} className="text-zinc-800" />
+                      <span>ElevenLabs</span>
                     </span>
                   </div>
                   <Button
@@ -681,9 +699,10 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                   {status === 'listening' && (isHoldingMic || isHandsFreeActive ? 'Recording your answer…' : 'Ready — hold mic or Space to speak')}
                 </Tag>
                 {activeTtsEngine === 'elevenlabs' && (
-                  <Tag color="purple" className="font-semibold text-[10px] py-0.5 px-2 rounded-full border-purple-200">
-                    ⚡ Powered by ElevenLabs
-                  </Tag>
+                  <span className="inline-flex items-center gap-1 font-medium text-[10px] py-0.5 px-2 rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200">
+                    <ElevenLabsLogo size={8} className="text-zinc-900" />
+                    <span>ElevenLabs Voice</span>
+                  </span>
                 )}
               </div>
 

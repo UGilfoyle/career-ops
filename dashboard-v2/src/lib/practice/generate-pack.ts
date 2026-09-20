@@ -118,12 +118,7 @@ export async function callLlm(
 
   // 1. Google Gemini (Free tier, fast, high reliability)
   if (geminiKey && !isPlaceholderKey(geminiKey)) {
-    const geminiModels = [
-      process.env.GEMINI_MODEL,
-      'gemini-3.5-flash',
-      'gemini-3.6-flash',
-      'gemini-3.5-flash-lite',
-    ].filter(Boolean) as string[];
+    const geminiModels = [process.env.GEMINI_MODEL, 'gemini-3.5-flash'].filter(Boolean) as string[];
 
     for (const geminiModel of geminiModels) {
       attempts.push(async () => {
@@ -138,6 +133,7 @@ export async function callLlm(
               generationConfig: {
                 temperature,
                 maxOutputTokens: maxTokens,
+                ...(maxTokens <= 500 ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
               },
             }),
             signal: AbortSignal.timeout(timeoutMs),

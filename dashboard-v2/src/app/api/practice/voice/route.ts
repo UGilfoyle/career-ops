@@ -82,17 +82,17 @@ ${
 
 Evaluate this interview now. Be rigorous, constructive, and realistic.`;
 
-      const rawLlmResponse = await callLlm(scoringSystemPrompt, scoringUserPrompt, {
-        maxTokens: 1200,
-        temperature: 0.3,
-        timeoutMs: 20000,
-      });
-      const cleaned = stripJsonFence(rawLlmResponse);
-
       try {
+        const rawLlmResponse = await callLlm(scoringSystemPrompt, scoringUserPrompt, {
+          maxTokens: 1200,
+          temperature: 0.3,
+          timeoutMs: 20000,
+        });
+        const cleaned = stripJsonFence(rawLlmResponse);
         const parsed = JSON.parse(cleaned);
         return NextResponse.json({ ok: true, scorecard: parsed });
-      } catch {
+      } catch (scoringErr) {
+        console.warn('[practice/voice] Scoring fallback:', scoringErr instanceof Error ? scoringErr.message : scoringErr);
         return NextResponse.json({
           ok: true,
           scorecard: {
@@ -149,30 +149,39 @@ VOICE INTERACTION RULES (CRITICAL):
       ? `This is the start of the interview. Greet the candidate for the ${role} position at ${company} and ask your first question.`
       : `Recent dialogue:\n${conversationHistory}\n\nCandidate just spoke. Acknowledge and ask the next follow-up. Keep under 40 words.`;
 
-    const rawResponse = await callLlm(personaPrompt, userPrompt, {
-      maxTokens: 250,
-      temperature: 0.6,
-      timeoutMs: 8000,
-    });
-    const cleaned = stripJsonFence(rawResponse);
-
     try {
+      const rawResponse = await callLlm(personaPrompt, userPrompt, {
+        maxTokens: 300,
+        temperature: 0.6,
+        timeoutMs: 10000,
+      });
+      const cleaned = stripJsonFence(rawResponse);
       const parsed = JSON.parse(cleaned);
-      return NextResponse.json({
-        ok: true,
-        question: parsed.question || 'Could you walk me through your recent project?',
-        interviewerNote: parsed.interviewerNote || '',
-      });
-    } catch {
-      // Fallback
-      return NextResponse.json({
-        ok: true,
-        question: isFirstQuestion
-          ? `Welcome! Thanks for joining today for the ${role} interview at ${company}. To start off, could you give me a brief overview of your background?`
-          : `Thanks for sharing that. What was the single biggest technical challenge you encountered during that project?`,
-        interviewerNote: 'fallback',
-      });
+      if (parsed.question && typeof parsed.question === 'string') {
+        return NextResponse.json({
+          ok: true,
+          question: parsed.question,
+          interviewerNote: parsed.interviewerNote || '',
+        });
+      }
+    } catch (llmErr) {
+      console.warn('[practice/voice] Turn fallback:', llmErr instanceof Error ? llmErr.message : llmErr);
     }
+
+    // Role-aware conversational fallback — live voice interview NEVER crashes on LLM hiccups
+    const fallbackQuestion = isFirstQuestion
+      ? `Welcome! Thanks for joining today for the ${role} interview at ${company}. To start off, could you give me a brief overview of your background?`
+      : roundType === 'technical'
+      ? `That makes sense. Could you dive deeper into the trade-offs of that approach, particularly around performance and edge cases?`
+      : roundType === 'system-design'
+      ? `Got it. How would you design this to handle a sudden 10x traffic spike, and where would your primary bottlenecks appear?`
+      : `Thanks for sharing that. Looking back, is there anything you would have done differently to achieve an even better outcome?`;
+
+    return NextResponse.json({
+      ok: true,
+      question: fallbackQuestion,
+      interviewerNote: 'fallback',
+    });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to process voice interview';
     console.error('practice/voice error:', e);
