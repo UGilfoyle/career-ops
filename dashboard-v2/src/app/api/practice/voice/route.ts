@@ -82,7 +82,11 @@ ${
 
 Evaluate this interview now. Be rigorous, constructive, and realistic.`;
 
-      const rawLlmResponse = await callLlm(scoringSystemPrompt, scoringUserPrompt);
+      const rawLlmResponse = await callLlm(scoringSystemPrompt, scoringUserPrompt, {
+        maxTokens: 1200,
+        temperature: 0.3,
+        timeoutMs: 20000,
+      });
       const cleaned = stripJsonFence(rawLlmResponse);
 
       try {
@@ -145,7 +149,11 @@ VOICE INTERACTION RULES (CRITICAL):
       ? `This is the start of the interview. Greet the candidate for the ${role} position at ${company} and ask your first question.`
       : `Recent dialogue:\n${conversationHistory}\n\nCandidate just spoke. Acknowledge and ask the next follow-up. Keep under 40 words.`;
 
-    const rawResponse = await callLlm(personaPrompt, userPrompt);
+    const rawResponse = await callLlm(personaPrompt, userPrompt, {
+      maxTokens: 250,
+      temperature: 0.6,
+      timeoutMs: 8000,
+    });
     const cleaned = stripJsonFence(rawResponse);
 
     try {

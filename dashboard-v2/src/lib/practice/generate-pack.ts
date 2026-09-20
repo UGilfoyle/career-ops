@@ -40,7 +40,21 @@ export function stripJsonFence(raw: string): string {
   return text;
 }
 
-export async function callLlm(systemPrompt: string, userPrompt: string): Promise<string> {
+export type CallLlmOptions = {
+  maxTokens?: number;
+  temperature?: number;
+  timeoutMs?: number;
+};
+
+export async function callLlm(
+  systemPrompt: string,
+  userPrompt: string,
+  options?: CallLlmOptions,
+): Promise<string> {
+  const maxTokens = options?.maxTokens ?? 4000;
+  const temperature = options?.temperature ?? 0.4;
+  const timeoutMs = options?.timeoutMs ?? 25000;
+
   const mistralKey = process.env.MISTRAL_API_KEY || '';
   const deepseekKey = process.env.DEEPSEEK_API_KEY || '';
   const geminiKey = process.env.GEMINI_API_KEY || '';
@@ -80,9 +94,10 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          max_tokens: 1200,
-          temperature: 0.4,
+          max_tokens: maxTokens,
+          temperature,
         }),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       const bodyText = await response.text();
       if (!response.ok) {
@@ -120,8 +135,12 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: systemPrompt }] },
               contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-              generationConfig: { temperature: 0.4 },
+              generationConfig: {
+                temperature,
+                maxOutputTokens: maxTokens,
+              },
             }),
+            signal: AbortSignal.timeout(timeoutMs),
           },
         );
         if (!response.ok) {
