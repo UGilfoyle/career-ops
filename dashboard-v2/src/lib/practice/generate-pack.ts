@@ -134,12 +134,18 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
   }
 
   // 2. Mistral AI (Official Free Tier via console.mistral.ai)
-  pushOpenAiCompat(
-    'Mistral',
-    mistralKey,
-    'https://api.mistral.ai/v1',
-    process.env.MISTRAL_MODEL || 'mistral-small-latest',
-  );
+  const mistralModels = (
+    process.env.MISTRAL_MODELS ||
+    process.env.MISTRAL_MODEL ||
+    'open-mistral-nemo,open-mistral-7b'
+  )
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean);
+
+  for (const model of mistralModels) {
+    pushOpenAiCompat('Mistral', mistralKey, 'https://api.mistral.ai/v1', model);
+  }
 
   const openRouterModels = (
     process.env.OPENROUTER_MODELS ||
