@@ -73,11 +73,8 @@ export function CommandPaletteModal({
     { id: 'pipeline', label: 'Job Pipeline Studio', icon: <CompassOutlined />, category: 'Navigation', shortcut: 'G P' },
     { id: 'resume-studio', label: 'Resume Studio (15 ATS Templates)', icon: <FileDoneOutlined />, category: 'Navigation', shortcut: 'G R' },
     { id: 'practice', label: 'Interview Practice IDE', icon: <ReadOutlined />, category: 'Navigation', shortcut: 'G I' },
-    { id: 'intel', label: 'Company Interview Intel (Crowdsourced Questions)', icon: <TeamOutlined className="text-purple-500" />, category: 'Navigation', shortcut: 'G Q' },
     { id: 'dossier', label: 'Public Candidate Dossier (Portfolio & CV)', icon: <GlobalOutlined className="text-emerald-500" />, category: 'Navigation', shortcut: 'G O' },
-    { id: 'gcc-campaign', label: 'GCC Campaign Radar', icon: <AimOutlined />, category: 'Navigation', shortcut: 'G G' },
     { id: 'terminal', label: 'Command Terminal', icon: <CodeOutlined />, category: 'Navigation', shortcut: 'G T' },
-    { id: 'chat', label: 'Career Copilot AI', icon: <MessageOutlined />, category: 'Navigation', shortcut: 'G C' },
     { id: 'applications', label: 'Application Tracker', icon: <AppstoreOutlined />, category: 'Navigation', shortcut: 'G A' },
     { id: 'generated-docs', label: 'Generated Docs & Exports', icon: <FolderOpenOutlined />, category: 'Navigation', shortcut: 'G E' },
     { id: 'settings', label: 'Settings & Targeting Keywords', icon: <SettingOutlined />, category: 'Navigation', shortcut: 'G S' },
@@ -85,7 +82,6 @@ export function CommandPaletteModal({
 
   const actionItems = [
     { id: 'cmd-scan', label: 'Run Job Scan (scan --deep)', icon: <PlayCircleOutlined className="text-blue-500" />, category: 'Action', cmd: 'scan --deep' },
-    { id: 'cmd-gcc', label: 'Run GCC Captives Scan (gcc-scan --deep)', icon: <ThunderboltOutlined className="text-amber-500" />, category: 'Action', cmd: 'gcc-scan --deep' },
     { id: 'cmd-rank', label: 'Auto-Score & Rank Pipeline (rank)', icon: <RocketOutlined className="text-emerald-500" />, category: 'Action', cmd: 'rank' },
   ];
 

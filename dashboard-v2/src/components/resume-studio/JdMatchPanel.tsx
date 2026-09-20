@@ -122,6 +122,51 @@ export function JdMatchPanel({
     hasJd: false,
     suggestions: [],
   });
+  const [keywordFilter, setKeywordFilter] = useState<'all' | 'matched' | 'gaps'>('all');
+  const [patchingGaps, setPatchingGaps] = useState(false);
+  const [patchSuccessMsg, setPatchSuccessMsg] = useState<string | null>(null);
+
+  const handlePatchKeywords = useCallback(
+    async (keywordsToPatch: string[]) => {
+      if (!onApplyMirroredProfile || !keywordsToPatch.length) return;
+      setPatchingGaps(true);
+      setPatchSuccessMsg(null);
+      try {
+        const res = await fetch('/api/resume/patch-gaps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resume_context: draft,
+            keywords: keywordsToPatch,
+            jobId: mode === 'pipeline' ? selectedJobId || undefined : pasteJobId || undefined,
+            jdText: mode === 'paste' ? pastedJd.trim() : undefined,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(String(data.error || 'Failed to patch keywords'));
+        if (data.patchedProfile) {
+          onApplyMirroredProfile(data.patchedProfile);
+        }
+        setState((prev) => ({
+          ...prev,
+          honest: Array.isArray(data.matched) ? data.matched : prev.honest,
+          gaps: Array.isArray(data.missing) ? data.missing : prev.gaps,
+          atsScore: typeof data.score === 'number' ? data.score : prev.atsScore,
+          coveragePct: typeof data.score === 'number' ? data.score : prev.coveragePct,
+        }));
+        if (typeof data.score === 'number') {
+          onAtsUpdate?.(data.score, 'jd');
+        }
+        setPatchSuccessMsg(`Weaved ${data.patchedCount || keywordsToPatch.length} keyword(s) into skills!`);
+        setTimeout(() => setPatchSuccessMsg(null), 3500);
+      } catch (err: unknown) {
+        console.error('Failed to patch gaps:', err);
+      } finally {
+        setPatchingGaps(false);
+      }
+    },
+    [draft, mode, onApplyMirroredProfile, onAtsUpdate, pasteJobId, pastedJd, selectedJobId],
+  );
 
   const matchDraftKey = useMemo(() => draftMatchKey(draft), [draft]);
   const pastedReady = pastedJd.trim().length >= MIN_JD_LEN;
@@ -677,50 +722,128 @@ export function JdMatchPanel({
             </div>
           </div>
 
-          {/* ── JD Requirements — color-coded chips ── */}
+          {/* ── JD Requirements — color-coded chips with interactive filters ── */}
           <div className="space-y-3">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E]">
-              JD Requirements
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E]">
+                JD Requirements & Gaps
+              </div>
+              <div className="flex rounded-lg border border-[#E5E5E0] bg-white p-0.5 text-[9px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setKeywordFilter('all')}
+                  className={`rounded-md px-2 py-0.5 transition-colors cursor-pointer ${
+                    keywordFilter === 'all'
+                      ? 'bg-[#1C1C1E] text-white'
+                      : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                  }`}
+                >
+                  All ({state.honest.length + state.partial.length + state.gaps.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKeywordFilter('matched')}
+                  className={`rounded-md px-2 py-0.5 transition-colors cursor-pointer ${
+                    keywordFilter === 'matched'
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-emerald-700 hover:text-emerald-900'
+                  }`}
+                >
+                  Matched ({state.honest.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKeywordFilter('gaps')}
+                  className={`rounded-md px-2 py-0.5 transition-colors cursor-pointer ${
+                    keywordFilter === 'gaps'
+                      ? 'bg-rose-600 text-white'
+                      : 'text-rose-700 hover:text-rose-900'
+                  }`}
+                >
+                  Gaps ({state.gaps.length})
+                </button>
+              </div>
             </div>
+
+            {patchSuccessMsg ? (
+              <p className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+                ✓ {patchSuccessMsg}
+              </p>
+            ) : null}
+
             <div className="flex flex-wrap gap-1.5">
-              {state.honest.slice(0, 16).map((k) => (
-                <span
-                  key={`h-${k}`}
-                  className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 transition-colors hover:bg-emerald-100"
-                  title="Proven in your profile"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  {k}
-                </span>
-              ))}
-              {state.partial.slice(0, 8).map((k) => (
-                <span
-                  key={`p-${k}`}
-                  className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800 transition-colors hover:bg-amber-100"
-                  title="Partial match — present but not strong"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  {k}
-                </span>
-              ))}
-              {state.gaps.slice(0, 12).map((k) => (
-                <span
-                  key={`g-${k}`}
-                  className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700 transition-colors hover:bg-rose-100"
-                  title="Missing from Live Preview — will be mirrored into skills"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-                  {k}
-                </span>
-              ))}
+              {(keywordFilter === 'all' || keywordFilter === 'matched') &&
+                state.honest.map((k) => (
+                  <span
+                    key={`h-${k}`}
+                    className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 transition-colors hover:bg-emerald-100"
+                    title="Matched in your profile"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    {k}
+                  </span>
+                ))}
+
+              {(keywordFilter === 'all' || keywordFilter === 'matched') &&
+                state.partial.map((k) => (
+                  <span
+                    key={`p-${k}`}
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800 transition-colors hover:bg-amber-100"
+                    title="Partial match — present but not prominent"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    {k}
+                  </span>
+                ))}
+
+              {(keywordFilter === 'all' || keywordFilter === 'gaps') &&
+                state.gaps.map((k) => (
+                  <button
+                    key={`g-${k}`}
+                    type="button"
+                    disabled={patchingGaps}
+                    onClick={() => void handlePatchKeywords([k])}
+                    className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700 transition-all hover:border-rose-400 hover:bg-rose-100 cursor-pointer disabled:opacity-50"
+                    title={`Missing: Click to weave "${k}" into skills`}
+                  >
+                    <Plus size={11} className="text-rose-500" />
+                    {k}
+                    <span className="text-[8px] uppercase tracking-wider text-rose-400 ml-0.5">weave</span>
+                  </button>
+                ))}
+
               {!state.honest.length && !state.gaps.length && !state.partial.length ? (
                 <span className="text-xs text-[#9CA3AF]">No requirements extracted</span>
               ) : null}
             </div>
+
+            {/* 1-Click Batch Weave Missing Keywords Button */}
+            {state.gaps.length > 0 && onApplyMirroredProfile ? (
+              <button
+                type="button"
+                disabled={patchingGaps || state.loading}
+                onClick={() => void handlePatchKeywords(state.gaps)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300 bg-gradient-to-r from-rose-50 to-amber-50 px-4 py-2.5 text-xs font-bold text-rose-900 shadow-2xs hover:from-rose-100 hover:to-amber-100 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {patchingGaps ? (
+                  <Loader2 size={14} className="animate-spin text-rose-600" />
+                ) : (
+                  <Zap size={14} className="text-amber-600" />
+                )}
+                ⚡ 1-Click Weave All Missing Keywords ({state.gaps.length} gaps)
+              </button>
+            ) : null}
+
             <div className="flex items-center gap-3 text-[9px] font-bold uppercase tracking-widest text-[#9CA3AF]">
-              <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Matched</span>
-              <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Partial</span>
-              <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Missing</span>
+              <span className="inline-flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Matched
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Partial
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Missing (Click to Weave)
+              </span>
             </div>
           </div>
 
