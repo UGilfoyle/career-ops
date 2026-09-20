@@ -288,8 +288,8 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                 </span>
                 <span className="text-sm font-bold text-zinc-900">Voice Mock Interview Simulator</span>
               </div>
-              <Tag color="purple" className="font-bold text-[10px] uppercase">
-                {activeTtsEngine === 'elevenlabs' ? '⚡ ElevenLabs HD Voice' : 'Real-Time Voice AI'}
+              <Tag color="purple" className="font-bold text-[10px] uppercase tracking-wider">
+                ⚡ Powered by ElevenLabs
               </Tag>
             </div>
           }
@@ -478,9 +478,14 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
             {voices.length > 0 && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-zinc-700">
-                    Interviewer Voice (ElevenLabs HD &amp; Browser Fallback)
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-zinc-700">
+                      Interviewer Voice
+                    </label>
+                    <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 rounded px-1.5 py-0.5">
+                      ⚡ Powered by ElevenLabs
+                    </span>
+                  </div>
                   <Button
                     size="small"
                     type="text"
@@ -658,7 +663,7 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
               </div>
 
               {/* Status Pill */}
-              <div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <Tag
                   color={
                     status === 'speaking'
@@ -675,6 +680,11 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                   {status === 'thinking' && 'AI is formulating follow-up…'}
                   {status === 'listening' && (isHoldingMic || isHandsFreeActive ? 'Recording your answer…' : 'Ready — hold mic or Space to speak')}
                 </Tag>
+                {activeTtsEngine === 'elevenlabs' && (
+                  <Tag color="purple" className="font-semibold text-[10px] py-0.5 px-2 rounded-full border-purple-200">
+                    ⚡ Powered by ElevenLabs
+                  </Tag>
+                )}
               </div>
 
               {/* Spoken Dialogue Text */}
