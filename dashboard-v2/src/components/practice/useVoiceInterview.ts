@@ -359,7 +359,10 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
           }),
         });
 
-        if (!res.ok) throw new Error('Failed to generate next interview question');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || errData.error || 'Failed to generate next interview question');
+        }
         const data = await res.json();
         const questionText = data.question || 'Could you walk me through your recent project?';
 
@@ -407,7 +410,10 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
         }),
       });
 
-      if (!res.ok) throw new Error('Scoring failed');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || errData.error || 'Scoring failed');
+      }
       const data = await res.json();
       setScorecard(data.scorecard);
       setStatus('completed');
