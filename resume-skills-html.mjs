@@ -344,10 +344,10 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
     }
   }
 
-  // JD competencies first so Technical Skills match the posting, not a generic backend blob
-  const uniqueTech = sanitizeCompetencyList([...competencies, ...fromProfile], jdText).slice(0, 22);
+  // Explicit / weaved competencies first so Technical Skills match the candidate's chosen stack, then backfill with extracted tech
+  const uniqueTech = sanitizeCompetencyList([...fromProfile, ...competencies], jdText).slice(0, 26);
   if (uniqueTech.length) return skillsCategoryLines(uniqueTech, jdText);
 
-  const fallback = sanitizeCompetencyList([...competencies, ...fromProfile, ...superpowers], jdText).slice(0, 18);
+  const fallback = sanitizeCompetencyList([...fromProfile, ...competencies, ...superpowers], jdText).slice(0, 24);
   return skillsCategoryLines(fallback, jdText);
 }

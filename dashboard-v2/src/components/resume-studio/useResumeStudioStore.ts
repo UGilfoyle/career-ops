@@ -227,6 +227,29 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
     [setDraft]
   );
 
+  const applyMirroredProfile = useCallback(
+    (aligned: ResumeContext) => {
+      setDraft((prev) => {
+        let next = { ...prev };
+        if (Array.isArray(aligned.narrative?.superpowers)) {
+          next = setCompetencies(next, aligned.narrative.superpowers.map(String));
+        }
+        if (aligned.narrative) {
+          next.narrative = {
+            ...(next.narrative || {}),
+            ...(aligned.narrative.headline ? { headline: aligned.narrative.headline } : {}),
+            ...(aligned.narrative.exit_story ? { exit_story: aligned.narrative.exit_story } : {}),
+          };
+        }
+        if (Array.isArray(aligned.experience) && aligned.experience.length) {
+          next.experience = aligned.experience;
+        }
+        return next;
+      });
+    },
+    [setDraft]
+  );
+
   return {
     draft,
     setDraft,
@@ -245,5 +268,6 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
     updateEducation,
     setTemplateId,
     replaceFromImport,
+    applyMirroredProfile,
   };
 }

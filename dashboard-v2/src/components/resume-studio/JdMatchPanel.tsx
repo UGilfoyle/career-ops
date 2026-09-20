@@ -180,7 +180,7 @@ export function JdMatchPanel({
         if (typeof data.score === 'number') {
           onAtsUpdate?.(data.score, 'jd');
         }
-        setPatchSuccessMsg(`Weaved ${data.patchedCount || keywordsToPatch.length} keyword(s) into skills!`);
+        setPatchSuccessMsg(`Weaved ${data.patchedCount || keywordsToPatch.length} keyword(s) into skills & experience!`);
         setTimeout(() => setPatchSuccessMsg(null), 3500);
       } catch (err: unknown) {
         console.error('Failed to patch gaps:', err);
@@ -901,19 +901,10 @@ export function JdMatchPanel({
                     disabled={!onApplyMirroredProfile || !s.keyword}
                     onClick={() => {
                       if (!onApplyMirroredProfile || !s.keyword) return;
-                      const tags = getCompetencies(draft);
-                      if (tags.some((t) => t.toLowerCase() === s.keyword!.toLowerCase())) return;
-                      onApplyMirroredProfile({
-                        ...draft,
-                        narrative: {
-                          ...(draft.narrative || {}),
-                          superpowers: [s.keyword, ...tags].slice(0, 22),
-                        },
-                      });
-                      autoMirrorKeyRef.current = null;
+                      void handlePatchKeywords([s.keyword]);
                     }}
                     className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#E5E5E0] bg-[#FAFAF8] text-[#9CA3AF] transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
-                    title="Add keyword to skills"
+                    title="Weave keyword into skills & experience"
                   >
                     <Plus size={12} />
                   </button>
