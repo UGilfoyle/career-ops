@@ -40,7 +40,21 @@ export function stripJsonFence(raw: string): string {
   return text;
 }
 
-export async function callLlm(systemPrompt: string, userPrompt: string): Promise<string> {
+export type CallLlmOptions = {
+  maxTokens?: number;
+  temperature?: number;
+  timeoutMs?: number;
+};
+
+export async function callLlm(
+  systemPrompt: string,
+  userPrompt: string,
+  options?: CallLlmOptions,
+): Promise<string> {
+  const maxTokens = options?.maxTokens ?? 4000;
+  const temperature = options?.temperature ?? 0.4;
+  const timeoutMs = options?.timeoutMs ?? 25000;
+
   const mistralKey = process.env.MISTRAL_API_KEY || '';
   const deepseekKey = process.env.DEEPSEEK_API_KEY || '';
   const geminiKey = process.env.GEMINI_API_KEY || '';
@@ -80,8 +94,10 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          temperature: 0.4,
+          max_tokens: maxTokens,
+          temperature,
         }),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       const bodyText = await response.text();
       if (!response.ok) {
@@ -100,17 +116,60 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
     'X-Title': process.env.OPENROUTER_APP_NAME || 'career-ops',
   };
 
-  pushOpenAiCompat(
-    'Mistral',
-    mistralKey,
-    'https://api.mistral.ai/v1',
-    process.env.MISTRAL_MODEL || 'mistral-small-latest',
-  );
+  // 1. Google Gemini (Free tier, fast, high reliability)
+  if (geminiKey && !isPlaceholderKey(geminiKey)) {
+    const geminiModels = [
+      process.env.GEMINI_MODEL,
+      'gemini-3.5-flash',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash-lite',
+    ].filter(Boolean) as string[];
+
+    for (const geminiModel of geminiModels) {
+      attempts.push(async () => {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+              generationConfig: {
+                temperature,
+                maxOutputTokens: maxTokens,
+              },
+            }),
+            signal: AbortSignal.timeout(timeoutMs),
+          },
+        );
+        if (!response.ok) {
+          throw new Error(`Gemini (${geminiModel}) failed ${response.status}: ${await response.text()}`);
+        }
+        const result = await response.json();
+        return String(result.candidates?.[0]?.content?.parts?.[0]?.text || '');
+      });
+    }
+  }
+
+  // 2. Mistral AI (Official Free Tier via console.mistral.ai)
+  const mistralModels = (
+    process.env.MISTRAL_MODELS ||
+    process.env.MISTRAL_MODEL ||
+    'open-mistral-nemo,open-mistral-7b'
+  )
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean);
+
+  for (const model of mistralModels) {
+    pushOpenAiCompat('Mistral', mistralKey, 'https://api.mistral.ai/v1', model);
+  }
 
   const openRouterModels = (
     process.env.OPENROUTER_MODELS ||
     process.env.OPENROUTER_MODEL ||
-    'openrouter/free,google/gemma-2-9b-it:free,meta-llama/llama-3.2-3b-instruct:free'
+    'openai/gpt-4o-mini'
   )
     .split(',')
     .map((m) => m.trim())
@@ -125,28 +184,6 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
       openRouterHeaders,
       (status, body) => status === 402 || /insufficient balance/i.test(body),
     );
-  }
-
-  if (geminiKey && !isPlaceholderKey(geminiKey)) {
-    attempts.push(async () => {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-            generationConfig: { temperature: 0.4 },
-          }),
-        },
-      );
-      if (!response.ok) {
-        throw new Error(`Gemini failed ${response.status}: ${await response.text()}`);
-      }
-      const result = await response.json();
-      return String(result.candidates?.[0]?.content?.parts?.[0]?.text || '');
-    });
   }
 
   pushOpenAiCompat(

@@ -74,7 +74,7 @@ export function LivePreview({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(PAGE_WIDTH_PX);
   const [contentHeight, setContentHeight] = useState(PAGE_HEIGHT_PX);
-  const [showBadges, setShowBadges] = useState(true);
+  const [showBadges, setShowBadges] = useState(false);
   const [viewFormat, setViewFormat] = useState<'styled' | 'parser'>('styled');
   const [copied, setCopied] = useState(false);
   const deferredDraft = useDeferredValue(draft);
@@ -217,7 +217,7 @@ export function LivePreview({
             {atsLabel} {atsScore}
             {externalAtsSource === 'jd' ? '%' : '/100'}
           </span>
-          {competencyScores.length > 0 ? (
+          {viewFormat === 'styled' && competencyScores.length > 0 ? (
             <button
               type="button"
               onClick={() => setShowBadges((v) => !v)}
@@ -228,7 +228,7 @@ export function LivePreview({
               }`}
               title="Toggle competency badges"
             >
-              Scores
+              Scores {showBadges ? 'ON' : 'OFF'}
             </button>
           ) : null}
           <div className="hidden sm:flex sm:items-center sm:gap-2">
@@ -270,8 +270,12 @@ export function LivePreview({
             marginBottom: scaledExtra > 0 ? `${scaledExtra}px` : undefined,
           }}
         >
-          {/* Competency score badges — floating overlay */}
-          <CompetencyBadgeStack scores={competencyScores} visible={showBadges} />
+          {/* Competency score badges — floating overlay only for styled preview */}
+          <CompetencyBadgeStack
+            scores={competencyScores}
+            visible={viewFormat === 'styled' && showBadges}
+            onDismiss={() => setShowBadges(false)}
+          />
 
           <div
             className="bg-white"
@@ -291,7 +295,7 @@ export function LivePreview({
                   minHeight: `${PAGE_HEIGHT_PX}px`,
                 }}
               >
-                <div className="flex items-center justify-between pb-4 mb-4 border-b border-zinc-800">
+                <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span className="font-bold text-emerald-400 uppercase tracking-widest text-[11px]">
@@ -308,9 +312,20 @@ export function LivePreview({
                     <button
                       type="button"
                       onClick={handleCopyPlainText}
-                      className="ml-2 rounded px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors cursor-pointer text-[10px] font-bold"
+                      className="ml-2 inline-flex items-center gap-1.5 rounded px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer text-[11px] font-bold shadow-sm active:scale-95"
                     >
-                      {copied ? '✓ Copied' : 'Copy Text'}
+                      {copied ? (
+                        <>
+                          <span className="text-white font-bold">✓</span> Copied!
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                          </svg>
+                          Copy Text
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

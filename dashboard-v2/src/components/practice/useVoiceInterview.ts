@@ -58,17 +58,22 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [activeTtsEngine, setActiveTtsEngine] = useState<'elevenlabs' | 'browser'>('browser');
 
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeAudioUrlRef = useRef<string | null>(null);
   const isListeningRef = useRef(false);
   const accumulatedCandidateTextRef = useRef('');
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const transcriptRef = useRef<VoiceMessage[]>([]);
+  transcriptRef.current = transcript;
 
   // Initialize Speech Synthesis and Voices
   useEffect(() => {
@@ -82,9 +87,13 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
       const list = englishVoices.length > 0 ? englishVoices : allVoices;
       setVoices(list);
 
-      // Prefer high-quality standard voices
+      // Prefer high-quality Neural / Natural voices (Edge Jenny/Guy Neural, Chrome Google Natural, macOS Enhanced)
       const preferred = list.find(
         (v) =>
+          v.name.includes('Online (Natural)') ||
+          v.name.includes('Jenny') ||
+          v.name.includes('Guy') ||
+          v.name.includes('Aria') ||
           v.name.includes('Natural') ||
           v.name.includes('Google US English') ||
           v.name.includes('Google UK English Female') ||
@@ -203,17 +212,26 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((track) => track.stop());
+      micStreamRef.current = null;
+    }
+    if (analyserRef.current) {
+      analyserRef.current.disconnect();
+      analyserRef.current = null;
+    }
     setAudioLevel(0);
   }, []);
 
-  // TTS speak helper
-  const speakText = useCallback(
+  // Fallback to browser SpeechSynthesis
+  const fallbackBrowserSpeak = useCallback(
     (text: string, onDone?: () => void) => {
       if (!synthRef.current || typeof window === 'undefined') {
         onDone?.();
         return;
       }
       synthRef.current.cancel();
+      setActiveTtsEngine('browser');
 
       const utterance = new SpeechSynthesisUtterance(text);
       if (selectedVoice) {
@@ -228,11 +246,13 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
 
       utterance.onend = () => {
         setStatus('listening');
+        currentUtteranceRef.current = null;
         onDone?.();
       };
 
       utterance.onerror = () => {
         setStatus('listening');
+        currentUtteranceRef.current = null;
         onDone?.();
       };
 
@@ -240,6 +260,84 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
       synthRef.current.speak(utterance);
     },
     [selectedVoice],
+  );
+
+  // Centralized audio cleanup helper (stops audio, revokes blobs, cancels synthesis)
+  const stopAllAudio = useCallback(() => {
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current.removeAttribute('src');
+      activeAudioRef.current.load();
+      activeAudioRef.current = null;
+    }
+    if (activeAudioUrlRef.current) {
+      URL.revokeObjectURL(activeAudioUrlRef.current);
+      activeAudioUrlRef.current = null;
+    }
+    if (synthRef.current) {
+      synthRef.current.cancel();
+    }
+    currentUtteranceRef.current = null;
+  }, []);
+
+  // Hybrid TTS speak helper: prefers ElevenLabs realistic voice, falls back silently to browser
+  const speakText = useCallback(
+    async (text: string, onDone?: () => void) => {
+      if (typeof window === 'undefined') {
+        onDone?.();
+        return;
+      }
+
+      // Stop any playing audio or speech
+      stopAllAudio();
+
+      try {
+        const res = await fetch('/api/practice/voice/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('audio')) {
+          setActiveTtsEngine((prev) => (prev !== 'elevenlabs' ? 'elevenlabs' : prev));
+          const blob = await res.blob();
+          const audioUrl = URL.createObjectURL(blob);
+          activeAudioUrlRef.current = audioUrl;
+
+          const audio = new Audio(audioUrl);
+          activeAudioRef.current = audio;
+
+          setStatus('speaking');
+
+          audio.onended = () => {
+            stopAllAudio();
+            setStatus('listening');
+            onDone?.();
+          };
+
+          audio.onerror = () => {
+            stopAllAudio();
+            fallbackBrowserSpeak(text, onDone);
+          };
+
+          try {
+            await audio.play();
+            return;
+          } catch {
+            // Autoplay restriction or audio failure, fallback immediately
+            stopAllAudio();
+            fallbackBrowserSpeak(text, onDone);
+            return;
+          }
+        }
+      } catch {
+        // Network or fetch failed, seamlessly fall back
+      }
+
+      fallbackBrowserSpeak(text, onDone);
+    },
+    [fallbackBrowserSpeak, stopAllAudio],
   );
 
   // Request next question from API
@@ -272,11 +370,8 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
 
-        setTranscript((prev) => {
-          const updated = [...prev, newMessage];
-          speakText(questionText);
-          return updated;
-        });
+        setTranscript((prev) => [...prev, newMessage]);
+        void speakText(questionText);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Error reaching AI interviewer';
         setError(msg);
@@ -289,7 +384,7 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
   // Scoring request
   const evaluateInterview = useCallback(async () => {
     setStatus('thinking');
-    if (synthRef.current) synthRef.current.cancel();
+    stopAllAudio();
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -360,9 +455,7 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
   // Hold-to-talk controls
   const startListening = useCallback(() => {
     if (status === 'completed' || status === 'thinking') return;
-    if (synthRef.current) {
-      synthRef.current.cancel(); // Stop interviewer if interrupted
-    }
+    stopAllAudio();
 
     isListeningRef.current = true;
     accumulatedCandidateTextRef.current = '';
@@ -408,18 +501,16 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setTranscript((prev) => {
-      const updated = [...prev, candidateMsg];
-      void fetchNextQuestion(updated);
-      return updated;
-    });
+    const updated = [...transcriptRef.current, candidateMsg];
+    setTranscript(updated);
+    void fetchNextQuestion(updated);
   }, [interimText, fetchNextQuestion]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (synthRef.current) synthRef.current.cancel();
+      stopAllAudio();
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
@@ -435,7 +526,7 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, []);
+  }, [stopAllAudio]);
 
   return {
     status,
@@ -449,13 +540,15 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
     selectedVoice,
     setSelectedVoice,
     audioLevel,
+    activeTtsEngine,
     startInterview,
     startListening,
     stopListeningAndSend,
     evaluateInterview,
     reset: () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (synthRef.current) synthRef.current.cancel();
+      stopAllAudio();
+      stopAudioAnalyser();
       setStatus('idle');
       setTranscript([]);
       setScorecard(null);

@@ -89,15 +89,43 @@ function testPublicRouteMatrix() {
   assert.equal(isRoutePublic('/dashboard'), false, 'Dashboard must require auth');
   assert.equal(isRoutePublic('/pipeline'), false, 'Pipeline must require auth');
   assert.equal(isRoutePublic('/resume-studio'), false, 'Resume Studio must require auth');
+  assert.equal(isRoutePublic('/api/practice/voice/tts'), false, 'Voice TTS API must require auth');
   assert.equal(isRoutePublic('/settings'), false, 'Settings must require auth');
   assert.equal(isRoutePublic('/admin'), false, 'Admin must require auth');
 
   console.log('  ✔ Route access authorization matrix verified');
 }
 
+// 3. Verify No Secret Leaks via NEXT_PUBLIC_ prefixes
+function testSecretLeakageGuard() {
+  const sensitiveSecretNames = [
+    'ELEVENLABS_API_KEY',
+    'ANTHROPIC_API_KEY',
+    'OPENROUTER_API_KEY',
+    'GEMINI_API_KEY',
+    'STRIPE_SECRET_KEY',
+    'NEXTAUTH_SECRET',
+    'TURNSTILE_SECRET_KEY',
+    'POSTGRES_PASSWORD',
+    'DATABASE_URL',
+  ];
+
+  for (const secret of sensitiveSecretNames) {
+    const publicEnvVariant = `NEXT_PUBLIC_${secret}`;
+    assert.equal(
+      Boolean(process.env[publicEnvVariant]),
+      false,
+      `FATAL: ${publicEnvVariant} must NEVER exist! Server secret would be bundled into client-side JS!`
+    );
+  }
+
+  console.log('  ✔ Secret leakage guard verified (zero exposed server secrets in NEXT_PUBLIC_)');
+}
+
 async function run() {
   await testNextConfigSecurityHeaders();
   testPublicRouteMatrix();
+  testSecretLeakageGuard();
   console.log('All security tests passed successfully!\n');
 }
 
