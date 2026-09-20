@@ -1753,6 +1753,27 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
     }
   };
 
+  const handleDocUpdated = (id: number, company: string, title: string) => {
+    setData((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pdfs: (prev.pdfs || []).map((doc: any) =>
+          Number(doc.id) === id ? { ...doc, company, title } : doc
+        ),
+        jobs: (prev.jobs || []).map((j: any) =>
+          Number(j.id) === id ? { ...j, company, title } : j
+        ),
+        pipeline: (prev.pipeline || []).map((j: any) =>
+          Number(j.id) === id ? { ...j, company, title } : j
+        ),
+        applications: (prev.applications || []).map((a: any) =>
+          Number(a.job_id) === id ? { ...a, company, title } : a
+        ),
+      };
+    });
+  };
+
   const openDeleteConfirm = (id: number, company: string, title: string) => {
     setDeleteTarget({ id, company, title });
     setDeleteConfirmOpen(true);
@@ -3275,6 +3296,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <GeneratedDocsPanel
               docs={data?.pdfs || []}
               onDelete={openDeleteConfirm}
+              onDocUpdated={handleDocUpdated}
               onOpenPipeline={() => setActiveTab('pipeline')}
               onCopyStealthLink={(jobId) => void copyStealthLinkForJob(jobId)}
               stealthBusyJobId={stealthBusyJobId}
