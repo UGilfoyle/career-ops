@@ -47,14 +47,26 @@ export function CompetencyBadge({
 export function CompetencyBadgeStack({
   scores,
   visible,
+  onDismiss,
 }: {
   scores: CompetencyScore[];
   visible: boolean;
+  onDismiss?: () => void;
 }) {
   if (!visible || scores.length === 0) return null;
 
   return (
-    <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+    <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+      {onDismiss ? (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="text-[10px] text-zinc-500 hover:text-zinc-800 bg-white/90 hover:bg-white rounded-full px-2 py-0.5 border border-zinc-200 shadow-sm cursor-pointer transition-colors"
+          title="Close competency scores"
+        >
+          ✕ Close
+        </button>
+      ) : null}
       {scores.map((s, i) => (
         <CompetencyBadge key={s.label} {...s} index={i} />
       ))}
