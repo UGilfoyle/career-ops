@@ -368,18 +368,6 @@ export function JdMatchPanel({
         });
         if (cancelled) return;
         applyMatchResult(matchJson, atsJson, matchOk);
-
-        const score = typeof atsJson.score === 'number' ? atsJson.score : 0;
-        if (
-          !cancelled
-          && matchOk
-          && onApplyMirroredProfile
-          && atsJson.source === 'jd'
-          && score < JD_ATS_TARGET
-          && !jobHasSavedDoc
-        ) {
-          await fillGapsToTarget({ jobId: selectedJobId });
-        }
       } catch (e: unknown) {
         if (cancelled) return;
         setState((s) => ({
@@ -403,8 +391,6 @@ export function JdMatchPanel({
     hasGeneratedResume,
     applyMatchResult,
     onAtsUpdate,
-    onApplyMirroredProfile,
-    fillGapsToTarget,
   ]);
 
   useEffect(() => {
@@ -449,16 +435,6 @@ export function JdMatchPanel({
         });
         if (cancelled) return;
         applyMatchResult(matchJson, atsJson, matchOk);
-        const score = typeof atsJson.score === 'number' ? atsJson.score : 0;
-        if (
-          matchOk
-          && onApplyMirroredProfile
-          && atsJson.source === 'jd'
-          && score < JD_ATS_TARGET
-          && !pasteHasDoc
-        ) {
-          await fillGapsToTarget({ jdText });
-        }
       } catch (e: unknown) {
         if (cancelled) return;
         setState((s) => ({
@@ -481,9 +457,8 @@ export function JdMatchPanel({
     draft,
     applyMatchResult,
     onAtsUpdate,
-    onApplyMirroredProfile,
-    fillGapsToTarget,
     pipeline,
+    pasteJobId,
   ]);
 
   const options = (pipeline || []).slice(0, 40);
