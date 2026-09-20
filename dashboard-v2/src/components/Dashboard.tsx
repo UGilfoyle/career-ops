@@ -89,6 +89,10 @@ import {
 
 /** Hide legacy Resume Manager nav once Generated Docs is the primary library UI. */
 const SHOW_RESUME_MANAGER_NAV = false;
+/** Feature flags to hide unused/secondary modules for current work */
+const SHOW_GCC_NAV = false;
+const SHOW_COPILOT_NAV = false;
+const SHOW_INTEL_NAV = false;
 
 /** Tabs that should fill leftover viewport height instead of using 13-inch vh math. */
 const FILL_TABS = new Set(['chat', 'terminal', 'resume-studio', 'practice', 'intel']);
@@ -2030,13 +2034,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <NavItem id="nav-dashboard" icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} collapsed={navCollapsed} onClick={() => goTab('dashboard')} />
             <NavItem id="nav-pipeline" icon={<Search size={18}/>} label="Job Pipeline" active={activeTab === 'pipeline'} collapsed={navCollapsed} onClick={() => goTab('pipeline')} />
             <NavItem id="nav-apps" icon={<Briefcase size={18}/>} label="Applications" active={activeTab === 'apps'} collapsed={navCollapsed} onClick={() => goTab('apps')} />
-            <NavItem id="nav-gcc" icon={<Target size={18}/>} label="GCC Campaign" active={activeTab === 'gcc'} collapsed={navCollapsed} onClick={() => goTab('gcc')} />
+            {SHOW_GCC_NAV && (
+              <NavItem id="nav-gcc" icon={<Target size={18}/>} label="GCC Campaign" active={activeTab === 'gcc'} collapsed={navCollapsed} onClick={() => goTab('gcc')} />
+            )}
             <NavItem id="nav-resume-studio" icon={<Sparkles size={18}/>} label="Resume Studio" active={activeTab === 'resume-studio'} collapsed={navCollapsed} onClick={() => goTab('resume-studio')} badge={showBetaBanner || process.env.NEXT_PUBLIC_BETA_MODE === '1' ? 'Beta' : undefined} />
             <NavItem id="nav-generated-docs" icon={<Files size={18}/>} label="Generated Docs" active={activeTab === 'generated-docs'} collapsed={navCollapsed} onClick={() => goTab('generated-docs')} />
             <NavItem id="nav-terminal" icon={<TerminalIcon size={18}/>} label="Terminal" active={activeTab === 'terminal'} collapsed={navCollapsed} onClick={() => goTab('terminal')} />
-            <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={navCollapsed} onClick={() => goTab('chat')} />
+            {SHOW_COPILOT_NAV && (
+              <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={navCollapsed} onClick={() => goTab('chat')} />
+            )}
             <NavItem id="nav-practice" icon={<GraduationCap size={18}/>} label="Interview Practice" active={activeTab === 'practice'} collapsed={navCollapsed} onClick={() => goTab('practice')} badge="Voice AI" />
-            <NavItem id="nav-intel" icon={<Users size={18}/>} label="Company Intel" active={activeTab === 'intel'} collapsed={navCollapsed} onClick={() => goTab('intel')} badge="New" />
+            {SHOW_INTEL_NAV && (
+              <NavItem id="nav-intel" icon={<Users size={18}/>} label="Company Intel" active={activeTab === 'intel'} collapsed={navCollapsed} onClick={() => goTab('intel')} badge="New" />
+            )}
             <NavItem id="nav-dossier" icon={<Globe size={18}/>} label="Public Dossier" active={false} collapsed={navCollapsed} onClick={() => setDossierModalOpen(true)} badge="Live" />
             {SHOW_RESUME_MANAGER_NAV && (
             <NavItem id="nav-cv" icon={<FileText size={18}/>} label="Resume Manager" active={activeTab === 'cv'} collapsed={navCollapsed} onClick={() => goTab('cv')} />
