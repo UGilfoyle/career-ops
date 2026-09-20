@@ -83,6 +83,8 @@ export function collectProfileCorpus(profile) {
   if (profile?.narrative?.headline) parts.push(profile.narrative.headline);
   if (profile?.narrative?.exit_story) parts.push(profile.narrative.exit_story);
   for (const s of profile?.narrative?.superpowers || []) parts.push(s);
+  for (const s of profile?.core_competencies || []) parts.push(s);
+  for (const s of profile?.skills || []) parts.push(s);
   for (const e of profile?.experience || []) {
     parts.push(e?.role || '', e?.company || '');
     for (const b of e?.bullets || []) parts.push(b);
