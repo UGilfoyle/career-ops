@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { auth } from '@/auth';
 import { rateLimit, rateLimitResponse, formatRetryHint } from '@/lib/rate-limit';
 import { assertPracticeBetaAccess } from '@/lib/practice';
@@ -9,6 +10,10 @@ export const maxDuration = 30;
 
 // Default voice: Sarah (Mature, Reassuring, Confident interviewer - free tier compatible)
 const DEFAULT_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';
+
+// Bounded in-memory LRU Cache (max 80 entries ~8MB max memory footprint, auto-evicted for GC)
+const MAX_TTS_CACHE_ITEMS = 80;
+const ttsAudioCache = new Map<string, { buffer: ArrayBuffer; expiresAt: number }>();
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,6 +53,23 @@ export async function POST(req: NextRequest) {
     const voiceId = process.env.ELEVENLABS_VOICE_ID?.trim() || DEFAULT_VOICE_ID;
     const modelId = process.env.ELEVENLABS_MODEL_ID?.trim() || 'eleven_flash_v2_5';
 
+    // Fast Path: Check in-memory bounded LRU cache first (0ms latency, zero quota used)
+    const cacheKey = createHash('sha256')
+      .update(`${voiceId}:${modelId}:${text}`)
+      .digest('hex');
+
+    const cached = ttsAudioCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return new NextResponse(cached.buffer, {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'public, max-age=7200, stale-while-revalidate=86400',
+          'X-TTS-Provider': 'elevenlabs-cached',
+        },
+      });
+    }
+
     // Auto-Failover: Iterate through API key pool until one succeeds
     for (const apiKey of apiKeys) {
       try {
@@ -76,11 +98,22 @@ export async function POST(req: NextRequest) {
 
         if (response.ok) {
           const audioBuffer = await response.arrayBuffer();
+
+          // FIFO LRU eviction to prevent memory bloat and enable deterministic V8 GC
+          if (ttsAudioCache.size >= MAX_TTS_CACHE_ITEMS) {
+            const oldestKey = ttsAudioCache.keys().next().value;
+            if (oldestKey) ttsAudioCache.delete(oldestKey);
+          }
+          ttsAudioCache.set(cacheKey, {
+            buffer: audioBuffer,
+            expiresAt: Date.now() + 2 * 60 * 60 * 1000, // 2 hours TTL
+          });
+
           return new NextResponse(audioBuffer, {
             status: 200,
             headers: {
               'Content-Type': 'audio/mpeg',
-              'Cache-Control': 'no-store, max-age=0',
+              'Cache-Control': 'public, max-age=7200, stale-while-revalidate=86400',
               'X-TTS-Provider': 'elevenlabs',
             },
           });

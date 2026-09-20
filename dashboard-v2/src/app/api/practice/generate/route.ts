@@ -9,6 +9,7 @@ import {
   checkPracticeQuota,
   ensurePracticeSchema,
   generatePracticePack,
+  hashJdText,
 } from '@/lib/practice';
 
 export const dynamic = 'force-dynamic';
@@ -79,6 +80,47 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 },
       );
+    }
+
+    const jdHash = hashJdText(jdText);
+    await ensurePracticeSchema(sql);
+
+    // Fast Path: Check if user already generated a pack for this exact JD
+    if (!body.force) {
+      const existing = await sql`
+        SELECT id, user_id, job_id, company, role, jd_hash, pack_json, created_at
+        FROM practice_packs
+        WHERE user_id = ${userId} AND jd_hash = ${jdHash}
+        ORDER BY created_at DESC
+        LIMIT 1
+      `;
+      if (existing[0]) {
+        const row = existing[0];
+        return NextResponse.json({
+          ok: true,
+          cached: true,
+          packId: row.id,
+          pack: {
+            id: row.id,
+            userId: String(row.user_id),
+            jobId: row.job_id != null ? Number(row.job_id) : null,
+            company: row.company,
+            role: row.role,
+            jdHash: row.jd_hash,
+            content: row.pack_json,
+            pack: row.pack_json,
+            createdAt: row.created_at,
+          },
+          quota: {
+            allowed: quota.allowed,
+            remaining: quota.remaining,
+            resetAt: quota.resetAt?.toISOString() || null,
+            pro: quota.pro,
+            freeLimit: quota.freeLimit,
+            usedInWindow: quota.usedInWindow,
+          },
+        });
+      }
     }
 
     const profileRows = await sql`
@@ -154,6 +196,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
+      packId: row.id,
       pack: {
         id: row.id,
         userId: String(row.user_id),

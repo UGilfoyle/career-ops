@@ -212,6 +212,14 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((track) => track.stop());
+      micStreamRef.current = null;
+    }
+    if (analyserRef.current) {
+      analyserRef.current.disconnect();
+      analyserRef.current = null;
+    }
     setAudioLevel(0);
   }, []);
 
@@ -238,11 +246,13 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
 
       utterance.onend = () => {
         setStatus('listening');
+        currentUtteranceRef.current = null;
         onDone?.();
       };
 
       utterance.onerror = () => {
         setStatus('listening');
+        currentUtteranceRef.current = null;
         onDone?.();
       };
 
@@ -256,6 +266,8 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
   const stopAllAudio = useCallback(() => {
     if (activeAudioRef.current) {
       activeAudioRef.current.pause();
+      activeAudioRef.current.removeAttribute('src');
+      activeAudioRef.current.load();
       activeAudioRef.current = null;
     }
     if (activeAudioUrlRef.current) {
@@ -265,6 +277,7 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
     if (synthRef.current) {
       synthRef.current.cancel();
     }
+    currentUtteranceRef.current = null;
   }, []);
 
   // Hybrid TTS speak helper: prefers ElevenLabs realistic voice, falls back silently to browser
