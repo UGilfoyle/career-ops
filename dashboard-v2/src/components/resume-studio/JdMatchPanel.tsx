@@ -147,13 +147,36 @@ export function JdMatchPanel({
         if (data.patchedProfile) {
           onApplyMirroredProfile(data.patchedProfile);
         }
-        setState((prev) => ({
-          ...prev,
-          honest: Array.isArray(data.matched) ? data.matched : prev.honest,
-          gaps: Array.isArray(data.missing) ? data.missing : prev.gaps,
-          atsScore: typeof data.score === 'number' ? data.score : prev.atsScore,
-          coveragePct: typeof data.score === 'number' ? data.score : prev.coveragePct,
-        }));
+        const patchedMatched = Array.isArray(data.matched) ? (data.matched as string[]) : null;
+        const patchedMissing = Array.isArray(data.missing) ? (data.missing as string[]) : null;
+
+        setState((prev) => {
+          const nextHonest = patchedMatched || prev.honest;
+          const nextRawGaps = patchedMissing || prev.gaps;
+          const honestSet = new Set(nextHonest.map((k) => k.trim().toLowerCase()));
+          const nextGaps = nextRawGaps.filter((g) => !honestSet.has(g.trim().toLowerCase()));
+          const total = nextHonest.length + nextGaps.length;
+          const calculatedPct =
+            total === 0 ? 0 : nextGaps.length === 0 ? 100 : Math.min(99, Math.round((nextHonest.length / total) * 100));
+          const score =
+            nextGaps.length === 0 && typeof data.score === 'number'
+              ? data.score
+              : calculatedPct;
+          const nextSuggestions: Suggestion[] = nextGaps.slice(0, 6).map((g) => ({
+            text: `Add ${g} to skills / experience`,
+            section: 'competencies',
+            keyword: g,
+          }));
+
+          return {
+            ...prev,
+            honest: nextHonest,
+            gaps: nextGaps,
+            atsScore: score,
+            coveragePct: score,
+            suggestions: nextSuggestions,
+          };
+        });
         if (typeof data.score === 'number') {
           onAtsUpdate?.(data.score, 'jd');
         }
@@ -197,28 +220,46 @@ export function JdMatchPanel({
         return;
       }
 
-      const coverageFromAts =
-        typeof atsJson.score === 'number' && atsJson.source === 'jd'
-          ? atsJson.score
-          : null;
-      const coveragePct =
-        coverageFromAts != null ? coverageFromAts : Number(matchJson.coveragePct) || 0;
-      const atsScore =
-        typeof atsJson.score === 'number'
-          ? atsJson.score
-          : coveragePct || null;
+      const useAts =
+        atsJson.source === 'jd' &&
+        Array.isArray(atsJson.matched) &&
+        Array.isArray(atsJson.missing);
 
-      const rawGaps = Array.isArray(atsJson.missing) && atsJson.missing.length
-        ? (atsJson.missing as string[])
-        : Array.isArray(matchJson.gaps)
-          ? (matchJson.gaps as string[])
-          : [];
-      const honest = Array.isArray(atsJson.matched) && atsJson.matched.length
+      const honest = useAts
         ? (atsJson.matched as string[])
         : Array.isArray(matchJson.honest)
           ? (matchJson.honest as string[])
           : [];
-      const suggestions: Suggestion[] = rawGaps.slice(0, 6).map((g) => ({
+
+      const rawGaps = useAts
+        ? (atsJson.missing as string[])
+        : Array.isArray(matchJson.gaps)
+          ? (matchJson.gaps as string[])
+          : [];
+
+      // Deduplicate: keywords already in honest must NEVER appear in gaps
+      const honestSet = new Set(honest.map((k) => k.trim().toLowerCase()));
+      const gaps = rawGaps.filter((g) => !honestSet.has(g.trim().toLowerCase()));
+
+      // Calculate consistent score & coverage
+      const totalKeywords = honest.length + gaps.length;
+      let coveragePct: number;
+      if (totalKeywords === 0) {
+        coveragePct = 0;
+      } else if (gaps.length === 0) {
+        coveragePct = 100;
+      } else {
+        const calculated = Math.round((honest.length / totalKeywords) * 100);
+        // If there are real gaps, coverage cannot be 100%
+        coveragePct = Math.min(99, calculated);
+      }
+
+      const atsScore =
+        gaps.length === 0 && typeof atsJson.score === 'number'
+          ? atsJson.score
+          : coveragePct;
+
+      const suggestions: Suggestion[] = gaps.slice(0, 6).map((g) => ({
         text: `Add ${g} to skills / experience`,
         section: 'competencies',
         keyword: g,
@@ -228,7 +269,7 @@ export function JdMatchPanel({
         loading: false,
         error: null,
         honest,
-        gaps: rawGaps,
+        gaps,
         partial: Array.isArray(matchJson.partial) ? (matchJson.partial as string[]) : [],
         coveragePct,
         atsScore,
