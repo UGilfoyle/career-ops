@@ -198,3 +198,52 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const userId = session.user.id;
+    const { id } = await ctx.params;
+    const jobId = Number.parseInt(String(id), 10);
+    if (!Number.isFinite(jobId)) {
+      return NextResponse.json({ error: 'Invalid job id' }, { status: 400 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const company = typeof body.company === 'string' ? body.company.trim() : undefined;
+    const title = typeof body.title === 'string' ? body.title.trim() : undefined;
+
+    if (!company && !title) {
+      return NextResponse.json({ error: 'Provide company and/or title to update' }, { status: 400 });
+    }
+
+    const [updated] = await sql`
+      UPDATE jobs
+      SET
+        company = COALESCE(${company}, company),
+        title = COALESCE(${title}, title),
+        updated_at = NOW()
+      WHERE id = ${jobId} AND user_id = ${userId}
+      RETURNING id, company, title, updated_at
+    `;
+
+    if (!updated) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      job: {
+        id: updated.id,
+        company: updated.company,
+        title: updated.title,
+        updated_at: updated.updated_at,
+      },
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

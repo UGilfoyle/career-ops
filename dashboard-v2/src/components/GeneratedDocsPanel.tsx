@@ -13,6 +13,7 @@ import {
   Tooltip,
   Alert,
   Spin,
+  message,
 } from 'antd';
 import {
   FileTextOutlined,
@@ -25,6 +26,7 @@ import {
   CheckCircleOutlined,
   RocketOutlined,
   LoadingOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 
 export type GeneratedDoc = {
@@ -56,6 +58,7 @@ type DocFilter = 'all' | 'resume' | 'cover';
 type GeneratedDocsPanelProps = {
   docs: GeneratedDoc[];
   onDelete: (id: number, company: string, title: string) => void;
+  onDocUpdated?: (id: number, company: string, title: string) => void;
   onOpenPipeline: () => void;
   onOpenInStudio?: (doc: GeneratedDoc) => void;
   /** Copy stealth track link for this job (works before Applied). */
@@ -128,6 +131,7 @@ function pdfDownloadUrl(doc: DocCard): string | null {
 export default function GeneratedDocsPanel({
   docs,
   onDelete,
+  onDocUpdated,
   onOpenPipeline,
   onOpenInStudio,
   onCopyStealthLink,
@@ -139,6 +143,69 @@ export default function GeneratedDocsPanel({
   const [preview, setPreview] = useState<DocCard | null>(null);
   const [pdfBusyKey, setPdfBusyKey] = useState<string | null>(null);
   const [pdfHint, setPdfHint] = useState<string | null>(null);
+
+  // Edit document details state
+  const [editingCard, setEditingCard] = useState<DocCard | null>(null);
+  const [editCompany, setEditCompany] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [localOverrides, setLocalOverrides] = useState<Record<string, { company: string; title: string }>>({});
+
+  function openEditModal(card: DocCard) {
+    setEditingCard(card);
+    setEditCompany(card.company || '');
+    setEditTitle(card.title || '');
+  }
+
+  async function handleSaveDocEdit() {
+    if (!editingCard) return;
+    const trimmedCompany = editCompany.trim();
+    const trimmedTitle = editTitle.trim();
+
+    if (!trimmedCompany && !trimmedTitle) {
+      message.error('Please enter at least a company name or job title');
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/job/${editingCard.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company: trimmedCompany || undefined,
+          title: trimmedTitle || undefined,
+        }),
+      });
+
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(resData?.error || 'Failed to update document details');
+      }
+
+      const nextCompany = trimmedCompany || editingCard.company || '';
+      const nextTitle = trimmedTitle || editingCard.title || '';
+
+      // Instant optimistic state update
+      setLocalOverrides((prev) => ({
+        ...prev,
+        [String(editingCard.id)]: {
+          company: nextCompany,
+          title: nextTitle,
+        },
+      }));
+
+      onDocUpdated?.(Number(editingCard.id), nextCompany, nextTitle);
+
+      message.success('Document details updated');
+      setEditingCard(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update document';
+      message.error(msg);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   async function downloadPdf(card: DocCard) {
     const url = pdfDownloadUrl(card);
@@ -184,7 +251,19 @@ export default function GeneratedDocsPanel({
     }
   }
 
-  const allCards = useMemo(() => expandToDocCards(docs), [docs]);
+  const allCards = useMemo(() => {
+    const base = expandToDocCards(docs);
+    if (Object.keys(localOverrides).length === 0) return base;
+    return base.map((card) => {
+      const override = localOverrides[String(card.id)];
+      if (!override) return card;
+      return {
+        ...card,
+        company: override.company,
+        title: override.title,
+      };
+    });
+  }, [docs, localOverrides]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -353,7 +432,18 @@ export default function GeneratedDocsPanel({
                 {/* Company & Role Details */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-bold text-zinc-900">{company}</div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="truncate text-sm font-bold text-zinc-900">{company}</div>
+                      <Tooltip title="Rename company or role">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(card)}
+                          className="text-zinc-400 hover:text-zinc-700 transition-colors p-0.5 rounded cursor-pointer"
+                        >
+                          <EditOutlined className="text-xs" />
+                        </button>
+                      </Tooltip>
+                    </div>
                     <div className="truncate text-xs text-zinc-500">{title}</div>
                     <div className="mt-1 text-[11px] text-zinc-400">{formatDocDate(card.mtime)}</div>
                   </div>
@@ -456,6 +546,14 @@ export default function GeneratedDocsPanel({
                     </Tooltip>
                   )}
 
+                  <Tooltip title="Rename company or role">
+                    <Button
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => openEditModal(card)}
+                    />
+                  </Tooltip>
+
                   <Popconfirm
                     title="Delete document"
                     description={`Delete generated documents for ${company}?`}
@@ -503,6 +601,51 @@ export default function GeneratedDocsPanel({
               Preview unavailable — run tailor again to generate HTML.
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* Edit Document Details Modal */}
+      <Modal
+        open={Boolean(editingCard)}
+        title="Edit Document Details"
+        onCancel={() => {
+          if (!savingEdit) {
+            setEditingCard(null);
+          }
+        }}
+        onOk={handleSaveDocEdit}
+        okText="Save Changes"
+        confirmLoading={savingEdit}
+        destroyOnClose
+        centered
+      >
+        <div className="py-2 space-y-4">
+          <p className="text-xs text-zinc-500">
+            Rename the company and role for this job. All generated resumes, cover letters, and search indexing will update automatically.
+          </p>
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 mb-1">
+              Company Name
+            </label>
+            <Input
+              value={editCompany}
+              onChange={(e) => setEditCompany(e.target.value)}
+              placeholder="e.g. Google, Stripe, Bolt"
+              onPressEnter={handleSaveDocEdit}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 mb-1">
+              Job Title / Role
+            </label>
+            <Input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="e.g. Senior Backend Engineer"
+              onPressEnter={handleSaveDocEdit}
+            />
+          </div>
         </div>
       </Modal>
     </div>
