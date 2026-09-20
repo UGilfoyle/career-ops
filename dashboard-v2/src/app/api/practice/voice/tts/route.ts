@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-// Default voice: Rachel (calm, professional interviewer). Fallback: Adam or custom via env.
-const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+// Default voice: Sarah (Mature, Reassuring, Confident interviewer - free tier compatible)
+const DEFAULT_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';
 
 export async function POST(req: NextRequest) {
   try {
