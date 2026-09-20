@@ -169,6 +169,7 @@ export default function ResumeStudio({
     updateEducation,
     setTemplateId,
     replaceFromImport,
+    applyMirroredProfile,
   } = store;
 
   const competencies = useMemo(() => getCompetencies(draft), [draft]);
@@ -429,19 +430,8 @@ export default function ResumeStudio({
                   onTailor={onTailorJob}
                   onAtsUpdate={onAtsUpdate}
                   onApplyMirroredProfile={(aligned) => {
-                    if (Array.isArray(aligned.narrative?.superpowers)) {
-                      updateCompetencies(aligned.narrative.superpowers.map(String));
-                    }
-                    if (aligned.narrative) {
-                      updateNarrative({
-                        headline: aligned.narrative.headline,
-                        exit_story: aligned.narrative.exit_story,
-                      });
-                    }
-                    if (Array.isArray(aligned.experience) && aligned.experience.length) {
-                      updateExperience(aligned.experience);
-                    }
-                    setBanner(`JD keywords mirrored into Live Preview (target ${95}%+). Save if you want this kept.`);
+                    applyMirroredProfile(aligned);
+                    setBanner(`Weaved keywords into Skills & Experience! Edits update live in preview.`);
                   }}
                   hasGeneratedResume={hasTailoredForJob}
                 />

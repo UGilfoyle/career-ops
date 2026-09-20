@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import sql from '@/lib/db';
 import { getCompetencies, setCompetencies, type ResumeContext } from '@/lib/resume/types';
 import { scoreMasterAgainstJd, structureAtsScore } from '@/lib/resume/ats-score';
+import { weaveKeywordsIntoExperience } from '@/lib/resume/experience-weave';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -75,9 +76,19 @@ export async function POST(req: NextRequest) {
     }
 
     const updatedCompetencies = [...currentCompetencies, ...newlyAdded];
-    const patchedProfile = setCompetencies(profile, updatedCompetencies);
+    let patchedProfile = setCompetencies(profile, updatedCompetencies);
 
-    // 3. Optional: persist to user_profiles if saveProfile flag is present
+    // 3. Weave keywords into job experience bullets (so they appear in the jobs experience section too)
+    const updatedExperience = weaveKeywordsIntoExperience(
+      patchedProfile.experience,
+      rawKeywords,
+    );
+    patchedProfile = {
+      ...patchedProfile,
+      experience: updatedExperience,
+    };
+
+    // 4. Optional: persist to user_profiles if saveProfile flag is present
     if (body.saveProfile) {
       try {
         await sql`
