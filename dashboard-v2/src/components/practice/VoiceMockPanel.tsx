@@ -111,6 +111,7 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
     selectedVoice,
     setSelectedVoice,
     audioLevel,
+    activeTtsEngine,
     startInterview,
     startListening,
     stopListeningAndSend,
@@ -288,7 +289,7 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
                 <span className="text-sm font-bold text-zinc-900">Voice Mock Interview Simulator</span>
               </div>
               <Tag color="purple" className="font-bold text-[10px] uppercase">
-                Real-Time Voice AI
+                {activeTtsEngine === 'elevenlabs' ? '⚡ ElevenLabs HD Voice' : 'Real-Time Voice AI'}
               </Tag>
             </div>
           }
@@ -477,7 +478,9 @@ export default function VoiceMockPanel({ pipeline = [], onBackToPacks }: Props) 
             {voices.length > 0 && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-zinc-700">Interviewer Voice (Free Browser TTS)</label>
+                  <label className="text-xs font-semibold text-zinc-700">
+                    Interviewer Voice (ElevenLabs HD &amp; Browser Fallback)
+                  </label>
                   <Button
                     size="small"
                     type="text"
