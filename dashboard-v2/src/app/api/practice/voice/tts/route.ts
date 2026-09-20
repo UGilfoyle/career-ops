@@ -26,8 +26,13 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl, `TTS rate limit reached. ${formatRetryHint(rl.retryAfterSec)}`);
     }
 
-    const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
-    if (!apiKey) {
+    const rawKeys = process.env.ELEVENLABS_API_KEYS || process.env.ELEVENLABS_API_KEY || '';
+    const apiKeys = rawKeys
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean);
+
+    if (apiKeys.length === 0) {
       // Key not configured — signal client to silently fallback to browser SpeechSynthesis
       return NextResponse.json({ ok: false, fallback: true, reason: 'unconfigured' }, { status: 200 });
     }
@@ -43,42 +48,52 @@ export async function POST(req: NextRequest) {
     const voiceId = process.env.ELEVENLABS_VOICE_ID?.trim() || DEFAULT_VOICE_ID;
     const modelId = process.env.ELEVENLABS_MODEL_ID?.trim() || 'eleven_flash_v2_5';
 
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
-      method: 'POST',
-      headers: {
-        'xi-api-key': apiKey,
-        'Content-Type': 'application/json',
-        Accept: 'audio/mpeg',
-      },
-      body: JSON.stringify({
-        text,
-        model_id: modelId,
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.0,
-          use_speaker_boost: true,
-        },
-      }),
-    });
+    // Auto-Failover: Iterate through API key pool until one succeeds
+    for (const apiKey of apiKeys) {
+      try {
+        const response = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+          {
+            method: 'POST',
+            headers: {
+              'xi-api-key': apiKey,
+              'Content-Type': 'application/json',
+              Accept: 'audio/mpeg',
+            },
+            body: JSON.stringify({
+              text,
+              model_id: modelId,
+              voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75,
+                style: 0.0,
+                use_speaker_boost: true,
+              },
+            }),
+          },
+        );
 
-    if (!response.ok) {
-      // If ElevenLabs quota is exhausted (429/401) or temporary outage, signal client to fallback smoothly
-      return NextResponse.json(
-        { ok: false, fallback: true, reason: 'upstream_error', status: response.status },
-        { status: 200 }
-      );
+        if (response.ok) {
+          const audioBuffer = await response.arrayBuffer();
+          return new NextResponse(audioBuffer, {
+            status: 200,
+            headers: {
+              'Content-Type': 'audio/mpeg',
+              'Cache-Control': 'no-store, max-age=0',
+              'X-TTS-Provider': 'elevenlabs',
+            },
+          });
+        }
+      } catch {
+        // Continue to next key in pool
+      }
     }
 
-    const audioBuffer = await response.arrayBuffer();
-    return new NextResponse(audioBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'no-store, max-age=0',
-        'X-TTS-Provider': 'elevenlabs',
-      },
-    });
+    // If all keys exhausted (quota 429/402), signal client to fallback smoothly
+    return NextResponse.json(
+      { ok: false, fallback: true, reason: 'all_keys_exhausted' },
+      { status: 200 },
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal TTS Error';
     // Fallback on unexpected server failure so client keeps talking

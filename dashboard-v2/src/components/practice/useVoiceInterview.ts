@@ -84,9 +84,13 @@ export function useVoiceInterview(config: VoiceInterviewConfig) {
       const list = englishVoices.length > 0 ? englishVoices : allVoices;
       setVoices(list);
 
-      // Prefer high-quality standard voices
+      // Prefer high-quality Neural / Natural voices (Edge Jenny/Guy Neural, Chrome Google Natural, macOS Enhanced)
       const preferred = list.find(
         (v) =>
+          v.name.includes('Online (Natural)') ||
+          v.name.includes('Jenny') ||
+          v.name.includes('Guy') ||
+          v.name.includes('Aria') ||
           v.name.includes('Natural') ||
           v.name.includes('Google US English') ||
           v.name.includes('Google UK English Female') ||
