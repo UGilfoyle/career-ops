@@ -80,6 +80,7 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
+          max_tokens: 1200,
           temperature: 0.4,
         }),
       });
@@ -100,6 +101,39 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
     'X-Title': process.env.OPENROUTER_APP_NAME || 'career-ops',
   };
 
+  // 1. Google Gemini (Free tier, fast, high reliability)
+  if (geminiKey && !isPlaceholderKey(geminiKey)) {
+    const geminiModels = [
+      process.env.GEMINI_MODEL,
+      'gemini-3.5-flash',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash-lite',
+    ].filter(Boolean) as string[];
+
+    for (const geminiModel of geminiModels) {
+      attempts.push(async () => {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+              generationConfig: { temperature: 0.4 },
+            }),
+          },
+        );
+        if (!response.ok) {
+          throw new Error(`Gemini (${geminiModel}) failed ${response.status}: ${await response.text()}`);
+        }
+        const result = await response.json();
+        return String(result.candidates?.[0]?.content?.parts?.[0]?.text || '');
+      });
+    }
+  }
+
+  // 2. Mistral AI (Official Free Tier via console.mistral.ai)
   pushOpenAiCompat(
     'Mistral',
     mistralKey,
@@ -110,7 +144,7 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
   const openRouterModels = (
     process.env.OPENROUTER_MODELS ||
     process.env.OPENROUTER_MODEL ||
-    'openrouter/free,google/gemma-2-9b-it:free,meta-llama/llama-3.2-3b-instruct:free'
+    'openai/gpt-4o-mini'
   )
     .split(',')
     .map((m) => m.trim())
@@ -125,28 +159,6 @@ export async function callLlm(systemPrompt: string, userPrompt: string): Promise
       openRouterHeaders,
       (status, body) => status === 402 || /insufficient balance/i.test(body),
     );
-  }
-
-  if (geminiKey && !isPlaceholderKey(geminiKey)) {
-    attempts.push(async () => {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-            generationConfig: { temperature: 0.4 },
-          }),
-        },
-      );
-      if (!response.ok) {
-        throw new Error(`Gemini failed ${response.status}: ${await response.text()}`);
-      }
-      const result = await response.json();
-      return String(result.candidates?.[0]?.content?.parts?.[0]?.text || '');
-    });
   }
 
   pushOpenAiCompat(
