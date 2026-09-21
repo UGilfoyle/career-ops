@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../..');
 
-const rawUserId = process.env.SCAN_USER_ID || process.argv[2] || 1;
+const rawUserId = process.env.SCAN_USER_ID || process.argv[2] || 19;
 const userId = Number.parseInt(String(rawUserId), 10);
 if (!Number.isFinite(userId)) {
   throw new Error(`Invalid SCAN_USER_ID: ${rawUserId}`);
@@ -495,6 +495,100 @@ async function run() {
   let totalChecked = 0;
   let totalFound = 0;
 
+  let persistedIndex = 0;
+  async function persistNewJobs() {
+    const unpersisted = newJobs.slice(persistedIndex);
+    if (unpersisted.length === 0) return;
+    persistedIndex = newJobs.length;
+
+    // 1. PostgreSQL DB Upsert
+    if (dbAvailable) {
+      try {
+        await sql`
+          ALTER TABLE jobs
+            ADD COLUMN IF NOT EXISTS canonical_url TEXT,
+            ADD COLUMN IF NOT EXISTS jd_text TEXT,
+            ADD COLUMN IF NOT EXISTS company_type TEXT,
+            ADD COLUMN IF NOT EXISTS gcc_signal_score INTEGER,
+            ADD COLUMN IF NOT EXISTS gcc_high_value BOOLEAN DEFAULT FALSE,
+            ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS posted_confidence TEXT,
+            ADD COLUMN IF NOT EXISTS posted_reason TEXT,
+            ADD COLUMN IF NOT EXISTS posted_checked_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS portal_key TEXT,
+            ADD COLUMN IF NOT EXISTS logo_url TEXT,
+            ADD COLUMN IF NOT EXISTS logo_source TEXT;
+        `;
+      } catch {
+        // ignore schema alteration failure if columns exist
+      }
+
+      try {
+        const CHUNK_SIZE = 25;
+        for (let i = 0; i < unpersisted.length; i += CHUNK_SIZE) {
+          const chunk = unpersisted.slice(i, i + CHUNK_SIZE);
+          await Promise.all(chunk.map(job => {
+            const companyType = classifyCompany(job.company);
+            return sql`
+              INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type, portal_key, logo_url, logo_source)
+              VALUES (
+                ${job.url},
+                ${job.canonical_url || job.url?.split?.('?')?.[0] || job.url},
+                ${job.company},
+                ${job.title},
+                ${job.source},
+                ${userId},
+                ${companyType},
+                ${job.portal_key ?? null},
+                ${job.logo_url ?? null},
+                ${job.logo_source ?? null}
+              )
+              ON CONFLICT (user_id, url) DO NOTHING
+            `;
+          }));
+        }
+        console.log(`  ✓ Persisted ${unpersisted.length} new jobs to PostgreSQL (user ${userId}).`);
+      } catch (dbErr) {
+        dbAvailable = false;
+        console.warn(`  ⚠ Could not persist jobs to PostgreSQL (${dbErr.message}). Jobs kept in memory/logs.`);
+      }
+    }
+
+    // 2. Sync to local data/pipeline.md & data/scan-history.tsv (CLI Second Brain)
+    try {
+      const pipelinePath = path.resolve(repoRoot, 'data', 'pipeline.md');
+      const dataDir = path.dirname(pipelinePath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      const PIPELINE_SKELETON = `# Pipeline — Pending URLs\n\nPaste job URLs below as \`- [ ] {url}\` then run \`/career-ops pipeline\`.\n\n## Pending\n\n## Processed\n`;
+      if (!fs.existsSync(pipelinePath)) {
+        fs.writeFileSync(pipelinePath, PIPELINE_SKELETON, 'utf-8');
+      }
+      let text = fs.readFileSync(pipelinePath, 'utf-8');
+      const lines = unpersisted.map(j => `- [ ] ${j.url} | ${j.company} | ${j.title}`);
+      const newLines = lines.filter(l => !text.includes(l.split(' | ')[0].replace('- [ ] ', '')));
+      if (newLines.length > 0) {
+        const marker = text.includes('## Pending') ? '## Pending' : text.includes('## Pendientes') ? '## Pendientes' : null;
+        if (marker) {
+          const idx = text.indexOf(marker) + marker.length;
+          text = text.slice(0, idx) + '\n' + newLines.join('\n') + text.slice(idx);
+        } else {
+          text += '\n## Pending\n' + newLines.join('\n') + '\n';
+        }
+        fs.writeFileSync(pipelinePath, text, 'utf-8');
+        console.log(`  ✓ Appended ${newLines.length} jobs to data/pipeline.md (CLI inbox).`);
+      }
+
+      const historyPath = path.resolve(repoRoot, 'data', 'scan-history.tsv');
+      const today = new Date().toISOString().slice(0, 10);
+      const historyRows = unpersisted.map(j => `${j.url}\t${today}\t${j.source}\t${j.title}\t${j.company}\tadded\t${j.location || ''}\n`).join('');
+      fs.appendFileSync(historyPath, historyRows, 'utf-8');
+    } catch (localSyncErr) {
+      console.warn(`  ⚠ Could not append to local data/pipeline.md: ${localSyncErr.message}`);
+    }
+  }
+
   try {
     // 1. Direct ATS Scans (Greenhouse, Ashby, Lever, Workable)
     console.log('\n▶ Phase 1: ATS Scans (30s timeout each)...');
@@ -502,6 +596,7 @@ async function run() {
     await scanAshby();
     await scanLever();
     await scanWorkable();
+    await persistNewJobs();
 
   // 2. Dynamic Search Discovery (Naukri, Indeed, LinkedIn, etc.)
   if (shouldRunDiscovery) {
@@ -621,9 +716,11 @@ async function run() {
              stats.enterprise.errors++;
            }
         }
+        await persistNewJobs();
       } catch (e) {
         console.error(`  ✗ Enterprise Phase Error: ${e.message}`);
       }
+      await persistNewJobs();
     }
   } else {
     console.log('\nℹ️ No user search queries configured yet. Add portals in Settings or set ENABLE_EXTENDED_SCAN=true for full extended scan.');
@@ -633,57 +730,8 @@ async function run() {
   totalChecked = Object.values(stats).reduce((s, v) => s + v.checked, 0);
   totalFound   = Object.values(stats).reduce((s, v) => s + v.found, 0);
 
-  if (dbAvailable && totalAdded > 0) {
-    console.log(`\n📦 UPSERTing ${totalAdded} new jobs to PostgreSQL...`);
-    try {
-      await sql`
-        ALTER TABLE jobs
-          ADD COLUMN IF NOT EXISTS canonical_url TEXT,
-          ADD COLUMN IF NOT EXISTS jd_text TEXT,
-          ADD COLUMN IF NOT EXISTS company_type TEXT,
-          ADD COLUMN IF NOT EXISTS gcc_signal_score INTEGER,
-          ADD COLUMN IF NOT EXISTS gcc_high_value BOOLEAN DEFAULT FALSE,
-          ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS posted_confidence TEXT,
-          ADD COLUMN IF NOT EXISTS posted_reason TEXT,
-          ADD COLUMN IF NOT EXISTS posted_checked_at TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS portal_key TEXT,
-          ADD COLUMN IF NOT EXISTS logo_url TEXT,
-          ADD COLUMN IF NOT EXISTS logo_source TEXT;
-      `;
-    } catch {
-      // ignore
-    }
-    try {
-      const CHUNK_SIZE = 25;
-      for (let i = 0; i < newJobs.length; i += CHUNK_SIZE) {
-        const chunk = newJobs.slice(i, i + CHUNK_SIZE);
-        await Promise.all(chunk.map(job => {
-          const companyType = classifyCompany(job.company);
-          return sql`
-            INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type, portal_key, logo_url, logo_source)
-            VALUES (
-              ${job.url},
-              ${job.canonical_url || job.url?.split?.('?')?.[0] || job.url},
-              ${job.company},
-              ${job.title},
-              ${job.source},
-              ${userId},
-              ${companyType},
-              ${job.portal_key ?? null},
-              ${job.logo_url ?? null},
-              ${job.logo_source ?? null}
-            )
-            ON CONFLICT (user_id, url) DO NOTHING
-          `;
-        }));
-      }
-      console.log(`  ✓ Successfully persisted ${totalAdded} jobs to database.`);
-    } catch (dbErr) {
-      dbAvailable = false;
-      console.warn(`  ⚠ Could not persist jobs to PostgreSQL (${dbErr.message}). Jobs kept in memory/logs.`);
-    }
-  }
+  // Final flush of any remaining unpersisted jobs
+  await persistNewJobs();
 
   // log scan to history
   if (dbAvailable) {
