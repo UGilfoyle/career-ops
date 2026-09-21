@@ -68,7 +68,7 @@ const sql = postgres(cleanDbUrl, {
   ssl: cleanDbUrl ? 'require' : false,
   max: 10,
   idle_timeout: 20,
-  connect_timeout: 30,
+  connect_timeout: Number(process.env.DB_CONNECT_TIMEOUT || (process.env.CI ? 10 : 15)),
 });
 
 export default sql;

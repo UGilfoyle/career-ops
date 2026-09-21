@@ -82,7 +82,7 @@ function loadEnvLocal() {
 
       if (key === 'DATABASE_URL') {
         if (!isValidDatabaseUrl(val)) continue;
-        process.env.DATABASE_URL = val;
+        if (!process.env.DATABASE_URL) process.env.DATABASE_URL = val;
         continue;
       }
 
@@ -109,7 +109,7 @@ const sql = postgres(cleanDbUrl, {
   ssl: 'require',
   max: 10,
   idle_timeout: 20,
-  connect_timeout: 30,
+  connect_timeout: Number(process.env.DB_CONNECT_TIMEOUT || (process.env.CI ? 10 : 15)),
 });
 
 export default sql;

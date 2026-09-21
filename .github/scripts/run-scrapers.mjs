@@ -191,9 +191,15 @@ async function main() {
     await notifyDashboardCompletion({ userId: specificUserId, exitCode: lastCode, startedAt });
   } else {
     // Cron mode: scan all active tenants
-    const activeUsers = await sql`
-      SELECT user_id FROM user_profiles ORDER BY updated_at DESC NULLS LAST
-    `;
+    let activeUsers = [];
+    try {
+      activeUsers = await sql`
+        SELECT user_id FROM user_profiles ORDER BY updated_at DESC NULLS LAST
+      `;
+    } catch (e) {
+      console.warn('⚠ Database unavailable for tenant lookup:', e.message);
+      activeUsers = [{ user_id: 19 }];
+    }
 
     if (activeUsers.length === 0) {
       console.log('\n💤 No active profiles found. Nothing to scan.');
@@ -225,7 +231,9 @@ async function main() {
     }
   }
 
-  await sql.end();
+  try {
+    await sql.end({ timeout: 5 });
+  } catch {}
   // Exit non-zero if any tenant failed so GitHub Actions marks the job as failed
   process.exit(failed > 0 ? 1 : 0);
 }

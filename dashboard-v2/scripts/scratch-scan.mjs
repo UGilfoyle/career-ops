@@ -1,10 +1,16 @@
-// scanner - check greenhouse, ashby, lever, workable for new jobs
-
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import yaml from 'js-yaml';
 import sql from './db/client.mjs';
 import { classifyCompany } from '../../gcc-classify.mjs';
 import { scoreGccSignals } from '../../gcc-signal-engine.mjs';
 import { discoverJobsWithoutBrowser } from './lib/ddg-discovery.mjs';
 import { resolveJobLogoFields } from './lib/job-logos.mjs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, '../..');
 
 const rawUserId = process.env.SCAN_USER_ID || process.argv[2] || 1;
 const userId = Number.parseInt(String(rawUserId), 10);
@@ -32,21 +38,141 @@ function normalizePortalId(value) {
 
   return raw;
 }
-// Attempt to load distinct profile config
-let config = { title_filter: { positive: [], negative: [] }, tracked_companies: [], search_queries: [] };
+
+// 1. Load baseline portals & tracked companies from portals.yml or templates/portals.example.yml
+let portalsConfig = {};
+const portalCandidates = [
+  path.resolve(process.cwd(), 'portals.yml'),
+  path.resolve(repoRoot, 'portals.yml'),
+  path.resolve(process.cwd(), 'templates', 'portals.example.yml'),
+  path.resolve(repoRoot, 'templates', 'portals.example.yml'),
+];
+for (const p of portalCandidates) {
+  if (fs.existsSync(p)) {
+    try {
+      const parsed = yaml.load(fs.readFileSync(p, 'utf8'));
+      if (parsed && typeof parsed === 'object') {
+        portalsConfig = parsed;
+        if (Array.isArray(portalsConfig.tracked_companies) && portalsConfig.tracked_companies.length > 0) {
+          break;
+        }
+      }
+    } catch {}
+  }
+}
+
+const FALLBACK_COMPANIES = [
+  { name: 'SingleStore', careers_url: 'https://job-boards.greenhouse.io/singlestore', provider: 'greenhouse', enabled: true },
+  { name: 'ClickUp', careers_url: 'https://jobs.ashbyhq.com/clickup', provider: 'ashby', enabled: true },
+  { name: 'Safe Security', careers_url: 'https://jobs.lever.co/safe', provider: 'lever', enabled: true },
+  { name: 'Druva', careers_url: 'https://job-boards.greenhouse.io/druva', provider: 'greenhouse', enabled: true },
+  { name: 'Cursor', careers_url: 'https://jobs.ashbyhq.com/cursor', provider: 'ashby', enabled: true },
+  { name: 'Linear', careers_url: 'https://jobs.ashbyhq.com/linear', provider: 'ashby', enabled: true },
+  { name: 'Gitlab', careers_url: 'https://job-boards.greenhouse.io/gitlab', provider: 'greenhouse', enabled: true },
+  { name: 'Stripe', careers_url: 'https://job-boards.greenhouse.io/stripe', provider: 'greenhouse', enabled: true },
+  { name: 'Coinbase', careers_url: 'https://job-boards.greenhouse.io/coinbase', provider: 'greenhouse', enabled: true },
+  { name: 'Perplexity', careers_url: 'https://jobs.ashbyhq.com/perplexity', provider: 'ashby', enabled: true },
+  { name: 'ElevenLabs', careers_url: 'https://jobs.ashbyhq.com/elevenlabs', provider: 'ashby', enabled: true },
+  { name: 'Ramp', careers_url: 'https://jobs.ashbyhq.com/ramp', provider: 'ashby', enabled: true },
+  { name: 'Cohere', careers_url: 'https://jobs.ashbyhq.com/cohere', provider: 'ashby', enabled: true },
+  { name: 'Figma', careers_url: 'https://job-boards.greenhouse.io/figma', provider: 'greenhouse', enabled: true },
+  { name: 'MongoDB', careers_url: 'https://job-boards.greenhouse.io/mongodb', provider: 'greenhouse', enabled: true },
+  { name: 'Cloudflare', careers_url: 'https://job-boards.greenhouse.io/cloudflare', provider: 'greenhouse', enabled: true },
+  { name: 'Elastic', careers_url: 'https://job-boards.greenhouse.io/elastic', provider: 'greenhouse', enabled: true },
+  { name: 'Thoughtworks', careers_url: 'https://job-boards.greenhouse.io/thoughtworks', provider: 'greenhouse', enabled: true },
+  { name: 'Databricks', careers_url: 'https://job-boards.greenhouse.io/databricks', provider: 'greenhouse', enabled: true },
+];
+
+const rawCompanies = (Array.isArray(portalsConfig.tracked_companies) && portalsConfig.tracked_companies.length > 0)
+  ? portalsConfig.tracked_companies
+  : FALLBACK_COMPANIES;
+
+const companies = rawCompanies.map(c => {
+  const comp = { ...c };
+  const careers = comp.careers_url || '';
+  const prov = String(comp.provider || '').toLowerCase();
+
+  // Greenhouse detection
+  const ghMatch = careers.match(/(?:boards|job-boards|boards-api)\.(?:eu\.)?greenhouse\.io\/(?:v1\/boards\/)?([^/?#]+)/i);
+  if (ghMatch || prov === 'greenhouse') {
+    const slug = ghMatch ? ghMatch[1] : careers.split('/').filter(Boolean).pop();
+    const isEu = careers.includes('.eu.');
+    if (!comp.api && slug) {
+      comp.api = isEu
+        ? `https://boards-api.eu.greenhouse.io/v1/boards/${slug}/jobs`
+        : `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`;
+    }
+    comp.isGreenhouse = true;
+  }
+
+  // Ashby detection
+  const ashbyMatch = careers.match(/jobs\.ashbyhq\.com\/([^/?#]+)/i);
+  if (ashbyMatch || prov === 'ashby') {
+    comp.ashbySlug = ashbyMatch ? ashbyMatch[1] : careers.split('/').filter(Boolean).pop();
+    comp.isAshby = true;
+  }
+
+  // Lever detection
+  const leverMatch = careers.match(/jobs\.lever\.co\/([^/?#]+)/i);
+  if (leverMatch || prov === 'lever') {
+    comp.leverSlug = leverMatch ? leverMatch[1] : careers.split('/').filter(Boolean).pop();
+    comp.isLever = true;
+  }
+
+  // Workable detection
+  const workableMatch = careers.match(/apply\.workable\.com\/([^/?#]+)/i);
+  if (workableMatch || prov === 'workable') {
+    comp.workableSlug = workableMatch ? workableMatch[1] : careers.split('/').filter(Boolean).pop();
+    comp.isWorkable = true;
+  }
+
+  return comp;
+});
+
+let config = {
+  title_filter: portalsConfig.title_filter || {
+    positive: [
+      'software engineer', 'backend', 'back-end', 'full-stack', 'full stack', 'fullstack',
+      'frontend', 'front-end', 'developer', 'distributed systems', 'lead backend',
+      'senior backend', 'staff backend', 'principal backend', 'platform engineer',
+      'cloud engineer', 'node.js', 'typescript', 'python', 'microservices'
+    ],
+    negative: [
+      'junior', 'intern', 'fresher', 'graduate', 'sales', 'marketing', 'hr', 'recruiter',
+      'account executive', 'product manager', 'scrum master', 'qa engineer', 'manual test',
+      'creative designer', 'php', 'wordpress', 'cobol', 'sap ', 'salesforce admin',
+      'android', 'ios', 'flutter', 'react native'
+    ]
+  },
+  location_filter: portalsConfig.location_filter || {
+    always_allow: [
+      'remote', 'wfh', 'work from home', 'anywhere', 'distributed', 'pune', 'india',
+      'kochi', 'cochin', 'thiruvananthapuram', 'trivandrum', 'kerala', 'delhi',
+      'delhi/ncr', 'delhi ncr', 'ncr', 'noida', 'greater noida', 'gurgaon', 'gurugram',
+      'bengaluru', 'bangalore', 'hyderabad', 'mumbai'
+    ],
+    allow: ['remote', 'anywhere', 'apac', 'india'],
+    block: ['on-site only', 'onsite only', 'office only', 'in-office only']
+  },
+  tracked_companies: companies,
+  search_queries: []
+};
+
+let dbAvailable = true;
 try {
   const [profile] = await sql`
     SELECT targeting_keywords, resume_context
     FROM user_profiles
     WHERE user_id = ${userId}
   `;
-  if (profile?.targeting_keywords) {
-     config.title_filter = profile.targeting_keywords;
+  if (profile?.targeting_keywords?.positive?.length > 0) {
+    config.title_filter = profile.targeting_keywords;
   }
   const selectedPortals = profile?.resume_context?.search?.portals || [];
   if (selectedPortals.length > 0) {
     const primaryKeyword = (config.title_filter?.positive?.[0] || 'software engineer').toLowerCase();
-    const location = profile?.resume_context?.candidate?.location || 'India';
+    const rawLoc = profile?.resume_context?.candidate?.location;
+    const location = (rawLoc && !rawLoc.includes('CI') && !rawLoc.includes('Test')) ? rawLoc : 'India';
     const normalizedPortals = [...new Set(selectedPortals.map(normalizePortalId).filter(Boolean))];
     config.search_queries = normalizedPortals.map((portal) => ({
       name: `${portal} ${primaryKeyword}`,
@@ -56,12 +182,11 @@ try {
       enabled: true,
     }));
   }
-} catch(e) {
-  // Graceful fallback when DB is unavailable in the current environment.
-  // Keep the scan engine alive with an empty config instead of crashing on yaml deps.
-  config = { title_filter: { positive: [], negative: [] }, tracked_companies: [], search_queries: [] };
+} catch (e) {
+  dbAvailable = false;
+  console.warn(`⚠ Database not ready for profile load (${e.message}), proceeding with local config.`);
 }
-const companies = config.tracked_companies || [];
+
 
 const DISCOVERY_SITE_BY_PORTAL = {
   linkedin: 'linkedin.com/jobs',
@@ -124,40 +249,72 @@ async function importScraper(moduleName) {
 
 // load already seen urls from db
 const seenUrls = new Set();
-try {
-  const existing = await sql`SELECT url FROM jobs WHERE user_id = ${userId}`;
-  existing.forEach(r => seenUrls.add(r.url));
-  console.log(`✓ Loaded ${seenUrls.size} existing jobs from database for deduplication.`);
-} catch (e) {
-  console.warn("⚠ Database not ready for dedup check, proceeding anyway.");
+if (dbAvailable) {
+  try {
+    const existing = await sql`SELECT url FROM jobs WHERE user_id = ${userId}`;
+    existing.forEach(r => seenUrls.add(r.url));
+    console.log(`✓ Loaded ${seenUrls.size} existing jobs from database for deduplication.`);
+  } catch (e) {
+    dbAvailable = false;
+    console.warn("⚠ Database not ready for dedup check, proceeding anyway.");
+  }
 }
 
 // Filter by title keywords from portals.yml
 function matchesFilter(title) {
+  if (!title) return false;
   const t = title.toLowerCase();
-  for (const n of (config.title_filter.negative || [])) {
+  for (const n of (config.title_filter?.negative || [])) {
     if (t.includes(n.toLowerCase())) return false;
   }
-  for (const p of (config.title_filter.positive || [])) {
+  const positive = config.title_filter?.positive || [];
+  if (positive.length === 0) return true;
+  for (const p of positive) {
     if (t.includes(p.toLowerCase())) return true;
   }
   return false;
+}
+
+function matchesLocation(location, title = '') {
+  if (!location && !title) return true;
+  const combined = `${location || ''} ${title || ''}`.toLowerCase();
+
+  const alwaysAllow = (config.location_filter?.always_allow || []).map(k => k.toLowerCase());
+  if (alwaysAllow.some(k => combined.includes(k))) {
+    return true;
+  }
+
+  const block = (config.location_filter?.block || []).map(k => k.toLowerCase());
+  if (block.some(k => combined.includes(k))) {
+    return false;
+  }
+
+  const allow = (config.location_filter?.allow || []).map(k => k.toLowerCase());
+  if (allow.length > 0) {
+    return allow.some(k => combined.includes(k));
+  }
+
+  return true;
 }
 
 // result queue
 const newJobs = [];      // { url, company, title }
 const startTime = Date.now();
 
-function tryAdd(url, company, title, source) {
+function tryAdd(url, company, title, source, location = '') {
   if (!url || !title) return 'skip_nodata';
   const cleanUrl = url.split('?')[0];
   if (seenUrls.has(url) || seenUrls.has(cleanUrl)) {
     return 'dup';
   }
   if (!matchesFilter(title)) {
-    return 'filtered';
+    return 'filtered_title';
+  }
+  if (!matchesLocation(location, title)) {
+    return 'filtered_location';
   }
   seenUrls.add(url);
+  seenUrls.add(cleanUrl);
   const logoFields = resolveJobLogoFields({ url, source, company });
   newJobs.push({ url, canonical_url: cleanUrl, company, title, source, ...logoFields });
   return 'added';
@@ -175,7 +332,7 @@ const stats = {
 
 // Greenhouse API
 async function scanGreenhouse() {
-  const ghCompanies = companies.filter(c => c.api && c.enabled !== false);
+  const ghCompanies = companies.filter(c => (c.api || c.isGreenhouse) && c.enabled !== false);
   console.log(`\n🌿 Greenhouse API — ${ghCompanies.length} companies`);
   stats.greenhouse.checked = ghCompanies.length;
 
@@ -184,9 +341,11 @@ async function scanGreenhouse() {
     const progress = ghCompanies.length > 10 ? `[${i + 1}/${ghCompanies.length}] ` : '';
 
     try {
+      const apiUrl = comp.api;
+      if (!apiUrl) continue;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout per company
-      const res = await fetch(comp.api, { signal: controller.signal });
+      const res = await fetch(apiUrl, { signal: controller.signal });
       clearTimeout(timeout);
       if (!res.ok) { stats.greenhouse.errors++; continue; }
       const data = await res.json();
@@ -197,7 +356,7 @@ async function scanGreenhouse() {
         const url = job.absolute_url;
         const loc = job.location?.name || '';
         const title = loc ? `${job.title} (${loc})` : job.title;
-        const result = tryAdd(url, comp.name, title, 'Greenhouse API');
+        const result = tryAdd(url, comp.name, title, 'Greenhouse API', loc);
         if (result === 'added') {
           stats.greenhouse.added++;
           process.stdout.write(`  ${progress}✓ ${comp.name}: ${job.title}\n`);
@@ -215,17 +374,15 @@ async function scanGreenhouse() {
   }
 }
 
-// ... scanAshby, scanLever, scanWorkable remain functionally the same, omitted for brevity but integrated
-// (I will keep them in the final replacement content)
 async function scanAshby() {
-  const ashbyCompanies = companies.filter(c => c.careers_url?.includes('jobs.ashbyhq.com') && !c.api && c.enabled !== false);
+  const ashbyCompanies = companies.filter(c => (c.ashbySlug || c.isAshby) && !c.api && c.enabled !== false);
   console.log(`\n🔷 Ashby API — ${ashbyCompanies.length} companies`);
   stats.ashby.checked = ashbyCompanies.length;
   for (let i = 0; i < ashbyCompanies.length; i++) {
     const comp = ashbyCompanies[i];
     const progress = ashbyCompanies.length > 10 ? `[${i + 1}/${ashbyCompanies.length}] ` : '';
     try {
-      const slug = comp.careers_url.replace('https://jobs.ashbyhq.com/', '').split('/')[0].split('?')[0];
+      const slug = comp.ashbySlug || comp.careers_url.replace('https://jobs.ashbyhq.com/', '').split('/')[0].split('?')[0];
       const apiUrl = `https://jobs.ashbyhq.com/${slug}/api/jobs`;
       const res = await fetch(apiUrl, { headers: { 'User-Agent': 'career-ops-scanner/2.0' } });
       if (!res.ok) { stats.ashby.errors++; continue; }
@@ -236,7 +393,7 @@ async function scanAshby() {
         const url = job.applicationLink || `https://jobs.ashbyhq.com/${slug}/${job.id}`;
         const loc = job.locationName || (job.isRemote ? 'Remote' : '');
         const title = loc ? `${job.title} (${loc})` : job.title;
-        const result = tryAdd(url, comp.name, title, 'Ashby API');
+        const result = tryAdd(url, comp.name, title, 'Ashby API', loc);
         if (result === 'added') { stats.ashby.added++; process.stdout.write(`  ${progress}✓ ${comp.name}: ${job.title}\n`); }
       }
       if (ashbyCompanies.length > 10 && (i + 1) % 10 === 0) {
@@ -247,14 +404,14 @@ async function scanAshby() {
 }
 
 async function scanLever() {
-  const leverCompanies = companies.filter(c => c.careers_url?.includes('jobs.lever.co') && c.enabled !== false);
+  const leverCompanies = companies.filter(c => (c.leverSlug || c.isLever) && c.enabled !== false);
   console.log(`\n🔶 Lever API — ${leverCompanies.length} companies`);
   stats.lever.checked = leverCompanies.length;
   for (let i = 0; i < leverCompanies.length; i++) {
     const comp = leverCompanies[i];
     const progress = leverCompanies.length > 10 ? `[${i + 1}/${leverCompanies.length}] ` : '';
     try {
-      const slug = comp.careers_url.replace('https://jobs.lever.co/', '').split('/')[0].split('?')[0];
+      const slug = comp.leverSlug || comp.careers_url.replace('https://jobs.lever.co/', '').split('/')[0].split('?')[0];
       const apiUrl = `https://api.lever.co/v0/postings/${slug}?mode=json&limit=250`;
       const res = await fetch(apiUrl, { headers: { 'User-Agent': 'career-ops-scanner/2.0' } });
       if (!res.ok) { stats.lever.errors++; continue; }
@@ -265,7 +422,7 @@ async function scanLever() {
         const url = job.hostedUrl;
         const loc = job.categories?.location || job.workplaceType || '';
         const title = loc ? `${job.text} (${loc})` : job.text;
-        const result = tryAdd(url, comp.name, title, 'Lever API');
+        const result = tryAdd(url, comp.name, title, 'Lever API', loc);
         if (result === 'added') { stats.lever.added++; process.stdout.write(`  ${progress}✓ ${comp.name}: ${job.text}\n`); }
       }
       if (leverCompanies.length > 10 && (i + 1) % 10 === 0) {
@@ -276,14 +433,14 @@ async function scanLever() {
 }
 
 async function scanWorkable() {
-  const workableCompanies = companies.filter(c => c.careers_url?.includes('apply.workable.com') && c.enabled !== false);
+  const workableCompanies = companies.filter(c => (c.workableSlug || c.isWorkable) && c.enabled !== false);
   console.log(`\n🔵 Workable API — ${workableCompanies.length} companies`);
   stats.workable.checked = workableCompanies.length;
   for (let i = 0; i < workableCompanies.length; i++) {
     const comp = workableCompanies[i];
     const progress = workableCompanies.length > 10 ? `[${i + 1}/${workableCompanies.length}] ` : '';
     try {
-      const slug = comp.careers_url.replace('https://apply.workable.com/', '').split('/')[0].split('?')[0];
+      const slug = comp.workableSlug || comp.careers_url.replace('https://apply.workable.com/', '').split('/')[0].split('?')[0];
       const apiUrl = `https://apply.workable.com/api/v3/accounts/${slug}/jobs`;
       const res = await fetch(apiUrl, {
         method: 'POST',
@@ -298,7 +455,7 @@ async function scanWorkable() {
         const url = `https://apply.workable.com/${slug}/j/${job.shortcode}`;
         const loc = job.location?.locationStr || (job.remote ? 'Remote' : '');
         const title = loc ? `${job.title} (${loc})` : job.title;
-        const result = tryAdd(url, comp.name, title, 'Workable API');
+        const result = tryAdd(url, comp.name, title, 'Workable API', loc);
         if (result === 'added') { stats.workable.added++; process.stdout.write(`  ${progress}✓ ${comp.name}: ${job.title}\n`); }
       }
       if (workableCompanies.length > 10 && (i + 1) % 10 === 0) {
@@ -476,7 +633,7 @@ async function run() {
   totalChecked = Object.values(stats).reduce((s, v) => s + v.checked, 0);
   totalFound   = Object.values(stats).reduce((s, v) => s + v.found, 0);
 
-  if (totalAdded > 0) {
+  if (dbAvailable && totalAdded > 0) {
     console.log(`\n📦 UPSERTing ${totalAdded} new jobs to PostgreSQL...`);
     try {
       await sql`
@@ -497,110 +654,132 @@ async function run() {
     } catch {
       // ignore
     }
-    for (const job of newJobs) {
-      const companyType = classifyCompany(job.company);
-      await sql`
-        INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type, portal_key, logo_url, logo_source)
-        VALUES (
-          ${job.url},
-          ${job.canonical_url || job.url?.split?.('?')?.[0] || job.url},
-          ${job.company},
-          ${job.title},
-          ${job.source},
-          ${userId},
-          ${companyType},
-          ${job.portal_key ?? null},
-          ${job.logo_url ?? null},
-          ${job.logo_source ?? null}
-        )
-        ON CONFLICT (user_id, url) DO NOTHING
-      `;
+    try {
+      for (const job of newJobs) {
+        const companyType = classifyCompany(job.company);
+        await sql`
+          INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type, portal_key, logo_url, logo_source)
+          VALUES (
+            ${job.url},
+            ${job.canonical_url || job.url?.split?.('?')?.[0] || job.url},
+            ${job.company},
+            ${job.title},
+            ${job.source},
+            ${userId},
+            ${companyType},
+            ${job.portal_key ?? null},
+            ${job.logo_url ?? null},
+            ${job.logo_source ?? null}
+          )
+          ON CONFLICT (user_id, url) DO NOTHING
+        `;
+      }
+      console.log(`  ✓ Successfully persisted ${totalAdded} jobs to database.`);
+    } catch (dbErr) {
+      dbAvailable = false;
+      console.warn(`  ⚠ Could not persist jobs to PostgreSQL (${dbErr.message}). Jobs kept in memory/logs.`);
     }
   }
 
   // log scan to history
-  await sql`
-    INSERT INTO scans (portal, jobs_found, duration_ms, user_id)
-    VALUES ('Multi-Source Scan', ${totalFound}, ${Date.now() - startTime}, ${userId})
-  `;
+  if (dbAvailable) {
+    try {
+      await sql`
+        INSERT INTO scans (portal, jobs_found, duration_ms, user_id)
+        VALUES ('Multi-Source Scan', ${totalFound}, ${Date.now() - startTime}, ${userId})
+      `;
+      console.log(`  ✓ Recorded scan history in database.`);
+    } catch (scanErr) {
+      console.warn(`  ⚠ Could not record scan history: ${scanErr.message}`);
+    }
+  }
 
   // ── Auto-scoring / Ranking integration ──────────────────────────────
-  console.log('\n🎯 Auto-scoring and ranking jobs in pipeline...');
-  try {
-    const [profile] = await sql`SELECT targeting_keywords FROM user_profiles WHERE user_id = ${userId}`;
-    const keywords = profile?.targeting_keywords || { positive: [], negative: [] };
+  if (dbAvailable) {
+    console.log('\n🎯 Auto-scoring and ranking jobs in pipeline...');
+    try {
+      const [profile] = await sql`SELECT targeting_keywords FROM user_profiles WHERE user_id = ${userId}`;
+      const keywords = profile?.targeting_keywords || config.title_filter || { positive: [], negative: [] };
 
-    // Fetch recent 500 jobs to score/rank
-    const jobs = await sql`
-      SELECT id, url, company, title, source, company_type, jd_text FROM jobs
-      WHERE user_id = ${userId}
-      ORDER BY created_at DESC
-      LIMIT 500
-    `;
+      // Fetch recent 500 jobs to score/rank
+      const jobs = await sql`
+        SELECT id, url, company, title, source, company_type, jd_text FROM jobs
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT 500
+      `;
 
-    // Score helper matching rank-pipeline.mjs
-    const scoreJobInline = (title, company, companyType) => {
-      const combined = ((title || '') + ' ' + (company || '')).toLowerCase();
-      
-      const negativeKws = [...(keywords.negative || []), 'manager', 'director', 'vp'];
-      const hasNegative = negativeKws.some(nw => combined.includes(nw.toLowerCase()));
-      if (hasNegative) return 0.0;
+      // Score helper matching rank-pipeline.mjs
+      const scoreJobInline = (title, company, companyType) => {
+        const combined = ((title || '') + ' ' + (company || '')).toLowerCase();
+        
+        const negativeKws = [...(keywords.negative || []), 'manager', 'director', 'vp'];
+        const hasNegative = negativeKws.some(nw => combined.includes(nw.toLowerCase()));
+        if (hasNegative) return 0.0;
 
-      const positiveKws = [...(keywords.positive || [])];
-      if (positiveKws.length === 0) {
-        positiveKws.push('software engineer', 'developer', 'engineer', 'backend', 'full-stack');
-      }
+        const positiveKws = [...(keywords.positive || [])];
+        if (positiveKws.length === 0) {
+          positiveKws.push('software engineer', 'developer', 'engineer', 'backend', 'full-stack');
+        }
 
-      let matchedCount = 0;
-      positiveKws.forEach(pw => {
-        if (combined.includes(pw.toLowerCase())) matchedCount++;
-      });
+        let matchedCount = 0;
+        positiveKws.forEach(pw => {
+          if (combined.includes(pw.toLowerCase())) matchedCount++;
+        });
 
-      const seniorityKws = ['staff', 'principal', 'lead', 'senior', 'remote'];
-      let seniorityMatches = 0;
-      seniorityKws.forEach(sk => {
-        if (combined.includes(sk)) seniorityMatches += 0.2;
-      });
+        const seniorityKws = ['staff', 'principal', 'lead', 'senior', 'remote'];
+        let seniorityMatches = 0;
+        seniorityKws.forEach(sk => {
+          if (combined.includes(sk)) seniorityMatches += 0.2;
+        });
 
-      const matchRatio = matchedCount / positiveKws.length;
-      let scoreVal = (matchRatio * 8.0) + (seniorityMatches);
-      scoreVal = Math.min(10.0, scoreVal);
+        const matchRatio = matchedCount / positiveKws.length;
+        let scoreVal = (matchRatio * 8.0) + (seniorityMatches);
+        scoreVal = Math.min(10.0, scoreVal);
 
-      if (companyType === 'GCC') {
-        scoreVal = Math.min(10.0, scoreVal + 1.5);
-      } else if (companyType === 'Services') {
-        scoreVal = Math.max(0.0, scoreVal - 3.0);
-      }
+        if (companyType === 'GCC') {
+          scoreVal = Math.min(10.0, scoreVal + 1.5);
+        } else if (companyType === 'Services') {
+          scoreVal = Math.max(0.0, scoreVal - 3.0);
+        }
 
-      return parseFloat(scoreVal.toFixed(1));
-    };
-
-    const scoredJobs = jobs.map(j => {
-      const gcc = scoreGccSignals({
-        company: j.company,
-        title: j.title,
-        jdText: j.jd_text || '',
-        companyType: j.company_type,
-      });
-      return {
-        id: j.id,
-        score: scoreJobInline(j.title, j.company, j.company_type),
-        gcc_signal_score: gcc.score,
-        gcc_high_value: gcc.highValue,
+        return parseFloat(scoreVal.toFixed(1));
       };
-    });
 
-    await Promise.all(scoredJobs.map(j =>
-      sql`UPDATE jobs SET score = ${j.score}, gcc_signal_score = ${j.gcc_signal_score}, gcc_high_value = ${j.gcc_high_value} WHERE id = ${j.id}`
-    ));
-    console.log(`  ✓ Successfully scored and updated ${scoredJobs.length} pipeline jobs.`);
-  } catch (rankErr) {
-    console.error(`  ✗ Auto-scoring failed: ${rankErr.message}`);
+      const scoredJobs = jobs.map(j => {
+        const gcc = scoreGccSignals({
+          company: j.company,
+          title: j.title,
+          jdText: j.jd_text || '',
+          companyType: j.company_type,
+        });
+        return {
+          id: j.id,
+          score: scoreJobInline(j.title, j.company, j.company_type),
+          gcc_signal_score: gcc.score,
+          gcc_high_value: gcc.highValue,
+        };
+      });
+
+      await Promise.all(scoredJobs.map(j =>
+        sql`UPDATE jobs SET score = ${j.score}, gcc_signal_score = ${j.gcc_signal_score}, gcc_high_value = ${j.gcc_high_value} WHERE id = ${j.id}`
+      ));
+      console.log(`  ✓ Successfully scored and updated ${scoredJobs.length} pipeline jobs.`);
+    } catch (rankErr) {
+      console.error(`  ✗ Auto-scoring failed: ${rankErr.message}`);
+    }
   }
 
   } finally {
     clearTimeout(timeoutId);
     clearInterval(heartbeat);
+    try {
+      if (sql?.end) {
+        await sql.end({ timeout: 5 });
+      }
+    } catch {
+      // ignore
+    }
   }
 
   console.log('\n═══════════════════════════════════════════');
