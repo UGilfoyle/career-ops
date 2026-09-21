@@ -560,7 +560,7 @@ async function run() {
           const duration = ((Date.now() - scanStart) / 1000).toFixed(1);
           stats.discovery.found += results.length;
           results.forEach(j => {
-            const res = tryAdd(j.url, j.company, j.title, j.source);
+            const res = tryAdd(j.url, j.company, j.title, j.source, j.location || '');
             if (res === 'added') stats.discovery.added++;
           });
           console.log(`      ✓ Done: ${results.length} jobs found (${duration}s)`);
@@ -613,7 +613,7 @@ async function run() {
              
              stats.enterprise.found += results.length;
              results.forEach(j => {
-               const res = tryAdd(j.url, j.company, j.title, j.source);
+               const res = tryAdd(j.url, j.company, j.title, j.source, j.location || '');
                if (res === 'added') stats.enterprise.added++;
              });
            } catch (err) {
@@ -655,24 +655,28 @@ async function run() {
       // ignore
     }
     try {
-      for (const job of newJobs) {
-        const companyType = classifyCompany(job.company);
-        await sql`
-          INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type, portal_key, logo_url, logo_source)
-          VALUES (
-            ${job.url},
-            ${job.canonical_url || job.url?.split?.('?')?.[0] || job.url},
-            ${job.company},
-            ${job.title},
-            ${job.source},
-            ${userId},
-            ${companyType},
-            ${job.portal_key ?? null},
-            ${job.logo_url ?? null},
-            ${job.logo_source ?? null}
-          )
-          ON CONFLICT (user_id, url) DO NOTHING
-        `;
+      const CHUNK_SIZE = 25;
+      for (let i = 0; i < newJobs.length; i += CHUNK_SIZE) {
+        const chunk = newJobs.slice(i, i + CHUNK_SIZE);
+        await Promise.all(chunk.map(job => {
+          const companyType = classifyCompany(job.company);
+          return sql`
+            INSERT INTO jobs (url, canonical_url, company, title, source, user_id, company_type, portal_key, logo_url, logo_source)
+            VALUES (
+              ${job.url},
+              ${job.canonical_url || job.url?.split?.('?')?.[0] || job.url},
+              ${job.company},
+              ${job.title},
+              ${job.source},
+              ${userId},
+              ${companyType},
+              ${job.portal_key ?? null},
+              ${job.logo_url ?? null},
+              ${job.logo_source ?? null}
+            )
+            ON CONFLICT (user_id, url) DO NOTHING
+          `;
+        }));
       }
       console.log(`  ✓ Successfully persisted ${totalAdded} jobs to database.`);
     } catch (dbErr) {
