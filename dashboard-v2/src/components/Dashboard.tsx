@@ -49,7 +49,8 @@ import {
   Menu,
   GraduationCap,
   Link2,
-  Activity
+  Activity,
+  Flame,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -150,6 +151,10 @@ const GccCampaignPanel = dynamic(
   () => import('./GccCampaignPanel').then((m) => ({ default: m.GccCampaignPanel })),
   { ssr: false, loading: TabLoading }
 );
+const ExposurePanel = dynamic(() => import('./ExposurePanel'), {
+  ssr: false,
+  loading: TabLoading,
+});
 
 function formatRelativeTime(dateStr?: string | null) {
   if (!dateStr) return '—';
@@ -2065,6 +2070,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <NavItem id="nav-chat" icon={<MessageSquare size={18}/>} label="Career Copilot" active={activeTab === 'chat'} collapsed={navCollapsed} onClick={() => goTab('chat')} />
             )}
             <NavItem id="nav-practice" icon={<GraduationCap size={18}/>} label="Interview Practice" active={activeTab === 'practice'} collapsed={navCollapsed} onClick={() => goTab('practice')} badge="Voice AI" />
+            <NavItem id="nav-exposure" icon={<Flame size={18}/>} label="Exposure Lab" active={activeTab === 'exposure'} collapsed={navCollapsed} onClick={() => goTab('exposure')} badge="Skillmeet" />
             {SHOW_INTEL_NAV && (
               <NavItem id="nav-intel" icon={<Users size={18}/>} label="Company Intel" active={activeTab === 'intel'} collapsed={navCollapsed} onClick={() => goTab('intel')} badge="New" />
             )}
@@ -4729,6 +4735,23 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   void fetch('/api/billing/status').then(async (r) => {
                     if (r.ok) setBilling(await r.json());
                   });
+                }}
+              />
+            </motion.div>
+          )}
+
+          {activeTab === 'exposure' && (
+            <motion.div
+              key="exposure"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 15 }}
+              transition={{ duration: 0.25 }}
+              className={`${PANE_WIDTH} min-h-0 flex-1 overflow-x-hidden overflow-y-auto`}
+            >
+              <ExposurePanel
+                onWeaveBullet={(_bullet) => {
+                  setActiveTab('resume-studio');
                 }}
               />
             </motion.div>
