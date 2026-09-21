@@ -107,7 +107,7 @@ function splitRoleCompany(headerText: string): { role: string; company: string }
     const idx = headerText.indexOf(sep);
     if (idx > 0) {
       const part1 = headerText.slice(0, idx).trim();
-      const part2 = headerText.slice(idx + sep.length).trim();
+      let part2 = headerText.slice(idx + sep.length).trim();
       const part1Roles = ROLE_KEYWORDS.test(part1) ? 1 : 0;
       const part2Roles = ROLE_KEYWORDS.test(part2) ? 1 : 0;
       if (part1Roles >= part2Roles) {
@@ -142,7 +142,28 @@ function splitRoleCompany(headerText: string): { role: string; company: string }
       .replace(/\s+/g, ' ')
       .trim();
 
-  return { role: scrub(role), company: scrub(company) };
+  let cleanRole = scrub(role);
+  let cleanCompany = scrub(company);
+
+  // If role absorbed another separator followed by bullet text (e.g. "Senior Dev - allocations to reduce...")
+  for (const sep of separators) {
+    const secondSepIdx = cleanRole.indexOf(sep);
+    if (secondSepIdx > 0) {
+      const remainder = cleanRole.slice(secondSepIdx + sep.length).trim();
+      if (!ROLE_KEYWORDS.test(remainder) || remainder.length > 40 || /%|\b(?:reduce|allocations|schemas|integrity|cutting)\b/i.test(remainder)) {
+        cleanRole = cleanRole.slice(0, secondSepIdx).trim();
+      }
+    }
+    const compSepIdx = cleanCompany.indexOf(sep);
+    if (compSepIdx > 0) {
+      const remainder = cleanCompany.slice(compSepIdx + sep.length).trim();
+      if (remainder.length > 30 || /%|\b(?:reduce|allocations|schemas|integrity|cutting)\b/i.test(remainder)) {
+        cleanCompany = cleanCompany.slice(0, compSepIdx).trim();
+      }
+    }
+  }
+
+  return { role: cleanRole, company: cleanCompany };
 }
 
 function looksLikeBullet(line: string) {
@@ -269,7 +290,34 @@ export function parseExperience(text: string): ParsedExperience[] {
       if (isJobBoundary(cur, nxt)) break;
       if (SECTION_HEADING.test(cur)) break;
 
+      const hasBulletMarker = /^[•\-▸*]\s+/.test(cur);
       const cleanBullet = cur.replace(/^[•\-▸*]\s*/, '').replace(/\*\*/g, '').trim();
+
+      if (!cleanBullet) {
+        i += 1;
+        continue;
+      }
+
+      if (!hasBulletMarker && bullets.length > 0) {
+        const lastIdx = bullets.length - 1;
+        const lastBullet = bullets[lastIdx];
+        const lastEndsTerminal = /[.!?]$/.test(lastBullet);
+        const startsWithLower = /^[a-z]/.test(cleanBullet);
+        const startsWithAction = BULLET_STARTERS.test(cleanBullet);
+        const isContinuation =
+          !lastEndsTerminal ||
+          startsWithLower ||
+          !startsWithAction ||
+          /^(?:and|or|to|with|by|for|in|of|from|which|that|allocations|schemas|metrics|data|cpu|server|infrastructure|latency|telemetry)\b/i.test(cleanBullet);
+
+        if (isContinuation) {
+          const sep = lastBullet.endsWith('-') ? '' : ' ';
+          bullets[lastIdx] = `${lastBullet}${sep}${cleanBullet}`;
+          i += 1;
+          continue;
+        }
+      }
+
       if (cleanBullet.length > 15) {
         bullets.push(cleanBullet);
       }
@@ -375,15 +423,27 @@ export function parseCandidate(text: string): ParsedCandidate {
     }
   }
 
+  const US_STATES =
+    'AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY';
+  const TECH_DISQUALIFIERS =
+    /\b(?:azure|aws|gcp|docker|kubernetes|ci\/?cd|pipeline|developer|engineer|architect|lead|devops|full-?stack|backend|frontend|react|python|java|golang|c#|typescript)\b/i;
+
   // Location: line with city/country cues near header
-  for (const line of lines.slice(0, 6)) {
+  for (const line of lines.slice(0, 8)) {
     if (/@|linkedin|github/i.test(line)) continue;
+    if (TECH_DISQUALIFIERS.test(line)) continue;
     const loc = line.match(
-      /\b([A-Z][a-zA-Z.]+(?:\s+[A-Z][a-zA-Z.]+)*,\s*(?:India|USA|UK|UAE|Canada|Germany|Remote|[A-Z]{2}))\b/
+      new RegExp(
+        `\\b([A-Z][a-zA-Z.]+(?:\\s+[A-Z][a-zA-Z.]+)*,\\s*(?:India|USA|UK|UAE|Canada|Germany|Remote|${US_STATES}))\\b`,
+        'i'
+      )
     );
     if (loc) {
-      candidate.location = loc[1];
-      break;
+      const cityPart = loc[1].split(',')[0].trim();
+      if (!TECH_DISQUALIFIERS.test(cityPart)) {
+        candidate.location = loc[1];
+        break;
+      }
     }
   }
 

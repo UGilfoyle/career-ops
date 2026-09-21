@@ -58,6 +58,7 @@ export function LivePreview({
   onPreviewModeChange,
   tailoredPreviewUrl = null,
   showTailoredToggle = false,
+  activeJdText = '',
 }: {
   draft: ResumeContext;
   zoom: number;
@@ -69,6 +70,7 @@ export function LivePreview({
   onPreviewModeChange?: (mode: 'master' | 'tailored') => void;
   tailoredPreviewUrl?: string | null;
   showTailoredToggle?: boolean;
+  activeJdText?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -78,7 +80,10 @@ export function LivePreview({
   const [viewFormat, setViewFormat] = useState<'styled' | 'parser'>('styled');
   const [copied, setCopied] = useState(false);
   const deferredDraft = useDeferredValue(draft);
-  const html = useMemo(() => fillAtsTemplate(deferredDraft), [deferredDraft]);
+  const html = useMemo(
+    () => fillAtsTemplate(deferredDraft, { jdText: activeJdText }),
+    [deferredDraft, activeJdText],
+  );
   const plainText = useMemo(() => htmlToPlainText(html), [html]);
   const plainTextWords = useMemo(
     () => plainText.split(/\s+/).filter(Boolean).length,

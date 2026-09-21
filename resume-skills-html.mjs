@@ -68,18 +68,33 @@ export function isNarrativeSuperpower(text) {
   return false;
 }
 
-/** Split comma-joined skill blobs into individual tokens. */
+/** Split comma-joined or slash-joined skill blobs into individual clean tokens. */
 export function expandSkillTokens(items) {
   const out = [];
   for (const item of Array.isArray(items) ? items : []) {
-    const s = String(item || '').trim();
+    let s = String(item || '').trim();
     if (!s) continue;
-    if (s.includes(',') && s.length > 28) {
-      for (const part of s.split(',').map((x) => x.trim()).filter(Boolean)) {
-        out.push(part);
+    // Strip common category prefixes like "AWS platform:", "Cloud platform:", "Backend:"
+    s = s.replace(/^(?:AWS\s+platform|Cloud\s+platform|Backend\s*(?:& runtimes)?|Systems\s*(?:& data)?|Domain|Cloud\s*& DevOps|Architecture(?:\s*& Practices)?|Frameworks|Languages):\s*/i, '');
+
+    // Split on commas
+    const commaParts = s.split(',').map((x) => x.trim()).filter(Boolean);
+    for (const cp of commaParts) {
+      // Split on slashes or ampersand between tools e.g. "Docker / LXC / Kubernetes" or "Bun / Node.js" or "Redis & PostgreSQL"
+      if (cp.includes('/') || (cp.includes('&') && cp.length > 20)) {
+        const cleanCp = cp
+          .replace(/\b(?:deployment reliability|performance tuning|runtime performance(?: for telemetry)?|management in production environments?)\b/gi, '')
+          .trim();
+        const slashParts = cleanCp.split(/\s*[/&]\s*/).map((x) => x.trim()).filter(Boolean);
+        for (const sp of slashParts) {
+          if (sp.length >= 2 && sp.length <= 35) out.push(sp);
+        }
+      } else {
+        const cleanPart = cp
+          .replace(/\b(?:deployment reliability|performance tuning|runtime performance(?: for telemetry)?|management in production environments?)\b/gi, '')
+          .trim();
+        if (cleanPart.length >= 2 && cleanPart.length <= 35) out.push(cleanPart);
       }
-    } else {
-      out.push(s);
     }
   }
   return out;
@@ -107,6 +122,35 @@ const SKILL_CANONICAL = new Map([
   ['kotlin', 'Kotlin'],
   ['java', 'Java'],
   ['c++', 'C++'],
+  ['python', 'Python'],
+  ['fastapi', 'FastAPI'],
+  ['nestjs', 'NestJS'],
+  ['nextjs', 'Next.js'],
+  ['next.js', 'Next.js'],
+  ['react', 'React'],
+  ['reactjs', 'React'],
+  ['react.js', 'React'],
+  ['typeorm', 'TypeORM'],
+  ['prisma', 'Prisma'],
+  ['sqlalchemy', 'SQLAlchemy'],
+  ['pydantic', 'Pydantic'],
+  ['tailwind', 'Tailwind CSS'],
+  ['shadcn/ui', 'shadcn/ui'],
+  ['radix ui', 'Radix UI'],
+  ['zod', 'Zod'],
+  ['pubsub', 'GCP Pub/Sub'],
+  ['pub/sub', 'GCP Pub/Sub'],
+  ['google cloud pub/sub', 'GCP Pub/Sub'],
+  ['cloud run', 'Cloud Run'],
+  ['cloud sql', 'Cloud SQL'],
+  ['cloud storage', 'Cloud Storage'],
+  ['firebase', 'Firebase Auth'],
+  ['firebase auth', 'Firebase Auth'],
+  ['jwt', 'JWT'],
+  ['rbac', 'RBAC'],
+  ['langchain', 'LangChain'],
+  ['langgraph', 'LangGraph'],
+  ['llamaindex', 'LlamaIndex'],
   ['gdb', 'GDB'],
   ['valgrind', 'Valgrind'],
   ['redis', 'Redis'],
@@ -120,12 +164,15 @@ const SKILL_CANONICAL = new Map([
   ['sql server', 'SQL Server'],
   ['scala', 'Scala'],
   ['scala a plus', 'Scala'],
-  ['postgresql', 'PostgreSQL'],
 ]);
 
 export function normalizeSkillLabel(text) {
-  const s = cleanSkillToken(text);
+  let s = cleanSkillToken(text);
   if (!s) return '';
+  // Clean typos and weird phrases
+  s = s.replace(/\btypescrip\b/i, 'TypeScript');
+  s = s.replace(/^react\s+using\s+typescrip(?:t)?$/i, 'React');
+  s = s.replace(/\b(?:management in production environments?|deployment reliability|performance tuning|runtime performance(?: for telemetry)?)\b/gi, '').trim();
   const lower = s.toLowerCase();
   if (SKILL_CANONICAL.has(lower)) return SKILL_CANONICAL.get(lower);
   if (s.split(/\s+/).length <= 4 && !/[A-Z]{2,}/.test(s.slice(1))) {
@@ -301,7 +348,10 @@ export function extractTechFromTexts(texts, limit = 16) {
     .filter(Boolean)
     .join('\n');
   if (blob.length < 30) return [];
-  return sanitizeCompetencyList(extractJdTechKeywords(blob, limit), blob);
+  // Resume bullet text is NOT a job description — never use it to justify unproven language skills (C#, Golang, Ruby)
+  const extracted = extractJdTechKeywords(blob, limit);
+  const filtered = extracted.filter((tok) => !isUnprovenLanguageSkill(tok));
+  return sanitizeCompetencyList(filtered);
 }
 
 export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies, jdText = '') {

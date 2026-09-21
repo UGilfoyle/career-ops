@@ -267,6 +267,7 @@ export function masterSummaryText(ctx: ResumeContext): string {
 export type FillAtsOptions = {
   templateId?: string;
   templateHtml?: string;
+  jdText?: string;
 };
 
 /**
@@ -321,6 +322,7 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     profile.narrative?.superpowers,
     yearsExp >= 7 ? 22 : 16,
     profileTech,
+    options.jdText || '',
   );
   const hasSkills = Boolean(skillsLines.trim());
   const hasExperience = experience.length > 0;

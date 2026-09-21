@@ -90,6 +90,7 @@ export default function ResumeStudio({
     source: 'structure',
   });
   const [previewMode, setPreviewMode] = useState<'master' | 'tailored'>('master');
+  const [activeJdText, setActiveJdText] = useState<string>('');
 
   const selectedPipelineJob = useMemo(
     () => pipeline.find((j) => Number(j.pipeline_id ?? j.id) === selectedJobId) ?? null,
@@ -434,6 +435,7 @@ export default function ResumeStudio({
                     setBanner(`Weaved keywords into Skills & Experience! Edits update live in preview.`);
                   }}
                   hasGeneratedResume={hasTailoredForJob}
+                  onJdTextChange={(text) => setActiveJdText(text)}
                 />
 
                 {reviewJob ? (
@@ -601,6 +603,7 @@ export default function ResumeStudio({
               onPreviewModeChange={setPreviewMode}
               tailoredPreviewUrl={tailoredPreviewUrl}
               showTailoredToggle={hasTailoredForJob}
+              activeJdText={activeJdText}
             />
           )}
         </div>

@@ -114,6 +114,29 @@ Shipped production APIs and background job workers for enterprise clients.`);
   assert.match(toRange[0].period, /September 2019\s+to\s+August 2021/i);
   assert.match(toRange[0].company, /Acme/i);
 
+  // Regression: Azure, CI/CD must never be parsed as candidate location
+  const azureCiCandidate = parseCandidate('Akash Kaintura\nAzure, CI/CD, AWS platform\nakash@example.com');
+  assert.notEqual(azureCiCandidate.location, 'Azure, CI');
+  assert.equal(azureCiCandidate.location, undefined);
+
+  // Regression: multi-line wrapped bullet in PDF text must join into a single bullet
+  const wrappedExp = parseExperience(`Quest Global — Senior Engineer | Jul 2025 – Present
+• Architect mission-critical enterprise features leading the continuous transition of legacy monolithic services into
+scalable, event-driven microservices, dropping server
+CPU load by 30%, and leading the integration of high-volume Oracle and PostgreSQL databases to ensure data
+integrity and scalability.`);
+  assert.equal(wrappedExp.length, 1);
+  assert.equal(wrappedExp[0].bullets.length, 1);
+  assert.match(wrappedExp[0].bullets[0], /dropping server CPU load by 30%/i);
+  assert.match(wrappedExp[0].bullets[0], /integrity and scalability/i);
+
+  // Regression: role must not absorb bullet text after second separator
+  const multiSepExp = parseExperience(`INTVERSE IT Services - Senior Full-Stack Developer - allocations, network load balancers, and auto-scaling policies to reduce infrastructure costs by 30%. | Feb 2025 - Jun 2025
+• Automated deployment workflows.`);
+  assert.equal(multiSepExp.length, 1);
+  assert.equal(multiSepExp[0].role, 'Senior Full-Stack Developer');
+  assert.equal(multiSepExp[0].company, 'INTVERSE IT Services');
+
   console.log('parse-resume-text tests: all passed');
 }
 

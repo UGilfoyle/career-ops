@@ -29,6 +29,7 @@ type JdMatchPanelProps = {
   /** Apply mirrored skills/summary/bullets into Live Preview draft. */
   onApplyMirroredProfile?: (profile: ResumeContext) => void;
   hasGeneratedResume?: boolean;
+  onJdTextChange?: (text: string) => void;
 };
 
 type Suggestion = {
@@ -98,6 +99,7 @@ export function JdMatchPanel({
   onAtsUpdate,
   onApplyMirroredProfile,
   hasGeneratedResume = false,
+  onJdTextChange,
 }: JdMatchPanelProps) {
   const [mode, setMode] = useState<JdMode>('paste');
   const [pastedJd, setPastedJd] = useState('');
@@ -109,6 +111,15 @@ export function JdMatchPanel({
   const [showPipelineJd, setShowPipelineJd] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const autoMirrorKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (mode === 'paste') {
+      onJdTextChange?.(pastedJd);
+    } else {
+      const selected = (pipeline || []).find((j) => Number(j.pipeline_id ?? j.id) === selectedJobId);
+      onJdTextChange?.(selected?.jd_text || '');
+    }
+  }, [mode, pastedJd, selectedJobId, pipeline, onJdTextChange]);
 
   const [state, setState] = useState<MatchState>({
     loading: false,
