@@ -584,8 +584,8 @@ console.log('resume-quality tests\n');
     'Implemented Server-Sent Events for token-by-token response streaming.',
     'Quest Global',
   );
-  assert(streaming.includes('token\u2011by\u2011token'), 'compound hyphen is non-breaking in PDF');
-  assert(!/token-by-token/.test(streaming), 'ASCII hyphen removed from token-by-token');
+  assert(streaming.includes('token-by-token'), 'compound phrases keep ASCII hyphens');
+  assert(!streaming.includes('token\u2011by\u2011token'), 'no unicode hyphen in token-by-token');
 
   const amexScreenshot = normalizeExperienceBulletList([
     'Authored the complete backend architecture for a multi-tenant platform serving 25,000+ active users, synthesizing complex business logic into scalable, highly available Node.js services.',

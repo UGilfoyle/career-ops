@@ -635,12 +635,9 @@ export function normalizeBulletText(bullet, companyOrRoleText = '') {
   return t;
 }
 
-/** Keep token-by-token / end-to-end on one line in PDF (ASCII hyphen is a wrap point). */
+/** ASCII hyphens only. Unicode non-breaking hyphens read as AI dashes on the page. */
 export function protectCompoundHyphens(text) {
-  return String(text || '').replace(
-    /\b(token-by-token|end-to-end|peer-to-peer|day-to-day|line-by-line)\b/gi,
-    (m) => m.replace(/-/g, '\u2011'),
-  );
+  return String(text || '').replace(/\u2011/g, '-');
 }
 
 /** Past-tense / strong action verbs that legitimately open a resume bullet. */
@@ -743,8 +740,17 @@ export function repairMidSentenceArtifacts(bullet) {
   t = t.replace(/\binto\s+Scalable\b/g, 'into scalable');
   t = t.replace(/\bpre-flight\s+Validation\b/g, 'pre-flight validation');
   t = t.replace(/\bKafka-backed\s+Reconciliation\b/g, 'Kafka-backed reconciliation');
-  // Strip stuffed keyword parens: "(TypeScript, Go)", "( using TypeScript, Go. (Golang, GCP, LLM…))"
-  // Keep real CV parens like "(EC2, S3)" and "(99.9% uptime)".
+  t = t.replace(/\b(table)\s+Indexing\b/g, '$1 indexing');
+  t = t.replace(/\b(unit)\s+Testing\b/g, '$1 testing');
+  t = t.replace(/\bfor Major\b/g, 'for major');
+  t = t.replace(/\bmicroservices On\b/g, 'microservices on');
+  // Unclosed keyword paren: "quality ( using TypeScript, Go."
+  t = t.replace(/\s*\(\s*using\b[^)]*$/i, '');
+  t = t.replace(/^\)\s*/, '');
+  // Truncated tails — keep the finished clause
+  t = t.replace(/,\s*reconfiguring EC2 instance\.?$/i, '.');
+  t = t.replace(/\s+across client\.?$/i, '.');
+  // Strip stuffed keyword parens. Keep real CV parens like "(EC2, S3)".
   for (let i = 0; i < 4; i++) {
     const next = t.replace(/\s*\([^()]{0,220}\)/g, (m) => {
       const langList = /\b(typescript|javascript|golang|python|django|flask|node\.?js|react)\b/i.test(m);
@@ -1023,6 +1029,9 @@ export function isIncompleteBullet(bullet) {
   if (/\.\.\.$/.test(raw)) return true;
   // Truncated "…to RESTful API." without finishing the clause
   if (/\bto\s+RESTful API\.?$/i.test(t) && !/\b(construction|delivery|endpoints|layers)\b/i.test(t)) return true;
+  if (/\bEC2 instance\.?$/i.test(t)) return true;
+  if (/\bacross client\.?$/i.test(t)) return true;
+  if (/\bleading the\s+[A-Z]/.test(t)) return true;
   // Very short fragment after scrub (under 3 content words)
   if (t.split(/\s+/).length < 3 && !hasQuantifiedImpact(raw)) return true;
   return false;
@@ -1040,6 +1049,7 @@ export function isGarbledBullet(bullet) {
   if (/Construction,\s+directly\s+Owning/i.test(t)) return true;
   if (/Delivered handling\b/i.test(t)) return true;
   if (/\bAPI\.\s*Construction\b/i.test(t)) return true;
+  if (/^(Sub-\d|Millions of daily)/i.test(t)) return true;
   // Mid-bullet capital noun + through/into after a complete clause (no action verb)
   if (
     /\bNode\.js services\.?\s+Integrity through\b/i.test(t)
@@ -1320,7 +1330,19 @@ export function explodeWallOfTextBullets(bullets, opts = {}) {
 export function normalizeExperienceBulletList(bullets, companyOrRoleText = '') {
   const company = String(companyOrRoleText || '');
   const input = (Array.isArray(bullets) ? bullets : []).filter((b) => !isEmbeddedJobHeader(b));
-  const exploded = explodeWallOfTextBullets(input);
+  const splitGlued = [];
+  for (const raw of input) {
+    const parts = String(raw || '').split(/\s+and leading the\s+(?=[A-Z])/);
+    if (parts.length === 1) {
+      splitGlued.push(raw);
+      continue;
+    }
+    const head = parts[0].replace(/,\s*$/, '').trim();
+    if (head) splitGlued.push(head.endsWith('.') ? head : `${head}.`);
+    const tail = parts.slice(1).join(' ').trim();
+    if (tail) splitGlued.push(tail);
+  }
+  const exploded = explodeWallOfTextBullets(splitGlued);
   const raw = exploded.map((b) => String(b || '').trim()).filter(Boolean);
   const merged = [];
   for (const bullet of raw) {
