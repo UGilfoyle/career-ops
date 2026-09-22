@@ -739,6 +739,16 @@ export function repairMidSentenceArtifacts(bullet) {
   t = t.replace(/\busing\s+using\b/gi, 'using');
   t = t.replace(/\bTypeScrip\b/g, 'TypeScript');
   t = t.replace(/\barchitecture\s+And\s+/g, 'architecture and ');
+  t = t.replace(/\bdelivery\s+And\s+/g, 'delivery and ');
+  t = t.replace(/\binto\s+Scalable\b/g, 'into scalable');
+  t = t.replace(/\bpre-flight\s+Validation\b/g, 'pre-flight validation');
+  t = t.replace(/\bKafka-backed\s+Reconciliation\b/g, 'Kafka-backed reconciliation');
+  // Drop stuffed language dumps: "(SSE, Knowledge Graphs, python)"
+  t = t.replace(/\s*\([^)]*\b(?:python|django|flask)\b[^)]*\)/gi, (m) => {
+    const inner = m.replace(/[()]/g, '');
+    if (inner.split(',').length >= 2) return '';
+    return m;
+  });
   t = t.replace(/\s{2,}/g, " ");
   return t.trim();
 }

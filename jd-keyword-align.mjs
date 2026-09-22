@@ -1158,6 +1158,11 @@ function weaveKeywordIntoBullet(bullet, keyword) {
   const base = b.replace(/\.$/, '');
   // Never append anything after a quantified result ("… by 85%.")
   if (endsWithMetricTail(base)) return b;
+  // Never stuff a language into a parenthetical on a bullet that doesn't do that work.
+  if (/^(python|django|flask|golang|java|c\+\+|ruby|php)$/i.test(kw)) {
+    const outside = base.replace(/\([^)]*\)/g, ' ');
+    if (!new RegExp(`\\b${kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(outside)) return b;
+  }
 
   const upgraded = upgradePartialMention(base, kw);
   if (upgraded) return `${upgraded.replace(/\.$/, '')}.`;

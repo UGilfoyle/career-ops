@@ -235,6 +235,10 @@ function scoreBulletForJd(bullet, jdText, honestKeywords) {
   for (const [name, re] of offJdLangs) {
     if (re.test(t) && !keywordAppearsInJd(name, jdText)) score -= 5;
   }
+  // Real language work (not a parenthetical dump) outranks keyword-stuffed Node bullets.
+  const outsideParens = t.replace(/\([^)]*\)/g, ' ');
+  if (/\bpython\b/i.test(jdLower) && /\bpython\b/i.test(outsideParens)) score += 12;
+  if (/\b(django|flask)\b/i.test(jdLower) && /\b(django|flask)\b/i.test(outsideParens)) score += 8;
   const jdBoosts = [
     ['kafka', /\bkafka\b/i],
     ['azure', /\bazure\b/i],
@@ -487,7 +491,19 @@ export function reframeExperienceFromProfile(profileExperience, jdText, honestKe
     );
     const positive = ranked.filter((b) => scoreBulletForJd(b, jdText, honestKeywords) >= 0);
     const pool = positive.length >= Math.min(3, bulletCap) ? positive : ranked;
-    const top = pool.slice(0, bulletCap);
+    // Keep real Python/Django/Flask bullets ahead of keyword-stuffed Node lines.
+    const jdLower = String(jdText || '').toLowerCase();
+    const evidenceFirst = [...pool].sort((a, b) => {
+      const real = (text) => {
+        const outside = String(text).replace(/\([^)]*\)/g, ' ');
+        let n = 0;
+        if (/\bpython\b/.test(jdLower) && /\bpython\b/i.test(outside)) n += 2;
+        if (/\b(django|flask)\b/.test(jdLower) && /\b(django|flask)\b/i.test(outside)) n += 2;
+        return n;
+      };
+      return real(b) - real(a);
+    });
+    const top = evidenceFirst.slice(0, bulletCap);
     let framed = top.map((b) => enhanceBulletHonest(b, honestKeywords, company));
     while (framed.length < bulletCap && ranked.length > 0) {
       const next = ranked[framed.length % ranked.length];

@@ -228,6 +228,50 @@ export function normalizeResumeContext(value) {
   return normalized;
 }
 
+export function loadCanonicalCvExperience() {
+  const cvRaw = readFileAt('cv.md') || readFileAt('../cv.md') || readFileAt('runtime-assets/cv.md');
+  if (!cvRaw) return [];
+  const parsed = parseCvMarkdown(cvRaw);
+  return Array.isArray(parsed.experience) ? parsed.experience : [];
+}
+
+function companiesMatch(a, b) {
+  const ca = String(a || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cb = String(b || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (ca.length < 4 || cb.length < 4) return false;
+  return ca.includes(cb.slice(0, 8)) || cb.includes(ca.slice(0, 8));
+}
+
+function realLanguageBullet(bullet, jdText) {
+  const outside = String(bullet || '').replace(/\([^)]*\)/g, ' ');
+  const jd = String(jdText || '');
+  if (/\bpython\b/i.test(jd) && /\bpython\b/i.test(outside)) return true;
+  if (/\bdjango\b/i.test(jd) && /\bdjango\b/i.test(outside)) return true;
+  if (/\bflask\b/i.test(jd) && /\bflask\b/i.test(outside)) return true;
+  return false;
+}
+
+/**
+ * If a role's live bullets lost the CV's real Python/Django/Flask work,
+ * put those canonical bullets back. Never invents a stack the CV doesn't have.
+ */
+export function restoreJdLanguageBullets(experience, jdText, canonical) {
+  const jobs = Array.isArray(experience) ? experience : [];
+  const source = Array.isArray(canonical) ? canonical : [];
+  if (!jobs.length || !source.length) return jobs;
+  if (!/\b(python|django|flask)\b/i.test(String(jdText || ''))) return jobs;
+
+  return jobs.map((job) => {
+    const bullets = Array.isArray(job.bullets) ? job.bullets.map(String) : [];
+    if (bullets.some((b) => realLanguageBullet(b, jdText))) return job;
+    const match = source.find((c) => companiesMatch(c.company, job.company));
+    if (!match) return job;
+    const extra = (match.bullets || []).map(String).filter((b) => realLanguageBullet(b, jdText));
+    if (!extra.length) return job;
+    return { ...job, bullets: [...extra, ...bullets] };
+  });
+}
+
 /**
  * @param {object} profile resume_context from DB
  * @returns {{ profile: object, hydrated: boolean, educationRepaired: boolean, sources: string[] }}
