@@ -684,5 +684,29 @@ console.log('resume-quality tests\n');
     'sorts newest role first after sanitize',
   );
 
+  // Screenshot regressions: truncated / orphan Quest bullets must never print
+  const screenshotQuest = sanitizeExperienceEntries([
+    {
+      company: 'Quest Global Engineering Services',
+      role: 'Senior Software Engineer',
+      period: 'Jul 2025 - Present',
+      bullets: [
+        'Architect mission-critical enterprise features leading the transition into scalable microservices, dropping server.',
+        'CPU load by 30%, and leading the integration of high-volume Oracle and PostgreSQL databases to ensure data.',
+        'Optimized system performance by redesigning SQL query patterns, cutting server CPU load by 30%, and leading the.',
+        'Consistency, in a backend architecture.',
+        'Built SSE streaming endpoints and Knowledge Graph integrations for real-time device telemetry.',
+        'Optimized AWS cluster capacity on Linux/EC2 with autoscaling policies.',
+      ],
+    },
+  ]);
+  assert(screenshotQuest.length === 1, 'keeps Quest role');
+  const qBullets = screenshotQuest[0].bullets.join('\n');
+  assert(!/dropping server\.?$/im.test(qBullets), 'drops dropping server truncation');
+  assert(!/^CPU load by/im.test(qBullets), 'drops CPU load orphan');
+  assert(!/leading the\.?$/im.test(qBullets), 'drops leading the truncation');
+  assert(!/^Consistency,/im.test(qBullets), 'drops Consistency orphan');
+  assert(/Knowledge Graph|SSE|AWS cluster/i.test(qBullets), 'keeps complete Quest bullets');
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

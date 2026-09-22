@@ -708,10 +708,19 @@ const CORE_CLOUD_INFRA = new Set([
   const isCloudRole = /\b(devops|sre|platform engineer|aws platform|infrastructure|kubernetes)\b/i.test(jdLower);
   const isDataRole = /\b(data engineer|etl|warehouse|databricks|snowflake|pyspark)\b/i.test(jdLower);
   const isAiRole = /\b(large language model|\bllms?\b|\brag\b|generative ai|ai engineer)\b/i.test(jdLower);
+  const isPythonBackend = /\bpython\b/i.test(jdLower) && /\b(django|flask|backend|microservice|restful)\b/i.test(jdLower);
 
   function prioritizeSummaryTechTerms(terms) {
     const score = (term) => {
       const lower = String(term || '').toLowerCase().trim();
+      if (isPythonBackend) {
+        if (/^(python|django|flask|fastapi|mongodb|mssql|sql|postgresql|postgres)$/i.test(lower)) return 5;
+        if (CORE_LANGUAGES.has(lower)) return 15;
+        if (CORE_FRAMEWORKS.has(lower)) return 20;
+        if (CORE_DATABASES.has(lower)) return 25;
+        if (CORE_CLOUD_INFRA.has(lower)) return 40;
+        return 50;
+      }
       if (isCloudRole) {
         if (CORE_CLOUD_INFRA.has(lower)) return 10;
         if (CORE_LANGUAGES.has(lower)) return 20;
@@ -742,7 +751,16 @@ const CORE_CLOUD_INFRA = new Set([
     return [...terms].sort((a, b) => score(a) - score(b));
   }
 
-  const rawLeadTerms = [...new Set([...jdTechLead, ...jdLead].map((k) => String(k).trim()))];
+  const seenLead = new Set();
+  const rawLeadTerms = [];
+  for (const k of [...jdTechLead, ...jdLead]) {
+    const term = String(k || '').trim();
+    if (!term) continue;
+    const key = term.toLowerCase();
+    if (seenLead.has(key)) continue;
+    seenLead.add(key);
+    rawLeadTerms.push(term);
+  }
   const leadTerms = prioritizeSummaryTechTerms(rawLeadTerms).slice(0, 8);
   const embedded = isEmbeddedSystemsJd(jdText);
   const dotnetAzure = isDotnetAzureJd(jdText);
@@ -772,6 +790,8 @@ const CORE_CLOUD_INFRA = new Set([
                   ? 'AI-enabled services, LLM pipelines, and backend architectures'
                   : /\b(full[-\s]?stack|react|frontend)\b/i.test(jdLower) && /\b(node|backend|api)\b/i.test(jdLower)
                     ? 'full-stack web applications, resilient backend APIs, and modern UIs'
+                    : /\bpython\b/i.test(jdLower) && /\b(django|flask|backend|restful|microservice)\b/i.test(jdLower)
+                      ? 'Python backend services, RESTful APIs, and scalable SQL/NoSQL data layers'
                     : 'backends, cloud platforms, and API systems';
 
   lines.push(
@@ -795,6 +815,8 @@ const CORE_CLOUD_INFRA = new Set([
     /\b(large language model|\bllms?\b|\brag\b|retrieval[- ]augmented|vector (?:db|database|search)|langchain|machine learning engineer|ml engineer|generative ai engineer|ai platform|llmops|chromadb|pinecone|embedding model)\b/i.test(jdLower)
   ) {
     lines.push('Lead LLM-backed features and AI-assisted delivery with production-grade API reliability and validation loops.');
+  } else if (/\bpython\b/i.test(jdLower) && /\b(django|flask)\b/i.test(jdLower)) {
+    lines.push('Design and ship Python backend services (Django/Flask), RESTful APIs, and SQL/NoSQL data layers with code review, tests, and production hardening.');
   } else if (/\bevent-driven|microservice|kafka|message queue\b/i.test(jdLower)) {
     lines.push('Drive monolith-to-microservices work and event-driven service boundaries with reliable messaging and clear ownership.');
   } else if (/\baws platform|infrastructure as code|terraform|cloudformation|devsecops|capacity planning\b/i.test(jdLower)) {

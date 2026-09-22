@@ -737,6 +737,8 @@ export function repairMidSentenceArtifacts(bullet) {
   t = t.replace(/,\s*by\s*$/gi, '.');
   t = t.replace(/\busing\s*,/gi, '');
   t = t.replace(/\busing\s+using\b/gi, 'using');
+  t = t.replace(/\bTypeScrip\b/g, 'TypeScript');
+  t = t.replace(/\barchitecture\s+And\s+/g, 'architecture and ');
   t = t.replace(/\s{2,}/g, " ");
   return t.trim();
 }
@@ -950,9 +952,36 @@ export function isIncompleteBullet(bullet) {
   const raw = String(bullet || '').trim();
   const t = raw.replace(/[.!]+$/, '');
   if (!t) return true;
+  // Parenthetical-only crumbs: "(Golang, GCP, LLM…))"
+  if (/^\([^)]*\)\.?$/.test(raw)) return true;
+  // Orphan noun crumbs: "Consistency, in a backend architecture."
+  if (
+    !BULLET_ACTION_START.test(t)
+    && /^[A-Z][a-z]+,\s+(in|on|at|with|for|to|from|into|across)\b/i.test(t)
+  ) {
+    return true;
+  }
+  // Metric/title continuations that lost their lead clause
+  if (/^(CPU\s+load|server\s+CPU|load\s+by\s+\d)/i.test(t)) return true;
   if (/\b(synthesizing|preserving|integrating|including|using|building|deploying|writing|maintaining|and|with|to|of|by|from|via|into|through|for|across)\s*$/i.test(t)) {
     return true;
   }
+  // Trailing articles / weak nouns after a cut: "leading the.", "dropping server.", "ensure data."
+  if (/\b(the|a|an|this|that|these|those|its|their|server|table|unit|data|disparate|backed|pre-flight|multiple)\s*$/i.test(t)) {
+    return true;
+  }
+  // Salvaged garbage: "…leading the consistency, in a backend…"
+  if (/\bleading\s+the\s+consistency\b/i.test(t)) return true;
+  if (/\band\s+leading\s+the\b/i.test(t) && /\bconsistency\b/i.test(t)) return true;
+  // Known truncated tails from weave/LLM cuts
+  if (/\b(dropping|cutting)\s+server$/i.test(t)) return true;
+  if (/\bleading\s+the$/i.test(t)) return true;
+  if (/\bensure\s+data$/i.test(t)) return true;
+  if (/\bacross\s+multiple\s+disparate$/i.test(t)) return true;
+  if (/\bintegrating\s+comprehensive\s+unit$/i.test(t)) return true;
+  if (/\bKafka-backed$/i.test(t)) return true;
+  if (/\band\s+table$/i.test(t)) return true;
+  if (/\bin\s+a\s+backend$/i.test(t)) return true;
   // "reducing database." / "improving performance." without a quantified outcome
   if (
     /\b(reducing|improving|optimizing|enhancing|increasing|decreasing|cutting|lowering)\s+[A-Za-z][A-Za-z0-9+/-]{1,24}\s*$/i.test(t)
@@ -1022,19 +1051,22 @@ export function repairGarbledBullet(bullet) {
 export function isBulletContinuationFragment(bullet) {
   const t = String(bullet || '').trim();
   if (!t) return true;
+  // Parenthetical-only lines
+  if (/^\([^)]*\)\.?$/.test(t)) return true;
   // Preposition / conjunction crumbs — never standalone bullets
   if (/^(by|and|with|to|from|into|of|for|on|in|at|as|while|which|that|or|via)\b/i.test(t)) {
     return true;
   }
-  // Metric continuations: "800ms to 120ms..." even when the rest of the sentence is long
+  // Metric continuations: "800ms to 120ms..." / "CPU load by 30%..."
   if (/^[\d$][\d,]*(?:\.\d+)?\s*(?:ms|s|x|%|k|m|b)?\b/i.test(t)) return true;
+  if (/^(CPU\s+load|server\s+CPU|load\s+by\s+\d|Consistency,)/i.test(t)) return true;
   if (/^[\d$]/.test(t) && t.length < 140) return true;
   // Short lowercase crumbs only (full lowercase sentences get capitalized, not merged)
   if (/^[a-z]/.test(t) && t.length < 40) return true;
 
   // Noun-phrase orphans from mid-sentence LLM / explode splits (KOCO / Artisanssoft)
   // e.g. "Logic into scalable…", "Integrity through…", "Authentication flows that…"
-  if (/^(Logic|Integrity|Authentication|Authorization|Availability|Scalability)\b/i.test(t)) {
+  if (/^(Logic|Integrity|Authentication|Authorization|Availability|Scalability|Consistency)\b/i.test(t)) {
     return true;
   }
   if (/^(Business logic|Data integrity|Complex business|Authentication flows?|Authorization flows?)\b/i.test(t)) {
@@ -1047,7 +1079,7 @@ export function isBulletContinuationFragment(bullet) {
   // Capitalized noun + connector, no action verb — almost always a continuation crumb
   if (
     !BULLET_ACTION_START.test(t)
-    && /^[A-Z][a-z]+(?:\s+[a-z]+)?\s+(into|through|via|that|with|for|from|across|under)\b/.test(t)
+    && /^[A-Z][a-z]+(?:\s+[a-z]+)?\s+(into|through|via|that|with|for|from|across|under|in)\b/.test(t)
     && t.length < 160
   ) {
     return true;
@@ -1276,30 +1308,67 @@ export function normalizeExperienceBulletList(bullets, companyOrRoleText = '') {
   for (const bullet of raw) {
     const prevIncomplete = merged.length > 0 && isIncompleteBullet(merged[merged.length - 1]);
     const isCont = isBulletContinuationFragment(bullet);
-    // Orphan noun crumbs after a complete sentence — drop, do not glue into garbage
-    if (
-      merged.length > 0
-      && isCont
-      && !prevIncomplete
-      && /^(Logic|Integrity|Construction|Authentication|Authorization|Availability|Scalability)\b/i.test(bullet)
-    ) {
+    const isMetricCont = /^[\d$]/.test(bullet);
+    // Toxic orphans never salvage a truncated lead (unlike "Authentication flows…" / "Logic into…")
+    const isToxicOrphan = /^(CPU\s+load|Consistency,)/i.test(bullet)
+      || /^\([^)]*\)\.?$/.test(bullet);
+
+    // Incomplete lead + toxic orphan — drop both
+    if (merged.length > 0 && prevIncomplete && isToxicOrphan) {
+      merged.pop();
       continue;
     }
-    if (merged.length > 0 && (isCont || prevIncomplete)) {
-      const prev = merged[merged.length - 1].replace(/[.!?,;:\s]+$/g, '');
-      let cont = bullet.trim();
-      // Avoid "by by 22%" when previous already ends with the same preposition
-      cont = cont.replace(/^(by|and|with|to|from|into|of|for)\s+/i, (m, prep) => {
-        if (new RegExp(`\\b${prep}$`, 'i').test(prev)) return '';
-        return m;
-      }).trim();
-      // "synthesizing." + "Logic into…" → keep gerund object flowing in lowercase
-      if (prevIncomplete && /^[A-Z]/.test(cont) && isBulletContinuationFragment(cont)) {
-        cont = cont.replace(/^([A-Z])/, (c) => c.toLowerCase());
+
+    // Incomplete lead: try to salvage with a real continuation
+    if (merged.length > 0 && prevIncomplete) {
+      if (isCont || !BULLET_ACTION_START.test(bullet)) {
+        const prev = merged[merged.length - 1].replace(/[.!?,;:\s]+$/g, '');
+        let cont = bullet.trim();
+        cont = cont.replace(/^(by|and|with|to|from|into|of|for)\s+/i, (m, prep) => {
+          if (new RegExp(`\\b${prep}$`, 'i').test(prev)) return '';
+          return m;
+        }).trim();
+        if (/^[A-Z]/.test(cont) && isCont && !isMetricCont) {
+          cont = cont.replace(/^([A-Z])/, (c) => c.toLowerCase());
+        }
+        const combined = cont ? `${prev} ${cont}` : prev;
+        if (
+          combined.length >= 40
+          && !isIncompleteBullet(combined)
+          && !isGarbledBullet(combined)
+        ) {
+          merged[merged.length - 1] = combined;
+        } else if (isMetricCont) {
+          // Keep attempting metric merge even if still short — normalizeBulletText may finish it
+          merged[merged.length - 1] = combined;
+        } else {
+          merged.pop();
+          if (
+            !isCont
+            && !isIncompleteBullet(bullet)
+            && !isGarbledBullet(bullet)
+            && bullet.length >= 20
+          ) {
+            merged.push(bullet);
+          }
+        }
+        continue;
       }
-      if (cont) merged[merged.length - 1] = `${prev} ${cont}`;
+      merged.pop();
+    }
+
+    // Continuation after a COMPLETE sentence
+    if (merged.length > 0 && isCont) {
+      // Metric crumbs belong to the previous bullet
+      if (isMetricCont) {
+        const prev = merged[merged.length - 1].replace(/[.!?,;:\s]+$/g, '');
+        merged[merged.length - 1] = `${prev} ${bullet.trim()}`;
+        continue;
+      }
+      // Orphan noun crumbs — drop
       continue;
     }
+
     merged.push(bullet);
   }
   return merged

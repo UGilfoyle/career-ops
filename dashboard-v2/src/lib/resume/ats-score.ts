@@ -61,15 +61,29 @@ function applyAlignedResumeToProfile(
   );
   const summary = String(aligned.summary || '').trim();
   if (summary) {
-    const headline = String(next.narrative?.headline || '').trim();
-    // Prefer keeping headline; park full ATS summary in exit_story.
+    const lines = summary.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    const newHeadline = lines[0] || '';
+    const rest = lines.slice(1).join('\n').trim();
+    const oldHeadline = String(next.narrative?.headline || '').trim();
+    // When mirror rebuilds summary for a new JD, replace the stale headline
+    // (e.g. "Node.js, Bun…" must not stick on a Python/Django role).
+    const replaceHeadline =
+      Boolean(newHeadline)
+      && (
+        !oldHeadline
+        || summary.startsWith(oldHeadline)
+        || !summary.toLowerCase().includes(oldHeadline.toLowerCase().slice(0, 40))
+      );
     next = {
       ...next,
       narrative: {
         ...(next.narrative || {}),
-        exit_story: headline && summary.startsWith(headline)
-          ? summary.slice(headline.length).trim() || summary
-          : summary,
+        ...(replaceHeadline ? { headline: newHeadline } : {}),
+        exit_story: replaceHeadline
+          ? (rest || (summary.startsWith(newHeadline) ? summary.slice(newHeadline.length).trim() : summary))
+          : (oldHeadline && summary.startsWith(oldHeadline)
+            ? summary.slice(oldHeadline.length).trim() || summary
+            : summary),
       },
     };
   }
@@ -265,6 +279,12 @@ export async function mirrorJdKeywordsIntoProfile(
       },
       keywords,
     ) as { score: number; matched: string[]; missing: string[] };
+    if (typeof rq.sanitizeExperienceEntries === 'function' && Array.isArray(alignedProfile.experience)) {
+      alignedProfile = {
+        ...alignedProfile,
+        experience: rq.sanitizeExperienceEntries(alignedProfile.experience),
+      };
+    }
     return {
       score: remeasured.score,
       matched: remeasured.matched,
@@ -356,6 +376,12 @@ export async function mirrorJdKeywordsIntoProfile(
       },
       keywords,
     ) as { score: number; matched: string[]; missing: string[] };
+    if (typeof rq.sanitizeExperienceEntries === 'function' && Array.isArray(alignedProfile.experience)) {
+      alignedProfile = {
+        ...alignedProfile,
+        experience: rq.sanitizeExperienceEntries(alignedProfile.experience),
+      };
+    }
     return {
       score: remeasured.score,
       matched: remeasured.matched,
