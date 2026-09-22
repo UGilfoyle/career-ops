@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Files, Sparkles } from 'lucide-react';
 import { SectionAccordion } from './SectionAccordion';
 import { StudioToolbar } from './StudioToolbar';
@@ -18,6 +18,8 @@ import { useResumeStudioStore } from './useResumeStudioStore';
 import { getTemplateMeta } from '@/lib/resume/ats-professional-template';
 import { parseResumeForExport, validateResumeDraft } from '@/lib/resume/schema';
 import { getCompetencies, type ResumeContext } from '@/lib/resume/types';
+import { fillAtsTemplate } from '@/lib/resume/fill-template';
+import { parseTailoredResumeHtml } from '@/lib/resume/parse-tailored-html';
 
 type ResumeStudioProps = {
   initialProfile?: ResumeContext | null;
@@ -91,6 +93,9 @@ export default function ResumeStudio({
   });
   const [previewMode, setPreviewMode] = useState<'master' | 'tailored'>('master');
   const [activeJdText, setActiveJdText] = useState<string>('');
+  const [editingJobId, setEditingJobId] = useState<number | null>(null);
+  const editingJobIdRef = useRef<number | null>(null);
+  const masterSnapshotRef = useRef<ResumeContext | null>(null);
 
   const selectedPipelineJob = useMemo(
     () => pipeline.find((j) => Number(j.pipeline_id ?? j.id) === selectedJobId) ?? null,
@@ -104,6 +109,11 @@ export default function ResumeStudio({
       && (reviewJob.has_resume_html || reviewJob.has_resume_pdf)),
   );
 
+  const jobHasResumeHtml = Boolean(
+    selectedPipelineJob?.has_resume_html
+    || (reviewJob?.jobId && selectedJobId === reviewJob.jobId && reviewJob.has_resume_html),
+  );
+
   const tailoredPreviewUrl = useMemo(() => {
     const id = selectedJobId ?? reviewJob?.jobId ?? null;
     if (!id || !hasTailoredForJob) return null;
@@ -111,8 +121,12 @@ export default function ResumeStudio({
   }, [selectedJobId, reviewJob?.jobId, hasTailoredForJob]);
 
   useEffect(() => {
+    if (editingJobId) {
+      setPreviewMode('master');
+      return;
+    }
     if (hasTailoredForJob && leftTab !== 'editor') setPreviewMode('tailored');
-  }, [selectedJobId, hasTailoredForJob, leftTab]);
+  }, [selectedJobId, hasTailoredForJob, leftTab, editingJobId]);
 
   // Editing always shows the live master draft — never the frozen saved HTML
   useEffect(() => {
@@ -146,9 +160,21 @@ export default function ResumeStudio({
   }, [reviewJob?.jobId, reviewJob?.docKind]);
 
   const onAutosave = useCallback(
-    async (draft: ResumeContext) => {
-      await saveResumeContext(draft);
-      onProfileSaved?.(draft);
+    async (draftToSave: ResumeContext) => {
+      const jobId = editingJobIdRef.current;
+      if (jobId) {
+        const html = fillAtsTemplate(draftToSave);
+        const res = await fetch(`/api/job/${jobId}/docs`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resume_html: html, invalidate_pdfs: true }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error || 'Failed to save this job resume');
+        return;
+      }
+      await saveResumeContext(draftToSave);
+      onProfileSaved?.(draftToSave);
     },
     [onProfileSaved]
   );
@@ -176,7 +202,54 @@ export default function ResumeStudio({
     setTemplateId,
     replaceFromImport,
     applyMirroredProfile,
+    loadSilent,
+    snapshotDraft,
+    setIgnoreProfileHydrate,
   } = store;
+
+  useEffect(() => {
+    if (!selectedJobId || !jobHasResumeHtml) {
+      if (editingJobIdRef.current) {
+        editingJobIdRef.current = null;
+        setEditingJobId(null);
+        setIgnoreProfileHydrate(false);
+        if (masterSnapshotRef.current) {
+          loadSilent(masterSnapshotRef.current);
+          masterSnapshotRef.current = null;
+        }
+      }
+      return;
+    }
+    if (editingJobIdRef.current === selectedJobId) return;
+    if (!masterSnapshotRef.current) masterSnapshotRef.current = snapshotDraft();
+    const base = masterSnapshotRef.current;
+    let cancel = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/job/${selectedJobId}/docs`);
+        const json = await res.json().catch(() => ({}));
+        if (cancel) return;
+        const parsed = parseTailoredResumeHtml(String(json.resume_html || ''), base);
+        if (!parsed) {
+          masterSnapshotRef.current = null;
+          setBanner('This job has a saved resume, but it could not be opened in the editor.');
+          return;
+        }
+        setIgnoreProfileHydrate(true);
+        editingJobIdRef.current = selectedJobId;
+        setEditingJobId(selectedJobId);
+        loadSilent(parsed);
+        setPreviewMode('master');
+        setLeftTab((tab) => (tab === 'cover' ? tab : 'editor'));
+        setBanner('Editing the resume saved for this job. The preview is this same resume. Your base CV stays unchanged.');
+      } catch {
+        if (!cancel) setBanner('Could not load the saved resume for this job.');
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [selectedJobId, jobHasResumeHtml, loadSilent, snapshotDraft, setIgnoreProfileHydrate]);
 
   const competencies = useMemo(() => getCompetencies(draft), [draft]);
   const templateMeta = getTemplateMeta(draft.studio?.template_id);
@@ -485,7 +558,9 @@ export default function ResumeStudio({
             {leftTab === 'editor' ? (
               <div className="space-y-3">
                 <div className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-xs text-[#6B6B6B]">
-                  Full editor for your live draft. Switch preview to <strong className="text-[#1C1C1E]">Master</strong> if you still see a frozen saved tailor.
+                  {editingJobId
+                    ? 'This editor is the resume for the open job. Changes save to that job. Your base CV is separate.'
+                    : 'This editor is your base CV. Paste a JD on the JD tab to score it. Open a job that already has a tailored resume to edit that file here.'}
                 </div>
                 {isEmpty ? (
                   <div className="rounded-2xl border border-dashed border-[#E5E5E0] bg-white p-8 text-center space-y-3">
@@ -615,11 +690,11 @@ export default function ResumeStudio({
               onOpenTemplates={() => setGalleryOpen(true)}
               externalAtsScore={liveAts.score}
               externalAtsSource={liveAts.source}
-              previewMode={previewMode}
+              previewMode={editingJobId ? 'master' : previewMode}
               onPreviewModeChange={setPreviewMode}
-              tailoredPreviewUrl={tailoredPreviewUrl}
-              showTailoredToggle={hasTailoredForJob}
-              activeJdText={activeJdText}
+              tailoredPreviewUrl={editingJobId ? null : tailoredPreviewUrl}
+              showTailoredToggle={!editingJobId && hasTailoredForJob}
+              activeJdText={editingJobId ? '' : activeJdText}
             />
           )}
         </div>

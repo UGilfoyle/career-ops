@@ -54,6 +54,7 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
   const [openSection, setOpenSection] = useState<string>('experience');
   const hydratedRef = useRef(false);
   const skipHistoryRef = useRef(false);
+  const ignoreProfileHydrateRef = useRef(false);
   const draftRef = useRef(draft);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
 
   // Hydrate when parent profile arrives / changes substantially
   useEffect(() => {
-    if (!initial) return;
+    if (!initial || ignoreProfileHydrateRef.current) return;
     const next = sanitizeDraft({ ...emptyResumeContext(), ...cloneCtx(initial) });
     if (!next.studio) next.studio = { template_id: 'ats-professional' };
     const hasContent =
@@ -248,6 +249,23 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
     [setDraft]
   );
 
+  const loadSilent = useCallback((next: ResumeContext) => {
+    skipHistoryRef.current = true;
+    const cleaned = sanitizeDraft(next);
+    setDraftState(cleaned);
+    draftRef.current = cleaned;
+    setHistory([]);
+    setFuture([]);
+    setSaveStatus('idle');
+    setSaveError(null);
+  }, []);
+
+  const setIgnoreProfileHydrate = useCallback((locked: boolean) => {
+    ignoreProfileHydrateRef.current = locked;
+  }, []);
+
+  const snapshotDraft = useCallback(() => cloneCtx(draftRef.current), []);
+
   const applyMirroredProfile = useCallback(
     (aligned: ResumeContext) => {
       setDraft((prev) => {
@@ -277,6 +295,9 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
   return {
     draft,
     setDraft,
+    loadSilent,
+    snapshotDraft,
+    setIgnoreProfileHydrate,
     openSection,
     setOpenSection,
     saveStatus,
