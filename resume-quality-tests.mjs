@@ -23,6 +23,7 @@ import {
   isJdMetadataJob,
   scrubJobTitleField,
   sanitizeExperienceEntries,
+  flattenResumeDashes,
   formatPeriodDisplay,
   parseTenureMonths,
   bulletsBudgetForRole,
@@ -714,7 +715,13 @@ console.log('resume-quality tests\n');
   ]);
   assert(stuffed[0] && !/\(TypeScript|\(Golang|\(GCP/i.test(stuffed[0]), `strips TypeScript/Go paren dump (got ${stuffed[0]})`);
   assert(/code reviews/i.test(stuffed[0]), 'keeps the mentorship sentence');
-  assert(stuffed.some((b) => /\(EC2, S3\)/.test(b)), 'keeps real CV paren (EC2, S3)');
+  assert(stuffed.some((b) => /EC2, S3/.test(b) && !/\(EC2/.test(b)), 'unwraps EC2, S3 without braces');
+  const elk = normalizeExperienceBulletList([
+    'Hardened distributed tracing telemetry and structured logging frameworks (ELK Stack, Grafana) across microservices on RedHat Linux, significantly enhancing incident response times.',
+  ]);
+  assert(elk[0] && !/\(/.test(elk[0]) && /ELK Stack, Grafana/.test(elk[0]), `no braces around ELK (got ${elk[0]})`);
+  const dashed = flattenResumeDashes('Lead Backend Engineer — Node.js, Bun, TypeScript');
+  assert(dashed === 'Lead Backend Engineer - Node.js, Bun, TypeScript', `summary dash flattened (got ${dashed})`);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

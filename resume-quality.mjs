@@ -750,7 +750,7 @@ export function repairMidSentenceArtifacts(bullet) {
   // Truncated tails — keep the finished clause
   t = t.replace(/,\s*reconfiguring EC2 instance\.?$/i, '.');
   t = t.replace(/\s+across client\.?$/i, '.');
-  // Strip stuffed keyword parens. Keep real CV parens like "(EC2, S3)".
+  // Strip stuffed keyword parens, then unwrap whatever braces remain.
   for (let i = 0; i < 4; i++) {
     const next = t.replace(/\s*\([^()]{0,220}\)/g, (m) => {
       const langList = /\b(typescript|javascript|golang|python|django|flask|node\.?js|react)\b/i.test(m);
@@ -764,7 +764,37 @@ export function repairMidSentenceArtifacts(bullet) {
     t = next;
   }
   t = t.replace(/\s{2,}/g, " ");
-  return t.trim();
+  return unwrapResumeParens(t).trim();
+}
+
+/** "(ELK Stack, Grafana)" -> "ELK Stack, Grafana". No braces on the resume. */
+export function unwrapResumeParens(text) {
+  let t = String(text || '');
+  for (let i = 0; i < 4; i++) {
+    const next = t.replace(/\s*\(([^()]*)\)/g, (_, inner) => {
+      const body = String(inner || '').trim();
+      return body ? `, ${body}` : '';
+    });
+    if (next === t) break;
+    t = next;
+  }
+  return t
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+,/g, ',')
+    .replace(/,\s*,+/g, ',')
+    .replace(/^,\s*/, '')
+    .trim();
+}
+
+/** Em dash, en dash, and "--" become a single hyphen. */
+export function flattenResumeDashes(text) {
+  return String(text || '')
+    .replace(/\u2011/g, '-')
+    .replace(/\s*—\s*/g, ' - ')
+    .replace(/\s*–\s*/g, ' - ')
+    .replace(/\s+--\s+/g, ' - ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 /** Same bullet copied into multiple roles — keep in the oldest role (bottom of resume). */
@@ -1671,7 +1701,7 @@ export function polishTailoredResume(resume, sourceExperience = [], opts = {}) {
   if (resume.summary) {
     resume.summary = String(resume.summary)
       .split('\n')
-      .map((line) => scrubResumeArtifacts(line))
+      .map((line) => unwrapResumeParens(scrubResumeArtifacts(line)))
       .filter(Boolean)
       .join('\n');
   }

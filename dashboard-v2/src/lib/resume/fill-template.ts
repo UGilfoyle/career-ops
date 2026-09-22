@@ -2,12 +2,15 @@ import { formatEducationLine, type EducationEntry as EduFmt } from '@/lib/educat
 import {
   normalizeExperienceBulletList,
   sanitizeExperienceEntries,
+  flattenResumeDashes,
+  unwrapResumeParens,
 } from '@/lib/resume/bullet-pipeline';
 import { extractTechFromTexts, renderCategorizedSkills } from '@/lib/resume/skills-html-bridge';
 import { renderContactBarHtml } from '@/lib/resume/contact-bar';
 import { getTemplateHtml } from './ats-professional-template';
 import { DEFAULT_TEMPLATE_ID, type ExperienceEntry, type ResumeContext } from './types';
 import { formatPeriodDisplay } from './date-range';
+import { buildHonestSummary } from '../../../../jd-profile-match.mjs';
 
 function escapeHtml(s: unknown): string {
   return String(s || '')
@@ -236,7 +239,7 @@ function wrapSummaryLine(line: string, maxLen: number): string[] {
 }
 
 function normalizeResumeSummaryPlain(rawSummary: string, yearsExp: number): string {
-  let t = String(rawSummary || '').trim();
+  let t = flattenResumeDashes(unwrapResumeParens(String(rawSummary || '').trim()));
   const y = Number(yearsExp) || 0;
   if (!t) {
     t =
@@ -331,6 +334,10 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     Array.isArray(profile.narrative?.proof_points) && profile.narrative!.proof_points!.length > 0;
 
   const displayName = String(c.full_name || '').trim() || 'Your Name';
+  const jd = String(options.jdText || '').trim();
+  const summarySource = jd.length >= 40
+    ? buildHonestSummary('', yearsExp, [], jd)
+    : masterSummaryText(profile);
 
   const reps: Record<string, string> = {
     NAME: escapeHtml(displayName),
@@ -344,7 +351,7 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     LINKEDIN_URL: linkedinRaw ? escapeHtml(normalizeHref(linkedinRaw)) : '#',
     LINKEDIN_DISPLAY: escapeHtml(displayLink(linkedinRaw)),
     PORTFOLIO_LINK: '',
-    SUMMARY_TEXT: escapeHtml(normalizeResumeSummaryPlain(masterSummaryText(profile), yearsExp)),
+    SUMMARY_TEXT: escapeHtml(normalizeResumeSummaryPlain(summarySource, yearsExp)),
     EXPERIENCE: hasExperience ? renderExperienceHtml(experience, maxPages, yearsExp) : '',
     EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
     ACHIEVEMENTS: hasAchievements ? renderAchievementsHtml(profile.narrative?.proof_points) : '',

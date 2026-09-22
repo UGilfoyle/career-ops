@@ -282,7 +282,7 @@ export default function ResumeStudio({
     setExportingPdf(true);
     setBanner(null);
     try {
-      const payload = JSON.stringify({ resume_context: draft, cache_only: true });
+      const payload = JSON.stringify({ resume_context: draft, cache_only: true, jdText: activeJdText });
       let res = await fetch('/api/resume/export-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -293,7 +293,7 @@ export default function ResumeStudio({
         res = await fetch('/api/resume/export-pdf', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resume_context: draft }),
+          body: JSON.stringify({ resume_context: draft, jdText: activeJdText }),
         });
       }
 

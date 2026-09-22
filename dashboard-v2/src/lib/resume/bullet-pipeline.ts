@@ -15,4 +15,6 @@ export {
   isBulletContinuationFragment,
   preferSourceIfThin,
   parseTenureMonths,
+  unwrapResumeParens,
+  flattenResumeDashes,
 } from '../../../../resume-quality.mjs';

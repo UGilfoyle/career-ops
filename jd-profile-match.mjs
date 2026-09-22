@@ -832,7 +832,7 @@ const CORE_CLOUD_INFRA = new Set([
   ) {
     lines.push('Lead LLM-backed features and AI-assisted delivery with production-grade API reliability and validation loops.');
   } else if (/\bpython\b/i.test(jdLower) && /\b(django|flask)\b/i.test(jdLower)) {
-    lines.push('Design and ship Python backend services (Django/Flask), RESTful APIs, and SQL/NoSQL data layers with code review, tests, and production hardening.');
+    lines.push('Design and ship Python backend services with Django and Flask, RESTful APIs, and SQL/NoSQL data layers with code review, tests, and production hardening.');
   } else if (/\bevent-driven|microservice|kafka|message queue\b/i.test(jdLower)) {
     lines.push('Drive monolith-to-microservices work and event-driven service boundaries with reliable messaging and clear ownership.');
   } else if (/\baws platform|infrastructure as code|terraform|cloudformation|devsecops|capacity planning\b/i.test(jdLower)) {

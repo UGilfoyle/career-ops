@@ -52,6 +52,7 @@ import {
   isSeniorToneEmployer,
   scrubSummaryKeywordParenSpam,
   scrubResumeArtifacts,
+  unwrapResumeParens,
 } from './resume-quality.mjs';
 
 /** LLM summary seed only — never exit_story; strip paren-keyword spam. */
@@ -63,7 +64,7 @@ function scrubSummaryFromOpts(llmSummary) {
   if (/\(DynamoDB|WebSockets|\.NET|REST API,\s*Azure\)/i.test(raw) && raw.split('(').length >= 3) {
     return '';
   }
-  return scrubSummaryKeywordParenSpam(scrubResumeArtifacts(raw));
+  return unwrapResumeParens(scrubSummaryKeywordParenSpam(scrubResumeArtifacts(raw)));
 }
 
 export const DEFAULT_FULL_TAILOR = [

@@ -370,7 +370,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const html = fillAtsTemplate(resumeContext);
+    const html = fillAtsTemplate(resumeContext, { jdText: String(body.jdText || body.jd_text || '') });
     const hash = contentHash(html);
     const safeName = String(resumeContext.candidate?.full_name || 'resume')
       .replace(/[^\w\- ]+/g, '')
