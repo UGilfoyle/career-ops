@@ -37,6 +37,8 @@ const nextConfig: NextConfig = {
       "../jd-profile-match.mjs",
       "../education-format.mjs",
       "../profile-hydrate.mjs",
+      "./vendor/node_modules/js-yaml/**/*",
+      "./vendor/node_modules/argparse/**/*",
       "../resume-quality.mjs",
       "../resume-tailoring-plan.mjs",
       "../resume-alignment-validator.mjs",

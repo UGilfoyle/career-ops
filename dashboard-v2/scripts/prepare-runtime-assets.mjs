@@ -42,6 +42,23 @@ copyDirIfExists(
 copyFileIfExists(path.join(repoRoot, 'config', 'profile.yml'), path.join(runtimeRoot, 'config', 'profile.yml'));
 copyFileIfExists(path.join(repoRoot, 'cv.md'), path.join(runtimeRoot, 'cv.md'));
 
+function copyRuntimePackage(name) {
+  const candidates = [
+    path.join(appRoot, 'node_modules', name),
+    path.join(repoRoot, 'node_modules', name),
+    path.join(appRoot, 'node_modules', '.pnpm', `${name}@2.0.1`, 'node_modules', name),
+  ];
+  const src = candidates.find((p) => fs.existsSync(p));
+  if (!src) {
+    console.warn(`runtime package missing: ${name}`);
+    return;
+  }
+  copyDirIfExists(src, path.join(appRoot, 'vendor', 'node_modules', name));
+  console.log(`✓ Bundled ${name} for serverless profile-hydrate.`);
+}
+copyRuntimePackage('js-yaml');
+copyRuntimePackage('argparse');
+
 // Ensure node_modules/postgres is present for standalone scripts spawned via /api/exec
 const postgresCandidates = [
   path.join(appRoot, 'node_modules', 'postgres'),

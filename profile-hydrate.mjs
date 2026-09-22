@@ -4,7 +4,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { normalizeEducationList } from './education-format.mjs';
 
 export { normalizeEducationEntry, formatEducationLine, normalizeEducationList } from './education-format.mjs';
@@ -29,11 +30,22 @@ function readFileAt(relPath) {
   return null;
 }
 
+const require = createRequire(import.meta.url);
+
+function loadYamlLib() {
+  try {
+    return require('js-yaml');
+  } catch {
+    const dir = path.dirname(fileURLToPath(import.meta.url));
+    return require(path.join(dir, 'vendor', 'node_modules', 'js-yaml'));
+  }
+}
+
 function loadYamlAt(relPath) {
   const raw = readFileAt(relPath);
   if (!raw) return null;
   try {
-    return yaml.load(raw);
+    return loadYamlLib().load(raw);
   } catch {
     return null;
   }
