@@ -42,6 +42,8 @@ type ResumeStudioProps = {
     docKind?: 'resume' | 'cover';
   } | null;
   onClearReviewJob?: () => void;
+  /** After Save writes this job's resume HTML and PDF. */
+  onJobResumePublished?: (jobId: number) => void;
 };
 
 async function saveResumeContext(draft: ResumeContext) {
@@ -77,9 +79,11 @@ export default function ResumeStudio({
   initialJobId = null,
   reviewJob = null,
   onClearReviewJob,
+  onJobResumePublished,
 }: ResumeStudioProps) {
   const [zoom, setZoom] = useState(100);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [publishingJob, setPublishingJob] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? reviewJob?.jobId ?? null);
@@ -167,7 +171,7 @@ export default function ResumeStudio({
         const res = await fetch(`/api/job/${jobId}/docs`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resume_html: html, invalidate_pdfs: true }),
+          body: JSON.stringify({ resume_html: html, invalidate_pdfs: false }),
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(json?.error || 'Failed to save this job resume');
@@ -405,6 +409,68 @@ export default function ResumeStudio({
     }
   };
 
+  const handleSaveJobResume = async () => {
+    const jobId = editingJobIdRef.current;
+    if (!jobId || publishingJob) return;
+    setPublishingJob(true);
+    setBanner(null);
+    try {
+      const html = fillAtsTemplate(draft);
+      const saved = await fetch(`/api/job/${jobId}/docs`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resume_html: html, invalidate_pdfs: false }),
+      });
+      const savedJson = await saved.json().catch(() => ({}));
+      if (!saved.ok) throw new Error(savedJson?.error || 'Failed to overwrite this job resume');
+
+      let pdfRes = await fetch('/api/resume/export-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resume_context: draft, cache_only: true }),
+      });
+      if (pdfRes.status === 404) {
+        pdfRes = await fetch('/api/resume/export-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resume_context: draft }),
+        });
+      }
+
+      const contentType = pdfRes.headers.get('content-type') || '';
+      if (!(pdfRes.ok && contentType.includes('application/pdf'))) {
+        const json = await pdfRes.json().catch(() => ({}));
+        throw new Error(
+          json?.error
+          || 'Resume overwritten. PDF is still generating — click Save again in a minute.'
+        );
+      }
+
+      const pdfBlob = await pdfRes.blob();
+      if (!pdfBlob.size) throw new Error('Resume overwritten, but the PDF was empty.');
+
+      const stored = await fetch(`/api/job/${jobId}/resume-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/pdf' },
+        body: pdfBlob,
+      });
+      const storedJson = await stored.json().catch(() => ({}));
+      if (!stored.ok) throw new Error(storedJson?.error || 'Resume saved, but the PDF could not be stored.');
+
+      if (reviewJob && reviewJob.jobId === jobId) {
+        Object.assign(reviewJob, { has_resume_html: true, has_resume_pdf: true });
+      }
+      onJobResumePublished?.(jobId);
+      setBanner('Saved over this job’s generated resume. PDF is ready in Generated Docs.');
+      setTimeout(() => setBanner(null), 5000);
+    } catch (e: unknown) {
+      setBanner(e instanceof Error ? e.message : 'Save failed');
+      setTimeout(() => setBanner(null), 7000);
+    } finally {
+      setPublishingJob(false);
+    }
+  };
+
   const onAtsUpdate = useCallback((score: number | null, source: 'jd' | 'structure') => {
     setLiveAts({ score, source });
   }, []);
@@ -422,6 +488,8 @@ export default function ResumeStudio({
         onExportJson={handleExportJson}
         onExportPdf={handleExportPdf}
         exportingPdf={exportingPdf}
+        onSaveJob={editingJobId ? handleSaveJobResume : undefined}
+        savingJob={publishingJob}
         templateLabel={templateMeta.name}
         onOpenTemplates={() => setGalleryOpen(true)}
         jobContext={jobContext}
@@ -559,7 +627,7 @@ export default function ResumeStudio({
               <div className="space-y-3">
                 <div className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-xs text-[#6B6B6B]">
                   {editingJobId
-                    ? 'This editor is the resume for the open job. Changes save to that job. Your base CV is separate.'
+                    ? 'This editor is the resume for the open job. Save overwrites that generated resume and refreshes its PDF. Your base CV stays separate.'
                     : 'This editor is your base CV. Paste a JD on the JD tab to score it. Open a job that already has a tailored resume to edit that file here.'}
                 </div>
                 {isEmpty ? (

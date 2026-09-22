@@ -3279,6 +3279,25 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   );
                 }}
                 onOpenGeneratedDocs={() => setActiveTab('generated-docs')}
+                onJobResumePublished={(jobId) => {
+                  setData((prev: any) => {
+                    if (!prev) return prev;
+                    const mark = (doc: any) =>
+                      Number(doc.id) === jobId
+                        ? { ...doc, has_resume_html: true, has_resume_pdf: true }
+                        : doc;
+                    return {
+                      ...prev,
+                      pdfs: (prev.pdfs || []).map(mark),
+                      pipeline: (prev.pipeline || []).map(mark),
+                    };
+                  });
+                  setStudioReviewJob((prev) =>
+                    prev && prev.jobId === jobId
+                      ? { ...prev, has_resume_html: true, has_resume_pdf: true }
+                      : prev
+                  );
+                }}
               />
               </div>
               ) : (

@@ -28,6 +28,8 @@ type StudioToolbarProps = {
   onExportJson: () => void;
   onExportPdf: () => Promise<void>;
   exportingPdf: boolean;
+  onSaveJob?: () => Promise<void>;
+  savingJob?: boolean;
   templateLabel?: string;
   onOpenTemplates?: () => void;
   jobContext?: {
@@ -49,6 +51,8 @@ export function StudioToolbar({
   onExportJson,
   onExportPdf,
   exportingPdf,
+  onSaveJob,
+  savingJob = false,
   templateLabel,
   onOpenTemplates,
   jobContext,
@@ -193,8 +197,20 @@ export function StudioToolbar({
             JSON
           </Button>
 
+          {onSaveJob ? (
+            <Button
+              type="primary"
+              size="small"
+              icon={savingJob ? <LoadingOutlined /> : <FileTextOutlined />}
+              disabled={savingJob}
+              onClick={() => void onSaveJob()}
+            >
+              {savingJob ? 'Saving…' : 'Save'}
+            </Button>
+          ) : null}
+
           <Button
-            type="primary"
+            type={onSaveJob ? 'default' : 'primary'}
             size="small"
             icon={exportingPdf ? <LoadingOutlined /> : <FileTextOutlined />}
             disabled={exportingPdf}
