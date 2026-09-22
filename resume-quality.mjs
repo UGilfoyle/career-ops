@@ -743,12 +743,20 @@ export function repairMidSentenceArtifacts(bullet) {
   t = t.replace(/\binto\s+Scalable\b/g, 'into scalable');
   t = t.replace(/\bpre-flight\s+Validation\b/g, 'pre-flight validation');
   t = t.replace(/\bKafka-backed\s+Reconciliation\b/g, 'Kafka-backed reconciliation');
-  // Drop stuffed language dumps: "(SSE, Knowledge Graphs, python)"
-  t = t.replace(/\s*\([^)]*\b(?:python|django|flask)\b[^)]*\)/gi, (m) => {
-    const inner = m.replace(/[()]/g, '');
-    if (inner.split(',').length >= 2) return '';
-    return m;
-  });
+  // Strip stuffed keyword parens: "(TypeScript, Go)", "( using TypeScript, Go. (Golang, GCP, LLM…))"
+  // Keep real CV parens like "(EC2, S3)" and "(99.9% uptime)".
+  for (let i = 0; i < 4; i++) {
+    const next = t.replace(/\s*\([^()]{0,220}\)/g, (m) => {
+      const langList = /\b(typescript|javascript|golang|python|django|flask|node\.?js|react)\b/i.test(m);
+      const commas = (m.match(/,/g) || []).length;
+      if (/\busing\b/i.test(m) && (langList || commas >= 1)) return '';
+      if (langList && commas >= 1) return '';
+      if (commas >= 3 && !/\d/.test(m)) return '';
+      return m;
+    });
+    if (next === t) break;
+    t = next;
+  }
   t = t.replace(/\s{2,}/g, " ");
   return t.trim();
 }

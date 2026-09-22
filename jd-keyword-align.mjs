@@ -1169,11 +1169,8 @@ function weaveKeywordIntoBullet(bullet, keyword) {
 
   const form = weaveSuffixForm(kw);
   if (!form) return b;
-  if (form.startsWith('(')) {
-    // Tool parenthetical only where real stack context exists
-    if (!bulletHasTechContext(base)) return b;
-    return `${mergeStackedToolParens(appendToolToTrailingParen(base, kw))}.`;
-  }
+  // Experience bullets never get "(TypeScript, Go)" style keyword dumps.
+  if (form.startsWith('(')) return b;
   // Clause forms must not stack onto a trailing prepositional phrase
   if (/\b(with|in|across|via|on)\s+[^,.]{2,40}$/i.test(base)) return b;
   if (base.length > 190) return b;

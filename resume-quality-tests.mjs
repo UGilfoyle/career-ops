@@ -708,5 +708,13 @@ console.log('resume-quality tests\n');
   assert(!/^Consistency,/im.test(qBullets), 'drops Consistency orphan');
   assert(/Knowledge Graph|SSE|AWS cluster/i.test(qBullets), 'keeps complete Quest bullets');
 
+  const stuffed = normalizeExperienceBulletList([
+    'Ran peer code reviews and provided mentorship to engineers, raising engineering quality ( using TypeScript, Go. (Golang, GCP, LLM, Kubernetes management in production environments, Model Context Protocol)).',
+    'Provisioned Amazon Web Services infrastructure (EC2, S3) for application hosting and object storage across client environments.',
+  ]);
+  assert(stuffed[0] && !/\(TypeScript|\(Golang|\(GCP/i.test(stuffed[0]), `strips TypeScript/Go paren dump (got ${stuffed[0]})`);
+  assert(/code reviews/i.test(stuffed[0]), 'keeps the mentorship sentence');
+  assert(stuffed.some((b) => /\(EC2, S3\)/.test(b)), 'keeps real CV paren (EC2, S3)');
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
