@@ -33,12 +33,12 @@ function reclaimStemFromSchool(degree, school) {
   // Parser split "MCA — STEM | University" on em-dash → school="STEM" or "STEM, University"
   if (/^STEM\b/i.test(s)) {
     s = s.replace(/^STEM\s*,?\s*/i, '').trim();
-    if (d && !/\bSTEM\b/i.test(d)) d = `${d} — STEM`;
+    if (d && !/\bSTEM\b/i.test(d)) d = `${d}, STEM`;
   }
   // "STEM, STEM, Uttaranchal…" / duplicated annotation crumbs
   s = s.replace(/^(?:STEM\s*,\s*)+/i, '').trim();
   d = d
-    .replace(/(?:\s*[—–-]\s*STEM)+\b/gi, ' — STEM')
+    .replace(/(?:\s*[—–-]\s*STEM)+\b/gi, ', STEM')
     .replace(/\bSTEM\s*,\s*STEM\b/gi, 'STEM')
     .replace(/\s{2,}/g, ' ')
     .trim();

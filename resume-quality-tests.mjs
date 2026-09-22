@@ -715,13 +715,33 @@ console.log('resume-quality tests\n');
   ]);
   assert(stuffed[0] && !/\(TypeScript|\(Golang|\(GCP/i.test(stuffed[0]), `strips TypeScript/Go paren dump (got ${stuffed[0]})`);
   assert(/code reviews/i.test(stuffed[0]), 'keeps the mentorship sentence');
-  assert(stuffed.some((b) => /EC2, S3/.test(b) && !/\(EC2/.test(b)), 'unwraps EC2, S3 without braces');
+  assert(stuffed.some((b) => /using EC2 and S3/.test(b) && !/\(/.test(b)), 'unwraps EC2, S3 without braces');
   const elk = normalizeExperienceBulletList([
     'Hardened distributed tracing telemetry and structured logging frameworks (ELK Stack, Grafana) across microservices on RedHat Linux, significantly enhancing incident response times.',
   ]);
-  assert(elk[0] && !/\(/.test(elk[0]) && /ELK Stack, Grafana/.test(elk[0]), `no braces around ELK (got ${elk[0]})`);
+  assert(elk[0] && !/\(/.test(elk[0]) && /using ELK Stack and Grafana/.test(elk[0]), `no braces around ELK (got ${elk[0]})`);
   const dashed = flattenResumeDashes('Lead Backend Engineer — Node.js, Bun, TypeScript');
   assert(dashed === 'Lead Backend Engineer - Node.js, Bun, TypeScript', `summary dash flattened (got ${dashed})`);
+  const hyphen = normalizeExperienceBulletList(['Design high-throughput APIs with token\u2010by\u2010token streaming for live responses.']);
+  assert(hyphen[0] && hyphen[0].includes('token-by-token') && !hyphen[0].includes('\u2010'), `unicode hyphen flattened (got ${hyphen[0]})`);
+  const glued = normalizeExperienceBulletList([
+    'Developed and deployed backend endpoints using Node.js and Express for payment gateways. Deployed Bun runtimes cutting container memory overhead on hot paths Rollouts from ~40 minutes to under 8 minutes via Docker/LXC.',
+  ]);
+  assert(!glued.some((b) => /Rollouts from/i.test(b)), `drops glued rollout fragment (got ${glued.join(' | ')})`);
+  const dupes = sanitizeExperienceEntries([
+    { company: 'Quest Global Engineering Services', role: 'Senior Software Engineer', period: 'Jul 2025 - Present', bullets: ['Architected event-driven microservices for telemetry at 99.9% uptime across production.'] },
+    { company: 'Quest Global', role: 'Lead Backend Engineer', period: 'Jul 2025 - Present', bullets: ['Architected event-driven microservices for telemetry at 99.9% uptime across production.'] },
+  ]);
+  assert(dupes.length === 1, `one Quest block (got ${dupes.length})`);
+  const swapped = sanitizeExperienceEntries([
+    { company: 'Software Engineer 2 (Backend & Infrastructure)', role: 'Glidewell Software Services', period: 'Aug 2023 - Oct 2024', bullets: ['Diagnosed database performance bottlenecks and remodeled SQL queries for ordering systems.'] },
+  ]);
+  assert(/Glidewell/i.test(swapped[0]?.company || ''), `company unswapped (got ${swapped[0]?.company})`);
+  assert(/Engineer/i.test(swapped[0]?.role || ''), `role unswapped (got ${swapped[0]?.role})`);
+  const cut = normalizeExperienceBulletList([
+    'Established secure deployment practices by configuring server firewalls and OS patch management routines on.',
+  ]);
+  assert(cut.length === 0, `drops truncated on. bullet (got ${cut.join(' | ')})`);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

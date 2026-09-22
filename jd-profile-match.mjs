@@ -783,7 +783,7 @@ const CORE_CLOUD_INFRA = new Set([
   const workShape = inferJdWorkShapeLine(jdText);
   const lead = leadTerms.length
     ? leadTerms.join(', ')
-    : (embedded ? 'Linux, Python, Jenkins, AWS, and Azure' : 'APIs, cloud platforms, and production services');
+    : (embedded ? 'Linux, Python, Jenkins, AWS, and Azure' : '');
   const title = inferRoleTitleFromJd(jdText, y);
   const yearsLabel = y > 0 ? `${y}+ years` : 'years';
   const iotShape = /\biot\b|\btelemetry\b|\bderms?\b/i.test(jdLower);
@@ -811,7 +811,9 @@ const CORE_CLOUD_INFRA = new Set([
                     : 'backends, cloud platforms, and API systems';
 
   lines.push(
-    `${title} with ${yearsLabel} owning production ${domainClause} in ${lead}.`,
+    lead
+      ? `${title} with ${yearsLabel} owning production ${domainClause} in ${lead}.`
+      : `${title} with ${yearsLabel} owning production ${domainClause}.`,
   );
 
   if (/\b(databricks|pyspark|azure data factory|\badf\b|snowflake|redshift|bigquery)\b/i.test(jdLower)) {
@@ -857,17 +859,13 @@ const CORE_CLOUD_INFRA = new Set([
   } else if (/\bdata engineer|databricks|pyspark|etl|adf\b/i.test(jdLower)) {
     lines.push('Own pipeline reliability, data quality checks, CI/CD for data jobs, and clear handoffs from raw ingest through curated models.');
   } else {
-    lines.push('Own architecture decisions, SDLC quality (reviews, tests, CI), and mentoring so teams ship reliable software faster.');
+    lines.push('Own architecture decisions, code review, tests, CI, and mentoring so teams ship reliable software faster.');
   }
 
   // Line 4 — concrete stack / impact closer when JD is tech-dense
-  if (lines.length < 4) {
-    if (leadTerms.length >= 3) {
-      const stack = leadTerms.slice(0, 4).join(', ');
-      lines.push(`Day-to-day production stack: ${stack}. Bias to ownership, measurable impact, and clean handoffs.`);
-    } else {
-      lines.push('Bias to ownership, measurable impact, and production systems that stay fast, secure, and maintainable.');
-    }
+  if (lines.length < 4 && leadTerms.length >= 3) {
+    const stack = leadTerms.slice(0, 4).join(', ');
+    lines.push(`Day-to-day production stack: ${stack}.`);
   }
 
   // Strip banned clichés / soft filler (defense in depth)

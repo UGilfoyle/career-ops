@@ -3,6 +3,7 @@
 import {
   hydrateResumeProfile,
   normalizeResumeContext,
+  restoreCanonicalEmployerBullets,
 } from './profile-hydrate.mjs';
 
 let failed = 0;
@@ -89,6 +90,24 @@ assert(
   (partialExp.experience || []).some((j) => /Rubico/i.test(String(j.company || ''))),
   'hydration merges missing Rubico experience from yaml/cv without wiping existing roles',
 );
+
+const restored = restoreCanonicalEmployerBullets(
+  [{
+    company: 'Software Engineer 2 (Backend & Infrastructure)',
+    role: 'Glidewell Software Services',
+    period: 'Aug 2023 - Oct 2024',
+    bullets: ['Diagnosed nothing useful and cut the sentence on.'],
+  }],
+  [{
+    company: 'Glidewell Software Services',
+    role: 'Software Engineer 2 (Backend & Infrastructure)',
+    period: 'Aug 2023 - Oct 2024',
+    bullets: ['Database Optimization: Analyzed database performance bottlenecks and remodeled SQL for ordering systems.'],
+  }],
+);
+assert(/Glidewell/i.test(restored[0]?.company || ''), 'canonical restore puts the employer in company');
+assert(/Engineer/i.test(restored[0]?.role || ''), 'canonical restore puts the title in role');
+assert(/Analyzed database/i.test(restored[0]?.bullets?.[0] || ''), 'canonical restore uses the CV bullet, not the corrupted one');
 
 if (failed > 0) {
   console.error(`profile-hydrate tests: ${failed} failed`);

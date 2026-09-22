@@ -17,4 +17,5 @@ export {
   parseTenureMonths,
   unwrapResumeParens,
   flattenResumeDashes,
+  filterProofPointsAlreadyInExperience,
 } from '../../../../resume-quality.mjs';

@@ -26,6 +26,7 @@ import {
   scrubResumeArtifacts,
   scrubSummaryKeywordParenSpam,
   stripUnsolicitedAiFromResume,
+  filterProofPointsAlreadyInExperience,
 } from './resume-quality.mjs';
 import {
   extractJdKeywords,
@@ -2250,7 +2251,9 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
       SUMMARY_TEXT: formatResumeSummaryHtml(tailoring?.summary, yearsExp),
       EXPERIENCE: hasExperience ? renderExperience(experienceToShow, tailoring.experience, jdText, maxPages) : '',
       EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
-      ACHIEVEMENTS: hasAchievements ? renderAchievements(profile.narrative.proof_points) : '',
+      ACHIEVEMENTS: hasAchievements
+        ? renderAchievements(filterProofPointsAlreadyInExperience(profile.narrative.proof_points, experienceToShow))
+        : '',
       ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',
       EDUCATION: hasEducation ? renderEducation(profile.education) : '',
       EDUCATION_DISPLAY: hasEducation ? 'block' : 'none',

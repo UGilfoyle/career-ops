@@ -42,7 +42,7 @@ import {
   isDotnetAzureJd,
   extractJdPostedTitle,
 } from './jd-profile-match.mjs';
-import { loadCanonicalCvExperience, restoreJdLanguageBullets } from './profile-hydrate.mjs';
+import { loadCanonicalCvExperience, restoreJdLanguageBullets, restoreCanonicalEmployerBullets } from './profile-hydrate.mjs';
 import {
   polishTailoredResume,
   parseTenureMonths,
@@ -608,10 +608,11 @@ export function executeTailoringPlan(plan, profile, opts = {}) {
   const weave = selectWeaveKeywords(plan, profile);
   const bulletKeywords = weave.length ? weave : (plan.keywords.honest || []);
 
+  const canonical = loadCanonicalCvExperience();
   const experienceSource = restoreJdLanguageBullets(
-    profile?.experience || [],
+    restoreCanonicalEmployerBullets(profile?.experience || [], canonical),
     jdText,
-    loadCanonicalCvExperience(),
+    canonical,
   );
   const profileForBullets = { ...profile, experience: experienceSource };
   const preserved = snapshotPreservedBullets(profileForBullets, plan);

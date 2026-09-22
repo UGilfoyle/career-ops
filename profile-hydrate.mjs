@@ -106,8 +106,8 @@ function mergeCandidate(base, incoming) {
   return out;
 }
 
-function experienceKey(job) {
-  return `${String(job?.company || '').toLowerCase()}::${String(job?.role || '').toLowerCase()}`;
+function companyOnlyKey(job) {
+  return String(job?.company || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
 }
 
 function mergeExperiencePreserveMissing(baseList, incomingList) {
@@ -115,12 +115,24 @@ function mergeExperiencePreserveMissing(baseList, incomingList) {
   const incoming = Array.isArray(incomingList) ? incomingList : [];
   if (base.length === 0) return incoming;
   if (incoming.length === 0) return base;
-  const seen = new Set(base.map(experienceKey).filter(Boolean));
-  const merged = [...base];
+  const merged = base.map((job) => ({ ...job, bullets: [...(job.bullets || [])] }));
+  const seen = new Map();
+  merged.forEach((job, i) => {
+    const key = companyOnlyKey(job);
+    if (key.length >= 4) seen.set(key, i);
+  });
   for (const job of incoming) {
-    const key = experienceKey(job);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
+    const key = companyOnlyKey(job);
+    if (!key || key.length < 4) continue;
+    if (seen.has(key)) {
+      const idx = seen.get(key);
+      const cur = merged[idx];
+      if ((cur.bullets || []).length === 0 && (job.bullets || []).length > 0) {
+        merged[idx] = { ...cur, bullets: job.bullets, role: cur.role || job.role, period: cur.period || job.period };
+      }
+      continue;
+    }
+    seen.set(key, merged.length);
     merged.push(job);
   }
   return merged;
@@ -240,6 +252,48 @@ function companiesMatch(a, b) {
   const cb = String(b || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   if (ca.length < 4 || cb.length < 4) return false;
   return ca.includes(cb.slice(0, 8)) || cb.includes(ca.slice(0, 8));
+}
+
+function stripCvBulletLabel(bullet) {
+  return String(bullet || '').replace(/^[A-Z][^:]{2,60}:\s+(?=[A-Z])/, '').trim();
+}
+
+function employerPrefixHit(canonicalCompany, field) {
+  const ca = String(canonicalCompany || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cb = String(field || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (ca.length < 6 || cb.length < 6) return 0;
+  if (ca.slice(0, 8) === cb.slice(0, 8)) return 2;
+  if (cb.startsWith(ca.slice(0, 8)) || ca.startsWith(cb.slice(0, 8))) return 1;
+  return 0;
+}
+
+/**
+ * Replace a stored role's bullets with the canonical cv.md bullets for that employer.
+ * Fixes swapped company/role headers. Does not invent companies the CV does not have.
+ */
+export function restoreCanonicalEmployerBullets(experience, canonical) {
+  const jobs = Array.isArray(experience) ? experience : [];
+  const source = Array.isArray(canonical) ? canonical : [];
+  if (!jobs.length || !source.length) return jobs;
+  return jobs.map((job) => {
+    const match = source.find((c) =>
+      employerPrefixHit(c.company, job.company) > 0 || employerPrefixHit(c.company, job.role) > 0
+    );
+    if (!match || !Array.isArray(match.bullets) || match.bullets.length === 0) return job;
+    const onCompany = employerPrefixHit(match.company, job.company);
+    const onRole = employerPrefixHit(match.company, job.role);
+    if (onCompany === 0 && onRole === 0) return job;
+    const swapped = onRole > onCompany;
+    const bullets = match.bullets.map(stripCvBulletLabel).filter((b) => b.length > 20);
+    if (!bullets.length) return job;
+    return {
+      ...job,
+      company: swapped ? match.company : (job.company || match.company),
+      role: swapped ? (match.role || job.role) : (job.role || match.role),
+      period: job.period || match.period,
+      bullets,
+    };
+  });
 }
 
 function realLanguageBullet(bullet, jdText) {

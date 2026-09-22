@@ -637,7 +637,7 @@ export function normalizeBulletText(bullet, companyOrRoleText = '') {
 
 /** ASCII hyphens only. Unicode non-breaking hyphens read as AI dashes on the page. */
 export function protectCompoundHyphens(text) {
-  return String(text || '').replace(/\u2011/g, '-');
+  return String(text || '').replace(/[\u2010-\u2015\u2212]/g, '-');
 }
 
 /** Past-tense / strong action verbs that legitimately open a resume bullet. */
@@ -750,6 +750,8 @@ export function repairMidSentenceArtifacts(bullet) {
   // Truncated tails — keep the finished clause
   t = t.replace(/,\s*reconfiguring EC2 instance\.?$/i, '.');
   t = t.replace(/\s+across client\.?$/i, '.');
+  // Two achievements glued into one line: "…hot paths Rollouts from ~40 minutes…"
+  t = t.replace(/\s+Rollouts from\b[\s\S]*$/i, '.');
   // Strip stuffed keyword parens, then unwrap whatever braces remain.
   for (let i = 0; i < 4; i++) {
     const next = t.replace(/\s*\([^()]{0,220}\)/g, (m) => {
@@ -768,13 +770,21 @@ export function repairMidSentenceArtifacts(bullet) {
 }
 
 /** "(ELK Stack, Grafana)" -> "ELK Stack, Grafana". No braces on the resume. */
+function formatParenInner(inner) {
+  const body = String(inner || '').trim();
+  if (!body) return '';
+  if (/^\d/.test(body) || (/\d+\s*%/.test(body) && !/,/.test(body))) return ` ${body}`;
+  const parts = body.split(',').map((s) => s.trim()).filter(Boolean);
+  const toolList = parts.length >= 2 && parts.every((p) => p.length < 40 && !/\d{2,}/.test(p));
+  if (!toolList) return ` ${body}`;
+  if (parts.length === 2) return ` using ${parts[0]} and ${parts[1]}`;
+  return ` using ${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
 export function unwrapResumeParens(text) {
   let t = String(text || '');
   for (let i = 0; i < 4; i++) {
-    const next = t.replace(/\s*\(([^()]*)\)/g, (_, inner) => {
-      const body = String(inner || '').trim();
-      return body ? `, ${body}` : '';
-    });
+    const next = t.replace(/\s*\(([^()]*)\)/g, (_, inner) => formatParenInner(inner));
     if (next === t) break;
     t = next;
   }
@@ -783,6 +793,7 @@ export function unwrapResumeParens(text) {
     .replace(/\s+,/g, ',')
     .replace(/,\s*,+/g, ',')
     .replace(/^,\s*/, '')
+    .replace(/\s+([.,])/g, '$1')
     .trim();
 }
 
@@ -969,10 +980,82 @@ function jobSortKey(job) {
   return y ? parseInt(y[0], 10) * 12 : 0;
 }
 
+function looksLikeRoleTitle(text) {
+  return /\b(engineer|developer|architect|consultant|intern|manager|lead)\b/i.test(String(text || ''));
+}
+
+function looksLikeEmployer(text) {
+  return /\b(services|technologies|solutions|labs|ltd|limited|inc|pvt|llc|corp|schools|global|university)\b/i.test(String(text || ''));
+}
+
+/** Role and company sometimes land in each other's fields. */
+function unswapJobHeader(job) {
+  const company = String(job.company || '').trim();
+  const role = String(job.role || '').trim();
+  if (looksLikeRoleTitle(company) && looksLikeEmployer(role) && !looksLikeEmployer(company)) {
+    return { ...job, company: role, role: company };
+  }
+  return job;
+}
+
+function companyDedupeKey(job) {
+  return String(job?.company || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** One block per employer. Hydrate used to append the same company under a different role string. */
+function dedupeJobsByCompany(jobs) {
+  const out = [];
+  const index = new Map();
+  for (const job of jobs) {
+    const key = companyDedupeKey(job);
+    const prefix = key.slice(0, 8);
+    if (prefix.length < 5) {
+      out.push(job);
+      continue;
+    }
+    const prev = index.get(prefix);
+    if (prev == null) {
+      index.set(prefix, out.length);
+      out.push(job);
+      continue;
+    }
+    const keep = out[prev];
+    const bullets = [...(keep.bullets || [])];
+    for (const b of job.bullets || []) {
+      if (!bullets.some((k) => wordOverlapRatio(k, b) >= 0.72)) bullets.push(b);
+    }
+    out[prev] = {
+      ...keep,
+      bullets,
+      period: keep.period || job.period,
+      role: keep.role || job.role,
+    };
+  }
+  return out;
+}
+
+/** Drop Selected Achievements lines that already appear inside experience. */
+export function filterProofPointsAlreadyInExperience(proofPoints, experience) {
+  const blob = (Array.isArray(experience) ? experience : [])
+    .flatMap((job) => job?.bullets || [])
+    .join(' ')
+    .toLowerCase();
+  return (Array.isArray(proofPoints) ? proofPoints : []).filter((p) => {
+    const words = String(p?.hero_metric || '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 3);
+    if (words.length < 4 || !blob) return true;
+    const hit = words.filter((w) => blob.includes(w)).length;
+    return hit / words.length < 0.55;
+  });
+}
+
 export function sanitizeExperienceEntries(experience) {
   if (!Array.isArray(experience)) return [];
   let jobs = experience
     .filter((job) => job && (job.role || job.company) && !isJdMetadataJob(job))
+    .map((job) => unswapJobHeader(job))
     .map((job) => ({
       ...job,
       role: scrubJobTitleField(job.role || ''),
@@ -985,6 +1068,7 @@ export function sanitizeExperienceEntries(experience) {
       ),
     }))
     .filter((job) => job.role || job.company);
+  jobs = dedupeJobsByCompany(jobs);
 
   jobs = jobs.map((job) => ({
     ...job,
@@ -1021,7 +1105,7 @@ export function isIncompleteBullet(bullet) {
     return true;
   }
   // Trailing articles / weak nouns after a cut: "leading the.", "dropping server.", "ensure data."
-  if (/\b(the|a|an|this|that|these|those|its|their|server|table|unit|data|disparate|backed|pre-flight|multiple)\s*$/i.test(t)) {
+  if (/\b(the|a|an|this|that|these|those|its|their|server|table|unit|data|disparate|backed|pre-flight|multiple|on)\s*$/i.test(t)) {
     return true;
   }
   // Salvaged garbage: "…leading the consistency, in a backend…"

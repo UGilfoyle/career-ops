@@ -39,11 +39,11 @@ function reclaimStemFromSchool(degree: string, school: string): { degree: string
   let s = String(school || '').trim();
   if (/^STEM\b/i.test(s)) {
     s = s.replace(/^STEM\s*,?\s*/i, '').trim();
-    if (d && !/\bSTEM\b/i.test(d)) d = `${d} — STEM`;
+    if (d && !/\bSTEM\b/i.test(d)) d = `${d}, STEM`;
   }
   s = s.replace(/^(?:STEM\s*,\s*)+/i, '').trim();
   d = d
-    .replace(/(?:\s*[—–-]\s*STEM)+\b/gi, ' — STEM')
+    .replace(/(?:\s*[—–-]\s*STEM)+\b/gi, ', STEM')
     .replace(/\bSTEM\s*,\s*STEM\b/gi, 'STEM')
     .replace(/\s{2,}/g, ' ')
     .trim();

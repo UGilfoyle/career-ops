@@ -4,6 +4,7 @@ import {
   sanitizeExperienceEntries,
   flattenResumeDashes,
   unwrapResumeParens,
+  filterProofPointsAlreadyInExperience,
 } from '@/lib/resume/bullet-pipeline';
 import { extractTechFromTexts, renderCategorizedSkills } from '@/lib/resume/skills-html-bridge';
 import { renderContactBarHtml } from '@/lib/resume/contact-bar';
@@ -354,7 +355,9 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     SUMMARY_TEXT: escapeHtml(normalizeResumeSummaryPlain(summarySource, yearsExp)),
     EXPERIENCE: hasExperience ? renderExperienceHtml(experience, maxPages, yearsExp) : '',
     EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
-    ACHIEVEMENTS: hasAchievements ? renderAchievementsHtml(profile.narrative?.proof_points) : '',
+    ACHIEVEMENTS: hasAchievements
+      ? renderAchievementsHtml(filterProofPointsAlreadyInExperience(profile.narrative?.proof_points, experience))
+      : '',
     ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',
     EDUCATION: hasEducation ? renderEducationHtml(education) : '',
     EDUCATION_DISPLAY: hasEducation ? 'block' : 'none',
