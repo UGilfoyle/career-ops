@@ -9,6 +9,8 @@ type DocsBody = {
   resume_html?: string;
   /** When true, clear PDF keys/bytes so UI does not serve stale PDFs after HTML edits. */
   invalidate_pdfs?: boolean;
+  jd_alignment_score?: number;
+  ats_content_score?: number;
 };
 
 export async function GET(
@@ -89,6 +91,10 @@ export async function PATCH(
     const invalidate = body.invalidate_pdfs !== false;
     const coverHtml = hasCover ? body.cover_letter_html : undefined;
     const resumeHtml = hasResume ? body.resume_html : undefined;
+    const hasJdScore = Number.isFinite(body.jd_alignment_score);
+    const hasAtsScore = Number.isFinite(body.ats_content_score);
+    const jdScore = hasJdScore ? Math.round(Number(body.jd_alignment_score)) : null;
+    const atsScore = hasAtsScore ? Math.round(Number(body.ats_content_score)) : null;
 
     const [updated] = await sql`
       UPDATE jobs
@@ -116,6 +122,14 @@ export async function PATCH(
         resume_pdf = CASE
           WHEN ${hasResume && invalidate} THEN NULL
           ELSE resume_pdf
+        END,
+        jd_alignment_score = CASE
+          WHEN ${hasJdScore} THEN ${jdScore}
+          ELSE jd_alignment_score
+        END,
+        ats_content_score = CASE
+          WHEN ${hasAtsScore} THEN ${atsScore}
+          ELSE ats_content_score
         END,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ${jobId} AND user_id = ${session.user.id}

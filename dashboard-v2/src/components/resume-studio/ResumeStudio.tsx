@@ -42,8 +42,15 @@ type ResumeStudioProps = {
     docKind?: 'resume' | 'cover';
   } | null;
   onClearReviewJob?: () => void;
-  /** After Save writes this job's resume HTML and PDF. */
-  onJobResumePublished?: (jobId: number) => void;
+  /** After Save writes this job's resume HTML, PDF, and ATS scores. */
+  onJobResumePublished?: (
+    jobId: number,
+    scores?: {
+      jd_alignment_score?: number | null;
+      ats_content_score?: number | null;
+      has_resume_pdf?: boolean;
+    }
+  ) => void;
 };
 
 async function saveResumeContext(draft: ResumeContext) {
@@ -416,26 +423,49 @@ export default function ResumeStudio({
     setBanner(null);
     try {
       const html = fillAtsTemplate(draft);
+      const scoreRes = await fetch('/api/resume/ats-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_context: draft,
+          jobId,
+          preferTailored: false,
+        }),
+      });
+      const scoreJson = await scoreRes.json().catch(() => ({}));
+      const freshScore = scoreRes.ok && Number.isFinite(Number(scoreJson.score))
+        ? Math.round(Number(scoreJson.score))
+        : (liveAts.source === 'jd' && liveAts.score != null ? Math.round(liveAts.score) : null);
+      const scoreSource = scoreRes.ok ? String(scoreJson.source || '') : liveAts.source;
+
       const saved = await fetch(`/api/job/${jobId}/docs`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume_html: html, invalidate_pdfs: false }),
+        body: JSON.stringify({
+          resume_html: html,
+          invalidate_pdfs: false,
+          ...(freshScore != null && scoreSource === 'jd' ? { jd_alignment_score: freshScore } : {}),
+        }),
       });
       const savedJson = await saved.json().catch(() => ({}));
       if (!saved.ok) throw new Error(savedJson?.error || 'Failed to overwrite this job resume');
 
-      let pdfRes = await fetch('/api/resume/export-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume_context: draft, cache_only: true }),
-      });
-      if (pdfRes.status === 404) {
-        pdfRes = await fetch('/api/resume/export-pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resume_context: draft }),
+      const publishedScores = freshScore != null && scoreSource === 'jd'
+        ? { jd_alignment_score: freshScore }
+        : undefined;
+      if (reviewJob && reviewJob.jobId === jobId) {
+        Object.assign(reviewJob, {
+          has_resume_html: true,
+          ...(publishedScores || {}),
         });
       }
+      onJobResumePublished?.(jobId, publishedScores);
+
+      const pdfRes = await fetch('/api/resume/export-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resume_context: draft }),
+      });
 
       const contentType = pdfRes.headers.get('content-type') || '';
       if (!(pdfRes.ok && contentType.includes('application/pdf'))) {
@@ -458,10 +488,14 @@ export default function ResumeStudio({
       if (!stored.ok) throw new Error(storedJson?.error || 'Resume saved, but the PDF could not be stored.');
 
       if (reviewJob && reviewJob.jobId === jobId) {
-        Object.assign(reviewJob, { has_resume_html: true, has_resume_pdf: true });
+        Object.assign(reviewJob, { has_resume_pdf: true });
       }
-      onJobResumePublished?.(jobId);
-      setBanner('Saved over this job’s generated resume. PDF is ready in Generated Docs.');
+      onJobResumePublished?.(jobId, { ...publishedScores, has_resume_pdf: true });
+      setBanner(
+        freshScore != null
+          ? `Saved. ATS score updated to ${freshScore}. PDF is ready in Generated Docs.`
+          : 'Saved over this job’s generated resume. PDF is ready in Generated Docs.'
+      );
       setTimeout(() => setBanner(null), 5000);
     } catch (e: unknown) {
       setBanner(e instanceof Error ? e.message : 'Save failed');

@@ -3279,12 +3279,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   );
                 }}
                 onOpenGeneratedDocs={() => setActiveTab('generated-docs')}
-                onJobResumePublished={(jobId) => {
+                onJobResumePublished={(jobId, scores) => {
                   setData((prev: any) => {
                     if (!prev) return prev;
                     const mark = (doc: any) =>
                       Number(doc.id) === jobId
-                        ? { ...doc, has_resume_html: true, has_resume_pdf: true }
+                        ? {
+                            ...doc,
+                            has_resume_html: true,
+                            ...(scores?.has_resume_pdf ? { has_resume_pdf: true } : {}),
+                            ...(scores?.jd_alignment_score != null
+                              ? { jd_alignment_score: scores.jd_alignment_score }
+                              : {}),
+                            ...(scores?.ats_content_score != null
+                              ? { ats_content_score: scores.ats_content_score }
+                              : {}),
+                          }
                         : doc;
                     return {
                       ...prev,
@@ -3294,7 +3304,17 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   });
                   setStudioReviewJob((prev) =>
                     prev && prev.jobId === jobId
-                      ? { ...prev, has_resume_html: true, has_resume_pdf: true }
+                      ? {
+                          ...prev,
+                          has_resume_html: true,
+                          ...(scores?.has_resume_pdf ? { has_resume_pdf: true } : {}),
+                          ...(scores?.jd_alignment_score != null
+                            ? { jd_alignment_score: scores.jd_alignment_score }
+                            : {}),
+                          ...(scores?.ats_content_score != null
+                            ? { ats_content_score: scores.ats_content_score }
+                            : {}),
+                        }
                       : prev
                   );
                 }}
