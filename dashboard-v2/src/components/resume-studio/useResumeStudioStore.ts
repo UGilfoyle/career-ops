@@ -6,6 +6,8 @@ import {
   setCompetencies,
   type ResumeContext,
 } from '@/lib/resume/types';
+import { sanitizeExperienceEntries } from '@/lib/resume/bullet-pipeline';
+import { normalizeEducationList } from '@/lib/education-format';
 
 const HISTORY_LIMIT = 50;
 const AUTOSAVE_MS = 800;
@@ -25,15 +27,31 @@ function sameCtx(a: ResumeContext, b: ResumeContext): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+/** Drop JD chrome / title leaks / STEM school junk before editor or preview sees it. */
+function sanitizeDraft(ctx: ResumeContext): ResumeContext {
+  const next = cloneCtx(ctx);
+  if (Array.isArray(next.experience)) {
+    next.experience = sanitizeExperienceEntries(next.experience);
+  }
+  if (Array.isArray(next.education)) {
+    next.education = normalizeEducationList(next.education);
+  }
+  return next;
+}
+
 export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioStoreArgs) {
   const [draft, setDraftState] = useState<ResumeContext>(() =>
-    cloneCtx(initial && Object.keys(initial).length ? { ...emptyResumeContext(), ...initial } : emptyResumeContext())
+    sanitizeDraft(
+      initial && Object.keys(initial).length
+        ? { ...emptyResumeContext(), ...cloneCtx(initial) }
+        : emptyResumeContext(),
+    ),
   );
   const [history, setHistory] = useState<ResumeContext[]>([]);
   const [future, setFuture] = useState<ResumeContext[]>([]);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [openSection, setOpenSection] = useState<string>('');
+  const [openSection, setOpenSection] = useState<string>('experience');
   const hydratedRef = useRef(false);
   const skipHistoryRef = useRef(false);
   const draftRef = useRef(draft);
@@ -45,7 +63,7 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
   // Hydrate when parent profile arrives / changes substantially
   useEffect(() => {
     if (!initial) return;
-    const next = { ...emptyResumeContext(), ...cloneCtx(initial) };
+    const next = sanitizeDraft({ ...emptyResumeContext(), ...cloneCtx(initial) });
     if (!next.studio) next.studio = { template_id: 'ats-professional' };
     const hasContent =
       Boolean(next.candidate?.full_name?.trim()) ||
@@ -61,7 +79,10 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
       setDraftState(next);
       setHistory([]);
       setFuture([]);
-      setSaveStatus('idle');
+      // If sanitize dropped JD chrome / STEM junk, persist the cleaned draft
+      const raw = { ...emptyResumeContext(), ...cloneCtx(initial) };
+      if (!raw.studio) raw.studio = { template_id: 'ats-professional' };
+      setSaveStatus(sameCtx(raw, next) ? 'idle' : 'dirty');
       return;
     }
 
@@ -242,7 +263,10 @@ export function useResumeStudioStore({ initial, onAutosave }: UseResumeStudioSto
           };
         }
         if (Array.isArray(aligned.experience) && aligned.experience.length) {
-          next.experience = aligned.experience;
+          next.experience = sanitizeExperienceEntries(aligned.experience);
+        }
+        if (Array.isArray(aligned.education) && aligned.education.length) {
+          next.education = normalizeEducationList(aligned.education);
         }
         return next;
       });

@@ -838,16 +838,94 @@ export function dedupeSharedSubordinatePhrases(bullets) {
   });
 }
 
+/** Bullet/role text that is JD posting chrome, not work experience. */
+export function isJdMetadataBullet(bullet) {
+  const t = String(bullet || '').trim();
+  if (!t) return true;
+  if (/^(?:LOCATION|DEPARTMENT|REPORTS\s+TO|LEVEL|MID-LEVEL|SENIOR-LEVEL|JUNIOR-LEVEL)\b/i.test(t)) {
+    return true;
+  }
+  if (/\bREPORTS\s+TO\b/i.test(t) && /\bLEVEL\b/i.test(t)) return true;
+  if (/\bLOCATION\b/i.test(t) && /\bDEPARTMENT\b/i.test(t)) return true;
+  if (/^\s*(?:MID|SENIOR|JUNIOR)(?:-|\s)?LEVEL\b/i.test(t)) return true;
+  return false;
+}
+
+/**
+ * True when a whole "job" is JD metadata glued into experience
+ * (e.g. THG Ingenuity — AI & Data with Reports To / Department bullets).
+ */
+export function isJdMetadataJob(job) {
+  if (!job || typeof job !== 'object') return true;
+  const role = String(job.role || '');
+  const company = String(job.company || '');
+  const period = String(job.period || '').trim();
+  const bullets = Array.isArray(job.bullets) ? job.bullets.map(String) : [];
+  const blob = `${role} ${company} ${bullets.join(' ')}`;
+
+  const metaHits = bullets.filter(isJdMetadataBullet).length;
+  if (metaHits >= 2) return true;
+  if (metaHits >= 1 && !period && bullets.length <= 4) return true;
+  if (/\bREPORTS\s+TO\b/i.test(blob) && /\b(?:DEPARTMENT|LEVEL|LOCATION)\b/i.test(blob)) return true;
+  if (/\bLOGISTICS\s+SQUAD\b/i.test(blob) && !period) return true;
+  if (
+    !period
+    && /^(?:AI\s*&\s*DATA|ENGINEERING|PRODUCT|LOGISTICS)\b/i.test(role.trim())
+    && metaHits >= 1
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Drop bullet fragments glued onto role/company after a separator. */
+export function scrubJobTitleField(text) {
+  let t = String(text || '').trim().replace(/\*+/g, '').trim();
+  if (!t) return '';
+  t = t.replace(
+    /\s*[-–—]\s*(?:\*?-?\s*)?(?:schemas?|allocations?|preserving|integrity|network\s+load|auto-?scaling|cutting|reducing|leading\s+the|and\s+leading|dropping\s+server).*$/i,
+    '',
+  );
+  if (t.length > 90) {
+    const cut = t.search(/\s[-–—]\s/);
+    if (cut > 12 && cut < 80) t = t.slice(0, cut).trim();
+  }
+  return t.trim();
+}
+
+function jobSortKey(job) {
+  const period = String(job?.period || '');
+  const parts = period.split(/\s*(?:[-–—]|to)\s*/i);
+  const target = (parts[1] || parts[0] || '').trim().toLowerCase();
+  if (/^(?:present|current|now)$/.test(target)) {
+    const now = new Date();
+    return now.getFullYear() * 12 + now.getMonth() + 1;
+  }
+  const monthNames = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  };
+  const m = target.match(
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.?\s+(\d{4})\b/,
+  );
+  if (m) return parseInt(m[2], 10) * 12 + (monthNames[m[1].slice(0, 3)] ?? 0);
+  const y = target.match(/\b(19|20)\d{2}\b/);
+  return y ? parseInt(y[0], 10) * 12 : 0;
+}
+
 export function sanitizeExperienceEntries(experience) {
   if (!Array.isArray(experience)) return [];
   let jobs = experience
+    .filter((job) => job && (job.role || job.company) && !isJdMetadataJob(job))
     .map((job) => ({
       ...job,
+      role: scrubJobTitleField(job.role || ''),
+      company: scrubJobTitleField(job.company || ''),
       period: formatPeriodDisplay(job.period || ''),
       bullets: dedupeSharedSubordinatePhrases(
         (Array.isArray(job.bullets) ? job.bullets : [])
           .map(repairMidSentenceArtifacts)
-          .filter((b) => !isEmbeddedJobHeader(b))
+          .filter((b) => !isEmbeddedJobHeader(b) && !isJdMetadataBullet(b))
       ),
     }))
     .filter((job) => job.role || job.company);
@@ -861,7 +939,10 @@ export function sanitizeExperienceEntries(experience) {
   }));
 
   jobs = dedupeBulletsAcrossJobs(jobs);
-  return jobs.filter((job) => (job.bullets || []).length > 0 || job.role || job.company);
+  jobs = jobs
+    .filter((job) => (job.bullets || []).length > 0 || job.role || job.company)
+    .sort((a, b) => jobSortKey(b) - jobSortKey(a));
+  return jobs;
 }
 
 /** True when a bullet looks truncated (dangling gerund / connector). */

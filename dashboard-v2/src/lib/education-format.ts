@@ -33,6 +33,23 @@ function stripEducationDateNoise(text: string): string {
   return s;
 }
 
+/** Strip accidental STEM annotation that leaked into the school field. */
+function reclaimStemFromSchool(degree: string, school: string): { degree: string; school: string } {
+  let d = String(degree || '').trim();
+  let s = String(school || '').trim();
+  if (/^STEM\b/i.test(s)) {
+    s = s.replace(/^STEM\s*,?\s*/i, '').trim();
+    if (d && !/\bSTEM\b/i.test(d)) d = `${d} — STEM`;
+  }
+  s = s.replace(/^(?:STEM\s*,\s*)+/i, '').trim();
+  d = d
+    .replace(/(?:\s*[—–-]\s*STEM)+\b/gi, ' — STEM')
+    .replace(/\bSTEM\s*,\s*STEM\b/gi, 'STEM')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return { degree: d, school: s };
+}
+
 export function normalizeEducationEntry(entry: EducationEntry): EducationEntry {
   const raw = entry && typeof entry === 'object' ? entry : {};
   let degree = stripEducationDateNoise(raw.degree || '');
@@ -40,15 +57,19 @@ export function normalizeEducationEntry(entry: EducationEntry): EducationEntry {
   const combined = `${raw.degree || ''} ${raw.school || ''} ${raw.period || ''}`;
   const period = extractEducationYears(combined);
 
+  ({ degree, school } = reclaimStemFromSchool(degree, school));
+
   if (degree.includes(',')) {
     const idx = degree.indexOf(',');
     const degreePart = stripEducationDateNoise(degree.slice(0, idx));
     const schoolPart = stripEducationDateNoise(degree.slice(idx + 1));
-    if (schoolPart.length > 2) {
+    if (schoolPart.length > 2 && !/^STEM\b/i.test(schoolPart)) {
       degree = degreePart;
       if (!school || schoolPart.length >= school.length) school = schoolPart;
     }
   }
+
+  ({ degree, school } = reclaimStemFromSchool(degree, school));
 
   if (school && degree.toLowerCase().includes(school.toLowerCase())) {
     degree = stripEducationDateNoise(

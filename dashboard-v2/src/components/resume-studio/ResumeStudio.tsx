@@ -82,7 +82,7 @@ export default function ResumeStudio({
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? reviewJob?.jobId ?? null);
   const [leftTab, setLeftTab] = useState<'jd' | 'editor' | 'cover'>(
-    reviewJob?.docKind === 'cover' ? 'cover' : 'jd'
+    reviewJob?.docKind === 'cover' ? 'cover' : 'editor'
   );
   const [coverPreviewHtml, setCoverPreviewHtml] = useState<string | null>(null);
   const [liveAts, setLiveAts] = useState<{ score: number | null; source: 'jd' | 'structure' }>({
@@ -111,8 +111,13 @@ export default function ResumeStudio({
   }, [selectedJobId, reviewJob?.jobId, hasTailoredForJob]);
 
   useEffect(() => {
-    if (hasTailoredForJob) setPreviewMode('tailored');
-  }, [selectedJobId, hasTailoredForJob]);
+    if (hasTailoredForJob && leftTab !== 'editor') setPreviewMode('tailored');
+  }, [selectedJobId, hasTailoredForJob, leftTab]);
+
+  // Editing always shows the live master draft — never the frozen saved HTML
+  useEffect(() => {
+    if (leftTab === 'editor') setPreviewMode('master');
+  }, [leftTab]);
 
   // Derive job context for toolbar breadcrumb
   const jobContext = useMemo(() => {
@@ -398,7 +403,7 @@ export default function ResumeStudio({
                 }`}
               >
                 <Files size={13} />
-                <span className="truncate">Master Resume</span>
+                <span className="truncate">Edit Resume</span>
               </button>
             </div>
 
@@ -432,7 +437,15 @@ export default function ResumeStudio({
                   onAtsUpdate={onAtsUpdate}
                   onApplyMirroredProfile={(aligned) => {
                     applyMirroredProfile(aligned);
-                    setBanner(`Weaved keywords into Skills & Experience! Edits update live in preview.`);
+                    setPreviewMode('master');
+                    setLeftTab('editor');
+                    setOpenSection('experience');
+                    setBanner(`JD keywords woven into the editable draft — preview is live Master (not the frozen saved PDF).`);
+                  }}
+                  onShowLiveDraft={() => {
+                    setPreviewMode('master');
+                    setLeftTab('editor');
+                    setOpenSection('experience');
                   }}
                   hasGeneratedResume={hasTailoredForJob}
                   onJdTextChange={(text) => setActiveJdText(text)}
@@ -471,6 +484,9 @@ export default function ResumeStudio({
 
             {leftTab === 'editor' ? (
               <div className="space-y-3">
+                <div className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-xs text-[#6B6B6B]">
+                  Full editor for your live draft. Switch preview to <strong className="text-[#1C1C1E]">Master</strong> if you still see a frozen saved tailor.
+                </div>
                 {isEmpty ? (
                   <div className="rounded-2xl border border-dashed border-[#E5E5E0] bg-white p-8 text-center space-y-3">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C1C1E] text-white">

@@ -26,6 +26,25 @@ function stripEducationDateNoise(text) {
   return s;
 }
 
+/** Strip accidental STEM annotation that leaked into the school field. */
+function reclaimStemFromSchool(degree, school) {
+  let d = String(degree || '').trim();
+  let s = String(school || '').trim();
+  // Parser split "MCA — STEM | University" on em-dash → school="STEM" or "STEM, University"
+  if (/^STEM\b/i.test(s)) {
+    s = s.replace(/^STEM\s*,?\s*/i, '').trim();
+    if (d && !/\bSTEM\b/i.test(d)) d = `${d} — STEM`;
+  }
+  // "STEM, STEM, Uttaranchal…" / duplicated annotation crumbs
+  s = s.replace(/^(?:STEM\s*,\s*)+/i, '').trim();
+  d = d
+    .replace(/(?:\s*[—–-]\s*STEM)+\b/gi, ' — STEM')
+    .replace(/\bSTEM\s*,\s*STEM\b/gi, 'STEM')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return { degree: d, school: s };
+}
+
 /** Normalize one education row — fixes duplicated years in school/period fields. */
 export function normalizeEducationEntry(entry) {
   const raw = entry && typeof entry === 'object' ? entry : {};
@@ -34,15 +53,20 @@ export function normalizeEducationEntry(entry) {
   const combined = `${raw.degree || ''} ${raw.school || ''} ${raw.period || ''}`;
   const period = extractEducationYears(combined);
 
+  ({ degree, school } = reclaimStemFromSchool(degree, school));
+
   if (degree.includes(',')) {
     const idx = degree.indexOf(',');
     const degreePart = stripEducationDateNoise(degree.slice(0, idx));
     const schoolPart = stripEducationDateNoise(degree.slice(idx + 1));
-    if (schoolPart.length > 2) {
+    // Don't treat ", STEM" as a school name
+    if (schoolPart.length > 2 && !/^STEM\b/i.test(schoolPart)) {
       degree = degreePart;
       if (!school || schoolPart.length >= school.length) school = schoolPart;
     }
   }
+
+  ({ degree, school } = reclaimStemFromSchool(degree, school));
 
   if (school && degree.toLowerCase().includes(school.toLowerCase())) {
     degree = stripEducationDateNoise(

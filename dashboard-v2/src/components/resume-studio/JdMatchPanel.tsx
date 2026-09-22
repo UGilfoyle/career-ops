@@ -28,6 +28,8 @@ type JdMatchPanelProps = {
   onAtsUpdate?: (score: number | null, source: 'jd' | 'structure') => void;
   /** Apply mirrored skills/summary/bullets into Live Preview draft. */
   onApplyMirroredProfile?: (profile: ResumeContext) => void;
+  /** Jump user to Edit Resume + Master preview (live draft, not frozen HTML). */
+  onShowLiveDraft?: () => void;
   hasGeneratedResume?: boolean;
   onJdTextChange?: (text: string) => void;
 };
@@ -98,6 +100,7 @@ export function JdMatchPanel({
   onTailor,
   onAtsUpdate,
   onApplyMirroredProfile,
+  onShowLiveDraft,
   hasGeneratedResume = false,
   onJdTextChange,
 }: JdMatchPanelProps) {
@@ -686,18 +689,59 @@ export function JdMatchPanel({
       )}
 
       {mode === 'pipeline' && jobHasDoc && selectedJobId ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-          <div className="flex items-center gap-2 text-xs font-medium text-emerald-900">
-            <FileCheck2 size={14} />
-            Tailored resume already saved for this job
+        <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-amber-950">
+              <FileCheck2 size={14} />
+              Saved tailored PDF is frozen — picking another JD will not rewrite it until you re-tailor or edit the live draft.
+            </div>
+            <a
+              href={`/api/view/${selectedJobId}?format=pdf&download=1`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-950"
+            >
+              <Download size={12} />
+              PDF
+            </a>
           </div>
-          <a
-            href={`/api/view/${selectedJobId}?format=pdf&download=1`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-900"
-          >
-            <Download size={12} />
-            PDF
-          </a>
+          <div className="flex flex-wrap gap-2">
+            {onShowLiveDraft ? (
+              <button
+                type="button"
+                onClick={() => onShowLiveDraft()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5E0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E]"
+              >
+                Open Edit Resume
+              </button>
+            ) : null}
+            {onApplyMirroredProfile ? (
+              <button
+                type="button"
+                disabled={mirroring || state.loading}
+                onClick={() =>
+                  void fillGapsToTarget({
+                    force: true,
+                    jobId: selectedJobId,
+                  }).then((ok) => {
+                    if (ok) onShowLiveDraft?.();
+                  })
+                }
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-900 disabled:opacity-50"
+              >
+                {mirroring ? <Loader2 size={12} className="animate-spin" /> : <Target size={12} />}
+                Apply JD to live draft
+              </button>
+            ) : null}
+            {onTailor ? (
+              <button
+                type="button"
+                onClick={() => onTailor(selectedJobId)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#1C1C1E] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white"
+              >
+                <Zap size={12} />
+                Re-tailor this job
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -708,8 +752,8 @@ export function JdMatchPanel({
       ) : null}
 
       {showResults && jobHasDoc ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">
-          Scoring your saved tailored resume (same metric as the card). Master draft auto-mirror is off — re-tailor to refresh.
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+          Scores below may be from the saved tailored file. To change what you see: Edit Resume (Master preview), Apply JD to live draft, or Re-tailor.
         </p>
       ) : null}
 
@@ -924,7 +968,7 @@ export function JdMatchPanel({
             </div>
           ) : null}
 
-          {onTailor && (mode === 'paste' || !jobHasDoc) ? (
+          {onTailor && (mode === 'paste' || selectedJobId) ? (
             <button
               type="button"
               onClick={mode === 'paste' ? () => void handleTailorPastedJd() : () => onTailor(activeJobId!)}
@@ -932,7 +976,11 @@ export function JdMatchPanel({
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#27272a] disabled:opacity-50 transition-colors active:scale-[0.98]"
             >
               <Zap size={14} />
-              {mode === 'paste' ? 'Tailor resume for this JD' : 'Tailor this job — deep'}
+              {mode === 'paste'
+                ? 'Tailor resume for this JD'
+                : jobHasDoc
+                  ? 'Re-tailor this job — deep (regenerate PDF)'
+                  : 'Tailor this job — deep'}
             </button>
           ) : null}
         </>

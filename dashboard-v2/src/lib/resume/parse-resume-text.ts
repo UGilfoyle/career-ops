@@ -361,12 +361,26 @@ export function parseEducation(text: string): ParsedEducation[] {
         .replace(/\s+\b(19|20)\d{2}\b/g, ' ')
         .trim();
 
-      const parts = cleanLine.split(/\s*[-–—|]\s*/);
-      out.push({
-        degree: (parts[0] || '').trim(),
-        school: (parts[1] || '').trim(),
-        period,
-      });
+      // Prefer `|` so "MCA — STEM | University" does not put STEM in school
+      let degree = '';
+      let school = '';
+      if (/\s\|\s/.test(cleanLine) || cleanLine.includes('|')) {
+        const [left, ...rest] = cleanLine.split(/\s*\|\s*/);
+        degree = (left || '').trim();
+        school = rest.join(' ').trim();
+      } else {
+        // Protect "— STEM" before splitting on dashes
+        const stemSafe = cleanLine.replace(/\s*[—–-]\s*STEM\b/gi, '\u0001STEM');
+        const parts = stemSafe.split(/\s*[-–—]\s*/);
+        degree = (parts[0] || '').replace(/\u0001STEM/g, ' — STEM').trim();
+        school = parts
+          .slice(1)
+          .join(' - ')
+          .replace(/\u0001STEM/g, '')
+          .replace(/^STEM\s*,?\s*/i, '')
+          .trim();
+      }
+      out.push({ degree, school, period });
     }
 
     if (out.length >= 6) break;

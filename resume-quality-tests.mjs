@@ -20,6 +20,8 @@ import {
   scrubSummaryKeywordParenSpam,
   preferSourceIfThin,
   isEmbeddedJobHeader,
+  isJdMetadataJob,
+  scrubJobTitleField,
   sanitizeExperienceEntries,
   formatPeriodDisplay,
   parseTenureMonths,
@@ -632,6 +634,55 @@ console.log('resume-quality tests\n');
     }
   ]);
   assert(intraJobDedupe[0].bullets.length === 1, "deduplicates near-identical intra-job bullets with shared metric tails");
+
+  // JD metadata jobs (THG-style) must never land in experience
+  assert(
+    isJdMetadataJob({
+      company: 'THG INGENUITY',
+      role: 'AI & DATA',
+      period: '',
+      bullets: [
+        'MID-LEVEL • LOGISTICS SQUAD.',
+        'LOCATION Pune, India (On-Site) DEPARTMENT AI & Data.',
+        'REPORTS TO Engineering Manager LEVEL Mid.',
+      ],
+    }),
+    'flags THG JD metadata as fake job',
+  );
+  const scrubbedTitle = scrubJobTitleField(
+    'Software Developer - schemas, preserving data integrity.',
+  );
+  assert(scrubbedTitle === 'Software Developer', `scrubs bullet leak from title (got ${scrubbedTitle})`);
+  const thgCleaned = sanitizeExperienceEntries([
+    {
+      company: 'THG INGENUITY',
+      role: 'AI & DATA',
+      period: '',
+      bullets: [
+        'MID-LEVEL • LOGISTICS SQUAD.',
+        'LOCATION Pune, India (On-Site) DEPARTMENT AI & Data.',
+        'REPORTS TO Engineering Manager LEVEL Mid.',
+      ],
+    },
+    {
+      company: 'Quest Global Engineering Services',
+      role: 'Senior Software Engineer',
+      period: 'Jul 2025 - Present',
+      bullets: ['Optimized RESTful APIs throughput by 30%.'],
+    },
+    {
+      company: 'Artisanssoft',
+      role: 'Associate Developer',
+      period: 'Feb 2019 - Jul 2019',
+      bullets: ['Built internal tools.'],
+    },
+  ]);
+  assert(thgCleaned.length === 2, `drops THG metadata job (got ${thgCleaned.length})`);
+  assert(!thgCleaned.some((j) => /THG/i.test(j.company || '')), 'no THG company left');
+  assert(
+    /Quest/i.test(thgCleaned[0].company || ''),
+    'sorts newest role first after sanitize',
+  );
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

@@ -29,6 +29,20 @@ if (!bca.includes('(2013 - 2016)') || bca.includes('2013 - 2013')) {
   process.exit(1);
 }
 
+const stemDup = formatEducationLine({
+  degree: 'Master of Computer Applications (MCA) — STEM',
+  school: 'STEM, Uttaranchal University',
+  period: '2016 - 2018',
+});
+if (stemDup.includes('STEM, STEM') || (stemDup.match(/\bSTEM\b/g) || []).length !== 1) {
+  console.error('FAIL STEM dedupe:', stemDup);
+  process.exit(1);
+}
+if (!stemDup.includes('Uttaranchal University') || !stemDup.includes('(2016 - 2018)')) {
+  console.error('FAIL STEM school/years:', stemDup);
+  process.exit(1);
+}
+
 const { educationRepaired } = hydrateResumeProfile({
   experience: [{ role: 'x', company: 'y', period: 'Jan 2020 - Present', bullets: ['did stuff'] }],
   education: [corrupted, {
