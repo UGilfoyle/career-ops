@@ -50,6 +50,7 @@ import {
   elevateBulletForEmployer,
   normalizeBulletText,
   isSeniorToneEmployer,
+  getRoleSeniorityTier,
   scrubSummaryKeywordParenSpam,
   scrubResumeArtifacts,
   unwrapResumeParens,
@@ -195,9 +196,10 @@ export function buildTailoringPlan(jdText, profile, opts = {}) {
     const isPreserve = companyMatches(company, policy.preserve);
     const isFull = companyMatches(company, policy.fullTailor) || (!isPreserve && index < 4);
     const mode = isPreserve ? 'preserve_verbatim' : (isFull ? 'full_tailor' : 'preserve_verbatim');
-    const tone = companyMatches(company, policy.seniorTone) || isSeniorToneEmployer(company)
+    const employerKey = `${company} ${role?.role || ''}`;
+    const tone = companyMatches(company, policy.seniorTone)
       ? 'senior'
-      : 'mid';
+      : getRoleSeniorityTier(employerKey);
     const tenureMonths = parseTenureMonths(role?.period);
     const bulletBudget = bulletsBudgetForRole(index, {
       tenureMonths,
@@ -549,13 +551,10 @@ export function scrubInventedStackFromMutableRoles(resume, plan, profile) {
  */
 export function preserveEmployerBullets(role, tone = 'mid') {
   const raw = (role?.bullets || []).map((b) => String(b || '').trim()).filter(Boolean);
-  const company = role?.company || '';
+  const employerKey = `${role?.company || ''} ${role?.role || ''}`;
   return raw.map((b) => {
-    const cleaned = normalizeBulletText(b, company);
-    if (tone === 'senior' || isSeniorToneEmployer(company)) {
-      return elevateBulletForEmployer(cleaned, company);
-    }
-    return elevateBulletForEmployer(cleaned, company);
+    const cleaned = normalizeBulletText(b, employerKey);
+    return elevateBulletForEmployer(cleaned, employerKey);
   }).filter((b) => b.length >= 20);
 }
 

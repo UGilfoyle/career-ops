@@ -1501,17 +1501,24 @@ TASK:
       Do NOT rewrite preserve_verbatim roles (${plan.preserveIndices.join(', ') || '4+'}). Return those keys as empty arrays.
       Return as an OBJECT keyed by role index, each with 4 tailored bullets for the full_tailor roles only. Use senior tone for Quest/INTVERSE/Glidewell/Srijan.
 ${roleDigest}
-      BULLET RULES — COMPANY-AWARE TONE (do not oversell older roles):
+      BULLET RULES — CAREER PROGRESSION & LEVELING CURVE (CHRONOLOGICAL MATURITY):
       - CHRONOLOGICAL TRUTH: NEVER place a technology into a role that predates its public release date (e.g. Bun was released in 2022, ChromaDB in 2023, ChatGPT in late 2022 — never put them into older roles like Artisanssoft or Rubico).
-      - SENIOR LinkedIn/ATS bar ONLY for: Quest Global / Quest, INTVERSE, Glidewell, Srijan — ownership, architecture, reliability, mentoring/SDLC, measurable impact
-      - MID-LEVEL professional tone for older/junior-era roles — competent IC voice (Developed/Built/Implemented/Delivered). Never junior fluff (Helped/Assisted/Worked on). Never Staff/Senior architect voice (Architected/Owned/Drove/Mentored) on mid employers
+      - SENIOR / LEAD (Quest Global, INTVERSE, Glidewell — 5–7+ yrs):
+        Full technical ownership & systems depth: Architected, Scaled, Diagnosed, Shipped, Mentored, Hardened, Instituted.
+        Latency SLAs (sub-100ms p99), multi-tier Redis caching, PostgreSQL partitioning, ELK tracing, code review standards.
+      - MID-LEVEL (Srijan, KOCO Schools, Rubico IT — 1–4 yrs):
+        Competent independent feature delivery: Developed, Built, Implemented, Integrated, Provisioned, Automated.
+        Multi-tenant services, MongoDB/SQL schemas, RESTful APIs, ETL migrations. Never claim Staff architecture or mentoring.
+      - ASSOCIATE / JUNIOR (Artisanssoft / Associate Developer — 0–1 yr):
+        Hands-on feature implementation & learning under guidance: Developed, Built, Implemented, Contributed to, Supported.
+        Payment endpoints, desktop/mobile UI, bug fixes, unit testing.
+        NEVER use Architected, Mentored, Led, Spearheaded, or claim organizational ownership on an Associate role.
       - LinkedIn formula: [Strong verb] + [scope/system] + [tech from THAT role's digest] + [outcome/metric from digest]
       - SENIOR GOOD: "Architected event-driven microservices on Node.js/Python, cutting infra cost 30%." / "Owned AWS right-sizing and autoscaling, protecting 99.95% uptime." / "Led peer review and mentoring that raised SDLC quality across the squad."
       - MID GOOD: "Developed Node.js multi-tenant APIs serving client platforms." / "Built MongoDB schemas and REST endpoints for deliverables." / "Implemented payment gateway integrations processing 1,000+ daily transactions."
+      - ASSOCIATE GOOD: "Built responsive user interfaces and customer-facing layouts." / "Implemented backend endpoints for payment gateways using Node.js and Express." / "Assisted with third-party authentication and API integrations."
       - BAD (all employers): "Worked on APIs." / "Helped the team." / "Assisted with deployments." / first-person essays
       - Ban openings everywhere: Helped, Assisted, Worked on, Responsible for, Duties included
-      - Senior-prefer (Quest/INTVERSE/Glidewell/Srijan only): Architected, Owned, Drove, Engineered, Shipped, Hardened, Scaled, Mentored, Instituted, Diagnosed
-      - Mid-prefer: Developed, Built, Implemented, Delivered, Integrated, Deployed, Provisioned, Established — not Architected/Owned/Drove
       - JD-HONEST: keep digest tools (Node.js, TypeScript, PostgreSQL, AWS, Docker). You may add a JD synonym that is the same tool (Postgres→PostgreSQL). NEVER swap Express→NestJS, AWS→Azure, React→Angular, or invent FastAPI/SSE/LLM on a role that did not use them.
       - NEVER invent fake percentage metrics or employers; never append spam like "applying X in production"
       - Each bullet MUST include at least one metric from the digest when the source bullet has one; never fabricate numbers

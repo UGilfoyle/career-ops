@@ -483,7 +483,7 @@ export function reframeExperienceFromProfile(profileExperience, jdText, honestKe
 
     const tenureMonths = parseTenureMonths(exp[i]?.period);
     const bulletCap = bulletsBudgetForRole(i, { tenureMonths, maxPages: 2 });
-    const company = exp[i]?.company || '';
+    const company = `${exp[i]?.company || ''} ${exp[i]?.role || ''}`.trim();
     const rawBullets = (exp[i]?.bullets || []).map(stripMarkdown).filter((b) => b.length > 20);
     const bullets = explodeWallOfTextBullets(rawBullets, { maxBullets: bulletCap + 2 });
     const ranked = [...bullets].sort(

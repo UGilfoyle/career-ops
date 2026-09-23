@@ -32,6 +32,9 @@ import {
   elevateBulletToMidLevel,
   elevateBulletForEmployer,
   isSeniorToneEmployer,
+  isAssociateOrJuniorRole,
+  getRoleSeniorityTier,
+  elevateBulletToAssociateLevel,
   parseJobEndYear,
   isBulletAnachronisticForPeriod,
   scrubAnachronisticTechFromBullet,
@@ -784,6 +787,31 @@ console.log('resume-quality tests\n');
   assert(artBullets.length === 1, `filtered out Bun and SKF bullets from Artisanssoft (got ${artBullets.length})`);
   assert(!artBullets.some((b) => /Bun/i.test(b)), 'no Bun in Artisanssoft');
   assert(!artBullets.some((b) => /SKF/i.test(b)), 'no SKF client leak in Artisanssoft');
+
+  // Career progression leveling curve tests
+  assert(isAssociateOrJuniorRole('Artisanssoft'), 'Artisanssoft is associate role');
+  assert(isAssociateOrJuniorRole('Associate Developer'), 'Associate Developer is associate role');
+  assert(isAssociateOrJuniorRole('Junior Software Engineer'), 'Junior SE is associate role');
+  assert(getRoleSeniorityTier('Artisanssoft') === 'associate', 'tier for Artisanssoft is associate');
+  assert(getRoleSeniorityTier('Rubico IT') === 'mid', 'tier for Rubico is mid');
+  assert(getRoleSeniorityTier('KOCO Schools') === 'mid', 'tier for KOCO is mid');
+  assert(getRoleSeniorityTier('Quest Global') === 'senior', 'tier for Quest Global is senior');
+
+  // Senior verbs down-leveled in Associate role
+  const assocArch = elevateBulletForEmployer('Architected scalable microservices on Node.js.', 'Artisanssoft');
+  assert(/^Built\b/i.test(assocArch), `Associate Architected → Built (got ${assocArch})`);
+  assert(!/^Architected\b/i.test(assocArch), 'no Architected in associate role');
+
+  const assocMentor = elevateBulletForEmployer('Led peer code reviews and mentored junior engineers on coding best practices.', 'Artisanssoft');
+  assert(/^(?:Participated in|Contributed to) peer code reviews/i.test(assocMentor), `Associate Led/Mentored → Participated/Contributed (got ${assocMentor})`);
+  assert(!/mentored junior engineers/i.test(assocMentor), 'no mentoring in associate role');
+
+  const assocSpear = elevateBulletForEmployer('Spearheaded payment gateway integrations.', 'Artisanssoft');
+  assert(/^Developed\b/i.test(assocSpear), `Associate Spearheaded → Developed (got ${assocSpear})`);
+
+  // Staff verbs down-leveled in Mid-level role
+  const midArch = elevateBulletForEmployer('Architected MongoDB schemas.', 'Rubico');
+  assert(/^Engineered\b/i.test(midArch), `Mid Architected → Engineered (got ${midArch})`);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

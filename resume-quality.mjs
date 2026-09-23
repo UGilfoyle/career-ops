@@ -369,10 +369,113 @@ const SENIOR_TONE_EMPLOYER_RE = /\b(?:quest(?:\s*global)?|glidewell|intverse|sri
 /**
  * True when company/role text belongs to a senior-tone employer.
  * Senior ONLY: Quest Global / Quest, Glidewell, INTVERSE, Srijan.
- * Mid-level: KOCO, Rubico, Artisanssoft, and other older/junior-era roles.
  */
 export function isSeniorToneEmployer(companyOrRoleText) {
   return SENIOR_TONE_EMPLOYER_RE.test(String(companyOrRoleText || ''));
+}
+
+/**
+ * True when role/company text represents an early-career or associate position.
+ * e.g. Associate Developer, Intern, Junior Developer, Artisanssoft (2019).
+ */
+export function isAssociateOrJuniorRole(companyOrRoleText) {
+  const s = String(companyOrRoleText || '').toLowerCase();
+  return /\b(associate|junior|intern|trainee|fresher|graduate|entry)\b/i.test(s)
+    || /\bartisanssoft\b/i.test(s);
+}
+
+/**
+ * Classify employer role into 3-tier career progression:
+ * - associate: Artisanssoft / Associate Developer (0–1 yr)
+ * - mid: Rubico IT, KOCO Schools (1–4 yrs)
+ * - senior: Quest Global, INTVERSE, Glidewell, Srijan (4–7+ yrs)
+ */
+export function getRoleSeniorityTier(companyOrRoleText) {
+  const s = String(companyOrRoleText || '');
+  if (isAssociateOrJuniorRole(s)) return 'associate';
+  if (isSeniorToneEmployer(s)) return 'senior';
+  return 'mid';
+}
+
+/**
+ * Associate / Junior professional polish (0–1 yr experience).
+ * Focuses on hands-on feature development, API integration, UI, testing, and bug fixing.
+ * Strictly prevents inflated senior claims (Architected, Spearheaded, Drove, Mentored, Led).
+ */
+export function elevateBulletToAssociateLevel(text) {
+  let t = String(text || '').trim();
+  if (!t) return '';
+
+  t = t.replace(/^\*\*[^*]+\*\*:\s*/g, '').replace(/^([A-Z][A-Za-z0-9 &/+-]{2,40}):\s+/, '');
+
+  // Down-level senior verbs that are unrealistic for an associate developer
+  const seniorDemotions = [
+    [/^Architected\s+/i, 'Built '],
+    [/^Spearheaded\s+/i, 'Developed '],
+    [/^Drove\s+/i, 'Implemented '],
+    [/^Scaled\s+/i, 'Developed '],
+    [/^Instituted\s+/i, 'Implemented '],
+    [/^Hardened\s+/i, 'Configured '],
+    [/^Orchestrated\s+/i, 'Configured '],
+    [/^Authored\s+(?:the\s+)?complete\s+backend\s+architecture\b/i, 'Developed backend services and APIs'],
+    [/^Authored\s+/i, 'Developed '],
+    [/^Owned\s+(?:the\s+)?(?:complete\s+|core\s+|entire\s+)?(?:architecture|infrastructure|platform)\b/i, 'Developed core features for the platform'],
+    [/^Owned\s+/i, 'Built '],
+    [/^Led\s+(?:peer\s+)?code\s+reviews(?:\s+and\s+mentored[^\n,.]*)?/i, 'Participated in peer code reviews and testing standards'],
+    [/^Led\s+/i, 'Contributed to '],
+    [/^Mentored\s+[^\n,.]*/i, 'Collaborated with engineering teammates on feature delivery'],
+    [/^Provided mentorship to\s+[^\n,.]*/i, 'Collaborated with teammates on feature delivery'],
+  ];
+
+  for (const [re, rep] of seniorDemotions) {
+    if (re.test(t)) {
+      t = t.replace(re, rep);
+      break;
+    }
+  }
+
+  // Handle "Assisted Acme with X" / "Helped Acme with X"
+  t = t.replace(
+    /^(?:Assisted|Helped)\s+([A-Z][\w.&-]{1,40})\s+with\s+(.+)$/i,
+    (_, company, rest) => {
+      const body = String(rest).replace(/[.!]+$/, '').trim();
+      return body ? `Implemented ${body} at ${company}.` : t;
+    },
+  );
+
+  // Polish junior task openings to clean associate action verbs
+  const openingMap = [
+    [/^Helped (?:to |with |the )?/i, 'Delivered '],
+    [/^Assisted (?:with |in |the )?/i, 'Implemented '],
+    [/^Supported (?:the |a )?/i, 'Supported '],
+    [/^Worked on\s+/i, 'Built '],
+    [/^Worked with\s+/i, 'Collaborated with '],
+    [/^Participated in\s+/i, 'Contributed to '],
+    [/^Responsible for\s+/i, 'Delivered '],
+    [/^Duties included\s+/i, 'Delivered '],
+    [/^Tasked with\s+/i, 'Implemented '],
+    [/^Made\s+/i, 'Built '],
+    [/^Did\s+/i, 'Delivered '],
+  ];
+  for (const [re, rep] of openingMap) {
+    if (re.test(t)) {
+      t = t.replace(re, rep);
+      break;
+    }
+  }
+
+  t = t
+    .replace(/\bmultiple client projects\b/gi, 'client platforms')
+    .replace(/\band building the frontend\b/gi, 'and built the frontend')
+    .replace(/\band building\b/gi, 'and built')
+    .replace(/\butiliz(?:ed|ing)\b/gi, 'using')
+    .replace(/\bwas responsible for\b/gi, 'developed')
+    .replace(/\bmy work involved\b/gi, 'developed');
+
+  t = t.replace(/\s{2,}/g, ' ').trim();
+  t = t.replace(/^([^A-Za-z]*)([a-z])/, (_, pre, c) => `${pre}${c.toUpperCase()}`);
+  if (t && !/[.!?]$/.test(t)) t += '.';
+  return t;
 }
 
 /**
@@ -386,6 +489,15 @@ export function elevateBulletToMidLevel(text) {
   if (!t) return '';
 
   t = t.replace(/^\*\*[^*]+\*\*:\s*/g, '').replace(/^([A-Z][A-Za-z0-9 &/+-]{2,40}):\s+/, '');
+
+  // Down-level staff / principal verbs that oversell mid roles
+  if (/^Architected\s+/i.test(t)) {
+    t = t.replace(/^Architected\s+/i, 'Engineered ');
+  } else if (/^Spearheaded\s+/i.test(t)) {
+    t = t.replace(/^Spearheaded\s+/i, 'Led ');
+  } else if (/^Mentored\s+/i.test(t)) {
+    t = t.replace(/^Mentored\s+/i, 'Guided ');
+  }
 
   // "Assisted Acme with X" / "Helped Acme with X" → mid verbs (not Drove)
   t = t.replace(
@@ -434,12 +546,18 @@ export function elevateBulletToMidLevel(text) {
 }
 
 /**
- * Company-aware elevation: senior bar for Quest/Glidewell/INTVERSE/Srijan only;
- * mid-level polish for KOCO/Rubico/Artisanssoft and everything else.
+ * Career-aware elevation matching the progression curve:
+ * - associate: Artisanssoft / Associate Developer (0–1 yr)
+ * - mid: Rubico IT, KOCO Schools (1–4 yrs)
+ * - senior: Quest Global, INTVERSE, Glidewell, Srijan (4–7+ yrs)
  */
 export function elevateBulletForEmployer(bullet, companyOrRoleText) {
   const text = String(bullet || '');
-  if (isSeniorToneEmployer(companyOrRoleText) || isSeniorToneEmployer(text)) {
+  const tier = getRoleSeniorityTier(companyOrRoleText || text);
+  if (tier === 'associate') {
+    return elevateBulletToAssociateLevel(text);
+  }
+  if (tier === 'senior') {
     return elevateBulletToSenior(text);
   }
   return elevateBulletToMidLevel(text);
