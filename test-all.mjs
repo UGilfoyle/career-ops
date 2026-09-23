@@ -189,6 +189,26 @@ if (!leakFound) {
   pass('No personal data leaks outside allowed files');
 }
 
+// ── 5b. SECRET & API KEY LEAK CHECK ─────────────────────────────
+
+console.log('\n5b. Secret & API key leak check');
+
+const trackedEnv = run('git ls-files ".env*" "**/.env*" 2>/dev/null');
+const leakedEnv = (trackedEnv || '').split('\n').filter(f => f && !f.endsWith('.example') && !f.endsWith('.example.yml'));
+if (leakedEnv.length > 0) {
+  fail(`Secret leak: tracked .env file detected in git: ${leakedEnv.join(', ')}`);
+} else {
+  pass('No active .env credential files tracked by git');
+}
+
+const secretRegex = '(AKIA[0-9A-Z]{16}|AIzaSy[A-Za-z0-9_-]{33}|ghp_[a-zA-Z0-9]{20,}|gho_[a-zA-Z0-9]{20,}|xox[baprs]-[a-zA-Z0-9]{10,}|xkeysib-[a-zA-Z0-9]{30,}|re_[a-zA-Z0-9]{24,}|sk_live_[a-zA-Z0-9]{20,}|sk-[a-zA-Z0-9]{32,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)';
+const leakedSecrets = run(`git grep -I -E "${secretRegex}" 2>/dev/null`);
+if (leakedSecrets) {
+  fail(`Secret leak: exposed API key or private key in tracked files:\n${leakedSecrets}`);
+} else {
+  pass('Zero exposed API keys, private keys, or tokens in tracked repository files');
+}
+
 // ── 6. ABSOLUTE PATH CHECK ──────────────────────────────────────
 
 console.log('\n6. Absolute path check');
