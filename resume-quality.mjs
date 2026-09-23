@@ -678,6 +678,109 @@ function bulletKey(text) {
   return String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+export const TECH_RELEASE_YEARS = {
+  // Modern JS runtimes & build tools
+  bun: 2022,
+  deno: 2018,
+  vite: 2020,
+  turbopack: 2022,
+  turborepo: 2021,
+  esbuild: 2020,
+
+  // Modern Frameworks
+  fastapi: 2019,
+  remix: 2021,
+  sveltekit: 2021,
+  astro: 2021,
+  solidjs: 2020,
+  'solid.js': 2020,
+  qwik: 2022,
+  nestjs: 2017,
+  'next.js': 2016,
+
+  // AI, LLMs & Vector DBs
+  chromadb: 2023,
+  chroma: 2023,
+  pinecone: 2021,
+  qdrant: 2021,
+  weaviate: 2019,
+  langchain: 2022,
+  llamaindex: 2022,
+  'llama-index': 2022,
+  chatgpt: 2022,
+  'gpt-4': 2023,
+  'gpt-3.5': 2022,
+  claude: 2023,
+  llama: 2023,
+  'llama 2': 2023,
+  'llama 3': 2024,
+  mistral: 2023,
+  ollama: 2023,
+  groq: 2024,
+  gemini: 2023,
+  copilot: 2021,
+  cursor: 2023,
+  mcp: 2024,
+  'model context protocol': 2024,
+  'text-embedding-3': 2024,
+  'text-embedding-ada-002': 2022,
+};
+
+export function parseJobEndYear(period) {
+  const p = String(period || '').trim().toLowerCase();
+  if (!p) return new Date().getFullYear();
+  if (/\b(present|current|now)\b/i.test(p)) {
+    return new Date().getFullYear();
+  }
+  const years = p.match(/\b(19\d{2}|20\d{2})\b/g);
+  if (years && years.length > 0) {
+    return parseInt(years[years.length - 1], 10);
+  }
+  return new Date().getFullYear();
+}
+
+export function isBulletAnachronisticForPeriod(bullet, period) {
+  const endYear = parseJobEndYear(period);
+  const text = String(bullet || '').toLowerCase();
+
+  for (const [tech, releaseYear] of Object.entries(TECH_RELEASE_YEARS)) {
+    if (endYear < releaseYear) {
+      const escaped = tech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const re = new RegExp(`\\b${escaped}\\b`, 'i');
+      if (re.test(text)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+export function scrubAnachronisticTechFromBullet(bullet, period) {
+  const endYear = parseJobEndYear(period);
+  let text = String(bullet || '');
+  for (const [tech, releaseYear] of Object.entries(TECH_RELEASE_YEARS)) {
+    if (endYear < releaseYear) {
+      const parenMatch = text.match(/\(([^)]{2,80})\)/);
+      if (parenMatch) {
+        const escaped = tech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const re = new RegExp(`\\b${escaped}\\b`, 'i');
+        if (re.test(parenMatch[1])) {
+          const cleanedItems = parenMatch[1]
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => !new RegExp(`^${escaped}$`, 'i').test(s));
+          if (cleanedItems.length > 0) {
+            text = text.replace(parenMatch[0], `(${cleanedItems.join(', ')})`);
+          } else {
+            text = text.replace(parenMatch[0], '');
+          }
+        }
+      }
+    }
+  }
+  return text.trim();
+}
+
 function companyCore(name) {
   return String(name || '')
     .toLowerCase()
@@ -687,16 +790,26 @@ function companyCore(name) {
 }
 
 /** Bullet explicitly names a different employer from the jobs list. */
-function bulletMentionsOtherCompany(bullet, ownCompany, allJobs) {
+export function bulletMentionsOtherCompany(bullet, ownCompany, allJobs) {
   if (isEmbeddedJobHeader(bullet)) return true;
   const b = String(bullet || '').toLowerCase();
   const own = companyCore(ownCompany);
-  for (const job of allJobs) {
+  for (const job of allJobs || []) {
     const co = companyCore(job.company);
     if (!co || co.length < 4 || co === own) continue;
     if (b.includes(co)) return true;
     const rawCo = String(job.company || '').trim().toLowerCase();
     if (rawCo.length >= 5 && b.includes(rawCo.slice(0, Math.min(rawCo.length, 14)))) return true;
+  }
+  // Client cross-contamination (e.g. SKF belongs to Quest, Kenvue belongs to INTVERSE)
+  const CLIENT_SCOPES = [
+    { client: 'skf', company: 'quest' },
+    { client: 'kenvue', company: 'intverse' },
+  ];
+  for (const cs of CLIENT_SCOPES) {
+    if (b.includes(cs.client) && !own.includes(cs.company)) {
+      return true;
+    }
   }
   return false;
 }
@@ -1064,7 +1177,8 @@ export function sanitizeExperienceEntries(experience) {
       bullets: dedupeSharedSubordinatePhrases(
         (Array.isArray(job.bullets) ? job.bullets : [])
           .map(repairMidSentenceArtifacts)
-          .filter((b) => !isEmbeddedJobHeader(b) && !isJdMetadataBullet(b))
+          .map((b) => scrubAnachronisticTechFromBullet(b, job.period))
+          .filter((b) => !isEmbeddedJobHeader(b) && !isJdMetadataBullet(b) && !isBulletAnachronisticForPeriod(b, job.period))
       ),
     }))
     .filter((job) => job.role || job.company);
@@ -1073,7 +1187,9 @@ export function sanitizeExperienceEntries(experience) {
   jobs = jobs.map((job) => ({
     ...job,
     bullets: normalizeExperienceBulletList(
-      (job.bullets || []).filter((b) => !bulletMentionsOtherCompany(b, job.company, jobs)),
+      (job.bullets || [])
+        .filter((b) => !bulletMentionsOtherCompany(b, job.company, jobs))
+        .filter((b) => !isBulletAnachronisticForPeriod(b, job.period)),
       `${job.company || ''} ${job.role || ''}`,
     ),
   }));

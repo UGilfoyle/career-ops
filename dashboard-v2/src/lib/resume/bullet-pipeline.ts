@@ -18,4 +18,8 @@ export {
   unwrapResumeParens,
   flattenResumeDashes,
   filterProofPointsAlreadyInExperience,
+  parseJobEndYear,
+  isBulletAnachronisticForPeriod,
+  scrubAnachronisticTechFromBullet,
+  TECH_RELEASE_YEARS,
 } from '../../../../resume-quality.mjs';

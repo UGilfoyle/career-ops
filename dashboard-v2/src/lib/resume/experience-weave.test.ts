@@ -95,6 +95,21 @@ function run() {
   assert.ok(allBullets.some((b) => b.includes('TypeORM')));
   assert.ok(allBullets.some((b) => b.includes('Prisma')));
 
+  // Anachronistic keyword test: Bun (2022) must NOT be woven into a 2019 role
+  const oldRoleExp = [
+    {
+      role: 'Associate Developer',
+      company: 'Artisanssoft',
+      period: 'Feb 2019 – Jul 2019',
+      bullets: ['Built internal tools and customer-facing interfaces.'],
+    },
+  ];
+  const out7 = weaveKeywordsIntoExperience(oldRoleExp, ['Bun']);
+  assert.ok(
+    !out7[0].bullets[0].includes('Bun'),
+    `Bun must not be woven into a 2019 role (got ${out7[0].bullets[0]})`
+  );
+
   console.log('experience-weave tests: all passed');
 }
 

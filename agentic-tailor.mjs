@@ -27,6 +27,9 @@ import {
   scrubSummaryKeywordParenSpam,
   stripUnsolicitedAiFromResume,
   filterProofPointsAlreadyInExperience,
+  isBulletAnachronisticForPeriod,
+  scrubAnachronisticTechFromBullet,
+  bulletMentionsOtherCompany,
 } from './resume-quality.mjs';
 import {
   extractJdKeywords,
@@ -381,6 +384,9 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       company: employerToneKey,
     })
       .filter((b) => !isEmbeddedJobHeader(b))
+      .map((b) => scrubAnachronisticTechFromBullet(b, job.period))
+      .filter((b) => !isBulletAnachronisticForPeriod(b, job.period))
+      .filter((b) => !bulletMentionsOtherCompany(b, job.company, exp))
       .map((b) => normalizeBulletText(elevateBulletForEmployer(String(b || ''), employerToneKey), employerToneKey))
       .filter((b) => b.length >= 20 && !isIncompleteBullet(b));
     // Final AI scrub after preferSourceIfThin (defense in depth)
@@ -1493,18 +1499,19 @@ TASK:
 
    c) **Experience bullets** (resume.experience): Rewrite bullets ONLY for full_tailor roles (indices ${plan.tailorIndices.join(', ') || '0-3'}).
       Do NOT rewrite preserve_verbatim roles (${plan.preserveIndices.join(', ') || '4+'}). Return those keys as empty arrays.
-      Return as an OBJECT keyed by role index, each with 4 tailored bullets (never fewer than 3; roles with ~2 years tenure need 3–4). Use senior tone only for Quest/INTVERSE/Glidewell/Srijan; mid-level tone for KOCO/Rubico/Artisanssoft.
+      Return as an OBJECT keyed by role index, each with 4 tailored bullets for the full_tailor roles only. Use senior tone for Quest/INTVERSE/Glidewell/Srijan.
 ${roleDigest}
       BULLET RULES — COMPANY-AWARE TONE (do not oversell older roles):
+      - CHRONOLOGICAL TRUTH: NEVER place a technology into a role that predates its public release date (e.g. Bun was released in 2022, ChromaDB in 2023, ChatGPT in late 2022 — never put them into older roles like Artisanssoft or Rubico).
       - SENIOR LinkedIn/ATS bar ONLY for: Quest Global / Quest, INTVERSE, Glidewell, Srijan — ownership, architecture, reliability, mentoring/SDLC, measurable impact
-      - MID-LEVEL professional tone for: KOCO, Rubico, Artisanssoft (and any other older/junior-era roles) — competent IC voice (Developed/Built/Implemented/Delivered). Never junior fluff (Helped/Assisted/Worked on). Never Staff/Senior architect voice (Architected/Owned/Drove/Mentored) on mid employers
+      - MID-LEVEL professional tone for older/junior-era roles — competent IC voice (Developed/Built/Implemented/Delivered). Never junior fluff (Helped/Assisted/Worked on). Never Staff/Senior architect voice (Architected/Owned/Drove/Mentored) on mid employers
       - LinkedIn formula: [Strong verb] + [scope/system] + [tech from THAT role's digest] + [outcome/metric from digest]
       - SENIOR GOOD: "Architected event-driven microservices on Node.js/Python, cutting infra cost 30%." / "Owned AWS right-sizing and autoscaling, protecting 99.95% uptime." / "Led peer review and mentoring that raised SDLC quality across the squad."
       - MID GOOD: "Developed Node.js multi-tenant APIs serving client platforms." / "Built MongoDB schemas and REST endpoints for deliverables." / "Implemented payment gateway integrations processing 1,000+ daily transactions."
       - BAD (all employers): "Worked on APIs." / "Helped the team." / "Assisted with deployments." / first-person essays
       - Ban openings everywhere: Helped, Assisted, Worked on, Responsible for, Duties included
       - Senior-prefer (Quest/INTVERSE/Glidewell/Srijan only): Architected, Owned, Drove, Engineered, Shipped, Hardened, Scaled, Mentored, Instituted, Diagnosed
-      - Mid-prefer (KOCO/Rubico/Artisanssoft): Developed, Built, Implemented, Delivered, Integrated, Deployed, Provisioned, Established — not Architected/Owned/Drove
+      - Mid-prefer: Developed, Built, Implemented, Delivered, Integrated, Deployed, Provisioned, Established — not Architected/Owned/Drove
       - JD-HONEST: keep digest tools (Node.js, TypeScript, PostgreSQL, AWS, Docker). You may add a JD synonym that is the same tool (Postgres→PostgreSQL). NEVER swap Express→NestJS, AWS→Azure, React→Angular, or invent FastAPI/SSE/LLM on a role that did not use them.
       - NEVER invent fake percentage metrics or employers; never append spam like "applying X in production"
       - Each bullet MUST include at least one metric from the digest when the source bullet has one; never fabricate numbers

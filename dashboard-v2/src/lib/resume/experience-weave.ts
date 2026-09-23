@@ -1,4 +1,5 @@
 import type { ExperienceEntry } from './types';
+import { isBulletAnachronisticForPeriod } from '@/lib/resume/bullet-pipeline';
 
 /**
  * Common typo fixes and skill normalizations.
@@ -91,6 +92,7 @@ export function weaveKeywordsIntoExperience(
       const ri = (targetRoleIdx + Math.floor(attempt / 5)) % rolesToSearch;
       const role = cloned[ri];
       if (!role.bullets || !role.bullets.length) continue;
+      if (isBulletAnachronisticForPeriod(cleanKw, role.period)) continue;
 
       const bi = (targetBulletIdx + (attempt % 5)) % role.bullets.length;
       const bulletKey = `${ri}:${bi}`;
@@ -132,12 +134,14 @@ export function weaveKeywordsIntoExperience(
       }
     }
 
-    // Fallback: if all had metrics/long, append to first bullet of role 0
+    // Fallback: if all had metrics/long, append to first bullet of role 0 (if not anachronistic)
     if (!weaved && cloned[0]?.bullets?.length) {
-      let b0 = sanitizeBulletParens(cloned[0].bullets[0]);
-      const base = b0.replace(/\.$/, '').trim();
-      if (!base.endsWith(')')) {
-        cloned[0].bullets[0] = sanitizeBulletParens(`${base} (${cleanKw}).`);
+      if (!isBulletAnachronisticForPeriod(cleanKw, cloned[0].period)) {
+        let b0 = sanitizeBulletParens(cloned[0].bullets[0]);
+        const base = b0.replace(/\.$/, '').trim();
+        if (!base.endsWith(')')) {
+          cloned[0].bullets[0] = sanitizeBulletParens(`${base} (${cleanKw}).`);
+        }
       }
     }
   }

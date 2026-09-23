@@ -32,6 +32,10 @@ import {
   elevateBulletToMidLevel,
   elevateBulletForEmployer,
   isSeniorToneEmployer,
+  parseJobEndYear,
+  isBulletAnachronisticForPeriod,
+  scrubAnachronisticTechFromBullet,
+  bulletMentionsOtherCompany,
 } from './resume-quality.mjs';
 import {
   extractJdKeywords,
@@ -742,6 +746,44 @@ console.log('resume-quality tests\n');
     'Established secure deployment practices by configuring server firewalls and OS patch management routines on.',
   ]);
   assert(cut.length === 0, `drops truncated on. bullet (got ${cut.join(' | ')})`);
+
+  // Temporal release validation tests
+  assert(parseJobEndYear('Feb 2019 – Jul 2019') === 2019, 'parseJobEndYear parses 2019');
+  assert(parseJobEndYear('Sep 2019 – Sep 2021') === 2021, 'parseJobEndYear parses 2021');
+  assert(parseJobEndYear('Jul 2025 – Present') >= 2025, 'parseJobEndYear parses Present');
+  assert(parseJobEndYear('2018') === 2018, 'parseJobEndYear parses single year');
+
+  const bunBullet = 'Deployed Bun runtimes cutting container memory overhead on hot paths.';
+  assert(isBulletAnachronisticForPeriod(bunBullet, 'Feb 2019 – Jul 2019'), 'Bun is anachronistic for 2019 role');
+  assert(isBulletAnachronisticForPeriod(bunBullet, 'Sep 2019 – Sep 2021'), 'Bun is anachronistic for 2021 role');
+  assert(!isBulletAnachronisticForPeriod(bunBullet, 'Jul 2025 – Present'), 'Bun is valid for 2025-Present role');
+
+  const chromaBullet = 'Engineered document ingestion pipeline using Python and ChromaDB.';
+  assert(isBulletAnachronisticForPeriod(chromaBullet, 'Feb 2019 – Jul 2019'), 'ChromaDB is anachronistic for 2019');
+  assert(!isBulletAnachronisticForPeriod(chromaBullet, 'Feb 2025 – Jun 2025'), 'ChromaDB is valid for 2025');
+
+  // scrubAnachronisticTechFromBullet cleans parentheticals
+  const parenBun = scrubAnachronisticTechFromBullet('Built backend services using Express (Express, Bun).', 'Feb 2019 - Jul 2019');
+  assert(!/\bbun\b/i.test(parenBun) && /Express/.test(parenBun), `scrubbed Bun from 2019 parens (got ${parenBun})`);
+
+  // sanitizeExperienceEntries filters out anachronistic bullets and cross-employer leaks
+  const anachronisticSanitize = sanitizeExperienceEntries([
+    {
+      company: 'Artisanssoft',
+      role: 'Associate Developer',
+      period: 'Feb 2019 - Jul 2019',
+      bullets: [
+        'Built internal tools and customer-facing interfaces, ensuring responsiveness across desktop and mobile layouts.',
+        'Deployed Bun runtimes cutting container memory overhead on hot paths.',
+        'Architected SKF telemetry streaming endpoints for device sensors.',
+      ],
+    },
+  ]);
+  assert(anachronisticSanitize.length === 1, 'keeps Artisanssoft entry');
+  const artBullets = anachronisticSanitize[0].bullets;
+  assert(artBullets.length === 1, `filtered out Bun and SKF bullets from Artisanssoft (got ${artBullets.length})`);
+  assert(!artBullets.some((b) => /Bun/i.test(b)), 'no Bun in Artisanssoft');
+  assert(!artBullets.some((b) => /SKF/i.test(b)), 'no SKF client leak in Artisanssoft');
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
