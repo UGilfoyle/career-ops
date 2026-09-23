@@ -35,7 +35,7 @@
 - CI Pipelines: Constructed continuous integration pipelines that enforced automated backend code linting and staged environmental promotions, reducing manual operational efforts by 20 hours per month.
 
 ### Full-Stack Developer
-**KOCO Schools** | Oct 2021 – Jul 2022
+**Athena & Tully Pte** | Oct 2021 – Jul 2022
 - Backend Architecture: Authored the complete backend architecture for a multi-tenant platform, synthesizing complex business logic into scalable, highly available Node.js services.
 - ETL & Data Migration: Formulated complex Python ETL scripts to migrate legacy relational database records across multiple disparate schemas, preserving data integrity through rigorous validation pipelines.
 

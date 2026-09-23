@@ -105,7 +105,7 @@ const profile = {
       ],
     },
     {
-      company: 'KOCO',
+      company: 'Athena & Tully Pte',
       role: 'Full-Stack Developer',
       bullets: ['Developed multi-tenant Node.js services.'],
     },

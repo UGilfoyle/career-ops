@@ -387,7 +387,7 @@ export function isAssociateOrJuniorRole(companyOrRoleText) {
 /**
  * Classify employer role into 3-tier career progression:
  * - associate: Artisanssoft / Associate Developer (0–1 yr)
- * - mid: Rubico IT, KOCO Schools (1–4 yrs)
+ * - mid: Rubico IT, Athena & Tully Pte (1–4 yrs)
  * - senior: Quest Global, INTVERSE, Glidewell, Srijan (4–7+ yrs)
  */
 export function getRoleSeniorityTier(companyOrRoleText) {
@@ -548,7 +548,7 @@ export function elevateBulletToMidLevel(text) {
 /**
  * Career-aware elevation matching the progression curve:
  * - associate: Artisanssoft / Associate Developer (0–1 yr)
- * - mid: Rubico IT, KOCO Schools (1–4 yrs)
+ * - mid: Rubico IT, Athena & Tully Pte (1–4 yrs)
  * - senior: Quest Global, INTVERSE, Glidewell, Srijan (4–7+ yrs)
  */
 export function elevateBulletForEmployer(bullet, companyOrRoleText) {
@@ -1440,7 +1440,7 @@ export function isBulletContinuationFragment(bullet) {
   // Short lowercase crumbs only (full lowercase sentences get capitalized, not merged)
   if (/^[a-z]/.test(t) && t.length < 40) return true;
 
-  // Noun-phrase orphans from mid-sentence LLM / explode splits (KOCO / Artisanssoft)
+  // Noun-phrase orphans from mid-sentence LLM / explode splits (Athena & Tully Pte / Artisanssoft)
   // e.g. "Logic into scalable…", "Integrity through…", "Authentication flows that…"
   if (/^(Logic|Integrity|Authentication|Authorization|Availability|Scalability|Consistency)\b/i.test(t)) {
     return true;
@@ -1881,7 +1881,7 @@ function applyExperiencePolish(resume, sourceExperience, usedVerbs, allowSynthet
   const allSourceBullets = collectAllSourceBullets(sourceExperience);
   const roleBulletGroups = collectExperienceArrays(resume.experience);
   const polishedGroups = roleBulletGroups.map((bullets, roleIdx) => {
-    if (preserveSet.has(roleIdx)) return bullets; // freeze KOCO/Rubico/Artisanssoft
+    if (preserveSet.has(roleIdx)) return bullets; // freeze Athena & Tully/Rubico/Artisanssoft
     const roleSourceBullets = sourceExperience[roleIdx]?.bullets || [];
     const enriched = enrichBulletsWithMetrics(
       bullets,

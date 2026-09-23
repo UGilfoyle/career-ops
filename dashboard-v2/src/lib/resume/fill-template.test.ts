@@ -66,7 +66,7 @@ function run() {
     [
       {
         role: 'Full-Stack Developer',
-        company: 'KOCO Schools',
+        company: 'Athena & Tully Pte',
         period: 'Oct 2021 – Jul 2022',
         bullets: [
           'Authored backend architecture for multi-tenant platform.',
@@ -77,7 +77,7 @@ function run() {
     2
   );
   assert.ok(!expHtml.includes('Rubico IT Pvt Ltd - Software Developer'), 'nested job header stripped from experience HTML');
-  assert.ok(expHtml.includes('KOCO Schools'), 'KOCO job still rendered');
+  assert.ok(expHtml.includes('Athena &amp; Tully Pte'), 'Athena & Tully Pte job still rendered');
 
   const expHtml2 = renderExperienceHtml(sample.experience, 2);
   assert.ok(expHtml2.includes('job-company'), 'experience markup');

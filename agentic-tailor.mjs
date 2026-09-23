@@ -376,7 +376,7 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     );
     // Merge orphan fragments; if tailored output is thin/broken, prefer profile source facts.
     // Company-aware tone: senior LinkedIn bar only for Quest / Glidewell / INTVERSE / Srijan;
-    // mid-level professional polish for KOCO / Rubico / Artisanssoft (and other older roles).
+    // mid-level professional polish for Athena & Tully Pte / Rubico / Artisanssoft (and other older roles).
     const employerToneKey = `${job.company || ''} ${job.role || ''}`;
     const normalizedBullets = preferSourceIfThin(candidates, sourceSafe, {
       minCount: Math.min(3, budget),
@@ -1506,7 +1506,7 @@ ${roleDigest}
       - SENIOR / LEAD (Quest Global, INTVERSE, Glidewell — 5–7+ yrs):
         Full technical ownership & systems depth: Architected, Scaled, Diagnosed, Shipped, Mentored, Hardened, Instituted.
         Latency SLAs (sub-100ms p99), multi-tier Redis caching, PostgreSQL partitioning, ELK tracing, code review standards.
-      - MID-LEVEL (Srijan, KOCO Schools, Rubico IT — 1–4 yrs):
+      - MID-LEVEL (Srijan, Athena & Tully Pte, Rubico IT — 1–4 yrs):
         Competent independent feature delivery: Developed, Built, Implemented, Integrated, Provisioned, Automated.
         Multi-tenant services, MongoDB/SQL schemas, RESTful APIs, ETL migrations. Never claim Staff architecture or mentoring.
       - ASSOCIATE / JUNIOR (Artisanssoft / Associate Developer — 0–1 yr):

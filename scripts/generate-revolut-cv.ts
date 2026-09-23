@@ -81,7 +81,7 @@ const revolutResume: ResumeContext = {
       ]
     },
     {
-      company: 'KOCO Schools',
+      company: 'Athena & Tully Pte',
       role: 'Full-Stack Developer',
       period: 'Oct 2021 – Jul 2022',
       bullets: [

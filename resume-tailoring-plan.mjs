@@ -3,7 +3,7 @@
  *
  * Policy (user-configurable via profile.tailoring):
  *   full_tailor: Quest, INTVERSE, Glidewell, Srijan
- *   preserve_verbatim: KOCO, Rubico, Artisanssoft
+ *   preserve_verbatim: Athena & Tully Pte, Rubico, Artisanssoft
  */
 
 import {
@@ -77,6 +77,8 @@ export const DEFAULT_FULL_TAILOR = [
 ];
 
 export const DEFAULT_PRESERVE_VERBATIM = [
+  'Athena & Tully',
+  'Athena & Tully Pte',
   'KOCO',
   'KOCO Schools',
   'Rubico',

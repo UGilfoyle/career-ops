@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Deloitte ETL one-shot — delegates to plan-driven tailor (no gate bypass).
- * Tailors Quest/INTVERSE/Glidewell/Srijan; freezes KOCO/Rubico/Artisanssoft.
+ * Tailors Quest/INTVERSE/Glidewell/Srijan; freezes Athena & Tully/Rubico/Artisanssoft.
  */
 import { spawnSync } from 'child_process';
 import path from 'path';

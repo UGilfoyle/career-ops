@@ -424,6 +424,7 @@ console.log('resume-quality tests\n');
   assert(isSeniorToneEmployer('Glidewell Dental'), 'Glidewell is senior-tone employer');
   assert(isSeniorToneEmployer('Srijan Technologies'), 'Srijan is senior-tone employer');
   assert(!isSeniorToneEmployer('KOCO'), 'KOCO is mid-tone employer');
+  assert(!isSeniorToneEmployer('Athena & Tully Pte'), 'Athena & Tully Pte is mid-tone employer');
   assert(!isSeniorToneEmployer('Rubico IT Pvt Ltd'), 'Rubico is mid-tone employer');
   assert(!isSeniorToneEmployer('Artisanssoft'), 'Artisanssoft is mid-tone employer');
 
@@ -441,9 +442,9 @@ console.log('resume-quality tests\n');
   assert(/^Drove\b/i.test(elevateBulletForEmployer('Helped ship dashboards.', 'INTVERSE')), 'INTVERSE Helped → Drove');
 
   const midJobs = [
-    ['Helped deploy applications on AWS.', 'KOCO'],
+    ['Helped deploy applications on AWS.', 'Athena & Tully Pte'],
     ['Assisted with payment gateway integrations.', 'Artisanssoft'],
-    ['Worked on multi-tenant Node.js architecture.', 'KOCO'],
+    ['Worked on multi-tenant Node.js architecture.', 'Athena & Tully Pte'],
     ['Developed MongoDB APIs and AWS hosting.', 'Rubico'],
     ['Built REST endpoints for client deliverables.', 'Rubico'],
   ];
@@ -475,7 +476,7 @@ console.log('resume-quality tests\n');
     'Developed backend systems using Laravel and Node.js, and building the frontend with React.js.',
     'Helped deploy applications on AWS.',
     'Worked on payment gateway integrations with measurable throughput.',
-  ], 'KOCO');
+  ], 'Athena & Tully Pte');
   assert(juniorishMid.every((b) => !/^(Helped|Worked on|Assisted)\b/i.test(b)), 'mid normalize scrubs junior fluff');
   assert(juniorishMid.some((b) => /^Developed\b/i.test(b)), 'mid normalize keeps Developed');
   assert(juniorishMid.every((b) => !/^(Architected|Owned|Drove)\b/i.test(b)), 'mid normalize avoids senior verbs');
@@ -492,7 +493,7 @@ console.log('resume-quality tests\n');
   assert(seniorOnly.every((b) => !/^(Developed|Helped|Assisted|Worked on|Analyzed|Built)\b/i.test(b)), 'senior employers elevated');
 
   const midOnly = [
-    ['Worked on multi-tenant Node.js architecture.', 'KOCO'],
+    ['Worked on multi-tenant Node.js architecture.', 'Athena & Tully Pte'],
     ['Developed MongoDB APIs and AWS hosting.', 'Rubico'],
     ['Assisted with payment gateway integrations.', 'Artisanssoft'],
   ].map(([b, c]) => elevateBulletForEmployer(b, c));
@@ -507,7 +508,7 @@ console.log('resume-quality tests\n');
     'Shipped React dashboards at INTVERSE.',
     'Tuned Glidewell SQL bottlenecks cutting CPU 35%.',
     'Delivered Srijan Node.js payment features.',
-    'Built KOCO multi-tenant Node.js architecture.',
+    'Built Athena & Tully multi-tenant Node.js architecture.',
     'Developed Rubico MongoDB APIs and AWS hosting.',
     'Implemented Artisanssoft payment gateway integrations.',
   ];
@@ -520,7 +521,7 @@ console.log('resume-quality tests\n');
   const cleaned = sanitizeExperienceEntries([
     {
       role: 'Full-Stack Developer',
-      company: 'KOCO Schools',
+      company: 'Athena & Tully Pte',
       period: 'Oct 2021 – Jul 2022',
       bullets: [
         'Authored backend architecture for multi-tenant platform.',
@@ -535,7 +536,7 @@ console.log('resume-quality tests\n');
       bullets: ['Developed backend web systems end-to-end.'],
     },
   ]);
-  assert(!cleaned[0].bullets.some((b) => /Rubico IT/i.test(b)), 'strips nested job header from KOCO bullets');
+  assert(!cleaned[0].bullets.some((b) => /Rubico IT/i.test(b)), 'strips nested job header from Athena & Tully bullets');
   assert(cleaned[0].period === 'Oct 2021 - Jul 2022', 'sanitizer uses ASCII hyphen in periods');
   assert(formatPeriodDisplay('Jan 2022 -- Present') === 'Jan 2022 - Present', 'collapses double hyphen dates');
   assert(formatPeriodDisplay('July 2024 – March 2025') === 'July 2024 - March 2025', 'en-dash becomes hyphen');
@@ -556,7 +557,7 @@ console.log('resume-quality tests\n');
   const screenshot = sanitizeExperienceEntries([
     {
       role: 'Full-Stack Developer',
-      company: 'KOCO Schools',
+      company: 'Athena & Tully Pte',
       period: 'Oct 2021 – Jul 2022',
       bullets: [
         'Authored the complete backend architecture for a multi-tenant platform, synthesizing complex business logic into scalable, highly available Node.js services Integrity through rigorous validation.',
@@ -573,19 +574,19 @@ console.log('resume-quality tests\n');
       ],
     },
   ]);
-  const kocoJob = screenshot.find((j) => /KOCO/i.test(j.company));
+  const athenaJob = screenshot.find((j) => /Athena & Tully|KOCO/i.test(j.company));
   const rubicoJob = screenshot.find((j) => /Rubico/i.test(j.company));
-  assert(kocoJob && rubicoJob, 'KOCO and Rubico jobs kept');
-  assert(!kocoJob.bullets.some((b) => /Rubico IT/i.test(b)), 'KOCO has no Rubico header bullet');
-  assert(!kocoJob.bullets.some((b) => /MongoDB schema design/i.test(b)), 'KOCO has no Rubico MongoDB bullet');
+  assert(athenaJob && rubicoJob, 'Athena & Tully and Rubico jobs kept');
+  assert(!athenaJob.bullets.some((b) => /Rubico IT/i.test(b)), 'Athena & Tully has no Rubico header bullet');
+  assert(!athenaJob.bullets.some((b) => /MongoDB schema design/i.test(b)), 'Athena & Tully has no Rubico MongoDB bullet');
   assert(rubicoJob.bullets.some((b) => /MongoDB/i.test(b)), 'Rubico keeps MongoDB bullet');
-  assert(!/services Integrity through/i.test(kocoJob.bullets.join(' ')), 'Integrity mid-sentence repaired');
+  assert(!/services Integrity through/i.test(athenaJob.bullets.join(' ')), 'Integrity mid-sentence repaired');
 
   const preserving = normalizeBulletText(
     'Built Node.js services, preserving data.',
-    'KOCO Schools',
+    'Athena & Tully Pte',
   );
-  assert(/preserving data integrity/i.test(preserving), 'KOCO preserving data. is repaired');
+  assert(/preserving data integrity/i.test(preserving), 'Athena & Tully preserving data. is repaired');
   assert(!/preserving data\.\s*$/i.test(preserving), 'does not leave truncated preserving data.');
 
   const streaming = normalizeBulletText(
@@ -603,7 +604,7 @@ console.log('resume-quality tests\n');
   ]);
   assert(!amexScreenshot.some((b) => /Integrity through/i.test(b)), 'drops Integrity orphan fragment');
   assert(!amexScreenshot.some((b) => /Construction,\s+directly/i.test(b)), 'drops Construction, directly garbled bullet');
-  assert(amexScreenshot.some((b) => /multi-tenant platform/i.test(b)), 'keeps clean KOCO architecture bullet');
+  assert(amexScreenshot.some((b) => /multi-tenant platform/i.test(b)), 'keeps clean Athena & Tully architecture bullet');
 }
 
 
@@ -795,6 +796,8 @@ console.log('resume-quality tests\n');
   assert(getRoleSeniorityTier('Artisanssoft') === 'associate', 'tier for Artisanssoft is associate');
   assert(getRoleSeniorityTier('Rubico IT') === 'mid', 'tier for Rubico is mid');
   assert(getRoleSeniorityTier('KOCO Schools') === 'mid', 'tier for KOCO is mid');
+  assert(getRoleSeniorityTier('Athena & Tully Pte') === 'mid', 'tier for Athena & Tully Pte is mid');
+  assert(getRoleSeniorityTier('Athena & Tully') === 'mid', 'tier for Athena & Tully is mid');
   assert(getRoleSeniorityTier('Quest Global') === 'senior', 'tier for Quest Global is senior');
 
   // Senior verbs down-leveled in Associate role

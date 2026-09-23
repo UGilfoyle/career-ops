@@ -24,7 +24,7 @@ Senior Software Engineer specializing in scalable backends.
 - AWS Cluster Optimization: Spearhead comprehensive AWS cluster optimization initiatives.
 
 ### Full-Stack Developer
-**KOCO Schools** | Oct 2021 – Jul 2022
+**Athena & Tully Pte** | Oct 2021 – Jul 2022
 
 - Backend Architecture: Authored the complete backend architecture for a multi-tenant platform.
 
@@ -56,7 +56,7 @@ function run() {
   const companies = parsed.experience.map((j) => j.company);
   assert.ok(companies.some((c) => /Rubico/i.test(c)), `expected Rubico in ${JSON.stringify(companies)}`);
   assert.ok(companies.some((c) => /Quest Global/i.test(c)), 'expected Quest Global');
-  assert.ok(companies.some((c) => /KOCO/i.test(c)), 'expected KOCO');
+  assert.ok(companies.some((c) => /Athena & Tully|KOCO/i.test(c)), 'expected Athena & Tully Pte');
   assert.ok(companies.some((c) => /Artisanssoft/i.test(c)), 'expected Artisanssoft');
   assert.ok(parsed.experience.length >= 4, `expected >=4 jobs, got ${parsed.experience.length}`);
 

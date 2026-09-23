@@ -104,7 +104,7 @@ for (const i of planD.preserveIndices) {
 console.log('\n3. Execute plan — frozen equality + skills ATS\n');
 const pkgD = executeTailoringPlan(planD, profile, { jdText: DELOITTE_JD, companyName: 'Deloitte' });
 const frozen = assertPreservedEquality(pkgD.resume, pkgD.preservedSnapshot);
-assert(frozen.pass, 'KOCO/Rubico/Artisanssoft unchanged after execute');
+assert(frozen.pass, 'Athena & Tully/Rubico/Artisanssoft unchanged after execute');
 const comps = (pkgD.resume.core_competencies || []).join(' ').toLowerCase();
 assert(/etl|python|oracle|jenkins|pandas|sql|jira/i.test(comps), 'Deloitte competencies carry JD stack');
 assert(/etl|python|oracle|reconcil|warehouse|sql/i.test(pkgD.resume.summary), 'Deloitte summary carries JD framing');
