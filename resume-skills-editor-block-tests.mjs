@@ -65,4 +65,16 @@ assert(/IAM/i.test(awsHtml), 'JD-named IAM stays when AWS is present');
 assert(/Jenkins/i.test(awsHtml), 'JD-named Jenkins stays in skills');
 assert(/Cloud:/.test(awsHtml), 'AWS platform tools land in Cloud');
 
+const porterJd = `Architecting the Future of Logistics: SDE 4. How do you design a system that seamlessly powers ~20 million orders per month? Lead multi-service systems handling millions of transactions, explicitly reasoning about contracts, failure modes, and cross-service observability. Execute high- and low-level designs. Ship clean, maintainable, production-grade code using SOLID principles. Deeply familiar with modern backend stacks, distributed systems, cloud infrastructure, data structures, and object-oriented design.`;
+const porterSkills = renderCategorizedSkills(
+  ['Event-driven microservices & high-throughput APIs', 'Redis caching & PostgreSQL performance tuning'],
+  ['Distributed Systems', 'Observability'],
+  porterJd,
+);
+assert(/Languages:/i.test(porterSkills), 'Languages preserved on architectural JD');
+assert(/Databases:/i.test(porterSkills), 'Databases preserved on architectural JD');
+assert(/Cloud:/i.test(porterSkills), 'Cloud preserved on architectural JD');
+assert(/Distributed Systems/i.test(porterSkills), 'JD architectural term included');
+assert(/Observability/i.test(porterSkills), 'Observability included');
+
 console.log('resume-skills-editor-block-tests: ok');

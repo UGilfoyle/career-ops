@@ -22,17 +22,17 @@ const BODY = `
             <div class="rule"></div>
             <div class="skills-lines">{{SKILLS_LINES}}</div>
         </section>
-        <section style="display: {{EXPERIENCE_DISPLAY}};">
+        <section class="section-experience" style="display: {{EXPERIENCE_DISPLAY}};">
             <h2>Professional Experience</h2>
             <div class="rule"></div>
             {{EXPERIENCE}}
         </section>
-        <section style="display: {{ACHIEVEMENTS_DISPLAY}};">
+        <section class="section-achievements" style="display: {{ACHIEVEMENTS_DISPLAY}};">
             <h2>Selected Achievements</h2>
             <div class="rule"></div>
             <div class="edu">{{ACHIEVEMENTS}}</div>
         </section>
-        <section style="display: {{EDUCATION_DISPLAY}};">
+        <section class="section-education" style="display: {{EDUCATION_DISPLAY}};">
             <h2>Education</h2>
             <div class="rule"></div>
             <div class="edu">{{EDUCATION}}</div>
@@ -62,6 +62,11 @@ function wrap(css: string) {
         @media print {
             body { padding: 0 !important; }
             a { color: #111; text-decoration: none; }
+            .section-education, .edu, .edu > div,
+            .section-achievements {
+                page-break-inside: avoid !important;
+                break-inside: avoid-page !important;
+            }
         }
         .contact:empty { display: none; }
         .contact a { color: #111; text-decoration: none; }
@@ -75,6 +80,11 @@ function wrap(css: string) {
             -webkit-hyphens: none;
             overflow-wrap: break-word;
             word-break: keep-all;
+        }
+        .section-education, .edu, .edu > div,
+        .section-achievements {
+            page-break-inside: avoid !important;
+            break-inside: avoid-page !important;
         }
         .skills-list {
             list-style-type: disc;
@@ -102,44 +112,44 @@ const CLASSIC_CSS = `
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 9.5pt;
-            line-height: 1.4;
+            line-height: 1.38;
             color: #1a1a1a;
-            padding: 0.4in;
+            padding: 0.38in 0.4in;
             -webkit-font-smoothing: antialiased;
         }
         .container { max-width: 100%; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 10px; padding-bottom: 0; }
+        header { text-align: center; margin-bottom: 8px; padding-bottom: 0; }
         h1 {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 18pt; font-weight: 800; letter-spacing: -0.5px;
-            text-transform: none; margin-bottom: 5px; line-height: 1.15;
+            text-transform: none; margin-bottom: 4px; line-height: 1.15;
             color: #111827;
         }
-        .contact { font-size: 8.5pt; color: #4b5563; line-height: 1.4; margin-bottom: 4px; font-weight: 500; }
-        .top-rule { margin-top: 8px; border-top: 1.5px solid #111827; }
-        section { margin-top: 10px; }
+        .contact { font-size: 8.5pt; color: #4b5563; line-height: 1.35; margin-bottom: 3px; font-weight: 500; }
+        .top-rule { margin-top: 6px; border-top: 1.5px solid #111827; }
+        section { margin-top: 8px; }
         h2 {
             font-size: 9.5pt; font-weight: 700; letter-spacing: 0.5px;
-            text-transform: uppercase; margin-bottom: 3px; color: #111827;
+            text-transform: uppercase; margin-bottom: 2px; color: #111827;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        .rule { border-top: 1px solid #e5e7eb; margin-bottom: 6px; }
-        .skills-lines { font-size: 9pt; line-height: 1.4; color: #374151; }
-        .skill-line { margin-bottom: 3px; }
+        .rule { border-top: 1px solid #e5e7eb; margin-bottom: 4px; }
+        .skills-lines { font-size: 9pt; line-height: 1.38; color: #374151; }
+        .skill-line { margin-bottom: 2px; }
         .skill-label { font-weight: 700; color: #111827; }
-        .job { margin-bottom: 9px; }
+        .job { margin-bottom: 7px; }
         .job-header {
             display: flex; justify-content: space-between; align-items: baseline;
-            gap: 10px; font-size: 9.5pt; margin-bottom: 3px;
+            gap: 10px; font-size: 9.5pt; margin-bottom: 2px;
         }
         .job-title { font-weight: 700; color: #111827; }
         .job-company { font-weight: 600; color: #4b5563; }
         .job-dates { font-weight: 500; color: #6b7280; font-size: 8.5pt; }
-        .job ul { list-style-type: disc; margin: 3px 0 0 1.2em; padding: 0; }
-        .job li { margin-bottom: 2.5px; padding-left: 2px; line-height: 1.38; color: #374151; }
-        .summary-block { font-size: 9pt; line-height: 1.45; color: #374151; white-space: pre-line; }
-        .edu { font-size: 9pt; line-height: 1.38; color: #374151; }
-        .edu > div { margin-bottom: 4px; }
+        .job ul { list-style-type: disc; margin: 2px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 2px; padding-left: 2px; line-height: 1.34; color: #374151; }
+        .summary-block { font-size: 9pt; line-height: 1.4; color: #374151; white-space: pre-line; }
+        .edu { font-size: 9pt; line-height: 1.34; color: #374151; }
+        .edu > div { margin-bottom: 2px; }
 `;
 
 const MODERN_COMPACT_CSS = `

@@ -14,6 +14,7 @@ import {
   stripJobBoardChrome,
   keywordAppearsInJd,
   isMethodologySkillPhrase,
+  isEmployerBrandKeyword,
 } from './jd-keyword-align.mjs';
 import { isAwsServiceCrumb, isUnprovenLanguageSkill } from './resume-skills-html.mjs';
 import {
@@ -674,6 +675,16 @@ export function buildJdMatchedCompetencies(jdKeywords, profile, jdText, limit = 
     if (paren) {
       for (const part of paren[1].split(',').map((x) => x.trim()).filter(Boolean)) {
         if (isApprovedSkillPhrase(part) && keywordAppearsInJd(part, jdText)) add(part);
+      }
+    }
+  }
+
+  // Ensure candidate's verified base stack is never starved when JD is architectural/high-level
+  if (comps.length < 10 && Array.isArray(profileTech)) {
+    for (const t of profileTech) {
+      if (comps.length >= limit) break;
+      if (isApprovedSkillPhrase(t) && !isEmployerBrandKeyword(t, jdText) && !isEditorIdeTool(t)) {
+        add(t);
       }
     }
   }

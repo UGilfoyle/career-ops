@@ -266,6 +266,23 @@ function skillsCategoryLines(items, jdText = '') {
     buckets[skillCategory(label)].push(label);
   }
 
+  // Base tech stack foundation: foundational categories must never be completely empty
+  const CORE_FOUNDATION_STACK = {
+    Languages: ['TypeScript', 'Python'],
+    Frameworks: ['Node.js', 'Express'],
+    Databases: ['PostgreSQL', 'MongoDB', 'Redis'],
+    Cloud: ['AWS', 'Docker'],
+  };
+
+  for (const [cat, defaults] of Object.entries(CORE_FOUNDATION_STACK)) {
+    if (buckets[cat].length === 0) {
+      const allowed = defaults.filter((item) => !isEmployerBrandKeyword(item, jdText) && !isEditorIdeTool(item));
+      if (allowed.length > 0) {
+        buckets[cat].push(...allowed);
+      }
+    }
+  }
+
   let order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
   const jdLower = String(jdText || '').toLowerCase();
   if (/\b(devops|sre|site reliability|cloud engineer|platform engineer|infrastructure|aws platform|kubernetes)\b/i.test(jdLower)) {

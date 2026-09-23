@@ -301,17 +301,20 @@ export async function renderHtmlToPdf(html, outputPath, opts = {}) {
     // Wait for fonts to load
     await page.evaluate(() => document.fonts.ready);
 
-    // Generate PDF
+    // Generate PDF (respect @page CSS when defined by template)
+    const hasCssPage = /@page\b/i.test(html);
     const pdfBuffer = await page.pdf({
       format: format,
       printBackground: true,
-      margin: {
-        top: '0.6in',
-        right: '0.6in',
-        bottom: '0.6in',
-        left: '0.6in',
-      },
-      preferCSSPageSize: false,
+      margin: hasCssPage
+        ? undefined
+        : {
+            top: '0.6in',
+            right: '0.6in',
+            bottom: '0.6in',
+            left: '0.6in',
+          },
+      preferCSSPageSize: hasCssPage,
     });
 
     // Write PDF
