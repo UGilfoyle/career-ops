@@ -92,7 +92,7 @@ export function calculateYearsOfExperience(experience: ExperienceEntry[] | undef
   }
   if (!Number.isFinite(earliest) || earliest === Infinity) return 0;
   const months = Math.max(0, latest - earliest);
-  return Math.max(1, Math.round(months / 12));
+  return Math.max(1, Math.floor(months / 12));
 }
 
 /**
@@ -284,7 +284,9 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   const c = profile.candidate || {};
   const experience = sanitizeExperienceEntries(Array.isArray(profile.experience) ? profile.experience : []);
   const education = Array.isArray(profile.education) ? profile.education : [];
-  const yearsExp = calculateYearsOfExperience(experience);
+  const yearsExp =
+    Number((profile.candidate as { years_experience?: number })?.years_experience) ||
+    calculateYearsOfExperience(experience);
   const maxPages = resolveResumePageBudget(yearsExp, experience.length);
 
   const linkedinRaw = String(c.linkedin || '').trim();

@@ -515,7 +515,7 @@ function calculateYearsOfExperience(experience) {
 
   if (!Number.isFinite(earliest) || earliest === Infinity) return 0;
   const months = Math.max(0, latest - earliest);
-  return Math.max(1, Math.round(months / 12));
+  return Math.max(1, Math.floor(months / 12));
 }
 
 function narrativeYearsHint(profile) {

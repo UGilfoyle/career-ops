@@ -727,7 +727,7 @@ function estimateYears(experience) {
   if (!Array.isArray(experience) || !experience.length) return 0;
   let months = 0;
   for (const e of experience) months += parseTenureMonths(e?.period) || 0;
-  return Math.max(1, Math.round(months / 12));
+  return Math.max(1, Math.floor(months / 12));
 }
 
 export function buildDeterministicCoverLetter(plan, profile, companyName, jdText = '', resume = null) {
