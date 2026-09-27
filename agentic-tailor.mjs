@@ -451,17 +451,32 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     const techMatchesJd = (tech) => {
       const t = String(tech || '').trim().toLowerCase();
       if (!t) return false;
+      if (t === 'c#' || t === 'csharp') return /\bc#(?=[^\w]|$)/i.test(jdLower) || /\bcsharp\b/i.test(jdLower);
+      if (t === '.net' || t === '.net core' || t === 'dotnet' || t === 'asp.net') {
+        return /(?:^|[^\w])(?:\.net|dotnet)\b/i.test(jdLower) || /\basp\.net\b/i.test(jdLower);
+      }
+      if (t === 'c++' || t === 'cpp') return /c\+\+/i.test(jdLower);
+      if (t === 'rabbitmq') return jdLower.includes('rabbitmq') || jdLower.includes('rabbit mq') || jdLower.includes('rabbit-mq');
+      if (t === 'fastapi') return jdLower.includes('fastapi') || jdLower.includes('fast api');
       if (t === 'iot' && (/\biot\b/.test(jdLower) || jdLower.includes('internet of things'))) return true;
       if (t === 'mqtt' && /\bmqtt\b/.test(jdLower)) return true;
       if (t === 'openai' || t === 'openai api') return /\bopenai\b/.test(jdLower) || /\bchatgpt\b/.test(jdLower);
       if (t === 'k8s' && (/\bk8s\b/.test(jdLower) || jdLower.includes('kubernetes'))) return true;
       if (t === 'kubernetes' && (jdLower.includes('kubernetes') || /\bk8s\b/.test(jdLower))) return true;
       if (t === 'aws' && (/\baws\b/.test(jdLower) || jdLower.includes('amazon web services'))) return true;
+      if (t === 'azure' && /\bazure\b/.test(jdLower)) return true;
       if (t === 'gcp' && (/\bgcp\b/.test(jdLower) || jdLower.includes('google cloud'))) return true;
       if (t === 'microservices' && /\bmicroservice/.test(jdLower)) return true;
       if (t === 'rest api' || t === 'restful apis' || t === 'rest') return /\brest/.test(jdLower);
+      if (t === 'node.js' || t === 'nodejs' || t === 'node') return /\bnode(?:\.?js)?\b/.test(jdLower);
+      if (t === 'react' || t === 'react.js' || t === 'reactjs') return /\breact(?:\.?js)?\b/.test(jdLower);
+      if (t === 'java') return /\bjava\b/.test(jdLower);
+      if (t === 'python') return /\bpython\b/.test(jdLower);
+      if (t === 'spring' || t === 'spring boot') return /\bspring(?:\s*boot)?\b/.test(jdLower);
+      if (t === 'kafka') return /\bkafka\b/.test(jdLower);
+      if (t === 'sql server' || t === 'mssql') return /sql\s*server|mssql/i.test(jdLower);
       if (t.length <= 3) {
-        return new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(jdLower);
+        return new RegExp(`(?<![A-Za-z0-9])${t.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?![A-Za-z0-9])`, 'i').test(jdLower);
       }
       return jdLower.includes(t);
     };
@@ -2490,6 +2505,21 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
           WHERE id = ${entry.id} AND user_id = ${userId}
         `;
         console.log(`💾 HTML assets persisted to database for job ID ${entry.id}. You can view/print them from the dashboard!`);
+        try {
+          const keywords = profile.target_roles?.primary || [];
+          await sql`
+            INSERT INTO user_profiles (user_id, resume_context, targeting_keywords)
+            VALUES (${userId}, ${sql.json(profile)}, ${sql.json(keywords)})
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+              resume_context = EXCLUDED.resume_context,
+              targeting_keywords = EXCLUDED.targeting_keywords,
+              updated_at = NOW()
+          `;
+          console.log(`🔄 Profile synced to database user_profiles for user ID ${userId}.`);
+        } catch (profSyncErr) {
+          // non-blocking
+        }
       } else {
         console.warn(`⚠ Could not resolve or create job record, skipping HTML persistence.`);
       }

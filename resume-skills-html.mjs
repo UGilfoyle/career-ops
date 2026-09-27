@@ -77,23 +77,20 @@ export function expandSkillTokens(items) {
     // Strip common category prefixes like "AWS platform:", "Cloud platform:", "Backend:"
     s = s.replace(/^(?:AWS\s+platform|Cloud\s+platform|Backend\s*(?:& runtimes)?|Systems\s*(?:& data)?|Domain|Cloud\s*& DevOps|Architecture(?:\s*& Practices)?|Frameworks|Languages):\s*/i, '');
 
+    const DESCRIPTIVE_STRIP = /\b(?:cloud-native microservices architecture|microservices architecture|high-throughput microservices|asynchronous high-throughput microservices|modern front-end engineering|database performance tuning|cloud deployment|contract design|asynchronous microservices|modern ui component development|query tuning|container orchestration|multi-layer caching|distributed messaging|automated testing|observability & incident response|enterprise testing standards|scalable backend apis & microservices|modern typescript front-end architecture|web application design & component architecture|scalable restful & graphql backend apis|schema modeling and query optimization|secure authentication|technical leadership|deployment reliability|performance tuning|runtime performance(?: for telemetry)?|management in production environments?)\b/gi;
+    const stripped = s.replace(DESCRIPTIVE_STRIP, '').trim();
+
     // Split on commas
-    const commaParts = s.split(',').map((x) => x.trim()).filter(Boolean);
+    const commaParts = stripped.split(',').map((x) => x.trim()).filter(Boolean);
     for (const cp of commaParts) {
-      // Split on slashes or ampersand between tools e.g. "Docker / LXC / Kubernetes" or "Bun / Node.js" or "Redis & PostgreSQL"
-      if (cp.includes('/') || (cp.includes('&') && cp.length > 20)) {
-        const cleanCp = cp
-          .replace(/\b(?:deployment reliability|performance tuning|runtime performance(?: for telemetry)?|management in production environments?)\b/gi, '')
-          .trim();
-        const slashParts = cleanCp.split(/\s*[/&]\s*/).map((x) => x.trim()).filter(Boolean);
+      // Split on slashes, ampersand, 'and', or 'with' between tools e.g. "Docker / LXC / Kubernetes", "Bun / Node.js", "Redis & PostgreSQL", "C# and .NET Core", "messaging with Kafka & RabbitMQ"
+      if (cp.includes('/') || cp.includes('&') || /\b(?:and|with)\b/i.test(cp)) {
+        const slashParts = cp.split(/\s*(?:[/&]|\b(?:and|with)\b)\s*/).map((x) => x.trim()).filter(Boolean);
         for (const sp of slashParts) {
           if (sp.length >= 2 && sp.length <= 35) out.push(sp);
         }
       } else {
-        const cleanPart = cp
-          .replace(/\b(?:deployment reliability|performance tuning|runtime performance(?: for telemetry)?|management in production environments?)\b/gi, '')
-          .trim();
-        if (cleanPart.length >= 2 && cleanPart.length <= 35) out.push(cleanPart);
+        if (cp.length >= 2 && cp.length <= 35) out.push(cp);
       }
     }
   }
@@ -269,12 +266,16 @@ function skillsCategoryLines(items, jdText = '') {
     buckets[skillCategory(label)].push(label);
   }
 
+  const jdLower = String(jdText || '').toLowerCase();
+  const isJava = /\bjava\b/i.test(jdLower);
+  const isDotNet = /(?:^|[^\w])(?:\.net|dotnet|c#|asp\.net)(?=[^\w]|$)/i.test(jdLower) || /\bcsharp\b/i.test(jdLower);
+
   // Base tech stack foundation: foundational categories must never be completely empty
   const CORE_FOUNDATION_STACK = {
-    Languages: ['TypeScript', 'Python'],
-    Frameworks: ['Node.js', 'Express'],
-    Databases: ['PostgreSQL', 'MongoDB', 'Redis'],
-    Cloud: ['AWS', 'Docker'],
+    Languages: isJava ? ['Java', 'TypeScript'] : (isDotNet ? ['C#', 'SQL'] : ['TypeScript', 'Python']),
+    Frameworks: isJava ? ['Spring Boot', 'React'] : (isDotNet ? ['.NET Core', 'ASP.NET Core'] : ['Node.js', 'Express']),
+    Databases: isDotNet ? ['SQL Server', 'PostgreSQL', 'Redis'] : ['PostgreSQL', 'MongoDB', 'Redis'],
+    Cloud: isDotNet ? ['Azure', 'Docker'] : ['AWS', 'Docker'],
   };
 
   for (const [cat, defaults] of Object.entries(CORE_FOUNDATION_STACK)) {
@@ -290,10 +291,8 @@ function skillsCategoryLines(items, jdText = '') {
   }
 
   let order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
-  const jdLower = String(jdText || '').toLowerCase();
   const isFullstack = /\b(full[-\s]?stack|frontend|front[-\s]?end|ui engineer|web developer)\b/i.test(jdLower);
-  const isJava = /\bjava\b/i.test(jdLower);
-  if (isFullstack || isJava) {
+  if (isFullstack || isJava || isDotNet) {
     order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
   } else if (/\b(devops|sre|site reliability|cloud engineer|platform engineer|infrastructure engineer|aws platform)\b/i.test(jdLower)) {
     order = ['Cloud', 'Languages', 'Frameworks', 'Databases', 'Other'];
@@ -314,19 +313,19 @@ function skillsCategoryLines(items, jdText = '') {
 function skillCategory(label) {
   const k = String(label || '').toLowerCase().replace(/\.js$/i, 'js');
   if (
-    /^(javascript|typescript|python|java|go|golang|rust|ruby|php|c\+\+|c#|\.net|kotlin|swift|scala|sql|html|css|sass|less)$/i.test(k)
+    /^(javascript|typescript|python|java|go|golang|rust|ruby|php|c\+\+|c#|csharp|kotlin|swift|scala|sql|html|css|sass|less)$/i.test(k)
     || /^(javascript|typescript|python|java)\b/.test(k)
   ) {
     return 'Languages';
   }
   if (
-    /^(nodejs|node\.js|react|reactjs|react\.js|vue|vuejs|vue\.js|angular|angularjs|angular\.js|express|fastapi|flask|django|spring|spring\s*boot|spring\s*framework|nextjs|next\.js|nestjs|nest\.js|rails|laravel|fastify|hono|remix|svelte|puppeteer|cheerio|playwright|selenium|apache\s*camel|graphql|apollo|redux|mobx|tailwind|tailwind\s*css|bootstrap|material\s*ui|mui)$/i.test(k)
-    || /^(node\.?js|react|express|fastapi|django|flask|next|nest|spring|vue|angular)/i.test(k)
+    /^(nodejs|node\.js|react|reactjs|react\.js|vue|vuejs|vue\.js|angular|angularjs|angular\.js|express|fastapi|flask|django|spring|spring\s*boot|spring\s*framework|\.?net|\.?net\s*core|asp\.net|asp\.net\s*core|entity\s*framework|nextjs|next\.js|nestjs|nest\.js|rails|laravel|fastify|hono|remix|svelte|puppeteer|cheerio|playwright|selenium|apache\s*camel|graphql|apollo|redux|mobx|tailwind|tailwind\s*css|bootstrap|material\s*ui|mui)$/i.test(k)
+    || /^(node\.?js|react|express|fastapi|django|flask|next|nest|spring|vue|angular|\.?net\b|asp\.net|entity\s*framework)/i.test(k)
   ) {
     return 'Frameworks';
   }
   if (
-    /^(postgres|postgresql|mysql|mariadb|mongo|mongodb|redis|oracle|dynamodb|sqlite|chromadb|cassandra|elasticsearch|opensearch|supabase|firestore|sql\s*server|mssql)$/i.test(k)
+    /^(postgres|postgresql|mysql|mariadb|mongo|mongodb|redis|oracle|dynamodb|sqlite|chromadb|cassandra|elasticsearch|opensearch|supabase|firestore|sql\s*server|mssql|azure\s*sql)$/i.test(k)
   ) {
     return 'Databases';
   }

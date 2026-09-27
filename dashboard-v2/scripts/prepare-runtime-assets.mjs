@@ -33,6 +33,7 @@ copyFileIfExists(path.join(repoRoot, 'jd-profile-match.mjs'), path.join(runtimeR
 copyFileIfExists(path.join(repoRoot, 'resume-tailoring-plan.mjs'), path.join(runtimeRoot, 'resume-tailoring-plan.mjs'));
 copyFileIfExists(path.join(repoRoot, 'resume-quality.mjs'), path.join(runtimeRoot, 'resume-quality.mjs'));
 copyFileIfExists(path.join(repoRoot, 'resume-skills-html.mjs'), path.join(runtimeRoot, 'resume-skills-html.mjs'));
+copyFileIfExists(path.join(repoRoot, 'resume-persona-track.mjs'), path.join(runtimeRoot, 'resume-persona-track.mjs'));
 copyFileIfExists(path.join(repoRoot, 'profile-hydrate.mjs'), path.join(runtimeRoot, 'profile-hydrate.mjs'));
 copyFileIfExists(path.join(repoRoot, 'generate-pdf.mjs'), path.join(runtimeRoot, 'generate-pdf.mjs'));
 copyDirIfExists(

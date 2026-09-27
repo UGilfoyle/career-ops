@@ -366,7 +366,7 @@ export default function ResumeStudio({
     setExportingPdf(true);
     setBanner(null);
     try {
-      const pdfJdText = editingJobId || leftTab === 'editor' ? '' : activeJdText;
+      const pdfJdText = editingJobId ? '' : activeJdText;
       const payload = JSON.stringify({ resume_context: draft, cache_only: true, jdText: pdfJdText });
       let res = await fetch('/api/resume/export-pdf', {
         method: 'POST',
@@ -797,7 +797,7 @@ export default function ResumeStudio({
               onPreviewModeChange={setPreviewMode}
               tailoredPreviewUrl={editingJobId ? null : tailoredPreviewUrl}
               showTailoredToggle={!editingJobId && hasTailoredForJob}
-              activeJdText={editingJobId || leftTab === 'editor' ? '' : activeJdText}
+              activeJdText={editingJobId ? '' : activeJdText}
             />
           )}
         </div>

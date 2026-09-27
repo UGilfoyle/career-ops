@@ -39,7 +39,7 @@ async function main() {
   try {
     const yamlContent = fs.readFileSync(profilePath, 'utf8');
     const p = yaml.load(yamlContent);
-    const userId = process.env.SCAN_USER_ID || 19; // Using user ID 19 from user's logs
+    const userId = process.env.SCAN_USER_ID || 1;
     
     console.log(`⏳ Uploading local profile for user [${userId}] to database...`);
     

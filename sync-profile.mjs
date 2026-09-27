@@ -49,6 +49,14 @@ async function sync() {
     await fs.writeFile(cvPath, md.trim() + '\n');
     console.log('✅ cv.md updated successfully!');
 
+    try {
+      const uploadScript = path.join(process.cwd(), 'upload-profile.mjs');
+      const { execSync } = await import('child_process');
+      execSync(`node "${uploadScript}"`, { stdio: 'inherit' });
+    } catch {
+      // Non-blocking if offline or DB not configured
+    }
+
   } catch (err) {
     console.error('❌ Sync failed:', err.message);
     process.exit(1);

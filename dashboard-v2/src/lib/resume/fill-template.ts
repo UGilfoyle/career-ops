@@ -12,6 +12,7 @@ import { getTemplateHtml } from './ats-professional-template';
 import { DEFAULT_TEMPLATE_ID, type ExperienceEntry, type ResumeContext } from './types';
 import { formatPeriodDisplay } from './date-range';
 import { buildHonestSummary } from '../../../../jd-profile-match.mjs';
+import { detectPersonaTrack, applyPersonaTrackToProfile } from '../../../../resume-persona-track.mjs';
 
 function escapeHtml(s: unknown): string {
   return String(s || '')
@@ -146,17 +147,32 @@ export function renderExperienceHtml(
   const techMatchesJd = (tech: string) => {
     const t = String(tech || '').trim().toLowerCase();
     if (!t) return false;
+    if (t === 'c#' || t === 'csharp') return /\bc#(?=[^\w]|$)/i.test(jdLower) || /\bcsharp\b/i.test(jdLower);
+    if (t === '.net' || t === '.net core' || t === 'dotnet' || t === 'asp.net') {
+      return /(?:^|[^\w])(?:\.net|dotnet)\b/i.test(jdLower) || /\basp\.net\b/i.test(jdLower);
+    }
+    if (t === 'c++' || t === 'cpp') return /c\+\+/i.test(jdLower);
+    if (t === 'rabbitmq') return jdLower.includes('rabbitmq') || jdLower.includes('rabbit mq') || jdLower.includes('rabbit-mq');
+    if (t === 'fastapi') return jdLower.includes('fastapi') || jdLower.includes('fast api');
     if (t === 'iot' && (/\biot\b/.test(jdLower) || jdLower.includes('internet of things'))) return true;
     if (t === 'mqtt' && /\bmqtt\b/.test(jdLower)) return true;
     if (t === 'openai' || t === 'openai api') return /\bopenai\b/.test(jdLower) || /\bchatgpt\b/.test(jdLower);
     if (t === 'k8s' && (/\bk8s\b/.test(jdLower) || jdLower.includes('kubernetes'))) return true;
     if (t === 'kubernetes' && (jdLower.includes('kubernetes') || /\bk8s\b/.test(jdLower))) return true;
     if (t === 'aws' && (/\baws\b/.test(jdLower) || jdLower.includes('amazon web services'))) return true;
+    if (t === 'azure' && /\bazure\b/.test(jdLower)) return true;
     if (t === 'gcp' && (/\bgcp\b/.test(jdLower) || jdLower.includes('google cloud'))) return true;
     if (t === 'microservices' && /\bmicroservice/.test(jdLower)) return true;
     if (t === 'rest api' || t === 'restful apis' || t === 'rest') return /\brest/.test(jdLower);
+    if (t === 'node.js' || t === 'nodejs' || t === 'node') return /\bnode(?:\.?js)?\b/.test(jdLower);
+    if (t === 'react' || t === 'react.js' || t === 'reactjs') return /\breact(?:\.?js)?\b/.test(jdLower);
+    if (t === 'java') return /\bjava\b/.test(jdLower);
+    if (t === 'python') return /\bpython\b/.test(jdLower);
+    if (t === 'spring' || t === 'spring boot') return /\bspring(?:\s*boot)?\b/.test(jdLower);
+    if (t === 'kafka') return /\bkafka\b/.test(jdLower);
+    if (t === 'sql server' || t === 'mssql') return /sql\s*server|mssql/i.test(jdLower);
     if (t.length <= 3) {
-      return new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(jdLower);
+      return new RegExp(`(?<![A-Za-z0-9])${t.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?![A-Za-z0-9])`, 'i').test(jdLower);
     }
     return jdLower.includes(t);
   };
@@ -313,11 +329,19 @@ export type FillAtsOptions = {
 export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions = {}): string {
   const templateId = options.templateId || profile.studio?.template_id || DEFAULT_TEMPLATE_ID;
   const templateHtml = options.templateHtml || getTemplateHtml(templateId);
-  const c = profile.candidate || {};
-  const experience = sanitizeExperienceEntries(Array.isArray(profile.experience) ? profile.experience : []);
-  const education = Array.isArray(profile.education) ? profile.education : [];
+
+  const jd = String(options.jdText || '').trim();
+  let tailoredProfile = profile;
+  if (jd.length >= 40) {
+    const persona = detectPersonaTrack(jd, undefined, profile);
+    tailoredProfile = applyPersonaTrackToProfile(profile, persona.trackId) as ResumeContext;
+  }
+
+  const c = tailoredProfile.candidate || {};
+  const experience = sanitizeExperienceEntries(Array.isArray(tailoredProfile.experience) ? tailoredProfile.experience : []);
+  const education = Array.isArray(tailoredProfile.education) ? tailoredProfile.education : [];
   const yearsExp =
-    Number((profile.candidate as { years_experience?: number })?.years_experience) ||
+    Number((tailoredProfile.candidate as { years_experience?: number })?.years_experience) ||
     calculateYearsOfExperience(experience);
   const maxPages = resolveResumePageBudget(yearsExp, experience.length);
 
@@ -350,14 +374,14 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   const linksLine = linkParts.join(' · ');
 
   const profileTech = extractTechFromTexts([
-    profile.narrative?.headline,
-    profile.narrative?.exit_story,
-    ...(Array.isArray(profile.experience)
-      ? profile.experience.flatMap((e) => [e?.role, ...(e?.bullets || [])])
+    tailoredProfile.narrative?.headline,
+    tailoredProfile.narrative?.exit_story,
+    ...(Array.isArray(tailoredProfile.experience)
+      ? tailoredProfile.experience.flatMap((e) => [e?.role, ...(e?.bullets || [])])
       : []),
   ], yearsExp >= 7 ? 18 : 14);
   const skillsLines = renderSkillsLines(
-    profile.narrative?.superpowers,
+    tailoredProfile.narrative?.superpowers,
     yearsExp >= 7 ? 22 : 16,
     profileTech,
     options.jdText || '',
@@ -366,13 +390,12 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   const hasExperience = experience.length > 0;
   const hasEducation = education.length > 0;
   const hasAchievements =
-    Array.isArray(profile.narrative?.proof_points) && profile.narrative!.proof_points!.length > 0;
+    Array.isArray(tailoredProfile.narrative?.proof_points) && tailoredProfile.narrative!.proof_points!.length > 0;
 
   const displayName = String(c.full_name || '').trim() || 'Your Name';
-  const jd = String(options.jdText || '').trim();
   const summarySource = jd.length >= 40
     ? buildHonestSummary('', yearsExp, [], jd)
-    : masterSummaryText(profile);
+    : masterSummaryText(tailoredProfile);
 
   const reps: Record<string, string> = {
     NAME: escapeHtml(displayName),
@@ -390,7 +413,7 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     EXPERIENCE: hasExperience ? renderExperienceHtml(experience, maxPages, yearsExp, options.jdText || '') : '',
     EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
     ACHIEVEMENTS: hasAchievements
-      ? renderAchievementsHtml(filterProofPointsAlreadyInExperience(profile.narrative?.proof_points, experience))
+      ? renderAchievementsHtml(filterProofPointsAlreadyInExperience(tailoredProfile.narrative?.proof_points, experience))
       : '',
     ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',
     EDUCATION: hasEducation ? renderEducationHtml(education) : '',
