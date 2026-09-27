@@ -664,7 +664,7 @@ export function weaveAdjacencyScore(bullet, kw) {
 const WEAVE_HOST_NOUNS = new Set([
   'microservices', 'microservice', 'services', 'service', 'systems', 'system',
   'platform', 'platforms', 'pipelines', 'pipeline', 'workflows', 'workflow',
-  'apis', 'api', 'components', 'component', 'engines', 'engine', 'modules', 'module',
+  'engines', 'engine', 'modules', 'module',
 ]);
 
 /**
@@ -696,24 +696,20 @@ export function upgradePartialMention(base, kw) {
 export function isMethodologySkillPhrase(kw) {
   const k = normalizeKeyword(kw).toLowerCase();
   if (!k) return false;
-  return /^(system design|distributed systems|event-driven(?: architecture)?|observability|unit testing|integration testing|agile|scrum|microservices?)$/i.test(k);
+  return /^(system design|distributed systems|event-driven(?: architecture)?|observability|unit testing|integration testing|agile|scrum|microservices?|software architecture|backend architecture|cloud architecture)$/i.test(k);
 }
 
 /**
  * Grammatical weave suffix for a keyword, or null when none reads naturally.
- * Tools/short tech → parenthetical; "X architecture" → "in a/an X".
- * Everything else must be handled by upgradePartialMention or skipped.
+ * Tools/short tech → parenthetical.
+ * Methodology / architecture phrases belong in skills, never tacked onto the end of bullets.
  */
 export function weaveSuffixForm(kw) {
   const k = normalizeKeyword(kw);
   if (!k) return null;
-  if (isMethodologySkillPhrase(k) && !/\barchitecture$/i.test(k)) return null;
+  if (isMethodologySkillPhrase(k) || /\barchitecture$/i.test(k)) return null;
   if (findKnownTechInText(normalizeJdTechAliases(k)).length > 0 && k.split(/\s+/).length <= 2) {
-    if (isMethodologySkillPhrase(k)) return null;
     return `(${k})`;
-  }
-  if (/\barchitecture$/i.test(k)) {
-    return `in ${/^[aeiou]/i.test(k) ? 'an' : 'a'} ${k}`;
   }
   return null;
 }

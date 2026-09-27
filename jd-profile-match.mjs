@@ -732,14 +732,25 @@ const CORE_CLOUD_INFRA = new Set([
 ]);
 
   const jdLower = String(jdText || '').toLowerCase();
-  const isCloudRole = /\b(devops|sre|platform engineer|aws platform|infrastructure|kubernetes)\b/i.test(jdLower);
+  const isFullstack = /\b(full[-\s]?stack|frontend|front[-\s]?end|ui engineer|web developer)\b/i.test(jdLower);
+  const isJavaRole = /\bjava\b/i.test(jdLower);
+  const isCloudRole = /\b(devops|sre|site reliability|platform engineer|aws platform|infrastructure engineer|cloud engineer|cloud architect)\b/i.test(jdLower) && !isFullstack && !isJavaRole;
   const isDataRole = /\b(data engineer|etl|warehouse|databricks|snowflake|pyspark)\b/i.test(jdLower);
   const isAiRole = /\b(large language model|\bllms?\b|\brag\b|generative ai|ai engineer)\b/i.test(jdLower);
-  const isPythonBackend = /\bpython\b/i.test(jdLower) && /\b(django|flask|backend|microservice|restful)\b/i.test(jdLower);
+  const isPythonBackend = /\bpython\b/i.test(jdLower) && /\b(django|flask|backend|microservice|restful)\b/i.test(jdLower) && !isJavaRole;
 
   function prioritizeSummaryTechTerms(terms) {
     const score = (term) => {
       const lower = String(term || '').toLowerCase().trim();
+      if (isJavaRole) {
+        if (/^(java|spring boot|spring)$/i.test(lower)) return 1;
+        if (/^(typescript|javascript|angular|react|vue\.?js|vue|node\.?js|node)$/i.test(lower)) return 5;
+        if (CORE_LANGUAGES.has(lower)) return 10;
+        if (CORE_FRAMEWORKS.has(lower)) return 15;
+        if (CORE_DATABASES.has(lower)) return 20;
+        if (CORE_CLOUD_INFRA.has(lower)) return 30;
+        return 40;
+      }
       if (isPythonBackend) {
         if (/^(python|django|flask|fastapi|mongodb|mssql|sql|postgresql|postgres)$/i.test(lower)) return 5;
         if (CORE_LANGUAGES.has(lower)) return 15;
@@ -747,6 +758,13 @@ const CORE_CLOUD_INFRA = new Set([
         if (CORE_DATABASES.has(lower)) return 25;
         if (CORE_CLOUD_INFRA.has(lower)) return 40;
         return 50;
+      }
+      if (isFullstack) {
+        if (CORE_LANGUAGES.has(lower)) return 5;
+        if (CORE_FRAMEWORKS.has(lower)) return 10;
+        if (CORE_DATABASES.has(lower)) return 20;
+        if (CORE_CLOUD_INFRA.has(lower)) return 30;
+        return 40;
       }
       if (isCloudRole) {
         if (CORE_CLOUD_INFRA.has(lower)) return 10;
@@ -846,6 +864,8 @@ const CORE_CLOUD_INFRA = new Set([
     lines.push('Lead LLM-backed features and AI-assisted delivery with production-grade API reliability and validation loops.');
   } else if (/\bpython\b/i.test(jdLower) && /\b(django|flask)\b/i.test(jdLower)) {
     lines.push('Design and ship Python backend services with Django and Flask, RESTful APIs, and SQL/NoSQL data layers with code review, tests, and production hardening.');
+  } else if (isJavaRole && /\b(microservice|api|web application|spring)\b/i.test(jdLower)) {
+    lines.push('Design scalable cloud-native microservices and enterprise web applications with Spring Boot, clean API contracts, and robust automated test suites.');
   } else if (/\bevent-driven|microservice|kafka|message queue\b/i.test(jdLower)) {
     lines.push('Drive monolith-to-microservices work and event-driven service boundaries with reliable messaging and clear ownership.');
   } else if (/\baws platform|infrastructure as code|terraform|cloudformation|devsecops|capacity planning\b/i.test(jdLower)) {

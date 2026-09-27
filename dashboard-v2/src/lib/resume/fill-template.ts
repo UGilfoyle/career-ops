@@ -135,11 +135,31 @@ function stripDates(text: string): string {
 export function renderExperienceHtml(
   exp: ExperienceEntry[] | undefined,
   maxPages = 2,
-  yearsExp = 0
+  yearsExp = 0,
+  jdText = ''
 ): string {
   if (!Array.isArray(exp) || exp.length === 0) return '';
 
   const sanitized = sanitizeExperienceEntries(exp);
+  const jdLower = String(jdText || '').toLowerCase();
+
+  const techMatchesJd = (tech: string) => {
+    const t = String(tech || '').trim().toLowerCase();
+    if (!t) return false;
+    if (t === 'iot' && (/\biot\b/.test(jdLower) || jdLower.includes('internet of things'))) return true;
+    if (t === 'mqtt' && /\bmqtt\b/.test(jdLower)) return true;
+    if (t === 'openai' || t === 'openai api') return /\bopenai\b/.test(jdLower) || /\bchatgpt\b/.test(jdLower);
+    if (t === 'k8s' && (/\bk8s\b/.test(jdLower) || jdLower.includes('kubernetes'))) return true;
+    if (t === 'kubernetes' && (jdLower.includes('kubernetes') || /\bk8s\b/.test(jdLower))) return true;
+    if (t === 'aws' && (/\baws\b/.test(jdLower) || jdLower.includes('amazon web services'))) return true;
+    if (t === 'gcp' && (/\bgcp\b/.test(jdLower) || jdLower.includes('google cloud'))) return true;
+    if (t === 'microservices' && /\bmicroservice/.test(jdLower)) return true;
+    if (t === 'rest api' || t === 'restful apis' || t === 'rest') return /\brest/.test(jdLower);
+    if (t.length <= 3) {
+      return new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(jdLower);
+    }
+    return jdLower.includes(t);
+  };
 
   return sanitized
     .map((job, idx) => {
@@ -172,12 +192,24 @@ export function renderExperienceHtml(
         titleLeft = `<span class="job-title">${escapeHtml(role)}</span>`;
       }
 
+      const rawStack: string[] = Array.isArray((job as any).tech_stack)
+        ? (job as any).tech_stack
+        : Array.isArray((job as any).technologies)
+        ? (job as any).technologies
+        : [];
+      const filtered = jdLower.length > 40
+        ? rawStack.filter(techMatchesJd)
+        : rawStack;
+      const techLine = filtered.length
+        ? `\n      <div class="job-tech">${escapeHtml(filtered.join(', '))}</div>`
+        : '';
+
       return `
     <div class="job">
       <div class="job-header">
         <div>${titleLeft}</div>
         <div class="job-dates">${escapeHtml(dates)}</div>
-      </div>
+      </div>${techLine}
       <ul>
         ${bullets.map((b) => `<li>${formatBulletHtml(b)}</li>`).join('')}
       </ul>
@@ -355,7 +387,7 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     LINKEDIN_DISPLAY: escapeHtml(displayLink(linkedinRaw)),
     PORTFOLIO_LINK: '',
     SUMMARY_TEXT: escapeHtml(normalizeResumeSummaryPlain(summarySource, yearsExp)),
-    EXPERIENCE: hasExperience ? renderExperienceHtml(experience, maxPages, yearsExp) : '',
+    EXPERIENCE: hasExperience ? renderExperienceHtml(experience, maxPages, yearsExp, options.jdText || '') : '',
     EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
     ACHIEVEMENTS: hasAchievements
       ? renderAchievementsHtml(filterProofPointsAlreadyInExperience(profile.narrative?.proof_points, experience))

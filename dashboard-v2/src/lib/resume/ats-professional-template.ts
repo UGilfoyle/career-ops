@@ -75,6 +75,7 @@ function wrap(css: string) {
         .job-header { page-break-after: avoid; break-after: avoid; }
         .job-header > div:first-child { flex: 1; min-width: 0; }
         .job-dates { white-space: nowrap; flex-shrink: 0; }
+        .job-tech { font-size: 8.5pt; color: #555; font-style: italic; margin-bottom: 2px; }
         .job li, .summary-block, .edu {
             hyphens: none;
             -webkit-hyphens: none;

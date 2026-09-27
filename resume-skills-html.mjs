@@ -157,6 +157,9 @@ const SKILL_CANONICAL = new Map([
   ['kafka', 'Kafka'],
   ['microservices', 'Microservices'],
   ['system design', 'System Design'],
+  ['rest api', 'RESTful APIs'],
+  ['rest apis', 'RESTful APIs'],
+  ['rest', 'RESTful APIs'],
   ['restful api', 'RESTful APIs'],
   ['restful apis', 'RESTful APIs'],
   ['api design', 'API Design'],
@@ -275,22 +278,27 @@ function skillsCategoryLines(items, jdText = '') {
   };
 
   for (const [cat, defaults] of Object.entries(CORE_FOUNDATION_STACK)) {
-    if (buckets[cat].length === 0) {
+    const hasConcrete = cat === 'Databases'
+      ? buckets[cat].some((item) => /(postgres|mongo|mysql|redis|oracle|dynamodb|sqlite|cassandra|aurora|sql)/i.test(item))
+      : buckets[cat].length > 0;
+    if (!hasConcrete) {
       const allowed = defaults.filter((item) => !isEmployerBrandKeyword(item, jdText) && !isEditorIdeTool(item));
       if (allowed.length > 0) {
-        buckets[cat].push(...allowed);
+        buckets[cat].unshift(...allowed);
       }
     }
   }
 
   let order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
   const jdLower = String(jdText || '').toLowerCase();
-  if (/\b(devops|sre|site reliability|cloud engineer|platform engineer|infrastructure|aws platform|kubernetes)\b/i.test(jdLower)) {
+  const isFullstack = /\b(full[-\s]?stack|frontend|front[-\s]?end|ui engineer|web developer)\b/i.test(jdLower);
+  const isJava = /\bjava\b/i.test(jdLower);
+  if (isFullstack || isJava) {
+    order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
+  } else if (/\b(devops|sre|site reliability|cloud engineer|platform engineer|infrastructure engineer|aws platform)\b/i.test(jdLower)) {
     order = ['Cloud', 'Languages', 'Frameworks', 'Databases', 'Other'];
   } else if (/\b(data engineer|etl|data platform|data warehouse|databricks|snowflake|pyspark|bigquery)\b/i.test(jdLower)) {
     order = ['Databases', 'Languages', 'Cloud', 'Frameworks', 'Other'];
-  } else if (/\b(full[-\s]?stack|frontend|front[-\s]?end|ui engineer|web developer)\b/i.test(jdLower)) {
-    order = ['Frameworks', 'Languages', 'Databases', 'Cloud', 'Other'];
   } else if (/\b(ai engineer|llm|machine learning|ml engineer|rag|generative ai)\b/i.test(jdLower)) {
     order = ['Frameworks', 'Languages', 'Cloud', 'Databases', 'Other'];
   }
@@ -312,19 +320,18 @@ function skillCategory(label) {
     return 'Languages';
   }
   if (
-    /^(nodejs|node\.js|react|reactjs|react\.js|express|fastapi|flask|django|nextjs|next\.js|nestjs|nest\.js|vue|angular|spring|rails|laravel|fastify|hono|remix|puppeteer|cheerio|playwright|selenium|apache\s*camel)$/i.test(k)
-    || /^(node\.?js|react|express|fastapi|django|flask|next|nest|api\s*design)/i.test(k)
+    /^(nodejs|node\.js|react|reactjs|react\.js|vue|vuejs|vue\.js|angular|angularjs|angular\.js|express|fastapi|flask|django|spring|spring\s*boot|spring\s*framework|nextjs|next\.js|nestjs|nest\.js|rails|laravel|fastify|hono|remix|svelte|puppeteer|cheerio|playwright|selenium|apache\s*camel|graphql|apollo|redux|mobx|tailwind|tailwind\s*css|bootstrap|material\s*ui|mui)$/i.test(k)
+    || /^(node\.?js|react|express|fastapi|django|flask|next|nest|spring|vue|angular)/i.test(k)
   ) {
     return 'Frameworks';
   }
   if (
-    /^(postgres|postgresql|mysql|mariadb|mongo|mongodb|redis|oracle|dynamodb|sqlite|chromadb|cassandra|elasticsearch|opensearch|supabase|firestore)$/i.test(k)
-    || /\b(data\s*modeling|database\s*design)\b/i.test(k)
+    /^(postgres|postgresql|mysql|mariadb|mongo|mongodb|redis|oracle|dynamodb|sqlite|chromadb|cassandra|elasticsearch|opensearch|supabase|firestore|sql\s*server|mssql)$/i.test(k)
   ) {
     return 'Databases';
   }
   if (
-    /^(aws|gcp|azure|docker|kubernetes|k8s|terraform|cloudformation|cloudwatch|iam|vpc|boto3|jenkins|linux|ci\/cd|ecs|ec2|lambda|s3)$/i.test(k)
+    /^(aws|gcp|azure|docker|kubernetes|k8s|terraform|cloudformation|cloudwatch|iam|vpc|boto3|jenkins|linux|ci\/cd|ecs|ec2|lambda|s3|openshift|webpack|parcel|vite|git|github\s*actions|gitlab\s*ci)$/i.test(k)
     || /^(aws|azure|gcp|docker|kubernetes|terraform|cloudformation|cloudwatch|infrastructure\s*as\s*code|continuous\s*integration)\b/.test(k)
   ) {
     return 'Cloud';
