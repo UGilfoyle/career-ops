@@ -45,7 +45,8 @@ function escapeHtml(s) {
 
 // .summary-block uses white-space: pre-line — emit plain escaped text with newlines
 function formatResumeSummaryHtml(rawSummary) {
-  const lines = String(rawSummary || '').split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const sanitized = String(rawSummary || '').replace(/\s*—\s*/g, ': ').replace(/\s*–\s*/g, ' - ');
+  const lines = sanitized.split(/\n+/).map((l) => l.trim()).filter(Boolean);
   if (!lines.length) return '';
   return escapeHtml(lines.join('\n'));
 }
@@ -67,17 +68,43 @@ function renderAchievements(proofPoints) {
   }).join('')}</ul>`;
 }
 
-function renderExperience(profile, resume) {
+function renderExperience(profile, resume, jdText = '') {
   const jobs = profile.experience || [];
+  const jdLower = String(jdText || '').toLowerCase();
   return jobs.map((job, idx) => {
     const bullets = resume.experience?.[String(idx)] || job.bullets || [];
     const li = bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('');
+    // Filter tech_stack to JD-relevant items; show all if no JD
+    const rawStack = Array.isArray(job.tech_stack) ? job.tech_stack : [];
+    const techMatchesJd = (tech) => {
+      const t = String(tech || '').trim().toLowerCase();
+      if (!t) return false;
+      if (t === 'iot' && (/\biot\b/.test(jdLower) || jdLower.includes('internet of things'))) return true;
+      if (t === 'mqtt' && /\bmqtt\b/.test(jdLower)) return true;
+      if (t === 'openai' || t === 'openai api') return /\bopenai\b/.test(jdLower) || /\bchatgpt\b/.test(jdLower);
+      if (t === 'k8s' && (/\bk8s\b/.test(jdLower) || jdLower.includes('kubernetes'))) return true;
+      if (t === 'kubernetes' && (jdLower.includes('kubernetes') || /\bk8s\b/.test(jdLower))) return true;
+      if (t === 'aws' && (/\baws\b/.test(jdLower) || jdLower.includes('amazon web services'))) return true;
+      if (t === 'gcp' && (/\bgcp\b/.test(jdLower) || jdLower.includes('google cloud'))) return true;
+      if (t === 'microservices' && /\bmicroservice/.test(jdLower)) return true;
+      if (t === 'rest api' || t === 'restful apis' || t === 'rest') return /\brest/.test(jdLower);
+      if (t.length <= 3) {
+        return new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(jdLower);
+      }
+      return jdLower.includes(t);
+    };
+    const filtered = jdLower.length > 40
+      ? rawStack.filter(techMatchesJd)
+      : rawStack;
+    const techLine = filtered.length
+      ? `\n      <div class="job-tech">${escapeHtml(filtered.join(', '))}</div>`
+      : '';
     return `
     <div class="job">
       <div class="job-header">
         <div><span class="job-company">${escapeHtml(job.company || '')}</span> - <span class="job-title">${escapeHtml(job.role || '')}</span></div>
         <div class="job-dates">${escapeHtml(formatPeriodDisplay(job.period || ''))}</div>
-      </div>
+      </div>${techLine}
       <ul>${li}</ul>
     </div>`;
   }).join('\n');
@@ -231,7 +258,7 @@ const reps = {
   SUMMARY_TEXT: formatResumeSummaryHtml(executed.resume.summary),
   SKILLS_LINES: skillsLines,
   SKILLS_DISPLAY: skillsLines.trim() ? 'block' : 'none',
-  EXPERIENCE: hasExperience ? renderExperience(profile, executed.resume) : '',
+  EXPERIENCE: hasExperience ? renderExperience(profile, executed.resume, jdText) : '',
   EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
   ACHIEVEMENTS: hasAchievements ? renderAchievements(profile.narrative.proof_points) : '',
   ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',

@@ -130,7 +130,7 @@ export function classifyRoleFamily(jdText) {
   ) {
     return 'data_etl';
   }
-  if (/\b(web scrap|scraping|puppeteer|playwright|cheerio)\b/.test(t) && !/\bfull[-\s]?stack\b|\bplatform engineer\b/.test(t)) {
+  if (/\b(web scrap|scraping)\b/.test(t) || (/\b(puppeteer|cheerio|playwright)\b/.test(t) && !/\b(backend|back[-\s]?end|full[-\s]?stack|platform engineer)\b/.test(t))) {
     return 'scraping_js';
   }
   if (/\b(llm|ai agent|generative ai|langchain|rag)\b/.test(t) && /\bengineer\b/.test(t) && !/\b(backend|back[-\s]?end|full[-\s]?stack)\b/.test(t)) {
@@ -466,8 +466,8 @@ export function stripGapMention(bullet, gap) {
     return t.replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").replace(/,\s*,/g, ",").replace(/\s+\./g, ".").trim();
   }
   const escaped = escapeGapRegex(raw).replace(/\./g, "\.?");
-  t = t.replace(new RegExp(`\\s*\\(${escaped}\\)`, "gi"), "");
-  t = t.replace(new RegExp(`(?:\\s*(?:,|/|and|&))?\\s*\\b${escaped}\\b(?:\\s*(?:,|/|and|&))?`, "gi"), "");
+  t = t.replace(new RegExp(`\\s*\\(${escaped}\\)`, "gi"), " ");
+  t = t.replace(new RegExp(`(?:\\s*(?:,|/|and|&))?\\s*\\b${escaped}\\b(?:\\s*(?:,|/|and|&))?`, "gi"), " ");
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s+and\s*,/gi, "");
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*,\s*([a-z]+ing\b)/gi, (m, prep, word) => word + " ");
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s+([a-z]+ing\b)/gi, (m, prep, word) => word + " ");

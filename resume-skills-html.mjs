@@ -50,8 +50,8 @@ const TECH_PATTERNS = [
   /\b(docker|kubernetes|k8s|helm|istio|envoy|nginx|haproxy|traefik|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|circle\s?ci|argo\s?cd|flux|buildkite|drone|prometheus|grafana|datadog|new\s?relic|pagerduty|splunk|elk|loki|jaeger|opentelemetry|codepipeline|codebuild|secrets\s?manager|guardduty)\b/i,
   /\b(kafka|rabbitmq|nats|pulsar|flink|spark|pyspark|airflow|dbt|snowflake|redshift|bigquery|databricks|azure\s?data\s?factory|\badf\b|mlflow|sagemaker|pytorch|tensorflow|langchain|openai|hugging\s?face|llm|rag|vector\s?db|pinecone|weaviate|qdrant|milvus|chromadb|apache\s*camel)\b/i,
   /\b(jest|mocha|pytest|cypress|playwright|puppeteer|cheerio|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack|gdb|valgrind|uml|3gpp|module\s*federation)\b/i,
-  /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet|tcp\/ip)\b/i,
-  /\b(microservices?|system\s?design|system\s?architecture|software\s?architecture|backend\s?architecture|cloud\s?architecture|data\s?modeling|database\s?design|api\s?design|event-?driven(?:\s+architecture)?|distributed\s+systems|observability|ci\/cd|devops|sre|etl|orm|scd|unit\s+testing|integration\s+testing|agile|scrum|kanban|infrastructure\s+as\s+code|continuous\s+integration|decision\s+intelligence|industrial\s+systems)\b/i,
+  /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet|tcp\/ip|mqtt|iot)\b/i,
+  /\b(microservices?|system\s?design|system\s?architecture|software\s?architecture|backend\s?architecture|cloud\s?architecture|data\s?modeling|database\s?design|api\s?design|event-?driven(?:\s+architecture)?|distributed\s+systems|observability|ci\/cd|devops|sre|etl|orm|scd|unit\s+testing|integration\s+testing|agile|scrum|kanban|infrastructure\s+as\s+code|continuous\s+integration|decision\s+intelligence|industrial\s+systems|prompt\s*engineering)\b/i,
 ];
 
 /** Narrative / superpower phrases — not Technical Skills bullets. */

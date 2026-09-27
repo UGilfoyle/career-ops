@@ -446,7 +446,7 @@ export function validateResumeAlignment({
       }
       if (!current.pass) continue;
       if (current.ats < adaptiveAtsMin) continue;
-      if (current.composite < sourceScore.composite && sourceScore.pass) continue;
+      if (current.composite < sourceScore.composite && sourceScore.pass && sourceScore.ats >= adaptiveAtsMin) continue;
       if (current.composite < llmFloor) continue;
       if (current.honestCoverage < sourceScore.honestCoverage) continue;
       eligible.push(current);
@@ -457,7 +457,7 @@ export function validateResumeAlignment({
       if (selected.ats < adaptiveAtsMin) {
         reasons.push(`ATS content score ${selected.ats} < ${adaptiveAtsMin} (target ${atsMin})`);
       }
-      if (selected.composite < sourceScore.composite && sourceScore.pass) {
+      if (selected.composite < sourceScore.composite && sourceScore.pass && sourceScore.ats >= adaptiveAtsMin) {
         reasons.push(
           `Best honest score ${selected.composite} is below source CV ${sourceScore.composite}`
         );

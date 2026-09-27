@@ -28,7 +28,7 @@ const KNOWN_TECH = [
   'SCD', 'Mainframe', 'Data Modeling',
   // Microsoft / Azure full-stack (Interra-style JDs)
   'SQL Server', 'Microsoft SQL Server', 'Telerik', 'DevExpress', 'jQuery', 'MVC',
-  'ASP.NET', 'Azure Functions', 'Azure Service Bus', 'Event Hub', 'MQTT', 'OAuth2', 'OIDC', 'SAML', '.NET Aspire',
+  'ASP.NET', 'Azure Functions', 'Azure Service Bus', 'Event Hub', 'MQTT', 'IoT', 'OpenAI API', 'Prompt Engineering', 'OAuth2', 'OIDC', 'SAML', '.NET Aspire',
 ];
 
 /**

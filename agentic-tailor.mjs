@@ -445,12 +445,39 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
       titleLeft = `<span class="job-title">${role}</span>`;
     }
 
+    // Filter tech_stack to JD-relevant items; show all if no JD
+    const jdLower = String(jdText || '').toLowerCase();
+    const rawStack = Array.isArray(job.tech_stack) ? job.tech_stack : [];
+    const techMatchesJd = (tech) => {
+      const t = String(tech || '').trim().toLowerCase();
+      if (!t) return false;
+      if (t === 'iot' && (/\biot\b/.test(jdLower) || jdLower.includes('internet of things'))) return true;
+      if (t === 'mqtt' && /\bmqtt\b/.test(jdLower)) return true;
+      if (t === 'openai' || t === 'openai api') return /\bopenai\b/.test(jdLower) || /\bchatgpt\b/.test(jdLower);
+      if (t === 'k8s' && (/\bk8s\b/.test(jdLower) || jdLower.includes('kubernetes'))) return true;
+      if (t === 'kubernetes' && (jdLower.includes('kubernetes') || /\bk8s\b/.test(jdLower))) return true;
+      if (t === 'aws' && (/\baws\b/.test(jdLower) || jdLower.includes('amazon web services'))) return true;
+      if (t === 'gcp' && (/\bgcp\b/.test(jdLower) || jdLower.includes('google cloud'))) return true;
+      if (t === 'microservices' && /\bmicroservice/.test(jdLower)) return true;
+      if (t === 'rest api' || t === 'restful apis' || t === 'rest') return /\brest/.test(jdLower);
+      if (t.length <= 3) {
+        return new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(jdLower);
+      }
+      return jdLower.includes(t);
+    };
+    const filtered = jdLower.length > 40
+      ? rawStack.filter(techMatchesJd)
+      : rawStack;
+    const techLine = filtered.length
+      ? `\n      <div class="job-tech">${escapeHtml(filtered.join(', '))}</div>`
+      : '';
+
     return `
     <div class="job">
       <div class="job-header">
         <div>${titleLeft}</div>
         <div class="job-dates">${dates}</div>
-      </div>
+      </div>${techLine}
       <ul>
         ${aiSafeBullets.map(b => `<li>${formatBulletHtml(b)}</li>`).join('')}
       </ul>
@@ -591,7 +618,7 @@ function wrapSummaryLine(line, maxLen) {
 
 /** Plain summary for white-space: pre-line — keep full sentences, wrap instead of "…". */
 function normalizeResumeSummaryPlain(rawSummary, yearsExp) {
-  let t = String(rawSummary || '').trim();
+  let t = String(rawSummary || '').replace(/\s*—\s*/g, ': ').replace(/\s*–\s*/g, ' - ').trim();
   const y = Number(yearsExp) || 0;
   if (!t) {
     t =
@@ -1444,6 +1471,7 @@ GLOBAL RULES:
 - 100% JD-Alignment (ATS-FIRST): Mirror THIS posting's tech in Summary, Core Competencies, and tailored experience using exact JD wording. Do not default to a Node/TS dump. Still never invent employers or fake percentage metrics that are not in the digest.
 - JD ONLY: If this JD is AWS/backend/platform and does NOT require LLM/RAG/ML as a core skill, do NOT add ChromaDB, embeddings, Claude/GPT/Llama, "LLM-parsed", or AI-feature bullets. "AI-assisted coding" as a nice-to-have is NOT permission to rewrite the resume as AI engineering.
 - NO decorative arrows (▸ → ⇒) anywhere in resume text — plain sentences only.
+- NO em dashes (—) or en dashes (–) anywhere in the resume text or cover letter — never use em dashes; use natural commas, colons, or standard hyphens (-) so it reads as authentic, hand-typed English.
 - Use short sentences, active voice, specific numbers where they appear in the digest
 - Lead with substance, not filler${companyTypeRule}
 - Highlight Applied AI & GenAI/LLM: Only if THIS posting's own requirements mention AI/LLM/RAG (ignore Naukri "Similar jobs" chrome). Then weave digest-proven AI work into summary/competencies. Never paste FastAPI/SSE/LLM onto a role whose digest does not contain that work.
