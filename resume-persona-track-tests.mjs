@@ -26,7 +26,7 @@ console.log('  ✅ Track A auto-detection from JD passed');
 const nodeJd = `
 Role: Lead Backend Engineer (Cloud Services)
 Requirements:
-- Strong expertise with TypeScript, Node.js, and Bun runtime performance.
+- Strong expertise with TypeScript, Node.js, and stream runtime performance.
 - Experience with Redis caching, PostgreSQL, Docker, and Kubernetes on AWS.
 - Background in API design, microservices architecture, and technical mentorship.
 `;

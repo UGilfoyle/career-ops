@@ -1504,8 +1504,8 @@ DEEP ARCHITECTURAL REFRAMING & HIRING MANAGER PSYCHOLOGY (CRITICAL):
     - Highlight low-level mechanisms: PgBouncer in transaction pooling mode, declarative time-bucket table partitioning, autovacuum scale factor tuning to eliminate table bloat, query plan profiling, eliminating lock contention under peak batch ingest bursts, and cutting p99 write latency from 3.8s down to <110ms.
     - Zero vendor crutches: emphasize building in-house scalable systems rather than superficial vendor wrappers.
     - INTVERSE (Kenvue): High-throughput Python microservices, multiprocessing workers, Pydantic validation schemas, and Redis caching.
-    - Glidewell: RedHat Linux SRE, distributed telemetry tracing (ELK), database connection pooling, and SQL optimization.` : `* TRACK B (Node.js, Bun, TypeScript & Cloud Microservices):
-    - Quest (SKF Lubrication Cloud): Focus on event-driven microservices: Node.js event-loop optimization, deploying Bun runtimes to cut container memory footprint on high-throughput queues, Redis multi-tier caching for hot device metadata, sub-100ms p99 API latency, Docker/LXC deployment acceleration (from ~40m to under 8m), and API contracts/mentorship.
+    - Glidewell: RedHat Linux SRE, distributed telemetry tracing (ELK), database connection pooling, and SQL optimization.` : `* TRACK B (Node.js, TypeScript & Cloud Microservices):
+    - Quest (SKF Lubrication Cloud): Focus on event-driven microservices: Node.js event-loop optimization, deploying Node.js worker threads and stream pipelines to cut container memory footprint on high-throughput queues, Redis multi-tier caching for hot device metadata, sub-100ms p99 API latency, Docker/LXC deployment acceleration (from ~40m to under 8m), and API contracts/mentorship.
     - INTVERSE (Kenvue): Reusable TypeScript components, streaming backend APIs, and Terraform/Jenkins CI/CD automation.
     - Glidewell: Resilient third-party integrations, tenacity-based exponential backoff, and enterprise WFM systems.`}
 - HIRING MANAGER PSYCHOLOGY (What broke, what was fixed):

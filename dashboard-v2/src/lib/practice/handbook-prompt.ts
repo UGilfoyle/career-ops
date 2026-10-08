@@ -35,8 +35,8 @@ WHO I AM
 - Location: Pune, India
 - Level: Lead / Senior Backend Engineer, 7+ years
 - Target roles: Senior/Lead Backend, Platform Backend, Distributed Systems, AI-adjacent backend (APIs, RAG, LLM integration — NOT research scientist / not Kaggle-only ML)
-- Stack I actually use: Node.js, Bun, TypeScript, JavaScript, Python, FastAPI, PostgreSQL, MongoDB, Redis, Kafka-ish event pipelines, AWS, Docker, Kubernetes, REST/GraphQL, React (integration only)
-- Proof I can reuse in answers: SKF IoT / lubrication cloud (millions of telemetry events/day, ~40% p99 API latency cut, Redis + Postgres tuning, Bun ingestion ~30% less memory / ~2x speed, deploys 40min → <8min), INTVERSE (Python + ChromaDB ingestion, LLM reranker, Pydantic), Glidewell (retry/backoff, provider fallback Anthropic→OpenAI→Llama, ELK, SQL CPU -35%)
+- Stack I actually use: Node.js, TypeScript, JavaScript, Python, FastAPI, PostgreSQL, MongoDB, Redis, Kafka-ish event pipelines, AWS, Docker, Kubernetes, REST/GraphQL, React (integration only)
+- Proof I can reuse in answers: SKF IoT / lubrication cloud (millions of telemetry events/day, ~40% p99 API latency cut, Redis + Postgres tuning, Node.js worker thread ingestion ~30% less memory / ~2x speed, deploys 40min → <8min), INTVERSE (Python + ChromaDB ingestion, LLM reranker, Pydantic), Glidewell (retry/backoff, provider fallback Anthropic→OpenAI→Llama, ELK, SQL CPU -35%)
 - Comp target: India, ~₹22L+ fixed, hybrid/remote OK
 - Weakness to fix: I need DSA explained as simply as possible. I am strong at production backends. I freeze when someone says "just invert a binary tree" without a story. I want AI-era interview fluency: RAG, embeddings, streaming, evals, cost, latency, safety — tied to backend systems I already ship.
 

@@ -4,10 +4,10 @@
  *   - java_fullstack: Java, Spring Boot, React, Kafka, RabbitMQ, AWS, Cloud Microservices
  *   - python_fastapi: Python, FastAPI, React, PostgreSQL, Redis, Azure/AWS/GCP, Docker
  *   - dotnet_azure: .NET, C#, Azure Cloud, Microservices, SQL Server, Redis
- *   - node_ts_fullstack: Node.js, Bun, TypeScript, React, PostgreSQL, Redis, AWS
+ *   - node_ts_fullstack: Node.js, TypeScript, React, PostgreSQL, Redis, AWS
  *   - senior_fullstack: TypeScript, React, Node.js, Python, PostgreSQL, Cloud Microservices
  *   - track_a: Linux, Python & Distributed Data Platform (PostgreSQL at scale, PgBouncer, Ingestion)
- *   - track_b: Node.js, Bun, TypeScript & Cloud Microservices (Redis, Docker/K8s, Latency Optimization)
+ *   - track_b: Node.js, TypeScript & Cloud Microservices (Redis, Docker/K8s, Latency Optimization)
  */
 
 export const TRACK_A_ID = 'track_a';
@@ -268,10 +268,10 @@ export const BUILTIN_TRACK_PRESETS = {
   [TRACK_NODE_TS_FULLSTACK]: {
     id: TRACK_NODE_TS_FULLSTACK,
     name: 'Lead / Senior Full Stack Engineer (Node.js / TypeScript)',
-    headline: 'Lead / Senior Full Stack Engineer: Node.js, Bun, TypeScript, React, Redis, PostgreSQL, AWS Microservices',
-    exit_story: '7+ years architecting and scaling distributed backends and modern web applications. At Quest Global (SKF Telemetry Cloud): millions of daily telemetry events, sub-100ms p99 API latency, Bun/Node.js-powered ingestion, React dashboards, Docker deploy speedups, and engineering standards.',
+    headline: 'Lead / Senior Full Stack Engineer: Node.js, TypeScript, React, Redis, PostgreSQL, AWS Microservices',
+    exit_story: '7+ years architecting and scaling distributed backends and modern web applications. At Quest Global (SKF Telemetry Cloud): millions of daily telemetry events, sub-100ms p99 API latency, high-throughput Node.js stream ingestion, React dashboards, Docker deploy speedups, and engineering standards.',
     superpowers: [
-      'Node.js, Bun & TypeScript scalable backend APIs & microservices',
+      'Node.js & TypeScript scalable backend APIs & microservices',
       'React & modern TypeScript front-end architecture',
       'Redis caching & PostgreSQL performance tuning',
       'Event-driven architecture with Kafka & RabbitMQ',
@@ -281,17 +281,17 @@ export const BUILTIN_TRACK_PRESETS = {
     proof_points: [
       { name: 'SKF IoT API Latency', hero_metric: 'Sub-100ms p99 API latency under high-frequency telemetry load' },
       { name: 'Telemetry Scale', hero_metric: 'Millions of daily industrial telemetry events at 99.9% uptime' },
-      { name: 'Bun Ingestion Workers', hero_metric: 'Deployed Bun runtimes cutting container memory overhead on hot paths' },
+      { name: 'Node.js Worker Ingestion', hero_metric: 'Implemented Node.js worker threads and stream pipelines cutting container memory overhead on hot paths' },
       { name: 'Deploy Speed', hero_metric: 'Rollouts from ~40 minutes to under 8 minutes via Docker/LXC' },
     ],
     experience_reframes: {
       quest: {
         role: 'Lead Backend Engineer',
-        tech_stack: ['Node.js', 'TypeScript', 'Bun', 'React', 'PostgreSQL', 'Redis', 'GraphQL', 'Docker', 'AWS', 'Kafka', 'RabbitMQ', 'microservices'],
+        tech_stack: ['Node.js', 'TypeScript', 'React', 'PostgreSQL', 'Redis', 'GraphQL', 'Docker', 'AWS', 'Kafka', 'RabbitMQ', 'microservices'],
         bullets: [
           "Architected and scaled event-driven microservices for SKF's global Telemetry Cloud, handling millions of real-time industrial IoT telemetry and MQTT sensor events daily with 99.9% uptime.",
           'Optimized API throughput and response times by eliminating Node.js event-loop blocking, introducing multi-tier Redis caching for hot device metadata, and tuning PostgreSQL query execution plans.',
-          'Benchmarked and deployed Bun into async telemetry ingestion workers, significantly reducing per-container memory footprint on high-throughput event queues.',
+          'Implemented Node.js Worker Threads and stream pipelines for async telemetry ingestion, significantly reducing per-container memory footprint on high-throughput event queues.',
           'Eliminated peak-traffic database lock contention by restructuring PostgreSQL schema partitioning and replacing unindexed table scans with targeted composite indexes.',
           'Standardized Docker & LXC container strategies across environments, cutting rollout time from ~40 minutes to under 8 minutes.',
         ],
