@@ -42,7 +42,7 @@ jobs:
         run: npm install --omit=dev
 
       - name: Cache Playwright browser binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
