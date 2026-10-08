@@ -27,6 +27,11 @@ const BODY = `
             <div class="rule"></div>
             {{EXPERIENCE}}
         </section>
+        <section class="section-achievements" style="display: {{ACHIEVEMENTS_DISPLAY}};">
+            <h2>Selected Achievements</h2>
+            <div class="rule"></div>
+            <div class="edu">{{ACHIEVEMENTS}}</div>
+        </section>
         <section class="section-education" style="display: {{EDUCATION_DISPLAY}};">
             <h2>Education</h2>
             <div class="rule"></div>

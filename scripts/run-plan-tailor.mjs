@@ -24,7 +24,7 @@ import { buildApplicationDocumentPaths } from '../document-filename.mjs';
 import { buildHtml as buildCoverHtml } from '../generate-cover-letter.mjs';
 import { renderContactBarHtml } from '../resume-contact-html.mjs';
 import { renderCategorizedSkills } from '../resume-skills-html.mjs';
-import { formatPeriodDisplay, filterProofPointsAlreadyInExperience } from '../resume-quality.mjs';
+import { formatPeriodDisplay, filterProofPointsAlreadyInExperience, selectJdAlignedProofPoints } from '../resume-quality.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -271,11 +271,12 @@ const hasEducation = Array.isArray(profile.education) && profile.education.lengt
 const educationHtml = hasEducation ? renderEducation(profile.education) : '';
 const hasEduContent = Boolean(educationHtml && educationHtml.trim().length > 0);
 
-const filteredProofPoints = filterProofPointsAlreadyInExperience(
+const alignedProofPoints = selectJdAlignedProofPoints(
   profile.narrative?.proof_points,
-  profile.experience
+  jdText,
+  3
 );
-const achievementsHtml = renderAchievements(filteredProofPoints);
+const achievementsHtml = renderAchievements(alignedProofPoints);
 const hasAchievements = Boolean(achievementsHtml && achievementsHtml.trim().length > 0);
 
 const reps = {

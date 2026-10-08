@@ -168,7 +168,7 @@ export async function GET(
 
     const html = type === 'resume'
       ? rawHtml
-          .replace(/<section[^>]*>[\s\n]*<h2>Selected Achievements<\/h2>[\s\S]*?<\/section>[\s\n]*/gi, '')
+          .replace(/<section[^>]*>[\s\n]*<h2>Selected Achievements<\/h2>[\s\n]*<div class="rule"><\/div>[\s\n]*<div[^>]*>\s*<\/div>[\s\n]*<\/section>[\s\n]*/gi, '')
           .replace(/<section[^>]*style="[^"]*display:\s*none[^"]*"[^>]*>[\s\S]*?<\/section>[\s\n]*/gi, '')
       : rawHtml;
 

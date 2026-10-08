@@ -239,6 +239,29 @@ export function renderEducationHtml(edu: EduFmt[] | undefined): string {
   return edu.map((e) => `<div>${escapeHtml(formatEducationLine(e))}</div>`).join('');
 }
 
+export function selectJdAlignedProofPoints(
+  proofPoints: Array<{ name?: string; hero_metric?: string }> | undefined,
+  jdText = '',
+  limit = 3
+): Array<{ name?: string; hero_metric?: string }> {
+  if (!Array.isArray(proofPoints) || proofPoints.length === 0) return [];
+  if (!jdText || typeof jdText !== 'string' || jdText.trim().length < 20) {
+    return proofPoints.slice(0, limit);
+  }
+  const jdLower = jdText.toLowerCase();
+  const scored = proofPoints.map((p) => {
+    const text = `${p?.name || ''} ${p?.hero_metric || ''}`.toLowerCase();
+    const words = text.split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+    let score = 0;
+    for (const w of words) {
+      if (jdLower.includes(w)) score++;
+    }
+    return { p, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map((s) => s.p);
+}
+
 export function renderAchievementsHtml(
   proofPoints: Array<{ name?: string; hero_metric?: string }> | undefined
 ): string {
@@ -387,11 +410,12 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     options.jdText || '',
   );
   const experienceHtml = renderExperienceHtml(experience, maxPages, yearsExp, options.jdText || '');
-  const filteredProofPoints = filterProofPointsAlreadyInExperience(
+  const alignedProofPoints = selectJdAlignedProofPoints(
     tailoredProfile.narrative?.proof_points,
-    experience
+    options.jdText || '',
+    3
   );
-  const achievementsHtml = renderAchievementsHtml(filteredProofPoints);
+  const achievementsHtml = renderAchievementsHtml(alignedProofPoints);
   const educationHtml = renderEducationHtml(education);
 
   const hasSkills = Boolean(skillsLines && skillsLines.trim().length > 0);

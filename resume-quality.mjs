@@ -1265,6 +1265,26 @@ function dedupeJobsByCompany(jobs) {
   return out;
 }
 
+/** Select top JD-aligned proof points for the Selected Achievements section. */
+export function selectJdAlignedProofPoints(proofPoints, jdText = '', limit = 3) {
+  if (!Array.isArray(proofPoints) || proofPoints.length === 0) return [];
+  if (!jdText || typeof jdText !== 'string' || jdText.trim().length < 20) {
+    return proofPoints.slice(0, limit);
+  }
+  const jdLower = jdText.toLowerCase();
+  const scored = proofPoints.map((p) => {
+    const text = `${p?.name || ''} ${p?.hero_metric || ''}`.toLowerCase();
+    const words = text.split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+    let score = 0;
+    for (const w of words) {
+      if (jdLower.includes(w)) score++;
+    }
+    return { p, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map((s) => s.p);
+}
+
 /** Drop Selected Achievements lines that already appear inside experience. */
 export function filterProofPointsAlreadyInExperience(proofPoints, experience) {
   const blob = (Array.isArray(experience) ? experience : [])

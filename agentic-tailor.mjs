@@ -27,6 +27,7 @@ import {
   scrubSummaryKeywordParenSpam,
   stripUnsolicitedAiFromResume,
   filterProofPointsAlreadyInExperience,
+  selectJdAlignedProofPoints,
   isBulletAnachronisticForPeriod,
   scrubAnachronisticTechFromBullet,
   bulletMentionsOtherCompany,
@@ -2296,11 +2297,12 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     const educationHtml = hasEducation ? renderEducation(profile.education) : '';
     const hasEduContent = Boolean(educationHtml && educationHtml.trim().length > 0);
 
-    const filteredProofPoints = filterProofPointsAlreadyInExperience(
+    const alignedProofPoints = selectJdAlignedProofPoints(
       profile.narrative?.proof_points,
-      experienceToShow
+      jdText,
+      3
     );
-    const achievementsHtml = renderAchievements(filteredProofPoints);
+    const achievementsHtml = renderAchievements(alignedProofPoints);
     const hasAchievements = Boolean(achievementsHtml && achievementsHtml.trim().length > 0);
 
     const yearsInline = yearsExp > 0 ? ` • ${yearsExp}+ years` : '';
