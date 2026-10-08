@@ -160,11 +160,17 @@ export async function GET(
       });
     }
 
-    const html = type === 'cl' ? job.cover_letter_html : job.resume_html;
+    const rawHtml = type === 'cl' ? job.cover_letter_html : job.resume_html;
 
-    if (!html) {
+    if (!rawHtml) {
       return new NextResponse('Content not found', { status: 404 });
     }
+
+    const html = type === 'resume'
+      ? rawHtml
+          .replace(/<section[^>]*>[\s\n]*<h2>Selected Achievements<\/h2>[\s\S]*?<\/section>[\s\n]*/gi, '')
+          .replace(/<section[^>]*style="[^"]*display:\s*none[^"]*"[^>]*>[\s\S]*?<\/section>[\s\n]*/gi, '')
+      : rawHtml;
 
     const filename = downloadFilename.replace(/\.pdf$/i, '.html');
     return new NextResponse(html, {
