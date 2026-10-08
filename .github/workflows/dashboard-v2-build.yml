@@ -41,7 +41,7 @@ jobs:
           cache-dependency-path: dashboard-v2/pnpm-lock.yaml
 
       - name: Restore Next.js build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             dashboard-v2/.next/cache
