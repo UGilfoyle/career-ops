@@ -77,18 +77,9 @@ function wrap(css: string) {
             overflow-wrap: break-word;
             word-break: keep-all;
         }
-        .section-education, .edu, .edu > div,
-        .section-achievements {
+        .section-education, .edu, .edu > div {
             page-break-inside: avoid !important;
             break-inside: avoid-page !important;
-        }
-        .section-achievements:has(.edu:empty),
-        .section-education:has(.edu:empty),
-        section:has(.edu:empty),
-        section:has(.skills-lines:empty),
-        .edu:empty,
-        .skills-lines:empty {
-            display: none !important;
         }
         .skills-list {
             list-style-type: disc;
