@@ -152,6 +152,20 @@ async function tryPuppeteerPdf(html: string): Promise<Buffer | null> {
     try {
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+      // Guardrail: strip sections with no body content before PDF generation
+      await page.evaluate(() => {
+        document.querySelectorAll('section').forEach((sec) => {
+          const clone = sec.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll('h1, h2, h3, h4, .rule, .top-rule, hr').forEach((el) => el.remove());
+          const text = clone.textContent?.replace(/\s+/g, ' ').trim();
+          if (!text) {
+            sec.style.setProperty('display', 'none', 'important');
+            sec.remove();
+          }
+        });
+      });
+
       await page.emulateMediaType('print');
       const pdf = await page.pdf({
         format: 'A4',

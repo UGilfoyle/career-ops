@@ -386,11 +386,18 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     profileTech,
     options.jdText || '',
   );
-  const hasSkills = Boolean(skillsLines.trim());
-  const hasExperience = experience.length > 0;
-  const hasEducation = education.length > 0;
-  const hasAchievements =
-    Array.isArray(tailoredProfile.narrative?.proof_points) && tailoredProfile.narrative!.proof_points!.length > 0;
+  const experienceHtml = renderExperienceHtml(experience, maxPages, yearsExp, options.jdText || '');
+  const filteredProofPoints = filterProofPointsAlreadyInExperience(
+    tailoredProfile.narrative?.proof_points,
+    experience
+  );
+  const achievementsHtml = renderAchievementsHtml(filteredProofPoints);
+  const educationHtml = renderEducationHtml(education);
+
+  const hasSkills = Boolean(skillsLines && skillsLines.trim().length > 0);
+  const hasExperience = Boolean(experienceHtml && experienceHtml.trim().length > 0);
+  const hasAchievements = Boolean(achievementsHtml && achievementsHtml.trim().length > 0);
+  const hasEducation = Boolean(educationHtml && educationHtml.trim().length > 0);
 
   const displayName = String(c.full_name || '').trim() || 'Your Name';
   const summarySource = jd.length >= 40
@@ -410,13 +417,11 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
     LINKEDIN_DISPLAY: escapeHtml(displayLink(linkedinRaw)),
     PORTFOLIO_LINK: '',
     SUMMARY_TEXT: escapeHtml(normalizeResumeSummaryPlain(summarySource, yearsExp)),
-    EXPERIENCE: hasExperience ? renderExperienceHtml(experience, maxPages, yearsExp, options.jdText || '') : '',
+    EXPERIENCE: experienceHtml,
     EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
-    ACHIEVEMENTS: hasAchievements
-      ? renderAchievementsHtml(filterProofPointsAlreadyInExperience(tailoredProfile.narrative?.proof_points, experience))
-      : '',
+    ACHIEVEMENTS: achievementsHtml,
     ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',
-    EDUCATION: hasEducation ? renderEducationHtml(education) : '',
+    EDUCATION: educationHtml,
     EDUCATION_DISPLAY: hasEducation ? 'block' : 'none',
     SKILLS_LINES: skillsLines,
     SKILLS_DISPLAY: hasSkills ? 'block' : 'none',

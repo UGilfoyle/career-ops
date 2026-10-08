@@ -24,7 +24,7 @@ import { buildApplicationDocumentPaths } from '../document-filename.mjs';
 import { buildHtml as buildCoverHtml } from '../generate-cover-letter.mjs';
 import { renderContactBarHtml } from '../resume-contact-html.mjs';
 import { renderCategorizedSkills } from '../resume-skills-html.mjs';
-import { formatPeriodDisplay } from '../resume-quality.mjs';
+import { formatPeriodDisplay, filterProofPointsAlreadyInExperience } from '../resume-quality.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -261,9 +261,22 @@ const skillsLines = renderSkillsLines(
   executed.resume.core_competencies || [],
   jdText,
 );
+const hasSkills = Boolean(skillsLines && skillsLines.trim().length > 0);
+
 const hasExperience = Array.isArray(profile.experience) && profile.experience.length > 0;
+const experienceHtml = hasExperience ? renderExperience(profile, executed.resume, jdText) : '';
+const hasExpContent = Boolean(experienceHtml && experienceHtml.trim().length > 0);
+
 const hasEducation = Array.isArray(profile.education) && profile.education.length > 0;
-const hasAchievements = Array.isArray(profile.narrative?.proof_points) && profile.narrative.proof_points.length > 0;
+const educationHtml = hasEducation ? renderEducation(profile.education) : '';
+const hasEduContent = Boolean(educationHtml && educationHtml.trim().length > 0);
+
+const filteredProofPoints = filterProofPointsAlreadyInExperience(
+  profile.narrative?.proof_points,
+  profile.experience
+);
+const achievementsHtml = renderAchievements(filteredProofPoints);
+const hasAchievements = Boolean(achievementsHtml && achievementsHtml.trim().length > 0);
 
 const reps = {
   NAME: escapeHtml(c.full_name || ''),
@@ -272,13 +285,13 @@ const reps = {
   LINKS_LINE: linkParts.join(' · '),
   SUMMARY_TEXT: formatResumeSummaryHtml(executed.resume.summary),
   SKILLS_LINES: skillsLines,
-  SKILLS_DISPLAY: skillsLines.trim() ? 'block' : 'none',
-  EXPERIENCE: hasExperience ? renderExperience(profile, executed.resume, jdText) : '',
-  EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
-  ACHIEVEMENTS: hasAchievements ? renderAchievements(profile.narrative.proof_points) : '',
+  SKILLS_DISPLAY: hasSkills ? 'block' : 'none',
+  EXPERIENCE: experienceHtml,
+  EXPERIENCE_DISPLAY: hasExpContent ? 'block' : 'none',
+  ACHIEVEMENTS: achievementsHtml,
   ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',
-  EDUCATION: hasEducation ? renderEducation(profile.education) : '',
-  EDUCATION_DISPLAY: hasEducation ? 'block' : 'none',
+  EDUCATION: educationHtml,
+  EDUCATION_DISPLAY: hasEduContent ? 'block' : 'none',
 };
 
 let html = template;

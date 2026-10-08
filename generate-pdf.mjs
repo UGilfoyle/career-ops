@@ -301,6 +301,19 @@ export async function renderHtmlToPdf(html, outputPath, opts = {}) {
     // Wait for fonts to load
     await page.evaluate(() => document.fonts.ready);
 
+    // Guardrail: remove empty sections that contain only headers/dividers and no content
+    await page.evaluate(() => {
+      document.querySelectorAll('section').forEach((sec) => {
+        const clone = sec.cloneNode(true);
+        clone.querySelectorAll('h1, h2, h3, h4, .rule, .top-rule, hr').forEach((el) => el.remove());
+        const text = clone.textContent.replace(/\s+/g, ' ').trim();
+        if (!text) {
+          sec.style.setProperty('display', 'none', 'important');
+          sec.remove();
+        }
+      });
+    });
+
     // Generate PDF (respect @page CSS when defined by template)
     const hasCssPage = /@page\b/i.test(html);
     const pdfBuffer = await page.pdf({

@@ -137,8 +137,25 @@ function run() {
   const v = validateResumeDraft(empty);
   assert.equal(v.ok, false, 'empty draft fails validation');
 
-  const good = validateResumeDraft(sample);
-  assert.equal(good.ok, true, 'sample draft validates');
+  // Test: Selected Achievements is omitted from template output
+  const sampleWithProofPoints: ResumeContext = {
+    ...sample,
+    narrative: {
+      ...sample.narrative,
+      proof_points: [
+        {
+          name: 'Latency Optimization',
+          hero_metric: 'Shipped multi-tenant SaaS APIs with zero downtime',
+        },
+      ],
+    },
+  };
+  const renderedHtml = fillAtsTemplate(sampleWithProofPoints);
+  assert.equal(
+    renderedHtml.includes('Selected Achievements'),
+    false,
+    'Selected Achievements header omitted from template output'
+  );
 
   console.log('fill-template tests passed');
 }

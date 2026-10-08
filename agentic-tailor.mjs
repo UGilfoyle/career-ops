@@ -2270,21 +2270,6 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
     // Build portfolio link (conditional) — legacy slot; prefer LINKS_LINE
     const portfolioLink = '';
 
-    // Hide sections if missing data (never show blank Education/Experience)
-    const hasExperience = Array.isArray(experienceToShow) && experienceToShow.length > 0;
-    const hasEducation = Array.isArray(profile.education) && profile.education.length > 0;
-
-    const hasAchievements = Array.isArray(profile.narrative?.proof_points) && profile.narrative.proof_points.length > 0;
-
-    const yearsInline = yearsExp > 0 ? ` • ${yearsExp}+ years` : '';
-
-    const skillsLines = renderCategorizedSkills(
-      profile.narrative?.superpowers || [],
-      sanitizeCompetencyList(tailoring?.core_competencies || [], jdText),
-      jdText,
-    );
-    const hasSkills = Boolean(skillsLines && String(skillsLines).trim().length > 0);
-
     // Final catch-all: strip LLM splice artifacts + garbled merges right before render
     if (tailoring?.experience && typeof tailoring.experience === 'object') {
       for (const key of Object.keys(tailoring.experience)) {
@@ -2303,17 +2288,39 @@ function applyAlignmentGate(data, jd, profile, companyName, llmDraft, plan = nul
         .filter((c) => !isEmployerBrandKeyword(c, jdText));
     }
 
+    const hasExperience = Array.isArray(experienceToShow) && experienceToShow.length > 0;
+    const experienceHtml = hasExperience ? renderExperience(experienceToShow, tailoring?.experience, jdText, maxPages) : '';
+    const hasExpContent = Boolean(experienceHtml && experienceHtml.trim().length > 0);
+
+    const hasEducation = Array.isArray(profile.education) && profile.education.length > 0;
+    const educationHtml = hasEducation ? renderEducation(profile.education) : '';
+    const hasEduContent = Boolean(educationHtml && educationHtml.trim().length > 0);
+
+    const filteredProofPoints = filterProofPointsAlreadyInExperience(
+      profile.narrative?.proof_points,
+      experienceToShow
+    );
+    const achievementsHtml = renderAchievements(filteredProofPoints);
+    const hasAchievements = Boolean(achievementsHtml && achievementsHtml.trim().length > 0);
+
+    const yearsInline = yearsExp > 0 ? ` • ${yearsExp}+ years` : '';
+
+    const skillsLines = renderCategorizedSkills(
+      profile.narrative?.superpowers || [],
+      sanitizeCompetencyList(tailoring?.core_competencies || [], jdText),
+      jdText,
+    );
+    const hasSkills = Boolean(skillsLines && String(skillsLines).trim().length > 0);
+
     const resumeReps = {
       ...commonReps,
       SUMMARY_TEXT: formatResumeSummaryHtml(tailoring?.summary, yearsExp),
-      EXPERIENCE: hasExperience ? renderExperience(experienceToShow, tailoring.experience, jdText, maxPages) : '',
-      EXPERIENCE_DISPLAY: hasExperience ? 'block' : 'none',
-      ACHIEVEMENTS: hasAchievements
-        ? renderAchievements(filterProofPointsAlreadyInExperience(profile.narrative.proof_points, experienceToShow))
-        : '',
+      EXPERIENCE: experienceHtml,
+      EXPERIENCE_DISPLAY: hasExpContent ? 'block' : 'none',
+      ACHIEVEMENTS: achievementsHtml,
       ACHIEVEMENTS_DISPLAY: hasAchievements ? 'block' : 'none',
-      EDUCATION: hasEducation ? renderEducation(profile.education) : '',
-      EDUCATION_DISPLAY: hasEducation ? 'block' : 'none',
+      EDUCATION: educationHtml,
+      EDUCATION_DISPLAY: hasEduContent ? 'block' : 'none',
       SKILLS_LINES: skillsLines,
       SKILLS_DISPLAY: hasSkills ? 'block' : 'none',
       YEARS_EXP_INLINE: yearsInline,

@@ -27,11 +27,6 @@ const BODY = `
             <div class="rule"></div>
             {{EXPERIENCE}}
         </section>
-        <section class="section-achievements" style="display: {{ACHIEVEMENTS_DISPLAY}};">
-            <h2>Selected Achievements</h2>
-            <div class="rule"></div>
-            <div class="edu">{{ACHIEVEMENTS}}</div>
-        </section>
         <section class="section-education" style="display: {{EDUCATION_DISPLAY}};">
             <h2>Education</h2>
             <div class="rule"></div>
@@ -86,6 +81,14 @@ function wrap(css: string) {
         .section-achievements {
             page-break-inside: avoid !important;
             break-inside: avoid-page !important;
+        }
+        .section-achievements:has(.edu:empty),
+        .section-education:has(.edu:empty),
+        section:has(.edu:empty),
+        section:has(.skills-lines:empty),
+        .edu:empty,
+        .skills-lines:empty {
+            display: none !important;
         }
         .skills-list {
             list-style-type: disc;
