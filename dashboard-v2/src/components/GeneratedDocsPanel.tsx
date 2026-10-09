@@ -385,7 +385,7 @@ export default function GeneratedDocsPanel({
           </Empty>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((card) => {
             const id = Number(card.id);
             const company = card.company || 'Unknown';
@@ -400,14 +400,18 @@ export default function GeneratedDocsPanel({
               <Card
                 key={card.cardKey}
                 hoverable
-                className="overflow-hidden border border-zinc-200 shadow-xs"
+                className="overflow-hidden border border-zinc-200/90 shadow-xs hover:shadow-md transition-all duration-200 rounded-2xl bg-white"
                 styles={{
-                  body: { padding: 16 },
+                  body: { padding: 20 },
                 }}
               >
-                {/* Visual Realistic Document Mock */}
-                <div className="mb-3.5 flex h-32 items-center justify-center overflow-hidden rounded-xl border border-zinc-200/80 bg-zinc-100/60 p-2">
-                  <div className="w-[85%] h-full rounded-sm border border-zinc-200 bg-white p-2.5 shadow-xs flex flex-col justify-between overflow-hidden select-none">
+                {/* Visual Realistic Document Mock (Clickable for Quick Preview) */}
+                <div
+                  onClick={() => canPreview && setPreview(card)}
+                  className={`group relative mb-4 flex h-34 items-center justify-center overflow-hidden rounded-xl border border-zinc-200/80 bg-gradient-to-b from-zinc-50 to-zinc-100/70 p-2.5 transition-colors ${canPreview ? 'cursor-pointer hover:border-zinc-300' : ''}`}
+                  title={canPreview ? 'Click to preview document' : undefined}
+                >
+                  <div className="w-[88%] h-full rounded-sm border border-zinc-200/90 bg-white p-2.5 shadow-xs flex flex-col justify-between overflow-hidden select-none transition-transform group-hover:scale-[1.01]">
                     {/* Header */}
                     <div className="border-b border-zinc-200 pb-1">
                       <div className="flex items-center justify-between">
@@ -433,9 +437,9 @@ export default function GeneratedDocsPanel({
                         <div>
                           <div className="text-[6px] font-bold uppercase tracking-wider text-zinc-700">Skills</div>
                           <div className="flex gap-1 flex-wrap">
-                            <span className="bg-zinc-100 px-0.8 py-0.2 rounded text-[5px] font-mono text-zinc-700">Next.js</span>
-                            <span className="bg-zinc-100 px-0.8 py-0.2 rounded text-[5px] font-mono text-zinc-700">TypeScript</span>
-                            <span className="bg-zinc-100 px-0.8 py-0.2 rounded text-[5px] font-mono text-zinc-700">PostgreSQL</span>
+                            <span className="bg-zinc-100 px-1 py-0.2 rounded text-[5px] font-mono text-zinc-700">Next.js</span>
+                            <span className="bg-zinc-100 px-1 py-0.2 rounded text-[5px] font-mono text-zinc-700">TypeScript</span>
+                            <span className="bg-zinc-100 px-1 py-0.2 rounded text-[5px] font-mono text-zinc-700">PostgreSQL</span>
                           </div>
                         </div>
                       </div>
@@ -459,13 +463,21 @@ export default function GeneratedDocsPanel({
                       <span>PAGE 1 OF 1</span>
                     </div>
                   </div>
+
+                  {canPreview && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/10 opacity-0 transition-opacity backdrop-blur-[0.5px] group-hover:opacity-100">
+                      <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-zinc-800 shadow-xs border border-zinc-200/80 flex items-center gap-1">
+                        <EyeOutlined /> Quick Preview
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Company & Role Details */}
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <div className="truncate text-sm font-bold text-zinc-900">{company}</div>
+                      <div className="truncate text-[15px] font-bold text-zinc-900 tracking-tight" title={company}>{company}</div>
                       <Tooltip title="Rename company or role">
                         <button
                           type="button"
@@ -476,145 +488,176 @@ export default function GeneratedDocsPanel({
                         </button>
                       </Tooltip>
                     </div>
-                    <div className="truncate text-xs text-zinc-500">{title}</div>
-                    <div className="mt-1 text-[11px] text-zinc-400">{formatDocDate(card.mtime)}</div>
+                    <div className="truncate text-xs font-medium text-zinc-500 mt-0.5" title={title}>{title}</div>
+                    <div className="mt-1 text-[11px] text-zinc-400 font-medium">{formatDocDate(card.mtime)}</div>
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <Tag color={isResume ? 'blue' : 'purple'} className="font-semibold text-[10px]">
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <Tag color={isResume ? 'blue' : 'purple'} className="m-0 font-semibold text-[10px] rounded-md px-1.5 py-0.5">
                       {isResume ? 'Resume' : 'Cover Letter'}
                     </Tag>
                     {isResume && typeof jdAts === 'number' && jdAts > 0 ? (
                       <Tag
                         color={jdAts >= 90 ? 'success' : jdAts >= 70 ? 'warning' : 'error'}
-                        className="font-bold text-[10px]"
+                        className="m-0 font-bold text-[10px] rounded-md px-1.5 py-0.5"
                       >
                         JD ATS {jdAts}%
                       </Tag>
                     ) : isResume && typeof polish === 'number' && polish > 0 ? (
-                      <Tag color="default" className="text-[10px]">
+                      <Tag color="default" className="m-0 text-[10px] rounded-md px-1.5 py-0.5">
                         Polish {polish}/100
                       </Tag>
                     ) : null}
                   </div>
                 </div>
 
-                {/* Action Buttons Toolbar */}
-                <div className="mt-4 flex items-center gap-1.5 border-t border-zinc-100 pt-3">
-                  <Button
-                    size="small"
-                    icon={<EyeOutlined />}
-                    disabled={!canPreview}
-                    onClick={() => canPreview && setPreview(card)}
-                    className="flex-1"
+                {/* Primary Download Buttons Row */}
+                <div className="mt-4 flex items-center gap-2">
+                  <Tooltip
+                    title={
+                      pdfUrl
+                        ? "Download ATS-Optimized PDF · Verified single-column standard for applicant tracking systems"
+                        : "PDF is generating or unavailable"
+                    }
+                    placement="top"
                   >
-                    Preview
-                  </Button>
-
-                  {onOpenInStudio && (
-                    <Button
-                      size="small"
-                      icon={<ThunderboltOutlined />}
-                      onClick={() =>
-                        onOpenInStudio({
-                          id: card.id,
-                          company: card.company,
-                          title: card.title,
-                          ats_content_score: card.ats_content_score,
-                          jd_alignment_score: card.jd_alignment_score,
-                          has_resume_html: card.has_resume_html,
-                          has_resume_pdf: card.has_resume_pdf,
-                          has_cover_letter_html: card.has_cover_letter_html,
-                          has_cover_letter_pdf: card.has_cover_letter_pdf,
-                          mtime: card.mtime,
-                          url: card.url,
-                          kind: card.kind,
-                        })
-                      }
-                      className="flex-1"
-                    >
-                      Studio
-                    </Button>
-                  )}
-
-                  {pdfUrl ? (
-                    <Button
-                      size="small"
-                      type="primary"
-                      icon={
-                        pdfBusyKey === card.cardKey ? (
-                          <LoadingOutlined />
-                        ) : (
-                          <DownloadOutlined />
-                        )
-                      }
-                      disabled={pdfBusyKey === card.cardKey}
-                      onClick={() => void downloadPdf(card)}
-                      className="flex-1"
-                    >
-                      {pdfBusyKey === card.cardKey ? 'Wait…' : 'PDF'}
-                    </Button>
-                  ) : (
-                    <Button size="small" disabled className="flex-1">
-                      PDF
-                    </Button>
-                  )}
-
-                  {isResume && (
-                    <Button
-                      size="small"
-                      type="primary"
-                      icon={
-                        docxBusyKey === card.cardKey ? (
-                          <LoadingOutlined />
-                        ) : (
-                          <DownloadOutlined />
-                        )
-                      }
-                      disabled={docxBusyKey === card.cardKey}
-                      onClick={() => void downloadDocx(card)}
-                      className="flex-1"
-                    >
-                      {docxBusyKey === card.cardKey ? 'Wait…' : 'DOCX'}
-                    </Button>
-                  )}
-
-                  {isResume && onCopyStealthLink && (
-                    <Tooltip title="Copy stealth tracking URL">
+                    <span className="flex-1">
                       <Button
-                        size="small"
+                        type="primary"
                         icon={
-                          stealthBusyJobId === id ? (
+                          pdfBusyKey === card.cardKey ? (
                             <LoadingOutlined />
-                          ) : stealthCopiedJobId === id ? (
-                            <CheckCircleOutlined className="text-emerald-600" />
                           ) : (
-                            <LinkOutlined />
+                            <DownloadOutlined />
                           )
                         }
-                        disabled={stealthBusyJobId === id}
-                        onClick={() => void onCopyStealthLink(id)}
-                      />
-                    </Tooltip>
-                  )}
-
-                  <Tooltip title="Rename company or role">
-                    <Button
-                      size="small"
-                      icon={<EditOutlined />}
-                      onClick={() => openEditModal(card)}
-                    />
+                        disabled={!pdfUrl || pdfBusyKey === card.cardKey}
+                        onClick={() => void downloadPdf(card)}
+                        className="w-full h-8.5 rounded-lg border-0 bg-zinc-900 font-semibold text-xs text-white shadow-xs hover:!bg-zinc-800 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        {pdfBusyKey === card.cardKey ? 'Preparing…' : 'Download PDF'}
+                      </Button>
+                    </span>
                   </Tooltip>
 
-                  <Popconfirm
-                    title="Delete document"
-                    description={`Delete generated documents for ${company}?`}
-                    okText="Delete"
-                    okType="danger"
-                    cancelText="Cancel"
-                    onConfirm={() => onDelete(id, company, title)}
-                  >
-                    <Button size="small" danger icon={<DeleteOutlined />} />
-                  </Popconfirm>
+                  {isResume && (
+                    <Tooltip
+                      title="Download Word DOCX · Fully editable Microsoft Word format with native styles and bullets"
+                      placement="top"
+                    >
+                      <span className="flex-1">
+                        <Button
+                          icon={
+                            docxBusyKey === card.cardKey ? (
+                              <LoadingOutlined />
+                            ) : (
+                              <FileWordOutlined />
+                            )
+                          }
+                          disabled={docxBusyKey === card.cardKey}
+                          onClick={() => void downloadDocx(card)}
+                          className="w-full h-8.5 rounded-lg border border-blue-200 bg-blue-50/80 font-semibold text-xs text-blue-700 shadow-xs hover:!bg-blue-100 hover:!border-blue-300 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          {docxBusyKey === card.cardKey ? 'Preparing…' : 'Word DOCX'}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  )}
+                </div>
+
+                {/* Secondary Actions Toolbar Row */}
+                <div className="mt-2.5 pt-2.5 flex items-center justify-between border-t border-zinc-100">
+                  <div className="flex items-center gap-1.5">
+                    <Tooltip title="Quick Preview · View formatted document in reader modal" placement="bottom">
+                      <span>
+                        <Button
+                          size="small"
+                          icon={<EyeOutlined />}
+                          disabled={!canPreview}
+                          onClick={() => canPreview && setPreview(card)}
+                          className="h-7.5 px-2.5 rounded-md text-xs font-medium text-zinc-600 bg-zinc-100/80 hover:!bg-zinc-200/90 border-0 flex items-center gap-1"
+                        >
+                          Preview
+                        </Button>
+                      </span>
+                    </Tooltip>
+
+                    {onOpenInStudio && (
+                      <Tooltip title="Resume Studio · Open live editor to customize sections and layout" placement="bottom">
+                        <Button
+                          size="small"
+                          icon={<ThunderboltOutlined />}
+                          onClick={() =>
+                            onOpenInStudio({
+                              id: card.id,
+                              company: card.company,
+                              title: card.title,
+                              ats_content_score: card.ats_content_score,
+                              jd_alignment_score: card.jd_alignment_score,
+                              has_resume_html: card.has_resume_html,
+                              has_resume_pdf: card.has_resume_pdf,
+                              has_cover_letter_html: card.has_cover_letter_html,
+                              has_cover_letter_pdf: card.has_cover_letter_pdf,
+                              mtime: card.mtime,
+                              url: card.url,
+                              kind: card.kind,
+                            })
+                          }
+                          className="h-7.5 px-2.5 rounded-md text-xs font-medium text-zinc-600 bg-zinc-100/80 hover:!bg-zinc-200/90 border-0 flex items-center gap-1"
+                        >
+                          Studio
+                        </Button>
+                      </Tooltip>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {isResume && onCopyStealthLink && (
+                      <Tooltip title="Copy Stealth URL · Tracked link to paste as Portfolio / Website in applications" placement="bottom">
+                        <Button
+                          size="small"
+                          icon={
+                            stealthBusyJobId === id ? (
+                              <LoadingOutlined />
+                            ) : stealthCopiedJobId === id ? (
+                              <CheckCircleOutlined className="text-emerald-600" />
+                            ) : (
+                              <LinkOutlined />
+                            )
+                          }
+                          disabled={stealthBusyJobId === id}
+                          onClick={() => void onCopyStealthLink(id)}
+                          className="h-7.5 w-7.5 p-0 rounded-md flex items-center justify-center text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 border border-zinc-200/80"
+                        />
+                      </Tooltip>
+                    )}
+
+                    <Tooltip title="Rename · Edit company name or role title" placement="bottom">
+                      <Button
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={() => openEditModal(card)}
+                        className="h-7.5 w-7.5 p-0 rounded-md flex items-center justify-center text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 border border-zinc-200/80"
+                      />
+                    </Tooltip>
+
+                    <Popconfirm
+                      title="Delete document"
+                      description={`Delete generated documents for ${company}?`}
+                      okText="Delete"
+                      okType="danger"
+                      cancelText="Cancel"
+                      onConfirm={() => onDelete(id, company, title)}
+                    >
+                      <Tooltip title="Delete · Remove this document" placement="bottom">
+                        <Button
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          className="h-7.5 w-7.5 p-0 rounded-md flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 border border-zinc-200/80"
+                        />
+                      </Tooltip>
+                    </Popconfirm>
+                  </div>
                 </div>
               </Card>
             );
