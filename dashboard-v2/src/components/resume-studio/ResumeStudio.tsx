@@ -424,21 +424,10 @@ export default function ResumeStudio({
     setBanner(null);
     try {
       const html = fillAtsTemplate(draft);
-      const scoreRes = await fetch('/api/resume/ats-score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resume_context: draft,
-          jobId,
-          preferTailored: false,
-        }),
-      });
-      const scoreJson = await scoreRes.json().catch(() => ({}));
-      const freshScore = scoreRes.ok && Number.isFinite(Number(scoreJson.score))
-        ? Math.round(Number(scoreJson.score))
-        : (liveAts.source === 'jd' && liveAts.score != null ? Math.round(liveAts.score) : null);
-      const scoreSource = scoreRes.ok ? String(scoreJson.source || '') : liveAts.source;
+      const freshScore = liveAts.score != null ? Math.round(liveAts.score) : null;
+      const scoreSource = liveAts.source;
 
+      // 1. Instant DB persist: Save HTML + current score in ~50-100ms
       const saved = await fetch(`/api/job/${jobId}/docs`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -462,45 +451,43 @@ export default function ResumeStudio({
       }
       onJobResumePublished?.(jobId, publishedScores);
 
-      const pdfRes = await fetch('/api/resume/export-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume_context: draft }),
-      });
-
-      const contentType = pdfRes.headers.get('content-type') || '';
-      if (!(pdfRes.ok && contentType.includes('application/pdf'))) {
-        const json = await pdfRes.json().catch(() => ({}));
-        throw new Error(
-          json?.error
-          || 'Resume overwritten. PDF is still generating — click Save again in a minute.'
-        );
-      }
-
-      const pdfBlob = await pdfRes.blob();
-      if (!pdfBlob.size) throw new Error('Resume overwritten, but the PDF was empty.');
-
-      const stored = await fetch(`/api/job/${jobId}/resume-pdf`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/pdf' },
-        body: pdfBlob,
-      });
-      const storedJson = await stored.json().catch(() => ({}));
-      if (!stored.ok) throw new Error(storedJson?.error || 'Resume saved, but the PDF could not be stored.');
-
-      if (reviewJob && reviewJob.jobId === jobId) {
-        Object.assign(reviewJob, { has_resume_pdf: true });
-      }
-      onJobResumePublished?.(jobId, { ...publishedScores, has_resume_pdf: true });
       setBanner(
         freshScore != null
-          ? `Saved. ATS score updated to ${freshScore}. PDF is ready in Generated Docs.`
-          : 'Saved over this job’s generated resume. PDF is ready in Generated Docs.'
+          ? `Saved! ATS score updated to ${freshScore}.`
+          : 'Saved! Your resume changes are persisted.'
       );
-      setTimeout(() => setBanner(null), 5000);
+      setTimeout(() => setBanner(null), 3500);
+
+      // 2. Non-blocking asynchronous PDF compilation in background (does not freeze UI)
+      (async () => {
+        try {
+          const pdfRes = await fetch('/api/resume/export-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resume_context: draft }),
+          });
+          const contentType = pdfRes.headers.get('content-type') || '';
+          if (pdfRes.ok && contentType.includes('application/pdf')) {
+            const pdfBlob = await pdfRes.blob();
+            if (pdfBlob.size) {
+              await fetch(`/api/job/${jobId}/resume-pdf`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/pdf' },
+                body: pdfBlob,
+              });
+              if (reviewJob && reviewJob.jobId === jobId) {
+                Object.assign(reviewJob, { has_resume_pdf: true });
+              }
+              onJobResumePublished?.(jobId, { ...publishedScores, has_resume_pdf: true });
+            }
+          }
+        } catch (pdfErr) {
+          console.warn('[handleSaveJobResume] background PDF generation skipped:', pdfErr);
+        }
+      })();
     } catch (e: unknown) {
       setBanner(e instanceof Error ? e.message : 'Save failed');
-      setTimeout(() => setBanner(null), 7000);
+      setTimeout(() => setBanner(null), 5000);
     } finally {
       setPublishingJob(false);
     }

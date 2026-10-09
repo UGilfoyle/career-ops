@@ -11,6 +11,7 @@ import {
   CodeOutlined,
   RightOutlined,
   LoadingOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import type { SaveStatus } from './useResumeStudioStore';
 import { MatchProgressRing } from './MatchProgressRing';
@@ -61,6 +62,18 @@ export function StudioToolbar({
 }: StudioToolbarProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [importing, setImporting] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+
+  const handleSaveClick = async () => {
+    if (!onSaveJob || savingJob) return;
+    try {
+      await onSaveJob();
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2500);
+    } catch {
+      // Error handled by banner
+    }
+  };
 
   const saveColor =
     saveStatus === 'error'
@@ -199,13 +212,22 @@ export function StudioToolbar({
 
           {onSaveJob ? (
             <Button
-              type="primary"
+              type={justSaved ? 'default' : 'primary'}
               size="small"
-              icon={savingJob ? <LoadingOutlined /> : <FileTextOutlined />}
+              icon={
+                savingJob ? (
+                  <LoadingOutlined />
+                ) : justSaved ? (
+                  <CheckOutlined className="text-emerald-600" />
+                ) : (
+                  <FileTextOutlined />
+                )
+              }
               disabled={savingJob}
-              onClick={() => void onSaveJob()}
+              className={justSaved ? 'border-emerald-500 text-emerald-600 font-semibold' : ''}
+              onClick={() => void handleSaveClick()}
             >
-              {savingJob ? 'Saving…' : 'Save'}
+              {savingJob ? 'Saving…' : justSaved ? 'Saved!' : 'Save'}
             </Button>
           ) : null}
 
