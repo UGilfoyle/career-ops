@@ -562,16 +562,17 @@ export default function GeneratedDocsPanel({
                   {isResume && (
                     <Button
                       size="small"
+                      type="primary"
                       icon={
                         docxBusyKey === card.cardKey ? (
                           <LoadingOutlined />
                         ) : (
-                          <FileWordOutlined />
+                          <DownloadOutlined />
                         )
                       }
                       disabled={docxBusyKey === card.cardKey}
                       onClick={() => void downloadDocx(card)}
-                      className="flex-1 border-sky-300 text-sky-700 hover:border-sky-500 hover:text-sky-800"
+                      className="flex-1"
                     >
                       {docxBusyKey === card.cardKey ? 'Wait…' : 'DOCX'}
                     </Button>
@@ -646,10 +647,10 @@ export default function GeneratedDocsPanel({
                 {preview.kind === 'resume' && (
                   <Button
                     size="middle"
-                    icon={docxBusyKey === preview.cardKey ? <LoadingOutlined /> : <FileWordOutlined />}
+                    type="primary"
+                    icon={docxBusyKey === preview.cardKey ? <LoadingOutlined /> : <DownloadOutlined />}
                     disabled={docxBusyKey === preview.cardKey}
                     onClick={() => void downloadDocx(preview)}
-                    className="border-sky-300 text-sky-700 hover:border-sky-500 hover:text-sky-800"
                   >
                     {docxBusyKey === preview.cardKey ? 'Wait…' : 'DOCX'}
                   </Button>
