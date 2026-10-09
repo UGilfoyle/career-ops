@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import dynamic from 'next/dynamic';
+import { CareerOpsLogoMark } from './CareerOpsLogo';
 import { 
   MessageSquare,
   Send,
@@ -2014,9 +2015,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               navCollapsed ? 'justify-center' : 'gap-2.5 px-1'
             }`}
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1c1c1e]">
-              <Zap size={14} className="text-white" strokeWidth={2} />
-            </div>
+            <CareerOpsLogoMark size={30} className="shrink-0" />
             {!navCollapsed && (
               <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
                 <span className="truncate text-[15px] font-bold text-[#1C1C1E]">Career-Ops</span>

@@ -8,7 +8,14 @@
  * Dry run: NEWSLETTER_DRY_RUN=1
  */
 
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import postgres from 'postgres';
+import dotenv from 'dotenv';
+
+dotenv.config();
+dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), 'dashboard-v2/.env.local') });
+
 import {
   appBaseUrl,
   buildMonthlyEmailHtml,

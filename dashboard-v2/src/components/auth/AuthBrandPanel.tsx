@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Check, Zap } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
+import { CareerOpsLogoMark } from '@/components/CareerOpsLogo';
 
 const FEATURES = [
   'Scan job boards and GCC captives',
@@ -19,9 +20,7 @@ export function AuthMobileBrand() {
   return (
     <div className="mb-8 flex flex-col items-center text-center lg:hidden">
       <Link href="/" className="mb-4 inline-flex items-center gap-2.5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1C1C1E] shadow-sm">
-          <Zap className="h-5 w-5 text-white" strokeWidth={2.25} />
-        </div>
+        <CareerOpsLogoMark size={36} />
         <span className="text-lg font-bold tracking-tight text-[#1C1C1E]">
           Career-Ops{' '}
           <span className="text-[9px] font-mono uppercase tracking-widest text-[#6B6B6B]">v3</span>
@@ -47,9 +46,7 @@ export default function AuthBrandPanel() {
         </Link>
 
         <div className="mt-12 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/10">
-            <Zap className="h-6 w-6 text-white" strokeWidth={2.25} />
-          </div>
+          <CareerOpsLogoMark size={44} />
           <div>
             <div className="text-2xl font-bold tracking-tight">Career-Ops</div>
             <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/45">v3</div>

@@ -90,6 +90,7 @@ export default function ResumeStudio({
 }: ResumeStudioProps) {
   const [zoom, setZoom] = useState(100);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingDocx, setExportingDocx] = useState(false);
   const [publishingJob, setPublishingJob] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -417,6 +418,39 @@ export default function ResumeStudio({
     }
   };
 
+  const handleExportDocx = async () => {
+    setExportingDocx(true);
+    setBanner(null);
+    try {
+      const docxJdText = editingJobId ? '' : activeJdText;
+      const res = await fetch('/api/resume/export-docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_context: draft,
+          template_id: templateMeta.id,
+          jdText: docxJdText,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error || 'Failed to export DOCX');
+      }
+
+      const blob = await res.blob();
+      const name = (draft.candidate?.full_name || 'resume').replace(/\s+/g, '_');
+      downloadBlob(`${name}_resume.docx`, blob);
+      setBanner('DOCX downloaded — 100% ATS-unblockable Word/Google Docs format.');
+      setTimeout(() => setBanner(null), 3000);
+    } catch (e: unknown) {
+      setBanner(e instanceof Error ? e.message : 'DOCX export failed');
+      setTimeout(() => setBanner(null), 7000);
+    } finally {
+      setExportingDocx(false);
+    }
+  };
+
   const handleSaveJobResume = async () => {
     const jobId = editingJobIdRef.current;
     if (!jobId || publishingJob) return;
@@ -510,6 +544,8 @@ export default function ResumeStudio({
         onExportJson={handleExportJson}
         onExportPdf={handleExportPdf}
         exportingPdf={exportingPdf}
+        onExportDocx={handleExportDocx}
+        exportingDocx={exportingDocx}
         onSaveJob={editingJobId ? handleSaveJobResume : undefined}
         savingJob={publishingJob}
         templateLabel={templateMeta.name}

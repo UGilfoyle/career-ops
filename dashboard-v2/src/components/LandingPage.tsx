@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { CareerOpsLogoMark } from '@/components/CareerOpsLogo';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -72,9 +73,7 @@ export default function LandingPage() {
         <header className="w-full max-w-4xl bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-full border border-[#E5E5E0] shadow-sm px-5 sm:px-6 py-2.5 flex justify-between items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="h-8 w-8 bg-[#1C1C1E] rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-              <Zap className="h-4 w-4" strokeWidth={2.5} />
-            </div>
+            <CareerOpsLogoMark size={32} className="group-hover:scale-105" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-base font-extrabold tracking-tight text-[#1C1C1E]">Career-Ops</span>
               <span className="text-xs font-semibold text-[#8E8E93]">v3</span>

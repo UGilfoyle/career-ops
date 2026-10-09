@@ -15,6 +15,11 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import postgres from 'postgres';
+import dotenv from 'dotenv';
+
+dotenv.config();
+dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), 'dashboard-v2/.env.local') });
+
 import {
   appBaseUrl,
   buildProductUpdateEmailHtml,
@@ -27,7 +32,7 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RELEASE_PATH = join(__dirname, 'dashboard-v2/src/content/release-v3.json');
-const SEND_KIND = 'product-update-sept-2026-v2';
+const SEND_KIND = 'product-update-oct-2026-v3-3';
 
 const cleanDbUrl = (process.env.DATABASE_URL || '')
   .replace('&channel_binding=require', '')

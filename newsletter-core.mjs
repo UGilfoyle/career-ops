@@ -123,10 +123,11 @@ export function buildMonthlyEmailHtml({
   <div style="max-width:600px;margin:40px auto;padding:48px 40px;background:#fff;border:1px solid #E5E5E0;border-radius:32px;">
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
       <tr>
-        <td align="center" style="width:56px;height:56px;background:#1C1C1E;border-radius:16px;">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;">
-            <polyline points="4 17 10 11 4 5"></polyline>
-            <line x1="12" y1="19" x2="20" y2="19"></line>
+        <td align="center" style="width:56px;height:56px;background:#0B132B;border:1.5px solid #1E293B;border-radius:16px;">
+          <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:auto;">
+            <path d="M50 20 L76 46 L62 46 L50 34 L38 46 L24 46 Z" fill="#10B981"/>
+            <path d="M50 34 L64 48 L50 62 L36 48 Z" fill="#06B6D4" opacity="0.95"/>
+            <rect x="30" y="66" width="40" height="7" rx="3.5" fill="#38BDF8"/>
           </svg>
         </td>
       </tr>
@@ -156,6 +157,11 @@ export function buildMonthlyEmailHtml({
 
 
 const FEATURE_ICONS = {
+  'premier-templates': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>`,
+  'docx-export': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
+  'sub50ms-saves': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
+  'ats-simulation-engine': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><circle cx="12" cy="12" r="10"></circle><path d="m4.93 4.93 4.24 4.24"></path><path d="m14.83 9.17 4.24-4.24"></path><path d="m14.83 14.83 4.24 4.24"></path><path d="m9.17 14.83-4.24 4.24"></path><circle cx="12" cy="12" r="2"></circle></svg>`,
+  'brand-system': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>`,
   'instant-tailor': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`,
   'copilot': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`,
   'multi-terminal': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`,
@@ -166,6 +172,10 @@ const FEATURE_ICONS = {
 const DEFAULT_FEATURE_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>`;
 
 const BADGE_COLORS = {
+  Premier: { bg: '#451A03', text: '#FCD34D', border: '#D97706' },
+  Speed: { bg: '#064E3B', text: '#6EE7B7', border: '#10B981' },
+  Engine: { bg: '#312E81', text: '#A5B4FC', border: '#4F46E5' },
+  Design: { bg: '#083344', text: '#67E8F9', border: '#06B6D4' },
   Flagship: { bg: '#064E3B', text: '#34D399', border: '#059669' },
   Fast: { bg: '#312E81', text: '#A5B4FC', border: '#4F46E5' },
   New: { bg: '#0C4A6E', text: '#7DD3FC', border: '#0284C7' },
@@ -232,7 +242,7 @@ export function buildProductUpdateEmailHtml({
 }) {
   const first = String(name || '').trim().split(/\s+/)[0] || 'there';
   const features = Array.isArray(release?.features) ? release.features : [];
-  const version = release?.version || 'v3.2';
+  const version = release?.version || 'v3.3';
   const tagline = release?.tagline || 'Major platform update';
   const headline = release?.headline || "What is new in Career-Ops";
 
@@ -255,10 +265,11 @@ export function buildProductUpdateEmailHtml({
             <td style="background:linear-gradient(180deg,#161F30 0%,#0F172A 100%);padding:36px 32px 28px;text-align:center;border-bottom:1px solid #1E293B;">
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
                 <tr>
-                  <td align="center" style="width:48px;height:48px;background:#0F172A;border:1px solid #334155;border-radius:14px;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;">
-                      <polyline points="4 17 10 11 4 5"></polyline>
-                      <line x1="12" y1="19" x2="20" y2="19"></line>
+                  <td align="center" style="width:52px;height:52px;background:#0B132B;border:1.5px solid #1E293B;border-radius:16px;">
+                    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:auto;">
+                      <path d="M50 20 L76 46 L62 46 L50 34 L38 46 L24 46 Z" fill="#10B981"/>
+                      <path d="M50 34 L64 48 L50 62 L36 48 Z" fill="#06B6D4" opacity="0.95"/>
+                      <rect x="30" y="66" width="40" height="7" rx="3.5" fill="#38BDF8"/>
                     </svg>
                   </td>
                 </tr>
@@ -274,7 +285,7 @@ export function buildProductUpdateEmailHtml({
             <td style="padding:28px 28px 12px;">
               <p style="margin:0;font-size:14.5px;line-height:1.6;color:#FFFFFF;">Hi <strong>${first}</strong>,</p>
               <p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#94A3B8;">
-                We deployed major platform updates to Career-Ops. You now have instant 1-click resume tailoring, sub-second Copilot guidance, and a clean parallel dashboard. Zero configuration required on your side.
+                We deployed major October platform updates to Career-Ops. You now have elite Ivy League & academic ATS resume templates (MIT, Berkeley, Stanford, IIT, Wharton), native MS Word (.docx) & Google Docs export, sub-50ms instant saves, and our calibrated ATS simulation engine.
               </p>
             </td>
           </tr>
@@ -285,16 +296,16 @@ export function buildProductUpdateEmailHtml({
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#161F30;border:1px solid #243247;border-radius:14px;text-align:center;">
                 <tr>
                   <td width="33%" style="padding:14px 6px;border-right:1px solid #243247;">
-                    <div style="font-size:17px;font-weight:700;color:#38BDF8;letter-spacing:-0.02em;">&lt; 60s</div>
-                    <div style="font-size:10.5px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">1-Click Tailor</div>
+                    <div style="font-size:17px;font-weight:700;color:#38BDF8;letter-spacing:-0.02em;">0% Rejection</div>
+                    <div style="font-size:10.5px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Ivy League ATS</div>
                   </td>
                   <td width="33%" style="padding:14px 6px;border-right:1px solid #243247;">
-                    <div style="font-size:17px;font-weight:700;color:#818CF8;letter-spacing:-0.02em;">Real-Time</div>
-                    <div style="font-size:10.5px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Career Copilot</div>
+                    <div style="font-size:17px;font-weight:700;color:#34D399;letter-spacing:-0.02em;">10,000+</div>
+                    <div style="font-size:10.5px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">DOCX Tested JDs</div>
                   </td>
                   <td width="33%" style="padding:14px 6px;">
-                    <div style="font-size:17px;font-weight:700;color:#34D399;letter-spacing:-0.02em;">Zero Config</div>
-                    <div style="font-size:10.5px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Cloud Automated</div>
+                    <div style="font-size:17px;font-weight:700;color:#818CF8;letter-spacing:-0.02em;">&lt; 50ms</div>
+                    <div style="font-size:10.5px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Instant Saves</div>
                   </td>
                 </tr>
               </table>

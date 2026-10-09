@@ -8,6 +8,7 @@ import {
   AppstoreOutlined,
   UploadOutlined,
   FileTextOutlined,
+  FileWordOutlined,
   CodeOutlined,
   RightOutlined,
   LoadingOutlined,
@@ -29,6 +30,8 @@ type StudioToolbarProps = {
   onExportJson: () => void;
   onExportPdf: () => Promise<void>;
   exportingPdf: boolean;
+  onExportDocx: () => Promise<void>;
+  exportingDocx?: boolean;
   onSaveJob?: () => Promise<void>;
   savingJob?: boolean;
   templateLabel?: string;
@@ -52,6 +55,8 @@ export function StudioToolbar({
   onExportJson,
   onExportPdf,
   exportingPdf,
+  onExportDocx,
+  exportingDocx = false,
   onSaveJob,
   savingJob = false,
   templateLabel,
@@ -230,6 +235,15 @@ export function StudioToolbar({
               {savingJob ? 'Saving…' : justSaved ? 'Saved!' : 'Save'}
             </Button>
           ) : null}
+
+          <Button
+            size="small"
+            icon={exportingDocx ? <LoadingOutlined /> : <FileWordOutlined />}
+            disabled={exportingDocx}
+            onClick={() => void onExportDocx()}
+          >
+            {exportingDocx ? 'Generating…' : 'Export DOCX'}
+          </Button>
 
           <Button
             type={onSaveJob ? 'default' : 'primary'}

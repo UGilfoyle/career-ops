@@ -1,11 +1,16 @@
 'use client';
 
 import { type ReactNode } from 'react';
-import { ArrowRight, Bot, FileText, Shield, Smartphone, Sparkles, Users, Zap, Link2, Save } from 'lucide-react';
+import { ArrowRight, Bot, FileText, Shield, Smartphone, Sparkles, Users, Zap, Link2, Save, GraduationCap, FileCheck2, Target, Gauge } from 'lucide-react';
 import Link from 'next/link';
 import { CURRENT_RELEASE, type ProductFeature } from '@/lib/product-updates';
 
 const ICONS: Record<string, ReactNode> = {
+  'premier-templates': <GraduationCap size={18} className="text-amber-500" />,
+  'docx-export': <FileCheck2 size={18} className="text-sky-500" />,
+  'sub50ms-saves': <Gauge size={18} className="text-emerald-500" />,
+  'ats-simulation-engine': <Target size={18} className="text-indigo-500" />,
+  'brand-system': <Sparkles size={18} className="text-cyan-500" />,
   copilot: <Bot size={18} />,
   'resume-studio': <FileText size={18} />,
   'saved-docs': <Save size={18} />,
@@ -17,6 +22,10 @@ const ICONS: Record<string, ReactNode> = {
 };
 
 const BADGE_STYLES: Record<string, string> = {
+  Premier: 'bg-amber-50 text-amber-800 border-amber-200',
+  Speed: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+  Engine: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  Design: 'bg-cyan-50 text-cyan-800 border-cyan-200',
   New: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   Flagship: 'bg-amber-50 text-amber-800 border-amber-200',
   Improved: 'bg-sky-50 text-sky-700 border-sky-200',
