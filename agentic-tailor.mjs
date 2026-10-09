@@ -109,18 +109,25 @@ let hfTokenInUse = '';
 const HF_MODEL = process.env.HF_MODEL || 'MiniMaxAI/MiniMax-M2.7';
 const TARGET_MAP = 'data/current_eval.json';
 const TEMPLATE_FILES = {
+  'ats-mit': 'templates/ats-template-mit.html',
+  'ats-berkeley': 'templates/ats-template-berkeley.html',
+  'ats-wharton': 'templates/ats-template-wharton.html',
+  'ats-iit': 'templates/ats-template-iit.html',
+  'ats-stanford': 'templates/ats-template-stanford.html',
+  'ats-faang': 'templates/ats-template-faang.html',
+  'ats-executive': 'templates/ats-template-executive.html',
   'ats-professional': 'templates/ats-template-professional.html',
-  'ats-modern-compact': 'templates/ats-template-modern-compact.html',
-  'ats-technical': 'templates/ats-template-technical.html',
-  'ats-minimal': 'templates/ats-template-minimal.html',
+  'ats-modern-compact': 'templates/ats-template-mit.html',
+  'ats-technical': 'templates/ats-template-iit.html',
+  'ats-minimal': 'templates/ats-template-wharton.html',
   'ats-prime': 'templates/ats-template-prime.html',
   'ats-precision': 'templates/ats-template-precision.html',
   'ats-header': 'templates/ats-template-header.html',
   'ats-traditional': 'templates/ats-template-traditional.html',
   'ats-ivy': 'templates/ats-template-ivy.html',
   'ats-single': 'templates/ats-template-single.html',
-  'ats-timeline': 'templates/ats-template-timeline.html',
-  'ats-clean': 'templates/ats-template-clean.html',
+  'ats-timeline': 'templates/ats-template-stanford.html',
+  'ats-clean': 'templates/ats-template-berkeley.html',
   'ats-crest': 'templates/ats-template-crest.html',
 };
 const TEMPLATE = TEMPLATE_FILES['ats-professional'];

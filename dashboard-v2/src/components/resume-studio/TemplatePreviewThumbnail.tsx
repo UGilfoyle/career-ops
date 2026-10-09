@@ -181,6 +181,166 @@ export function TemplatePreviewThumbnail({
         </div>
       );
 
+    case 'ats-mit':
+      return (
+        <div className={`w-full h-36 bg-white border border-zinc-200 rounded-lg p-3 flex flex-col justify-between overflow-hidden font-serif select-none shadow-xs ${className}`}>
+          <div>
+            <div className="text-center border-b-2 border-black pb-1 mb-1.5">
+              <div className="font-bold text-[12px] text-black tracking-wide">{name}</div>
+              <div className="text-[6.5px] font-sans text-zinc-600">
+                Cambridge, MA · alex@mit.edu · (555) 019-2834 · github.com/alex
+              </div>
+            </div>
+            <div className="mb-1">
+              <div className="text-[7px] font-sans font-bold uppercase tracking-wider text-black border-b border-black pb-0.5 mb-0.5">
+                Education
+              </div>
+              <div className="flex justify-between text-[6.5px] font-semibold text-zinc-900">
+                <span>Massachusetts Institute of Technology — M.Eng EECS</span>
+                <span className="font-mono text-zinc-500">2020</span>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-zinc-200 pt-1 font-sans">
+            <div className="text-[7px] font-bold uppercase tracking-wider text-black border-b border-black pb-0.5 mb-0.5">
+              Experience
+            </div>
+            <div className="flex justify-between text-[6.5px] font-semibold text-zinc-900">
+              <span>Senior Systems Engineer — Distributed Core</span>
+              <span className="text-[5.5px] font-mono text-zinc-500">2021 – Present</span>
+            </div>
+            <div className="text-[6px] text-zinc-600 truncate">
+              • Architected lock-free memory cache serving 2.4M ops/sec at sub-5ms p99 latency.
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'ats-berkeley':
+      return (
+        <div className={`w-full h-36 bg-white border border-zinc-200 rounded-lg p-3 flex flex-col justify-between overflow-hidden font-sans select-none shadow-xs ${className}`}>
+          <div>
+            <div className="border-b-2 border-[#003262] pb-1 mb-1.5 flex justify-between items-baseline">
+              <span className="font-bold text-[11px] text-[#003262] tracking-tight">{name}</span>
+              <span className="text-[6.5px] text-zinc-500">Berkeley, CA · berkeley.edu/alumni</span>
+            </div>
+            <div className="mb-1">
+              <div className="text-[7px] font-bold uppercase tracking-wider text-[#003262] border-b border-zinc-200 pb-0.5 mb-0.5">
+                Core Competencies
+              </div>
+              <div className="text-[6.5px] text-zinc-700 truncate">
+                Full-Stack Systems, Distributed Computing, React 19, Python, PostgreSQL, AWS
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-zinc-100 pt-1">
+            <div className="text-[7px] font-bold uppercase tracking-wider text-[#003262] border-b border-zinc-200 pb-0.5 mb-0.5">
+              Work Experience
+            </div>
+            <div className="flex justify-between text-[6.5px] font-semibold text-zinc-900">
+              <span>Lead Software Engineer — Silicon Valley Labs</span>
+              <span className="text-[6px] text-zinc-400">2021 – Present</span>
+            </div>
+            <div className="text-[6px] text-zinc-600 truncate">
+              • Scaled cloud microservices handling 15M daily requests; reduced infra cost by 38%.
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'ats-wharton':
+      return (
+        <div className={`w-full h-36 bg-slate-50/40 border border-zinc-200 rounded-lg p-3 flex flex-col justify-between overflow-hidden font-serif select-none shadow-xs ${className}`}>
+          <div className="text-center border-b border-[#1e3a8a] pb-1 mb-1">
+            <div className="font-bold text-[12px] text-[#1e3a8a] tracking-wide uppercase">{name}</div>
+            <div className="text-[6px] font-sans tracking-widest text-zinc-600 mt-0.5 uppercase">
+              MBA · Director of Product & Engineering Strategy
+            </div>
+          </div>
+          <div className="mb-1 font-sans">
+            <div className="text-[7px] font-serif font-bold uppercase tracking-widest text-[#1e3a8a] border-b border-zinc-200 pb-0.5 mb-0.5">
+              Executive Profile & Strategy
+            </div>
+            <div className="text-[6px] text-zinc-600 italic line-clamp-1">
+              7+ years driving enterprise digital transformation, scaling cross-functional teams and P&L portfolios.
+            </div>
+          </div>
+          <div className="border-t border-zinc-100 pt-1 font-sans">
+            <div className="flex justify-between text-[6.5px] font-bold text-zinc-900">
+              <span>Principal Strategy Director — Global Tech</span>
+              <span className="text-[6px] text-zinc-500">2021 – Present</span>
+            </div>
+            <div className="text-[6px] text-zinc-600 truncate">
+              • Delivered $14.2M recurring ARR by orchestrating enterprise platform re-architecture.
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'ats-iit':
+      return (
+        <div className={`w-full h-36 bg-white border border-zinc-200 rounded-lg p-3 flex flex-col justify-between overflow-hidden font-sans select-none shadow-xs ${className}`}>
+          <div>
+            <div className="flex justify-between items-baseline border-b-2 border-black pb-1 mb-1">
+              <span className="font-extrabold text-[12px] uppercase tracking-wider text-black">{name}</span>
+              <span className="text-[6.5px] font-mono text-zinc-600">IIT Placement Standard · B.Tech / M.Tech</span>
+            </div>
+            <div className="mb-1">
+              <div className="text-[7px] font-bold uppercase tracking-wider text-black border-b border-black pb-0.2 mb-0.5">
+                Technical Skills & Tools
+              </div>
+              <div className="text-[6.5px] text-zinc-800 truncate font-mono">
+                Languages: Go, C++, Python, TS | Cloud: Docker, K8s, AWS, GCP
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-zinc-100 pt-1">
+            <div className="text-[7px] font-bold uppercase tracking-wider text-black border-b border-black pb-0.2 mb-0.5">
+              Professional Experience
+            </div>
+            <div className="flex justify-between text-[6.5px] font-bold text-black">
+              <span>Senior Platform Engineer — Tech Ventures</span>
+              <span className="text-[6px] text-zinc-500">2021 – Present</span>
+            </div>
+            <div className="text-[6px] text-zinc-700 truncate">
+              • Optimized low-latency data pipelines processing 80k events/sec with zero packet loss.
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'ats-stanford':
+      return (
+        <div className={`w-full h-36 bg-white border border-zinc-200 rounded-lg p-3 flex flex-col justify-between overflow-hidden font-sans select-none shadow-xs ${className}`}>
+          <div>
+            <div className="border-b-2 border-[#8c1515] pb-1 mb-1.5 flex justify-between items-baseline">
+              <span className="font-bold text-[11px] text-[#8c1515] tracking-tight">{name}</span>
+              <span className="text-[6.5px] text-zinc-500">Palo Alto, CA · stanford.edu/alumni</span>
+            </div>
+            <div className="mb-1">
+              <div className="text-[7px] font-bold uppercase tracking-wider text-[#8c1515] border-b border-zinc-200 pb-0.5 mb-0.5">
+                Technical Mastery
+              </div>
+              <div className="text-[6.5px] text-zinc-700 truncate">
+                AI/ML Systems, React, Next.js, Node.js, GraphQL, Distributed Databases
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-zinc-100 pt-1">
+            <div className="text-[7px] font-bold uppercase tracking-wider text-[#8c1515] border-b border-zinc-200 pb-0.5 mb-0.5">
+              Experience
+            </div>
+            <div className="flex justify-between text-[6.5px] font-semibold text-zinc-900">
+              <span>Founding Engineer — AI Venture</span>
+              <span className="text-[6px] text-zinc-400">2021 – Present</span>
+            </div>
+            <div className="text-[6px] text-zinc-600 truncate">
+              • Built high-performance LLM streaming backend serving 500K DAUs.
+            </div>
+          </div>
+        </div>
+      );
+
     case 'ats-precision':
       return (
         <div className={`w-full h-36 bg-white border border-zinc-200 rounded-lg p-3 flex flex-col justify-between overflow-hidden font-sans select-none shadow-xs ${className}`}>

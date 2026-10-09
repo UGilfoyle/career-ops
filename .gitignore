@@ -55,6 +55,7 @@ interview-prep/*.md
 scratch/
 scratch-*.mjs
 scratch-*.cjs
+ats-simulation-*.mjs
 # Keep the core scanner tracked (used by dashboard + GitHub Actions)
 !scratch-scan.mjs
 

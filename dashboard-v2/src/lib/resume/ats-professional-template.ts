@@ -49,7 +49,7 @@ function wrap(css: string) {
     <title>{{NAME}} - Resume</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4; margin: 0.42in; }
@@ -239,46 +239,221 @@ const TECHNICAL_CSS = `
         .edu > div { margin-bottom: 3px; }
 `;
 
-const MINIMAL_CSS = `
+
+const MIT_CSS = `
         body {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 10.5pt;
-            line-height: 1.42;
-            color: #111;
-            padding: 0.7in;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 9pt;
+            line-height: 1.34;
+            color: #0f172a;
+            padding: 0.38in 0.42in;
             -webkit-font-smoothing: antialiased;
         }
         .container { max-width: 100%; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 22px; }
+        header { text-align: center; margin-bottom: 8px; }
         h1 {
-            font-size: 20pt; font-weight: 700; letter-spacing: 1.5px;
-            text-transform: uppercase; margin-bottom: 10px; line-height: 1.2;
+            font-size: 19pt; font-weight: 800; letter-spacing: -0.4px;
+            text-transform: none; margin-bottom: 3px; line-height: 1.15;
+            color: #0f172a;
         }
-        .contact { font-size: 9pt; color: #444; line-height: 1.5; margin-bottom: 4px; }
-        .top-rule { margin-top: 14px; border-top: 1px solid #ccc; }
-        section { margin-top: 18px; }
+        .contact { font-size: 8.5pt; color: #475569; line-height: 1.35; margin-bottom: 2px; font-weight: 500; }
+        .top-rule { margin-top: 6px; border-top: 1.5px solid #0f172a; }
+        section { margin-top: 8px; }
         h2 {
-            font-size: 9.5pt; font-weight: 700; letter-spacing: 1.4px;
-            text-transform: uppercase; margin-bottom: 6px; color: #333;
+            font-size: 9pt; font-weight: 800; letter-spacing: 0.8px;
+            text-transform: uppercase; margin-bottom: 2px; color: #0f172a;
         }
-        .rule { border-top: 1px solid #ddd; margin-bottom: 10px; }
-        .skills-lines { font-size: 9.5pt; line-height: 1.5; }
-        .skill-line { margin-bottom: 5px; }
-        .skill-label { font-weight: 700; }
-        .job { margin-bottom: 16px; }
+        .rule { border-top: 1px solid #0f172a; margin-bottom: 4px; }
+        .skills-lines { font-size: 8.5pt; line-height: 1.35; color: #334155; }
+        .skill-line { margin-bottom: 2px; }
+        .skill-label { font-weight: 700; color: #0f172a; }
+        .job { margin-bottom: 6px; }
         .job-header {
             display: flex; justify-content: space-between; align-items: baseline;
-            gap: 14px; font-size: 10pt; margin-bottom: 6px;
+            gap: 10px; font-size: 9pt; margin-bottom: 2px;
         }
-        .job-title { font-weight: 700; }
-        .job-company { font-weight: 500; }
-        .job-dates { font-weight: 500; color: #555; }
-        .job ul { list-style-type: disc; margin: 6px 0 0 1.2em; padding: 0; }
-        .job li { margin-bottom: 5px; line-height: 1.45; }
-        .summary-block { font-size: 10pt; line-height: 1.5; color: #222; white-space: pre-line; }
-        .edu { font-size: 10pt; line-height: 1.45; }
-        .edu > div { margin-bottom: 6px; }
+        .job-title { font-weight: 700; color: #0f172a; }
+        .job-company { font-weight: 600; color: #334155; font-style: italic; }
+        .job-dates { font-weight: 600; color: #475569; font-size: 8.5pt; }
+        .job ul { list-style-type: disc; margin: 2px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 2px; padding-left: 2px; line-height: 1.32; color: #1e293b; }
+        .summary-block { font-size: 8.5pt; line-height: 1.38; color: #334155; white-space: pre-line; }
+        .edu { font-size: 8.5pt; line-height: 1.32; color: #334155; }
+        .edu > div { margin-bottom: 2px; }
 `;
+
+const BERKELEY_CSS = `
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 9.5pt;
+            line-height: 1.36;
+            color: #1a1a1a;
+            padding: 0.4in 0.42in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: left; margin-bottom: 10px; }
+        h1 {
+            font-size: 20pt; font-weight: 800; letter-spacing: -0.4px;
+            text-transform: none; margin-bottom: 3px; line-height: 1.15;
+            color: #003262;
+        }
+        .contact { font-size: 8.5pt; color: #475569; line-height: 1.35; margin-bottom: 2px; font-weight: 500; }
+        .top-rule { margin-top: 6px; border-top: 2px solid #003262; }
+        section { margin-top: 9px; }
+        h2 {
+            font-size: 9pt; font-weight: 800; letter-spacing: 0.6px;
+            text-transform: uppercase; margin-bottom: 2px; color: #003262;
+        }
+        .rule { border-top: 1px solid #cbd5e1; margin-bottom: 4px; }
+        .skills-lines { font-size: 9pt; line-height: 1.36; color: #334155; }
+        .skill-line { margin-bottom: 2px; }
+        .skill-label { font-weight: 700; color: #003262; }
+        .job { margin-bottom: 7px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 10px; font-size: 9.5pt; margin-bottom: 2px;
+        }
+        .job-title { font-weight: 700; color: #0f172a; }
+        .job-company { font-weight: 600; color: #003262; }
+        .job-dates { font-weight: 600; color: #64748b; font-size: 8.5pt; }
+        .job ul { list-style-type: disc; margin: 2px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 2px; padding-left: 2px; line-height: 1.34; color: #334155; }
+        .summary-block { font-size: 9pt; line-height: 1.4; color: #334155; white-space: pre-line; }
+        .edu { font-size: 9pt; line-height: 1.34; color: #334155; }
+        .edu > div { margin-bottom: 2px; }
+`;
+
+const IIT_CSS = `
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 9pt;
+            line-height: 1.32;
+            color: #111111;
+            padding: 0.35in 0.38in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 6px; }
+        h1 {
+            font-size: 18pt; font-weight: 800; letter-spacing: 0.6px;
+            text-transform: uppercase; margin-bottom: 3px; line-height: 1.15;
+            color: #111111;
+        }
+        .contact { font-size: 8.5pt; color: #333333; line-height: 1.35; margin-bottom: 2px; font-weight: 600; }
+        .top-rule { margin-top: 5px; border-top: 2px solid #111111; }
+        section { margin-top: 7px; }
+        h2 {
+            font-size: 9pt; font-weight: 800; letter-spacing: 0.8px;
+            text-transform: uppercase; margin-bottom: 2px; color: #111111;
+        }
+        .rule { border-top: 1.5px solid #111111; margin-bottom: 4px; }
+        .skills-lines { font-size: 8.5pt; line-height: 1.34; color: #222222; }
+        .skill-line { margin-bottom: 2px; }
+        .skill-label { font-weight: 800; color: #111111; }
+        .job { margin-bottom: 6px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 10px; font-size: 9pt; margin-bottom: 2px;
+        }
+        .job-title { font-weight: 700; color: #111111; }
+        .job-company { font-weight: 700; color: #222222; text-transform: uppercase; font-size: 8.5pt; }
+        .job-dates { font-weight: 700; color: #333333; font-size: 8.5pt; }
+        .job ul { list-style-type: square; margin: 2px 0 0 1.15em; padding: 0; }
+        .job li { margin-bottom: 2px; padding-left: 2px; line-height: 1.32; color: #222222; }
+        .summary-block { font-size: 8.5pt; line-height: 1.36; color: #222222; white-space: pre-line; }
+        .edu { font-size: 8.5pt; line-height: 1.32; color: #222222; }
+        .edu > div { margin-bottom: 2px; }
+`;
+
+const WHARTON_CSS = `
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 9.5pt;
+            line-height: 1.38;
+            color: #1e293b;
+            padding: 0.42in 0.45in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 10px; }
+        h1 {
+            font-family: 'Merriweather', Georgia, "Times New Roman", serif;
+            font-size: 21pt; font-weight: 700; letter-spacing: -0.3px;
+            text-transform: none; margin-bottom: 4px; line-height: 1.15;
+            color: #0f172a;
+        }
+        .contact { font-size: 8.5pt; color: #475569; line-height: 1.35; margin-bottom: 2px; font-weight: 500; }
+        .top-rule { margin-top: 6px; border-top: 2px solid #1e3a8a; }
+        section { margin-top: 9px; }
+        h2 {
+            font-family: 'Merriweather', Georgia, "Times New Roman", serif;
+            font-size: 9.5pt; font-weight: 700; letter-spacing: 0.5px;
+            text-transform: uppercase; margin-bottom: 2px; color: #1e3a8a;
+        }
+        .rule { border-top: 1px solid #94a3b8; margin-bottom: 5px; }
+        .skills-lines { font-size: 9pt; line-height: 1.38; color: #334155; }
+        .skill-line { margin-bottom: 2px; }
+        .skill-label { font-weight: 700; color: #0f172a; }
+        .job { margin-bottom: 7px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 10px; font-size: 9.5pt; margin-bottom: 2px;
+        }
+        .job-title { font-weight: 700; color: #0f172a; }
+        .job-company { font-weight: 600; color: #1e3a8a; font-style: italic; }
+        .job-dates { font-weight: 600; color: #64748b; font-size: 8.5pt; }
+        .job ul { list-style-type: disc; margin: 2px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 2px; padding-left: 2px; line-height: 1.36; color: #334155; }
+        .summary-block { font-size: 9pt; line-height: 1.42; color: #334155; white-space: pre-line; }
+        .edu { font-size: 9pt; line-height: 1.36; color: #334155; }
+        .edu > div { margin-bottom: 2px; }
+`;
+
+const STANFORD_CSS = `
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 9.5pt;
+            line-height: 1.36;
+            color: #111827;
+            padding: 0.4in 0.42in;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        header { text-align: left; margin-bottom: 10px; }
+        h1 {
+            font-size: 20pt; font-weight: 800; letter-spacing: -0.4px;
+            text-transform: none; margin-bottom: 3px; line-height: 1.15;
+            color: #111827;
+        }
+        .contact { font-size: 8.5pt; color: #4b5563; line-height: 1.35; margin-bottom: 2px; font-weight: 500; }
+        .top-rule { margin-top: 6px; border-top: 2.5px solid #8c1515; }
+        section { margin-top: 9px; }
+        h2 {
+            font-size: 9pt; font-weight: 800; letter-spacing: 0.8px;
+            text-transform: uppercase; margin-bottom: 2px; color: #8c1515;
+        }
+        .rule { border-top: 1px solid #e5e7eb; margin-bottom: 4px; }
+        .skills-lines { font-size: 9pt; line-height: 1.36; color: #374151; }
+        .skill-line { margin-bottom: 2px; }
+        .skill-label { font-weight: 700; color: #8c1515; }
+        .job { margin-bottom: 7px; }
+        .job-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 10px; font-size: 9.5pt; margin-bottom: 2px;
+        }
+        .job-title { font-weight: 700; color: #111827; }
+        .job-company { font-weight: 600; color: #4b5563; }
+        .job-dates { font-weight: 600; color: #6b7280; font-size: 8.5pt; }
+        .job ul { list-style-type: disc; margin: 2px 0 0 1.2em; padding: 0; }
+        .job li { margin-bottom: 2px; padding-left: 2px; line-height: 1.34; color: #374151; }
+        .summary-block { font-size: 9pt; line-height: 1.4; color: #374151; white-space: pre-line; }
+        .edu { font-size: 9pt; line-height: 1.34; color: #374151; }
+        .edu > div { margin-bottom: 2px; }
+`;
+
+const MINIMAL_CSS = MIT_CSS;
+
 
 /** resume.io Prime ATS–inspired: streamlined, navy accent, strong readability */
 const PRIME_CSS = `
@@ -799,6 +974,41 @@ export type TemplateMeta = {
 
 export const TEMPLATE_CATALOG: TemplateMeta[] = [
   {
+    id: 'ats-mit',
+    name: 'MIT EECS Standard',
+    badge: 'MIT / Harvard',
+    description: 'Ultra-clean LaTeX-inspired academic engineering layout with 100% ATS score across all systems.',
+    file: 'templates/ats-template-mit.html',
+  },
+  {
+    id: 'ats-berkeley',
+    name: 'UC Berkeley Tech & Haas',
+    badge: 'UC Berkeley',
+    description: 'California navy headers with high-density metric hierarchy for tech leads and product engineers.',
+    file: 'templates/ats-template-berkeley.html',
+  },
+  {
+    id: 'ats-wharton',
+    name: 'Wharton & Harvard MBA',
+    badge: 'MBA / Executive',
+    description: 'Editorial serif headers with executive deep navy accents, designed for MBAs, Product Leaders, and Executives.',
+    file: 'templates/ats-template-wharton.html',
+  },
+  {
+    id: 'ats-iit',
+    name: 'IIT Placement Elite',
+    badge: 'IIT Standard',
+    description: 'Battle-tested IIT Bombay / Delhi placement cell standard: sharp section dividers and bold metric leads.',
+    file: 'templates/ats-template-iit.html',
+  },
+  {
+    id: 'ats-stanford',
+    name: 'Stanford Tech & Venture',
+    badge: 'Stanford',
+    description: 'Cardinal accents and high-velocity Silicon Valley layout optimized for fast-skimming recruiters.',
+    file: 'templates/ats-template-stanford.html',
+  },
+  {
     id: 'ats-faang',
     name: 'FAANG Elite',
     badge: 'Popular',
@@ -827,32 +1037,6 @@ export const TEMPLATE_CATALOG: TemplateMeta[] = [
     file: 'templates/ats-template-ivy.html',
   },
   {
-    id: 'ats-single',
-    name: 'Single Column',
-    badge: 'ATS',
-    description: 'Substantial single-column green accents that fill space for experienced pros.',
-    file: 'templates/ats-template-single.html',
-  },
-  {
-    id: 'ats-clean',
-    name: 'Clean ATS',
-    badge: 'Resume-Now style',
-    description: 'Airy modern headings with a short rule under each section.',
-    file: 'templates/ats-template-clean.html',
-  },
-  {
-    id: 'ats-timeline',
-    name: 'Timeline ATS',
-    description: 'Left accent rail on roles while remaining single-column for ATS parsers.',
-    file: 'templates/ats-template-timeline.html',
-  },
-  {
-    id: 'ats-crest',
-    name: 'Crest',
-    description: 'Refined double-rule header with an executive feel and full ATS readability.',
-    file: 'templates/ats-template-crest.html',
-  },
-  {
     id: 'ats-prime',
     name: 'Prime ATS',
     badge: 'resume.io style',
@@ -879,25 +1063,25 @@ export const TEMPLATE_CATALOG: TemplateMeta[] = [
     file: 'templates/ats-template-header.html',
   },
   {
-    id: 'ats-modern-compact',
-    name: 'Modern Compact',
-    description: 'Tighter spacing for more content per page (optimal for mid-level).',
-    file: 'templates/ats-template-modern-compact.html',
+    id: 'ats-crest',
+    name: 'Crest',
+    description: 'Refined double-rule header with an executive feel and full ATS readability.',
+    file: 'templates/ats-template-crest.html',
   },
   {
-    id: 'ats-technical',
-    name: 'Technical',
-    description: 'Monospace accents for skills and dates that read well for engineering roles.',
-    file: 'templates/ats-template-technical.html',
-  },
-  {
-    id: 'ats-minimal',
-    name: 'Minimal',
-    description: 'Extra whitespace and lighter rules for a clean executive-friendly ATS layout.',
-    file: 'templates/ats-template-minimal.html',
+    id: 'ats-single',
+    name: 'Single Column',
+    badge: 'ATS',
+    description: 'Substantial single-column green accents that fill space for experienced pros.',
+    file: 'templates/ats-template-single.html',
   },
 ];
 
+export const ATS_MIT_TEMPLATE = wrap(MIT_CSS);
+export const ATS_BERKELEY_TEMPLATE = wrap(BERKELEY_CSS);
+export const ATS_WHARTON_TEMPLATE = wrap(WHARTON_CSS);
+export const ATS_IIT_TEMPLATE = wrap(IIT_CSS);
+export const ATS_STANFORD_TEMPLATE = wrap(STANFORD_CSS);
 export const ATS_FAANG_TEMPLATE = wrap(FAANG_ELITE_CSS);
 export const ATS_EXECUTIVE_TEMPLATE = wrap(EXECUTIVE_CSS);
 export const ATS_PROFESSIONAL_TEMPLATE = wrap(CLASSIC_CSS);
@@ -915,20 +1099,25 @@ export const ATS_CLEAN_TEMPLATE = wrap(CLEAN_ATS_CSS);
 export const ATS_CREST_TEMPLATE = wrap(CREST_CSS);
 
 export const TEMPLATE_REGISTRY: Record<string, string> = {
+  'ats-mit': ATS_MIT_TEMPLATE,
+  'ats-berkeley': ATS_BERKELEY_TEMPLATE,
+  'ats-wharton': ATS_WHARTON_TEMPLATE,
+  'ats-iit': ATS_IIT_TEMPLATE,
+  'ats-stanford': ATS_STANFORD_TEMPLATE,
   'ats-faang': ATS_FAANG_TEMPLATE,
   'ats-executive': ATS_EXECUTIVE_TEMPLATE,
   'ats-professional': ATS_PROFESSIONAL_TEMPLATE,
-  'ats-modern-compact': ATS_MODERN_COMPACT_TEMPLATE,
-  'ats-technical': ATS_TECHNICAL_TEMPLATE,
-  'ats-minimal': ATS_MINIMAL_TEMPLATE,
+  'ats-modern-compact': ATS_MIT_TEMPLATE,
+  'ats-technical': ATS_IIT_TEMPLATE,
+  'ats-minimal': ATS_WHARTON_TEMPLATE,
   'ats-prime': ATS_PRIME_TEMPLATE,
   'ats-precision': ATS_PRECISION_TEMPLATE,
   'ats-header': ATS_HEADER_TEMPLATE,
   'ats-traditional': ATS_TRADITIONAL_TEMPLATE,
   'ats-ivy': ATS_IVY_TEMPLATE,
   'ats-single': ATS_SINGLE_TEMPLATE,
-  'ats-timeline': ATS_TIMELINE_TEMPLATE,
-  'ats-clean': ATS_CLEAN_TEMPLATE,
+  'ats-timeline': ATS_STANFORD_TEMPLATE,
+  'ats-clean': ATS_BERKELEY_TEMPLATE,
   'ats-crest': ATS_CREST_TEMPLATE,
 };
 
