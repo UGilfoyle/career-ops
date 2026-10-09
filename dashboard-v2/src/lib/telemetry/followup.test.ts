@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildEngagementFollowup } from './followup.ts';
+import { buildEngagementFollowup } from './followup';
 
 const strong = buildEngagementFollowup({
   company: 'Stripe',

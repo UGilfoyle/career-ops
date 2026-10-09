@@ -137,7 +137,7 @@ function run() {
   const v = validateResumeDraft(empty);
   assert.equal(v.ok, false, 'empty draft fails validation');
 
-  // Test: Selected Achievements is omitted from template output
+  // Test: Selected Achievements is rendered when proof points exist
   const sampleWithProofPoints: ResumeContext = {
     ...sample,
     narrative: {
@@ -153,8 +153,23 @@ function run() {
   const renderedHtml = fillAtsTemplate(sampleWithProofPoints);
   assert.equal(
     renderedHtml.includes('Selected Achievements'),
-    false,
-    'Selected Achievements header omitted from template output'
+    true,
+    'Selected Achievements header rendered when proof points present'
+  );
+
+  // Test: Selected Achievements is hidden when proof points are absent
+  const sampleWithoutProofPoints: ResumeContext = {
+    ...sample,
+    narrative: {
+      ...sample.narrative,
+      proof_points: [],
+    },
+  };
+  const renderedHtmlEmpty = fillAtsTemplate(sampleWithoutProofPoints);
+  assert.equal(
+    renderedHtmlEmpty.includes('display: none'),
+    true,
+    'Achievements section hidden when empty'
   );
 
   console.log('fill-template tests passed');

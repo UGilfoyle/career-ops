@@ -42,7 +42,7 @@ assert.equal((nested.narrative as { headline?: string })?.headline, 'Lead Backen
 const flat = unwrapResumeContext({ candidate: { full_name: 'Jane' } });
 assert.equal((flat.candidate as { full_name?: string })?.full_name, 'Jane');
 
-function cleanCompanionSummary(text) {
+function cleanCompanionSummary(text: unknown) {
   let s = String(text || '').trim();
   if (!s) return null;
   s = s.replace(/^(\s*\([^)]{2,90}\)\s*)+/g, '').trim();

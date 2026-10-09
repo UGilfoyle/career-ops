@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { getPrivacySafeHash } from './hash.ts';
+import { getPrivacySafeHash } from './hash';
 import {
   appOriginFromRequest,
   buildTrackingSlug,
   isValidDestination,
   normalizeExternalUrl,
   slugifySegment,
-} from './urls.ts';
+} from './urls';
 
 const h1 = getPrivacySafeHash('1.2.3.4', 'Mozilla/5.0');
 const h2 = getPrivacySafeHash('1.2.3.4', 'Mozilla/5.0');

@@ -18,7 +18,7 @@ function run() {
     { role: 'Dev', company: 'Co', period: '2024', bullets: ['Architected Kafka event streams for telemetry.'] },
   ];
   const out1 = weaveKeywordsIntoExperience(existingExp, ['kafka']);
-  assert.equal(out1[0].bullets[0], 'Architected Kafka event streams for telemetry.');
+  assert.equal(out1[0]!.bullets![0], 'Architected Kafka event streams for telemetry.');
 
   // 3. MC/DC: Non-weavable skill (>3 words or narrative stopwords) -> must be rejected
   const baseExp: ExperienceEntry[] = [
@@ -29,7 +29,7 @@ function run() {
     'management in production environments',
     'x', // < 2 chars
   ]);
-  assert.equal(out2[0].bullets[0], 'Designed microservices for enterprise cloud.');
+  assert.equal(out2[0]!.bullets![0], 'Designed microservices for enterprise cloud.');
 
   // 4. MC/DC: Bullet ending in percentage/metric -> skipped from direct append
   const metricExp: ExperienceEntry[] = [
@@ -44,8 +44,8 @@ function run() {
     },
   ];
   const out3 = weaveKeywordsIntoExperience(metricExp, ['Docker']);
-  assert.equal(out3[0].bullets[0], 'Reduced database CPU utilization by 35%.');
-  assert.match(out3[0].bullets[1], /\(Docker\)\.$/);
+  assert.equal(out3[0]!.bullets![0], 'Reduced database CPU utilization by 35%.');
+  assert.match(out3[0]!.bullets![1]!, /\(Docker\)\.$/);
 
   // 5. MC/DC: Appending to bullet with existing tools paren -> merge into single paren, no double parens
   const parenExp: ExperienceEntry[] = [
@@ -57,9 +57,9 @@ function run() {
     },
   ];
   const out4 = weaveKeywordsIntoExperience(parenExp, ['Kafka']);
-  assert.match(out4[0].bullets[0], /\(CI\/CD, Kafka\)\.$/);
-  assert.ok(!out4[0].bullets[0].includes('))'), 'Must not contain double closing parens');
-  assert.ok(!out4[0].bullets[0].includes(')('), 'Must not contain adjacent parens');
+  assert.match(out4[0]!.bullets![0]!, /\(CI\/CD, Kafka\)\.$/);
+  assert.ok(!out4[0]!.bullets![0]!.includes('))'), 'Must not contain double closing parens');
+  assert.ok(!out4[0]!.bullets![0]!.includes(')('), 'Must not contain adjacent parens');
 
   // 6. MC/DC: Unbalanced parens in input text -> sanitized cleanly
   const unclosedExp: ExperienceEntry[] = [
@@ -71,8 +71,8 @@ function run() {
     },
   ];
   const out5 = weaveKeywordsIntoExperience(unclosedExp, ['Redis']);
-  assert.ok(!out5[0].bullets[0].includes('(('));
-  assert.ok(!out5[0].bullets[0].includes('))'));
+  assert.ok(!out5[0]!.bullets![0]!.includes('(('));
+  assert.ok(!out5[0]!.bullets![0]!.includes('))'));
 
   // 7. Edge Case: Comma-separated keyword list -> expanded and distributed
   const multiRoleExp: ExperienceEntry[] = [
@@ -90,10 +90,10 @@ function run() {
     },
   ];
   const out6 = weaveKeywordsIntoExperience(multiRoleExp, ['PostgreSQL, TypeORM', 'Prisma']);
-  const allBullets = out6.flatMap((r) => r.bullets);
-  assert.ok(allBullets.some((b) => b.includes('PostgreSQL')));
-  assert.ok(allBullets.some((b) => b.includes('TypeORM')));
-  assert.ok(allBullets.some((b) => b.includes('Prisma')));
+  const allBullets = out6.flatMap((r) => r.bullets || []);
+  assert.ok(allBullets.some((b) => b?.includes('PostgreSQL')));
+  assert.ok(allBullets.some((b) => b?.includes('TypeORM')));
+  assert.ok(allBullets.some((b) => b?.includes('Prisma')));
 
   // Anachronistic keyword test: Bun (2022) must NOT be woven into a 2019 role
   const oldRoleExp = [
@@ -106,8 +106,8 @@ function run() {
   ];
   const out7 = weaveKeywordsIntoExperience(oldRoleExp, ['Bun']);
   assert.ok(
-    !out7[0].bullets[0].includes('Bun'),
-    `Bun must not be woven into a 2019 role (got ${out7[0].bullets[0]})`
+    !out7[0]!.bullets![0]!.includes('Bun'),
+    `Bun must not be woven into a 2019 role (got ${out7[0]!.bullets![0]})`
   );
 
   console.log('experience-weave tests: all passed');
