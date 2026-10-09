@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import sql from '@/lib/db';
 import { generateResumeDocx } from '@/lib/resume/export-docx';
-import type { ResumeContext } from '@/lib/resume/types';
+import { parseTailoredResumeHtml } from '@/lib/resume/parse-tailored-html';
+import { emptyResumeContext, type ResumeContext } from '@/lib/resume/types';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,11 +25,11 @@ export async function GET(
     }
 
     const [job] = (await sql`
-      SELECT id, company, title, jd_text
+      SELECT id, company, title, jd_text, resume_html
       FROM jobs
       WHERE id = ${jobId} AND user_id = ${session.user.id}
       LIMIT 1
-    `) as { id: number; company: string; title: string; jd_text?: string }[];
+    `) as { id: number; company: string; title: string; jd_text?: string; resume_html?: string }[];
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -38,11 +39,19 @@ export async function GET(
       SELECT resume_context FROM user_profiles WHERE user_id = ${session.user.id} LIMIT 1
     `) as { resume_context: ResumeContext }[];
 
-    if (!profile?.resume_context) {
-      return NextResponse.json({ error: 'No resume context found for user' }, { status: 400 });
+    if (!profile?.resume_context && !job.resume_html) {
+      return NextResponse.json({ error: 'No resume context or tailored document found' }, { status: 400 });
     }
 
-    const resumeContext = profile.resume_context;
+    // Preserve 100% of tailored data from the job's resume_html if present, falling back to base profile
+    let resumeContext: ResumeContext = profile?.resume_context || emptyResumeContext();
+    if (job.resume_html) {
+      const parsedTailored = parseTailoredResumeHtml(job.resume_html, profile?.resume_context);
+      if (parsedTailored) {
+        resumeContext = parsedTailored;
+      }
+    }
+
     const docxBuffer = await generateResumeDocx(resumeContext, {
       templateId: resumeContext.studio?.template_id || 'ats-professional',
       jdText: job.jd_text || '',

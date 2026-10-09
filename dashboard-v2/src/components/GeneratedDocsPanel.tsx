@@ -27,6 +27,7 @@ import {
   RocketOutlined,
   LoadingOutlined,
   EditOutlined,
+  FileWordOutlined,
 } from '@ant-design/icons';
 
 export type GeneratedDoc = {
@@ -143,6 +144,7 @@ export default function GeneratedDocsPanel({
   const [preview, setPreview] = useState<DocCard | null>(null);
   const [pdfBusyKey, setPdfBusyKey] = useState<string | null>(null);
   const [pdfHint, setPdfHint] = useState<string | null>(null);
+  const [docxBusyKey, setDocxBusyKey] = useState<string | null>(null);
 
   // Edit document details state
   const [editingCard, setEditingCard] = useState<DocCard | null>(null);
@@ -248,6 +250,36 @@ export default function GeneratedDocsPanel({
       setPdfHint(e instanceof Error ? e.message : 'PDF download failed');
     } finally {
       setPdfBusyKey(null);
+    }
+  }
+
+  async function downloadDocx(card: DocCard) {
+    if (card.kind !== 'resume') return;
+    const url = `/api/job/${card.id}/resume-docx`;
+    setDocxBusyKey(card.cardKey);
+    try {
+      const res = await fetch(url, { credentials: 'same-origin' });
+      if (!res.ok) {
+        const msg = (await res.text()).trim();
+        message.error(msg || `DOCX download failed (${res.status})`);
+        return;
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      const safeCompany = (card.company || 'Resume').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_');
+      const safeTitle = (card.title || '').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_');
+      a.download = safeTitle ? `${safeCompany}_${safeTitle}_Resume.docx` : `${safeCompany}_Resume.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+      message.success('DOCX downloaded');
+    } catch (e: unknown) {
+      message.error(e instanceof Error ? e.message : 'DOCX download failed');
+    } finally {
+      setDocxBusyKey(null);
     }
   }
 
@@ -527,6 +559,24 @@ export default function GeneratedDocsPanel({
                     </Button>
                   )}
 
+                  {isResume && (
+                    <Button
+                      size="small"
+                      icon={
+                        docxBusyKey === card.cardKey ? (
+                          <LoadingOutlined />
+                        ) : (
+                          <FileWordOutlined />
+                        )
+                      }
+                      disabled={docxBusyKey === card.cardKey}
+                      onClick={() => void downloadDocx(card)}
+                      className="flex-1 border-sky-300 text-sky-700 hover:border-sky-500 hover:text-sky-800"
+                    >
+                      {docxBusyKey === card.cardKey ? 'Wait…' : 'DOCX'}
+                    </Button>
+                  )}
+
                   {isResume && onCopyStealthLink && (
                     <Tooltip title="Copy stealth tracking URL">
                       <Button
@@ -575,7 +625,42 @@ export default function GeneratedDocsPanel({
       <Modal
         open={Boolean(preview)}
         onCancel={() => setPreview(null)}
-        footer={null}
+        footer={
+          preview ? (
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-zinc-400">
+                {preview.kind === 'resume' ? 'ATS-Optimized Resume Export' : 'Tailored Cover Letter'}
+              </span>
+              <div className="flex items-center gap-2">
+                {pdfDownloadUrl(preview) && (
+                  <Button
+                    size="middle"
+                    type="primary"
+                    icon={pdfBusyKey === preview.cardKey ? <LoadingOutlined /> : <DownloadOutlined />}
+                    disabled={pdfBusyKey === preview.cardKey}
+                    onClick={() => void downloadPdf(preview)}
+                  >
+                    {pdfBusyKey === preview.cardKey ? 'Wait…' : 'PDF'}
+                  </Button>
+                )}
+                {preview.kind === 'resume' && (
+                  <Button
+                    size="middle"
+                    icon={docxBusyKey === preview.cardKey ? <LoadingOutlined /> : <FileWordOutlined />}
+                    disabled={docxBusyKey === preview.cardKey}
+                    onClick={() => void downloadDocx(preview)}
+                    className="border-sky-300 text-sky-700 hover:border-sky-500 hover:text-sky-800"
+                  >
+                    {docxBusyKey === preview.cardKey ? 'Wait…' : 'DOCX'}
+                  </Button>
+                )}
+                <Button size="middle" onClick={() => setPreview(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          ) : null
+        }
         width={900}
         destroyOnClose
         centered

@@ -58,6 +58,33 @@ export async function GET(
       kind: type === 'cl' ? 'cover' : 'resume',
     });
 
+    if (format === 'docx' && type === 'resume') {
+      const { generateResumeDocx } = await import('@/lib/resume/export-docx');
+      const { parseTailoredResumeHtml } = await import('@/lib/resume/parse-tailored-html');
+      const { emptyResumeContext } = await import('@/lib/resume/types');
+
+      const profileContext = (profileRow as { resume_context?: import('@/lib/resume/types').ResumeContext } | undefined)?.resume_context || emptyResumeContext();
+      let resumeContext = profileContext;
+      if (job.resume_html) {
+        const parsed = parseTailoredResumeHtml(job.resume_html, profileContext);
+        if (parsed) resumeContext = parsed;
+      }
+
+      const docxBuffer = await generateResumeDocx(resumeContext, {
+        templateId: resumeContext.studio?.template_id || 'ats-professional',
+        jdText: (job as { jd_text?: string })?.jd_text || '',
+      });
+
+      const filename = downloadFilename.replace(/\.pdf$/i, '.docx');
+      return new NextResponse(docxBuffer as unknown as BodyInit, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      });
+    }
+
     if (format === 'pdf') {
       const filename = downloadFilename;
       const key = type === 'cl' ? job.cover_letter_pdf_key : job.resume_pdf_key;

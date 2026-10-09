@@ -3470,9 +3470,27 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 <a
                                   href={`/api/view/${doc.id}?format=pdf&download=1`}
                                   className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1C1C1E] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
+                                  title="Download Resume PDF"
                                 >
                                   <FileText size={14} />
-                                  <span>Resume</span>
+                                  <span>Resume PDF</span>
+                                </a>
+                              ) : (
+                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F5F5F0] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
+                                  <FileText size={14} />
+                                  <span>—</span>
+                                </span>
+                              )}
+
+                              {/* Resume DOCX — 100% ATS Word / Google Docs export */}
+                              {doc.has_resume_html || doc.has_resume_pdf ? (
+                                <a
+                                  href={`/api/job/${doc.id}/resume-docx`}
+                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-sky-200 bg-sky-50 text-sky-800 text-xs font-bold hover:bg-sky-100 transition-all"
+                                  title="Download ATS-optimized Word / Google Docs (.docx)"
+                                >
+                                  <FileText size={14} />
+                                  <span>DOCX</span>
                                 </a>
                               ) : (
                                 <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F5F5F0] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
@@ -3486,9 +3504,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 <a
                                   href={`/api/view/${doc.id}?type=cl&format=pdf&download=1`}
                                   className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1C1C1E] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
+                                  title="Download Cover Letter PDF"
                                 >
                                   <FileText size={14} />
-                                  <span>Cover</span>
+                                  <span>Cover PDF</span>
                                 </a>
                               ) : (
                                 <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F5F5F0] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
@@ -3497,21 +3516,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 </span>
                               )}
 
-                              {/* HTML */}
-                              <a
-                                href={`/api/view/${doc.id}?download=1`}
-                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[#E5E5E0] text-[#1C1C1E] text-xs font-bold hover:bg-[#F5F5F0] hover:border-[#1C1C1E] transition-all"
-                              >
-                                <FileText size={14} />
-                                <span>HTML</span>
-                              </a>
-
                               {/* View */}
                               <a
                                 href={`/api/view/${doc.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] text-xs font-bold hover:bg-[#F5F5F0] hover:text-[#1C1C1E] hover:border-[#1C1C1E] transition-all"
+                                title="View document in browser"
                               >
                                 <ExternalLink size={14} />
                                 <span>View</span>
