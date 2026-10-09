@@ -172,7 +172,23 @@ export async function GET(
       }
 
       // Backward compatibility: DB BYTEA (older runs)
-      const pdf = type === 'cl' ? job.cover_letter_pdf : job.resume_pdf;
+      let pdf = type === 'cl' ? job.cover_letter_pdf : job.resume_pdf;
+      if (!pdf) {
+        const rawHtml = type === 'cl' ? job.cover_letter_html : job.resume_html;
+        if (rawHtml) {
+          const { renderHtmlToPdf } = await import('@/lib/render-pdf');
+          const generated = await renderHtmlToPdf(rawHtml);
+          if (generated) {
+            pdf = generated;
+            if (type === 'cl') {
+              sql`UPDATE jobs SET cover_letter_pdf = ${generated}, updated_at = CURRENT_TIMESTAMP WHERE id = ${jobId}`.catch(() => {});
+            } else {
+              sql`UPDATE jobs SET resume_pdf = ${generated}, updated_at = CURRENT_TIMESTAMP WHERE id = ${jobId}`.catch(() => {});
+            }
+          }
+        }
+      }
+
       if (!pdf) {
         return new NextResponse('PDF not found (run tailor --deep first)', { status: 404 });
       }
