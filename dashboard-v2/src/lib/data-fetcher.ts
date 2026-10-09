@@ -3,7 +3,7 @@ import { calculateMarketReadiness } from '@/lib/readiness/readiness-calculator';
 
 const PIPELINE_PAGE_SIZE = 200;
 const APPLICATIONS_PAGE_SIZE = 100;
-const PDFS_PAGE_SIZE = 80;
+const PDFS_PAGE_SIZE = 500;
 
 export async function getDashboardData(userId: string, opts?: { pollOnly?: boolean }) {
   // Parallel fetchers definition
@@ -347,6 +347,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
             id,
             company,
             title,
+            created_at,
             updated_at,
             url,
             canonical_url,
@@ -363,7 +364,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
               OR resume_pdf IS NOT NULL OR cover_letter_pdf IS NOT NULL
               OR resume_html IS NOT NULL OR cover_letter_html IS NOT NULL
             )
-          ORDER BY updated_at DESC
+          ORDER BY id DESC
           LIMIT ${PDFS_PAGE_SIZE}
         `;
         return docs.map(d => ({
@@ -372,7 +373,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
           title: d.title,
           url: d.canonical_url || d.url,
           name: `Tailored Assets: ${d.company} - ${d.title}`,
-          mtime: d.updated_at,
+          mtime: d.created_at || d.updated_at,
           ats_content_score: d.ats_content_score != null ? Number(d.ats_content_score) : null,
           jd_alignment_score: d.jd_alignment_score != null ? Number(d.jd_alignment_score) : null,
           has_resume_pdf: !!d.has_resume_pdf,
@@ -401,7 +402,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
               OR resume_pdf IS NOT NULL OR cover_letter_pdf IS NOT NULL
               OR resume_html IS NOT NULL OR cover_letter_html IS NOT NULL
             )
-          ORDER BY created_at DESC
+          ORDER BY id DESC
           LIMIT ${PDFS_PAGE_SIZE}
         `;
         return docs.map((d: any) => ({
