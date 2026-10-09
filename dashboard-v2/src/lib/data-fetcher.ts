@@ -3,7 +3,7 @@ import { calculateMarketReadiness } from '@/lib/readiness/readiness-calculator';
 
 const PIPELINE_PAGE_SIZE = 200;
 const APPLICATIONS_PAGE_SIZE = 100;
-const PDFS_PAGE_SIZE = 500;
+const PDFS_PAGE_SIZE = 2000;
 
 export async function getDashboardData(userId: string, opts?: { pollOnly?: boolean }) {
   // Parallel fetchers definition
@@ -364,7 +364,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
               OR resume_pdf IS NOT NULL OR cover_letter_pdf IS NOT NULL
               OR resume_html IS NOT NULL OR cover_letter_html IS NOT NULL
             )
-          ORDER BY id DESC
+          ORDER BY created_at DESC NULLS LAST, id DESC
           LIMIT ${PDFS_PAGE_SIZE}
         `;
         return docs.map(d => ({
@@ -402,7 +402,7 @@ export async function getDashboardData(userId: string, opts?: { pollOnly?: boole
               OR resume_pdf IS NOT NULL OR cover_letter_pdf IS NOT NULL
               OR resume_html IS NOT NULL OR cover_letter_html IS NOT NULL
             )
-          ORDER BY id DESC
+          ORDER BY created_at DESC NULLS LAST, id DESC
           LIMIT ${PDFS_PAGE_SIZE}
         `;
         return docs.map((d: any) => ({

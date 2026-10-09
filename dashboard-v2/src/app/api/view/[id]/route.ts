@@ -181,9 +181,9 @@ export async function GET(
           if (generated) {
             pdf = generated;
             if (type === 'cl') {
-              sql`UPDATE jobs SET cover_letter_pdf = ${generated}, updated_at = CURRENT_TIMESTAMP WHERE id = ${jobId}`.catch(() => {});
+              sql`UPDATE jobs SET cover_letter_pdf = ${generated} WHERE id = ${jobId}`.catch(() => {});
             } else {
-              sql`UPDATE jobs SET resume_pdf = ${generated}, updated_at = CURRENT_TIMESTAMP WHERE id = ${jobId}`.catch(() => {});
+              sql`UPDATE jobs SET resume_pdf = ${generated} WHERE id = ${jobId}`.catch(() => {});
             }
           }
         }
