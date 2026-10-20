@@ -39,14 +39,14 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
     <div
       className={
         isSignup
-          ? 'mb-8 rounded-[1.75rem] border border-[#E5E5E0] bg-white overflow-hidden shadow-sm'
+          ? 'mb-8 rounded-[1.75rem] border border-[#E2E8F0] bg-white overflow-hidden shadow-sm'
           : 'w-full max-w-4xl mx-auto'
       }
     >
       {!isSignup && (
         <div className="text-center mb-10">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF] mb-2">Interactive walkthrough</p>
-          <h2 className="text-3xl md:text-4xl font-bold text-[#1C1C1E] tracking-tight">How Career-Ops works</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] tracking-tight">How Career-Ops works</h2>
           <p className="text-[#6B6B6B] mt-3 max-w-xl mx-auto text-sm font-medium">
             Same flow after signup. Preview it here before creating an account.
           </p>
@@ -54,9 +54,9 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
       )}
 
       {isSignup && (
-        <div className="px-6 py-4 bg-[#F5F5F0] border-b border-[#E5E5E0]">
+        <div className="px-6 py-4 bg-[#F1F5F9] border-b border-[#E2E8F0]">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-1">After you sign up</p>
-          <h2 className="text-sm font-bold text-[#1C1C1E]">Your first 5 minutes on the dashboard</h2>
+          <h2 className="text-sm font-bold text-[#0F172A]">Your first 5 minutes on the dashboard</h2>
         </div>
       )}
 
@@ -71,20 +71,20 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
                 onClick={() => setActiveId(step.id)}
                 className={`w-full text-left rounded-2xl border px-4 py-3 transition-all ${
                   selected
-                    ? 'bg-[#1C1C1E] border-[#1C1C1E] text-white shadow-md'
-                    : 'bg-white border-[#E5E5E0] hover:border-[#d4d4d8] text-[#1C1C1E]'
+                    ? 'bg-[#0066FE] border-[#0066FE] text-white shadow-md'
+                    : 'bg-white border-[#E2E8F0] hover:border-[#d4d4d8] text-[#0F172A]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <span
                     className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                      selected ? 'bg-white/15 text-white' : 'bg-[#F5F5F0] text-[#6B6B6B]'
+                      selected ? 'bg-white/15 text-white' : 'bg-[#F1F5F9] text-[#6B6B6B]'
                     }`}
                   >
                     {step.step}
                   </span>
                   <div className="min-w-0">
-                    <div className={`text-sm font-bold ${selected ? 'text-white' : 'text-[#1C1C1E]'}`}>{step.title}</div>
+                    <div className={`text-sm font-bold ${selected ? 'text-white' : 'text-[#0F172A]'}`}>{step.title}</div>
                     <div className={`text-xs truncate ${selected ? 'text-white/70' : 'text-[#9CA3AF]'}`}>{step.summary}</div>
                   </div>
                   <ChevronRight size={14} className={`shrink-0 ml-auto ${selected ? 'text-white/50' : 'text-[#C4C4BE]'}`} />
@@ -102,7 +102,7 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 sm:p-5 min-h-[160px]"
+              className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 sm:p-5 min-h-[160px]"
             >
               <FlowDetail step={active} copiedCmd={copiedCmd} onCopy={copyCommand} />
             </motion.div>
@@ -114,7 +114,7 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
         <div className="text-center mt-10">
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-[#1C1C1E] text-white font-bold rounded-2xl hover:bg-[#27272a] transition-all shadow-lg"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-[#0066FE] text-white font-bold rounded-2xl hover:bg-[#0052CC] transition-all shadow-lg"
           >
             Start free (tour included)
             <ChevronRight size={18} />
@@ -128,11 +128,11 @@ export function ProductFlowPanel({ variant = 'landing', showSignupCta = true }: 
 function FlowRow({ step, minimal }: { step: PublicFlowStep; minimal?: boolean }) {
   return (
     <div className={`flex gap-3 ${minimal ? 'py-1' : ''}`}>
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F5F5F0] text-[10px] font-bold text-[#6B6B6B]">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F1F5F9] text-[10px] font-bold text-[#6B6B6B]">
         {step.step}
       </span>
       <div>
-        <div className="text-xs font-bold text-[#1C1C1E]">{step.title}</div>
+        <div className="text-xs font-bold text-[#0F172A]">{step.title}</div>
         {!minimal && <div className="text-[11px] text-[#9CA3AF]">{step.summary}</div>}
       </div>
     </div>
@@ -151,18 +151,18 @@ function FlowDetail({
   return (
     <>
       <p className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Step {step.step}</p>
-      <h3 className="text-xl font-bold text-[#1C1C1E] mb-3">{step.title}</h3>
+      <h3 className="text-xl font-bold text-[#0F172A] mb-3">{step.title}</h3>
       <p className="text-sm text-[#6B6B6B] leading-relaxed font-medium">{step.detail}</p>
       {step.command ? (
         <div className="mt-5 flex flex-wrap items-center gap-2">
-          <code className="flex items-center gap-2 rounded-xl bg-white border border-[#E5E5E0] px-3 py-2 text-xs font-mono font-bold text-[#1C1C1E]">
+          <code className="flex items-center gap-2 rounded-xl bg-white border border-[#E2E8F0] px-3 py-2 text-xs font-mono font-bold text-[#0F172A]">
             <Terminal size={14} className="text-[#9CA3AF]" />
             {step.command}
           </code>
           <button
             type="button"
             onClick={() => onCopy(step.command!)}
-            className="inline-flex items-center gap-1 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B] hover:text-[#1C1C1E]"
+            className="inline-flex items-center gap-1 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B] hover:text-[#0F172A]"
           >
             {copiedCmd === step.command ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
             {copiedCmd === step.command ? 'Copied' : 'Copy'}

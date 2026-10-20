@@ -102,7 +102,7 @@ function VerifyContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-zinc-900 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-[#F8FAFC] text-zinc-900 flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center h-12 w-12 bg-zinc-900 text-white rounded-xl shadow-sm mb-3">
@@ -181,7 +181,7 @@ export default function VerifyPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
+        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
           <LoadingOutlined style={{ fontSize: 28 }} spin />
         </div>
       }

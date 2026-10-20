@@ -146,24 +146,24 @@ export function LivePreview({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <span className="text-sm font-bold text-[#1C1C1E]">Live Preview</span>
+          <span className="text-sm font-bold text-[#0F172A]">Live Preview</span>
           <button
             type="button"
             onClick={onOpenTemplates}
-            className="max-w-[140px] truncate rounded-full border border-[#E5E5E0] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:border-[#1C1C1E]/40 hover:text-[#1C1C1E] sm:max-w-none"
+            className="max-w-[140px] truncate rounded-full border border-[#E2E8F0] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:border-[#0066FE]/40 hover:text-[#0F172A] sm:max-w-none"
           >
             {templateMeta.name}
           </button>
 
           {/* View Format Segmented Control: Styled vs ATS Parser */}
-          <div className="flex rounded-lg border border-[#E5E5E0] bg-white p-0.5">
+          <div className="flex rounded-lg border border-[#E2E8F0] bg-white p-0.5">
             <button
               type="button"
               onClick={() => setViewFormat('styled')}
               className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
-                viewFormat === 'styled' ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                viewFormat === 'styled' ? 'bg-[#0066FE] text-white' : 'text-[#6B6B6B] hover:text-[#0F172A]'
               }`}
             >
               Styled
@@ -172,7 +172,7 @@ export function LivePreview({
               type="button"
               onClick={() => setViewFormat('parser')}
               className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
-                viewFormat === 'parser' ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                viewFormat === 'parser' ? 'bg-[#0066FE] text-white' : 'text-[#6B6B6B] hover:text-[#0F172A]'
               }`}
               title="View plain ASCII stream as ingested by ATS parsers (Greenhouse / Workday)"
             >
@@ -181,12 +181,12 @@ export function LivePreview({
           </div>
 
           {showTailoredToggle ? (
-            <div className="flex rounded-lg border border-[#E5E5E0] bg-white p-0.5">
+            <div className="flex rounded-lg border border-[#E2E8F0] bg-white p-0.5">
               <button
                 type="button"
                 onClick={() => onPreviewModeChange?.('tailored')}
                 className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                  showTailored ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                  showTailored ? 'bg-[#0066FE] text-white' : 'text-[#6B6B6B] hover:text-[#0F172A]'
                 }`}
               >
                 Tailored
@@ -195,7 +195,7 @@ export function LivePreview({
                 type="button"
                 onClick={() => onPreviewModeChange?.('master')}
                 className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                  !showTailored ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                  !showTailored ? 'bg-[#0066FE] text-white' : 'text-[#6B6B6B] hover:text-[#0F172A]'
                 }`}
               >
                 Master
@@ -212,7 +212,7 @@ export function LivePreview({
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <span
-            className="rounded-full bg-[#1C1C1E] px-2 py-0.5 font-mono text-[9px] text-white sm:px-2.5 sm:py-1 sm:text-[10px]"
+            className="rounded-full bg-[#0066FE] px-2 py-0.5 font-mono text-[9px] text-white sm:px-2.5 sm:py-1 sm:text-[10px]"
             title={
               externalAtsSource === 'jd'
                 ? 'JD keywords present in resume text (target 94%+)'
@@ -229,7 +229,7 @@ export function LivePreview({
               className={`rounded-lg px-2 py-1 text-[10px] font-bold transition-colors ${
                 showBadges
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                  : 'border border-[#E5E5E0] bg-white text-[#6B6B6B] hover:text-[#1C1C1E]'
+                  : 'border border-[#E2E8F0] bg-white text-[#6B6B6B] hover:text-[#0F172A]'
               }`}
               title="Toggle competency badges"
             >
@@ -244,8 +244,8 @@ export function LivePreview({
                 onClick={() => onZoomChange(z)}
                 className={`rounded-lg px-2.5 py-1 text-[10px] font-bold transition-colors ${
                   zoom === z
-                    ? 'bg-[#1C1C1E] text-white'
-                    : 'border border-[#E5E5E0] bg-white text-[#6B6B6B] hover:text-[#1C1C1E]'
+                    ? 'bg-[#0066FE] text-white'
+                    : 'border border-[#E2E8F0] bg-white text-[#6B6B6B] hover:text-[#0F172A]'
                 }`}
                 title={`Preview zoom ${z}%`}
               >

@@ -196,13 +196,13 @@ export function JobReviewLite({
   }, [profileName, jobId, isCover, onDocsUpdated]);
 
   return (
-    <div className="flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3">
+    <div className="flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
         <div className="min-w-0">
           <div className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
             Per-job review · {isCover ? 'Cover letter' : 'Resume'}
           </div>
-          <h4 className="truncate text-sm font-bold text-[#1C1C1E]">
+          <h4 className="truncate text-sm font-bold text-[#0F172A]">
             {company || 'Company'} — {title || 'Role'}
           </h4>
         </div>
@@ -223,7 +223,7 @@ export function JobReviewLite({
             </span>
           ) : atsContentScore != null ? (
             <span
-              className="rounded-full border border-[#E5E5E0] bg-white px-2.5 py-1 font-mono text-[10px] font-bold text-[#6B6B6B]"
+              className="rounded-full border border-[#E2E8F0] bg-white px-2.5 py-1 font-mono text-[10px] font-bold text-[#6B6B6B]"
               title="Writing polish only — not JD keyword coverage"
             >
               Polish {atsContentScore}/100
@@ -233,7 +233,7 @@ export function JobReviewLite({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#1C1C1E]"
+              className="rounded-xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#0F172A]"
             >
               Close
             </button>
@@ -278,7 +278,7 @@ export function JobReviewLite({
       )}
 
       {fixMsg ? (
-        <div className="border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-2 text-xs font-medium text-[#1C1C1E]">
+        <div className="border-b border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2 text-xs font-medium text-[#0F172A]">
           {fixMsg}
         </div>
       ) : null}

@@ -47,7 +47,7 @@ export function ExperienceSection({
         Full editor — edit company, title, dates, and every bullet. Preview updates live on the Master view.
       </p>
       {experience.map((job, index) => (
-        <div key={index} className="rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 space-y-3">
+        <div key={index} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
               Role {index + 1}
@@ -57,7 +57,7 @@ export function ExperienceSection({
                 type="button"
                 onClick={() => moveRole(index, -1)}
                 disabled={index === 0}
-                className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#1C1C1E] disabled:opacity-30"
+                className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#0F172A] disabled:opacity-30"
               >
                 Up
               </button>
@@ -65,7 +65,7 @@ export function ExperienceSection({
                 type="button"
                 onClick={() => moveRole(index, 1)}
                 disabled={index === experience.length - 1}
-                className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#1C1C1E] disabled:opacity-30"
+                className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#0F172A] disabled:opacity-30"
               >
                 Down
               </button>
@@ -93,12 +93,12 @@ export function ExperienceSection({
                   onChange={(e) => updateBullet(index, bi, e.target.value)}
                   rows={3}
                   placeholder="Impact-focused bullet with metrics…"
-                  className="flex-1 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 text-sm font-medium text-[#1C1C1E] outline-none focus:border-[#1C1C1E] resize-y min-h-[72px]"
+                  className="flex-1 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-medium text-[#0F172A] outline-none focus:border-[#0066FE] resize-y min-h-[72px]"
                 />
                 <button
                   type="button"
                   onClick={() => removeBullet(index, bi)}
-                  className="rounded-xl border border-[#E5E5E0] bg-white px-2 py-2 text-[#9CA3AF] hover:text-rose-600"
+                  className="rounded-xl border border-[#E2E8F0] bg-white px-2 py-2 text-[#9CA3AF] hover:text-rose-600"
                   aria-label="Remove bullet"
                 >
                   <Trash2 size={14} />
@@ -108,7 +108,7 @@ export function ExperienceSection({
             <button
               type="button"
               onClick={() => addBullet(index)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1C1C1E] hover:underline"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F172A] hover:underline"
             >
               <Plus size={14} /> Add bullet
             </button>
@@ -124,7 +124,7 @@ export function ExperienceSection({
             { company: '', role: '', period: '', location: '', bullets: [''] },
           ])
         }
-        className="w-full rounded-xl border border-dashed border-[#E5E5E0] bg-white py-3 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:border-[#1C1C1E] hover:text-[#1C1C1E] transition-colors"
+        className="w-full rounded-xl border border-dashed border-[#E2E8F0] bg-white py-3 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:border-[#0066FE] hover:text-[#0F172A] transition-colors"
       >
         + Add experience
       </button>

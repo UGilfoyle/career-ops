@@ -72,13 +72,13 @@ export default function BillingSimulateClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] py-8 px-4">
+    <div className="min-h-screen bg-[#F8FAFC] py-8 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="text-center space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 inline-block px-3 py-1 rounded-full">
             Local simulation · no real money
           </p>
-          <h1 className="text-2xl font-bold text-[#1C1C1E]">Career-Ops Pro · UPI billing demo</h1>
+          <h1 className="text-2xl font-bold text-[#0F172A]">Career-Ops Pro · UPI billing demo</h1>
           <p className="text-sm text-[#6B6B6B] max-w-xl mx-auto">
             Pay → UTR submit → Admin dashboard approve → Access email. Same flow as production, mocked locally.
           </p>
@@ -101,8 +101,8 @@ export default function BillingSimulateClient() {
               }}
               className={`px-3 py-1.5 rounded-full border ${
                 step === s.id
-                  ? 'bg-[#1C1C1E] text-white border-[#1C1C1E]'
-                  : 'bg-white text-[#6B6B6B] border-[#E5E5E0]'
+                  ? 'bg-[#0066FE] text-white border-[#0066FE]'
+                  : 'bg-white text-[#6B6B6B] border-[#E2E8F0]'
               }`}
             >
               {s.label}
@@ -111,13 +111,13 @@ export default function BillingSimulateClient() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6 items-start">
-          <div className="bg-white border border-[#E5E5E0] rounded-3xl shadow-sm overflow-hidden">
-            <div className="px-6 pt-6 pb-4 text-center border-b border-[#E5E5E0] bg-[#FAFAF8]/50">
+          <div className="bg-white border border-[#E2E8F0] rounded-3xl shadow-sm overflow-hidden">
+            <div className="px-6 pt-6 pb-4 text-center border-b border-[#E2E8F0] bg-[#F8FAFC]/50">
               <div className="flex items-center justify-center gap-2">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">User view</p>
                 <UpiMark size={16} />
               </div>
-              <h2 className="text-3xl font-bold text-[#1C1C1E] mt-1">₹99</h2>
+              <h2 className="text-3xl font-bold text-[#0F172A] mt-1">₹99</h2>
               <p className="text-xs text-[#6B6B6B]">per month · zero gateway fees</p>
             </div>
             <div className="p-6 space-y-4">
@@ -125,7 +125,7 @@ export default function BillingSimulateClient() {
                 <>
                   <div className="flex justify-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrUrl} alt="UPI QR" width={200} height={200} className="rounded-xl border border-[#E5E5E0]" />
+                    <img src={qrUrl} alt="UPI QR" width={200} height={200} className="rounded-xl border border-[#E2E8F0]" />
                   </div>
                   <a
                     href={upiUri}
@@ -144,22 +144,22 @@ export default function BillingSimulateClient() {
                 <button
                   type="button"
                   onClick={simulatePaid}
-                  className="w-full bg-[#1C1C1E] text-white font-semibold text-sm py-3 rounded-xl flex items-center justify-center gap-2"
+                  className="w-full bg-[#0066FE] text-white font-semibold text-sm py-3 rounded-xl flex items-center justify-center gap-2"
                 >
                   Simulate “I paid ₹99” <ArrowRight size={14} />
                 </button>
               )}
 
               {step === 'utr' && (
-                <form onSubmit={submitUtr} className="pt-2 border-t border-[#E5E5E0] space-y-3">
+                <form onSubmit={submitUtr} className="pt-2 border-t border-[#E2E8F0] space-y-3">
                   <p className="text-sm font-semibold">Already paid? Paste UTR</p>
                   <input
                     value={utr}
                     onChange={(e) => setUtr(e.target.value)}
-                    className="w-full border border-[#E5E5E0] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1C1C1E]"
+                    className="w-full border border-[#E2E8F0] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#0066FE]"
                     placeholder="12-digit UTR"
                   />
-                  <button type="submit" className="w-full bg-[#1C1C1E] text-white font-semibold text-sm py-3 rounded-xl">
+                  <button type="submit" className="w-full bg-[#0066FE] text-white font-semibold text-sm py-3 rounded-xl">
                     Submit for verification
                   </button>
                 </form>
@@ -179,7 +179,7 @@ export default function BillingSimulateClient() {
                   </div>
                   <button
                     type="button"
-                    className="w-full flex items-center justify-center gap-2 border border-[#E5E5E0] rounded-xl py-2.5 text-xs font-semibold text-[#1C1C1E]"
+                    className="w-full flex items-center justify-center gap-2 border border-[#E2E8F0] rounded-xl py-2.5 text-xs font-semibold text-[#0F172A]"
                   >
                     <RefreshCw size={14} /> Check verification status
                   </button>
@@ -191,7 +191,7 @@ export default function BillingSimulateClient() {
 
               {(step === 'admin' || step === 'done') && claimStatus !== 'pending' && (
                 <div className="text-center py-8 space-y-2">
-                  <p className="text-sm font-semibold text-[#1C1C1E]">
+                  <p className="text-sm font-semibold text-[#0F172A]">
                     {claimStatus === 'approved' ? 'Pro active ✓' : 'Payment rejected'}
                   </p>
                   <p className="text-xs text-[#6B6B6B]">UTR {claim.utr}</p>
@@ -200,10 +200,10 @@ export default function BillingSimulateClient() {
             </div>
           </div>
 
-          <div className="bg-white border border-[#E5E5E0] rounded-3xl shadow-sm overflow-hidden">
-            <div className="px-6 pt-6 pb-4 border-b border-[#E5E5E0] flex items-center justify-between">
+          <div className="bg-white border border-[#E2E8F0] rounded-3xl shadow-sm overflow-hidden">
+            <div className="px-6 pt-6 pb-4 border-b border-[#E2E8F0] flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-[#1C1C1E] flex items-center gap-2">
+                <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
                   <IndianRupee size={18} /> Admin · UPI Payments
                 </h2>
                 <p className="text-xs text-[#6B6B6B]">Check bank SMS, then Approve / Reject</p>
@@ -221,9 +221,9 @@ export default function BillingSimulateClient() {
               )}
 
               {step !== 'pay' && (
-                <div className="border border-[#E5E5E0] rounded-2xl p-5 space-y-3">
+                <div className="border border-[#E2E8F0] rounded-2xl p-5 space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-[#1C1C1E]">{claim.email}</span>
+                    <span className="font-semibold text-[#0F172A]">{claim.email}</span>
                     <span
                       className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                         claimStatus === 'pending'
@@ -244,7 +244,7 @@ export default function BillingSimulateClient() {
                   <p className="text-[11px] text-[#9CA3AF]">
                     Ref {claim.ref} · {claim.createdAt}
                   </p>
-                  <p className="text-xs text-[#6B6B6B] bg-[#FAFAF8] rounded-xl p-3">
+                  <p className="text-xs text-[#6B6B6B] bg-[#F8FAFC] rounded-xl p-3">
                     Admin checks PhonePe/ICICI: did ₹99 arrive from this UTR? If yes → Approve.
                   </p>
                   {claimStatus === 'pending' && (
@@ -262,7 +262,7 @@ export default function BillingSimulateClient() {
                         type="button"
                         disabled={busy}
                         onClick={() => void adminAction('reject')}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 border border-[#E5E5E0] text-[#6B6B6B] text-xs font-bold py-2.5 rounded-xl"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 border border-[#E2E8F0] text-[#6B6B6B] text-xs font-bold py-2.5 rounded-xl"
                       >
                         <X size={14} /> Reject
                       </button>

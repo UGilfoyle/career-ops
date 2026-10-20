@@ -13,14 +13,14 @@ type SectionAccordionProps = {
 
 export function SectionAccordion({ id, title, open, onToggle, children, badge }: SectionAccordionProps) {
   return (
-    <div className="border border-[#E5E5E0] rounded-2xl bg-white overflow-hidden" data-section={id}>
+    <div className="border border-[#E2E8F0] rounded-2xl bg-white overflow-hidden" data-section={id}>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-[#FAFAF8] transition-colors"
+        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-[#F8FAFC] transition-colors"
       >
-        <span className="text-sm font-bold text-[#1C1C1E]">{title}</span>
+        <span className="text-sm font-bold text-[#0F172A]">{title}</span>
         <span className="flex items-center gap-2">
           {badge ? (
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">{badge}</span>
@@ -57,7 +57,7 @@ export function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm font-medium text-[#1C1C1E] outline-none focus:border-[#1C1C1E] transition-colors"
+        className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#0066FE] transition-colors"
       />
     </label>
   );
@@ -84,7 +84,7 @@ export function TextArea({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm font-medium text-[#1C1C1E] outline-none focus:border-[#1C1C1E] transition-colors resize-y min-h-[96px]"
+        className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#0066FE] transition-colors resize-y min-h-[96px]"
       />
     </label>
   );

@@ -45,7 +45,7 @@ export function UpiAppsRow() {
       {APPS.map((app) => (
         <span
           key={app}
-          className="text-[10px] font-semibold text-[#6B6B6B] bg-white border border-[#E5E5E0] rounded-full px-2.5 py-1"
+          className="text-[10px] font-semibold text-[#6B6B6B] bg-white border border-[#E2E8F0] rounded-full px-2.5 py-1"
         >
           {app}
         </span>

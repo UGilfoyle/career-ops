@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-zinc-900 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[#F8FAFC] text-zinc-900 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="mb-4">
           <Button

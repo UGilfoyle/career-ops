@@ -76,7 +76,7 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
   }
 
   return (
-    <div className="min-w-0 space-y-3 rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-2.5 sm:p-3">
+    <div className="min-w-0 space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-2.5 sm:p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label className="flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
           Language
@@ -87,7 +87,7 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
               setResult(null);
               setError(null);
             }}
-            className="w-full rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-base font-semibold text-[#1C1C1E] sm:text-sm"
+            className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 text-base font-semibold text-[#0F172A] sm:text-sm"
           >
             {PRACTICE_RUN_LANGUAGES.map((l) => (
               <option key={l.id} value={l.id}>
@@ -100,7 +100,7 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
           type="button"
           onClick={() => void onRun()}
           disabled={running || !code.trim()}
-          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 sm:mt-5 sm:w-auto sm:min-w-[6.5rem]"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-[#0066FE] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 sm:mt-5 sm:w-auto sm:min-w-[6.5rem]"
         >
           {running ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
           {running ? 'Running…' : 'Run'}
@@ -115,7 +115,7 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
         inputMode="text"
         autoCapitalize="off"
         autoCorrect="off"
-        className="max-h-[50vh] w-full min-w-0 resize-y overflow-x-auto rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 font-mono text-[13px] leading-relaxed text-[#1C1C1E] [overflow-wrap:anywhere] sm:text-xs"
+        className="max-h-[50vh] w-full min-w-0 resize-y overflow-x-auto rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 font-mono text-[13px] leading-relaxed text-[#0F172A] [overflow-wrap:anywhere] sm:text-xs"
         placeholder="Write code here…"
       />
       <label className="block text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
@@ -125,7 +125,7 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
           onChange={(e) => setStdin(e.target.value)}
           rows={2}
           spellCheck={false}
-          className="mt-1 w-full min-w-0 resize-y rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 font-mono text-[13px] text-[#1C1C1E] sm:text-xs"
+          className="mt-1 w-full min-w-0 resize-y rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 font-mono text-[13px] text-[#0F172A] sm:text-xs"
           placeholder="Input fed to your program"
         />
       </label>
@@ -142,7 +142,7 @@ function CodingRunner({ promptKey }: { promptKey: string }) {
             {result.timeSec != null ? ` · ${result.timeSec}s` : ''}
             {result.exitCode != null ? ` · exit ${result.exitCode}` : ''}
           </p>
-          <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-[#E5E5E0] bg-[#1C1C1E] px-3 py-2 font-mono text-[11px] leading-relaxed text-[#E5E5E0] [overflow-wrap:anywhere]">
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-[#E2E8F0] bg-[#0066FE] px-3 py-2 font-mono text-[11px] leading-relaxed text-[#E5E5E0] [overflow-wrap:anywhere]">
             {[result.stdout, result.stderr].filter(Boolean).join('\n') || '(no output)'}
           </pre>
         </div>
@@ -192,8 +192,8 @@ export default function PracticePackView({
 
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden">
-      <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-3 sm:px-4">
-        <p className="break-words text-sm font-bold leading-snug text-[#1C1C1E] [overflow-wrap:anywhere]">
+      <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-3 sm:px-4">
+        <p className="break-words text-sm font-bold leading-snug text-[#0F172A] [overflow-wrap:anywhere]">
           {(company || content.company || 'Company') + ' · ' + (role || content.role || 'Role')}
         </p>
         {content.fit?.note && (
@@ -226,7 +226,7 @@ export default function PracticePackView({
             }}
             className={`shrink-0 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
               tab === t.id
-                ? 'bg-[#1C1C1E] text-white'
+                ? 'bg-[#0066FE] text-white'
                 : 'bg-[#F4F4F0] text-[#6B6B6B] active:bg-[#EBEBE6]'
             }`}
           >
@@ -247,7 +247,7 @@ export default function PracticePackView({
           return (
             <li
               key={key}
-              className="min-w-0 overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white"
+              className="min-w-0 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white"
             >
               <button
                 type="button"
@@ -261,7 +261,7 @@ export default function PracticePackView({
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start gap-2">
-                    <p className="min-w-0 flex-1 break-words text-sm font-bold leading-snug text-[#1C1C1E] [overflow-wrap:anywhere]">
+                    <p className="min-w-0 flex-1 break-words text-sm font-bold leading-snug text-[#0F172A] [overflow-wrap:anywhere]">
                       {item.title}
                     </p>
                     {item.difficulty && (
@@ -278,12 +278,12 @@ export default function PracticePackView({
                 </div>
               </button>
               {open && (
-                <div className="min-w-0 space-y-3 border-t border-[#E5E5E0] px-3 py-3 sm:px-4">
+                <div className="min-w-0 space-y-3 border-t border-[#E2E8F0] px-3 py-3 sm:px-4">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
                       Prompt
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-[#1C1C1E] [overflow-wrap:anywhere]">
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-[#0F172A] [overflow-wrap:anywhere]">
                       {item.prompt}
                     </p>
                   </div>

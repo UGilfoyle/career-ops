@@ -1882,11 +1882,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#FAFAF8] text-[#1C1C1E]">
+      <div className="flex h-screen items-center justify-center bg-[#F8FAFC] text-[#0F172A]">
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="h-8 w-8 border-2 border-[#1C1C1E] border-t-transparent rounded-full"
+          className="h-8 w-8 border-2 border-[#0066FE] border-t-transparent rounded-full"
         />
       </div>
     );
@@ -1909,8 +1909,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         onClick={() => setIsSearchOpen((v) => !v)}
         className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-colors ${
           isSearchOpen || searchQuery.trim()
-            ? 'border-[#1C1C1E] bg-white text-[#1C1C1E]'
-            : 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:bg-[#FAFAF8]'
+            ? 'border-[#0066FE] bg-white text-[#0F172A]'
+            : 'border-[#E2E8F0] bg-white text-[#0F172A] hover:bg-[#F8FAFC]'
         }`}
       >
         <Search size={16} />
@@ -1918,7 +1918,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       </button>
       <button
         onClick={() => { setActiveTab('terminal'); runCommand('rank'); }}
-        className="flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#27272a]"
+        className="flex items-center gap-2 rounded-xl bg-[#0066FE] px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#0052CC]"
       >
         <Play size={16} />
         <span>Quick Run</span>
@@ -1928,18 +1928,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
   const appsHeaderActions = (
     <>
-      <div className="flex items-center rounded-xl border border-[#E5E5E0] bg-[#F5F5F0] p-1">
+      <div className="flex items-center rounded-xl border border-[#E2E8F0] bg-[#F1F5F9] p-1">
         <button
           type="button"
           onClick={() => setAppsViewMode('kanban')}
-          className={`rounded-lg px-3 py-1.5 caps-mono transition-all ${appsViewMode === 'kanban' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
+          className={`rounded-lg px-3 py-1.5 caps-mono transition-all ${appsViewMode === 'kanban' ? 'bg-[#0066FE] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#0F172A]'}`}
         >
           Kanban
         </button>
         <button
           type="button"
           onClick={() => setAppsViewMode('table')}
-          className={`rounded-lg px-3 py-1.5 caps-mono transition-all ${appsViewMode === 'table' ? 'bg-[#1C1C1E] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'}`}
+          className={`rounded-lg px-3 py-1.5 caps-mono transition-all ${appsViewMode === 'table' ? 'bg-[#0066FE] text-white shadow-sm' : 'text-[#6B6B6B] hover:text-[#0F172A]'}`}
         >
           Table
         </button>
@@ -1952,8 +1952,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         }}
         className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
           appsSearchOpen || appsSearchQuery.trim()
-            ? 'border-[#1C1C1E] bg-[#1C1C1E] text-white'
-            : 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:bg-[#FAFAF8]'
+            ? 'border-[#0066FE] bg-[#0066FE] text-white'
+            : 'border-[#E2E8F0] bg-white text-[#0F172A] hover:bg-[#F8FAFC]'
         }`}
       >
         <Search size={14} />
@@ -1964,8 +1964,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
         onClick={() => setIsSearchOpen((v) => !v)}
         className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
           isSearchOpen || searchQuery.trim()
-            ? 'border-[#1C1C1E] bg-white text-[#1C1C1E]'
-            : 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:bg-[#FAFAF8]'
+            ? 'border-[#0066FE] bg-white text-[#0F172A]'
+            : 'border-[#E2E8F0] bg-white text-[#0F172A] hover:bg-[#F8FAFC]'
         }`}
       >
         <Filter size={14} />
@@ -1974,7 +1974,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       <button
         type="button"
         onClick={() => setAppsSortBy((prev) => (prev === 'score' ? 'date' : 'score'))}
-        className="flex items-center gap-2 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2 text-sm font-bold text-[#1C1C1E] transition-colors hover:bg-[#FAFAF8]"
+        className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
         title={appsSortBy === 'score' ? 'Sorted by score' : 'Sorted by date'}
       >
         <ArrowUpDown size={14} />
@@ -1984,18 +1984,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
   );
 
   return (
-    <div className="flex h-[100dvh] min-h-[100dvh] max-w-[100vw] overflow-x-hidden bg-[#FAFAF8] text-[#1C1C1E] font-[family-name:var(--font-inter)] selection:bg-[#1C1C1E]/10">
+    <div className="flex h-[100dvh] min-h-[100dvh] max-w-[100vw] overflow-x-hidden bg-[#F8FAFC] text-[#0F172A] font-[family-name:var(--font-inter)] selection:bg-[#0066FE]/10">
       {mobileNavOpen ? (
         <button
           type="button"
           aria-label="Close navigation"
-          className="fixed inset-0 z-40 bg-[#1C1C1E]/40 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-[#0066FE]/40 backdrop-blur-[2px] lg:hidden"
           onClick={() => setMobileNavOpen(false)}
         />
       ) : null}
       {/* Sidebar: drawer on mobile, fixed rail on desktop */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[min(16rem,88vw)] flex-col overflow-hidden border-r border-[#E5E5E0] bg-[#F5F5F0] transition-[width,transform] duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[min(16rem,88vw)] flex-col overflow-hidden border-r border-[#E2E8F0] bg-[#F1F5F9] transition-[width,transform] duration-300 ease-in-out lg:static lg:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${navCollapsed ? 'lg:w-[4.5rem]' : 'lg:w-60'}`}
       >
@@ -2005,7 +2005,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!sidebarCollapsed}
-          className="absolute -right-3 top-[4.25rem] z-[60] hidden h-7 w-7 items-center justify-center rounded-full border border-[#E5E5E0] bg-white text-[#6B6B6B] shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition-all hover:border-[#1C1C1E]/20 hover:text-[#1C1C1E] hover:shadow-md lg:flex"
+          className="absolute -right-3 top-[4.25rem] z-[60] hidden h-7 w-7 items-center justify-center rounded-full border border-[#E2E8F0] bg-white text-[#6B6B6B] shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition-all hover:border-[#0066FE]/20 hover:text-[#0F172A] hover:shadow-md lg:flex"
         >
           {sidebarCollapsed ? <ChevronRight size={14} strokeWidth={2.5} /> : <ChevronLeft size={14} strokeWidth={2.5} />}
         </button>
@@ -2018,7 +2018,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             <CareerOpsLogoMark size={30} className="shrink-0" />
             {!navCollapsed && (
               <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-                <span className="truncate text-[15px] font-bold text-[#1C1C1E]">Career-Ops</span>
+                <span className="truncate text-[15px] font-bold text-[#0F172A]">Career-Ops</span>
                 <span className="shrink-0 rounded-full bg-emerald-50/70 px-1.5 py-0.5 text-[8px] font-semibold font-mono text-emerald-800 border border-emerald-200/80 uppercase tracking-tight leading-none">
                   v3
                 </span>
@@ -2028,7 +2028,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <button
                 type="button"
                 onClick={() => setMobileNavOpen(false)}
-                className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E5E0] bg-white text-[#6B6B6B]"
+                className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#6B6B6B]"
                 aria-label="Close navigation"
               >
                 <X size={16} />
@@ -2039,7 +2039,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           <button
             type="button"
             onClick={() => setCommandPaletteOpen(true)}
-            className={`mb-3.5 flex w-full items-center rounded-xl border border-[#E5E5E0] bg-white text-xs text-[#6B6B6B] shadow-2xs transition-all hover:border-[#1C1C1E]/30 hover:text-[#1C1C1E] cursor-pointer ${
+            className={`mb-3.5 flex w-full items-center rounded-xl border border-[#E2E8F0] bg-white text-xs text-[#6B6B6B] shadow-2xs transition-all hover:border-[#0066FE]/30 hover:text-[#0F172A] cursor-pointer ${
               navCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'
             }`}
             title="Command Palette (⌘K)"
@@ -2049,7 +2049,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               {!navCollapsed && <span className="font-medium">Quick search...</span>}
             </div>
             {!navCollapsed && (
-              <kbd className="rounded bg-[#F5F5F0] px-1.5 py-0.5 font-mono text-[9px] font-bold text-[#9CA3AF] border border-[#E5E5E0]">
+              <kbd className="rounded bg-[#F1F5F9] px-1.5 py-0.5 font-mono text-[9px] font-bold text-[#9CA3AF] border border-[#E2E8F0]">
                 ⌘K
               </kbd>
             )}
@@ -2084,12 +2084,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           </nav>
         </div>
 
-        <div className={`mt-auto border-t border-[#E5E5E0] ${navCollapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
+        <div className={`mt-auto border-t border-[#E2E8F0] ${navCollapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
           <NavItem id="nav-settings" icon={<Settings size={18}/>} label="Settings" active={activeTab === 'settings'} collapsed={navCollapsed} onClick={() => goTab('settings')} />
           <button
             onClick={() => signOut({ callbackUrl: '/' })}
             title={navCollapsed ? 'Sign Out' : undefined}
-            className={`group mt-2 flex w-full items-center rounded-xl text-[#6B6B6B] transition-all hover:bg-white/50 hover:text-[#1C1C1E] ${
+            className={`group mt-2 flex w-full items-center rounded-xl text-[#6B6B6B] transition-all hover:bg-white/50 hover:text-[#0F172A] ${
               navCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
             }`}
           >
@@ -2100,18 +2100,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#FAFAF8]">
-        <div className="flex shrink-0 items-center justify-between border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC]">
+        <div className="flex shrink-0 items-center justify-between border-b border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
-            className="inline-flex items-center justify-center rounded-xl border border-[#E5E5E0] bg-white p-2.5 text-[#1C1C1E]"
+            className="inline-flex items-center justify-center rounded-xl border border-[#E2E8F0] bg-white p-2.5 text-[#0F172A]"
             aria-label="Open navigation menu"
           >
             <Menu size={18} />
           </button>
           <div className="min-w-0 text-center">
-            <p className="truncate text-sm font-bold text-[#1C1C1E]">Career-Ops</p>
+            <p className="truncate text-sm font-bold text-[#0F172A]">Career-Ops</p>
             <p className="text-[10px] font-medium uppercase tracking-widest text-[#9CA3AF]">
               {activeTab.replace('-', ' ')}
             </p>
@@ -2133,19 +2133,19 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               exit={{ opacity: 0, y: -8 }}
               className="mb-4"
             >
-              <div className="flex items-center gap-3 bg-[#FAFAF8] border border-[#E5E5E0] rounded-2xl px-4 py-3">
+              <div className="flex items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl px-4 py-3">
                 <Search size={16} className="text-[#9CA3AF]" />
                 <input
                   ref={searchInputRef}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search pipeline, applications, docs..."
-                  className="flex-1 bg-transparent outline-none text-sm font-medium text-[#1C1C1E] placeholder:text-[#9CA3AF]"
+                  className="flex-1 bg-transparent outline-none text-sm font-medium text-[#0F172A] placeholder:text-[#9CA3AF]"
                 />
                 {searchQuery.trim() && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="px-3 py-1.5 rounded-xl border border-[#E5E5E0] text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:bg-white transition-colors"
+                    className="px-3 py-1.5 rounded-xl border border-[#E2E8F0] text-[10px] font-bold uppercase tracking-widest text-[#0F172A] hover:bg-white transition-colors"
                   >
                     Clear
                   </button>
@@ -2194,7 +2194,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       <span className="rounded-full bg-amber-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
                         Beta
                       </span>
-                      <span className="text-xs font-bold text-[#1C1C1E]">Aug 1 preview — try this path</span>
+                      <span className="text-xs font-bold text-[#0F172A]">Aug 1 preview — try this path</span>
                     </div>
                     <p className="text-xs text-[#6B6B6B] font-medium leading-relaxed">
                       1) Resume Studio → pick a template · 2) Select a pipeline job for JD match + ATS · 3) Tailor → Generated Docs. High-accuracy ATS scoring & cloud tailoring enabled.
@@ -2204,7 +2204,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     <button
                       type="button"
                       onClick={() => setActiveTab('resume-studio')}
-                      className="rounded-lg bg-[#1C1C1E] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#27272a]"
+                      className="rounded-lg bg-[#0066FE] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#0052CC]"
                     >
                       Open Studio
                     </button>
@@ -2218,7 +2218,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           // ignore
                         }
                       }}
-                      className="rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs font-bold text-[#6B6B6B] hover:text-[#1C1C1E]"
+                      className="rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs font-bold text-[#6B6B6B] hover:text-[#0F172A]"
                       aria-label="Dismiss beta banner"
                     >
                       <X size={14} />
@@ -2289,22 +2289,22 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                  <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-[#F5F5F0] border border-[#E5E5E0] p-4 sm:p-5 rounded-2xl relative overflow-hidden"
+                    className="bg-[#F1F5F9] border border-[#E2E8F0] p-4 sm:p-5 rounded-2xl relative overflow-hidden"
                  >
                    <div className="relative z-10 max-w-2xl">
                       <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
                         <div>
-                          <h3 className="text-lg font-bold mb-1 flex items-center gap-2.5 text-[#1C1C1E]">
-                            <Zap className="text-[#1C1C1E]" size={18} />
+                          <h3 className="text-lg font-bold mb-1 flex items-center gap-2.5 text-[#0F172A]">
+                            <Zap className="text-[#0F172A]" size={18} />
                             Launch Checklist
                           </h3>
                           <p className="text-xs text-[#6B6B6B] font-medium">Complete these steps to activate your AI discovery engine.</p>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs font-bold text-[#1C1C1E]">{doneCount}/{checklistSteps.length} done</div>
-                          <div className="mt-1.5 h-1.5 w-28 rounded-full bg-white border border-[#E5E5E0] overflow-hidden">
+                          <div className="text-xs font-bold text-[#0F172A]">{doneCount}/{checklistSteps.length} done</div>
+                          <div className="mt-1.5 h-1.5 w-28 rounded-full bg-white border border-[#E2E8F0] overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-[#1C1C1E] transition-all"
+                              className="h-full rounded-full bg-[#0066FE] transition-all"
                               style={{ width: `${(doneCount / checklistSteps.length) * 100}%` }}
                             />
                           </div>
@@ -2319,12 +2319,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                              onClick={step.onClick}
                              className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all text-left ${
                                step.done
-                                 ? 'bg-white/70 border-[#E5E5E0] text-[#6B6B6B]'
-                                 : 'bg-white border-[#E5E5E0] hover:bg-[#FAFAF8] hover:border-[#1C1C1E]/30'
+                                 ? 'bg-white/70 border-[#E2E8F0] text-[#6B6B6B]'
+                                 : 'bg-white border-[#E2E8F0] hover:bg-[#F8FAFC] hover:border-[#0066FE]/30'
                              }`}
                            >
                              <div className="min-w-0">
-                               <span className={`text-xs font-bold block ${step.done ? 'line-through decoration-[#9CA3AF]' : 'text-[#1C1C1E]'}`}>
+                               <span className={`text-xs font-bold block ${step.done ? 'line-through decoration-[#9CA3AF]' : 'text-[#0F172A]'}`}>
                                  {step.label}
                                </span>
                                <span className="text-[11px] text-[#9CA3AF] font-medium">{step.hint}</span>
@@ -2339,16 +2339,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                })()}
 
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-                  <div className="bg-[#F5F5F0] p-4 sm:p-5 rounded-2xl border border-[#E5E5E0] flex flex-col justify-between min-h-[240px]">
+                  <div className="bg-[#F1F5F9] p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] flex flex-col justify-between min-h-[240px]">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <h3 className="text-base font-bold mb-0.5 text-[#1C1C1E]">Application Funnel</h3>
+                          <h3 className="text-base font-bold mb-0.5 text-[#0F172A]">Application Funnel</h3>
                           <p className="text-[#9CA3AF] font-medium text-[11px] flex items-center gap-1.5">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Click a stage to jump in
                           </p>
                         </div>
-                        <div className="text-[9px] font-mono text-[#6B6B6B] uppercase tracking-wider bg-white/60 px-2 py-0.5 rounded-full border border-[#E5E5E0]/50">
+                        <div className="text-[9px] font-mono text-[#6B6B6B] uppercase tracking-wider bg-white/60 px-2 py-0.5 rounded-full border border-[#E2E8F0]/50">
                           Auto-Refresh
                         </div>
                       </div>
@@ -2363,10 +2363,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               title={`Open ${stage.label}`}
                             >
                               {/* Custom Interactive Tooltip */}
-                              <div className="absolute bottom-full mb-2 opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 bg-[#1C1C1E] text-[#FAFAF8] text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap z-30 flex flex-col items-center border border-[#44403c]">
+                              <div className="absolute bottom-full mb-2 opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 bg-[#0066FE] text-[#FAFAF8] text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap z-30 flex flex-col items-center border border-[#44403c]">
                                 <span>{stage.tooltipTitle}</span>
                                 <span className="text-[#9CA3AF] text-[9px] font-medium mt-0.5">{stage.tooltipDesc}</span>
-                                <div className="w-2 h-2 bg-[#1C1C1E] rotate-45 mt-1 -mb-1.5 border-r border-b border-[#44403c]"></div>
+                                <div className="w-2 h-2 bg-[#0066FE] rotate-45 mt-1 -mb-1.5 border-r border-b border-[#44403c]"></div>
                               </div>
 
                               {/* Value badge */}
@@ -2375,7 +2375,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </div>
 
                               {/* Interactive dynamic bar */}
-                              <div className="w-full bg-white border border-[#E5E5E0] rounded-xl overflow-hidden flex items-end h-20 shadow-inner relative group-hover:border-[#1C1C1E]/40 transition-colors">
+                              <div className="w-full bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex items-end h-20 shadow-inner relative group-hover:border-[#0066FE]/40 transition-colors">
                                 <motion.div
                                   initial={{ height: 0 }}
                                   animate={{ height: stage.height }}
@@ -2386,7 +2386,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               </div>
 
                               {/* Label */}
-                              <div className="mt-1.5 text-[9px] font-extrabold text-[#6B6B6B] uppercase tracking-widest text-center group-hover:text-[#1C1C1E] transition-colors">
+                              <div className="mt-1.5 text-[9px] font-extrabold text-[#6B6B6B] uppercase tracking-widest text-center group-hover:text-[#0F172A] transition-colors">
                                 {stage.label}
                               </div>
                             </button>
@@ -2406,14 +2406,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         </p>
                       )}
                    </div>
-                  <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E5E5E0]">
+                  <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0]">
                      <div className="flex items-center justify-between gap-3 mb-4">
-                       <h3 className="text-base font-bold text-[#1C1C1E]">Recent Activity</h3>
+                       <h3 className="text-base font-bold text-[#0F172A]">Recent Activity</h3>
                        {(data?.applications?.length ?? 0) > 0 && (
                          <button
                            type="button"
                            onClick={() => { setAppsStageFocus(null); setActiveTab('apps'); }}
-                           className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors"
+                           className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#0F172A] transition-colors"
                          >
                            View all
                          </button>
@@ -2430,7 +2430,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               <span className="mt-1 font-mono text-[10px] font-bold tabular-nums text-[#C4C4BE]">{formatRowNumber(i)}</span>
                               <JobAvatar company={app.company} url={app.url} source={app.source} logoUrl={app.logo_url} portalKey={app.portal_key} logoSource={app.logo_source} size="sm" />
                               <div className="min-w-0">
-                                <div className="truncate text-xs font-bold text-[#1C1C1E]">
+                                <div className="truncate text-xs font-bold text-[#0F172A]">
                                   {app.company}{app.role ? ` — ${app.role}` : ''}
                                 </div>
                                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -2449,7 +2449,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                <button
                                  type="button"
                                  onClick={() => openJobDetails(Number(app.job_id))}
-                                 className="rounded-lg border border-[#E5E5E0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#1C1C1E] hover:bg-[#FAFAF8] transition-colors"
+                                 className="rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
                                >
                                  Open
                                </button>
@@ -2467,7 +2467,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${
                                    tailorLocked
                                      ? 'bg-[#E5E5E0] text-[#9CA3AF] cursor-not-allowed'
-                                     : 'bg-[#1C1C1E] text-white hover:bg-[#27272a]'
+                                     : 'bg-[#0066FE] text-white hover:bg-[#0052CC]'
                                  }`}
                                >
                                  Tailor
@@ -2478,7 +2478,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                  href={app.url}
                                  target="_blank"
                                  rel="noopener noreferrer"
-                                 className="rounded-lg border border-[#E5E5E0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#1C1C1E] hover:bg-[#FAFAF8] transition-colors"
+                                 className="rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
                                >
                                  Open
                                </a>
@@ -2525,14 +2525,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="flex items-center gap-3 bg-white border border-[#E5E5E0] rounded-2xl px-4 py-3 shadow-sm">
+                  <div className="flex items-center gap-3 bg-white border border-[#E2E8F0] rounded-2xl px-4 py-3 shadow-sm">
                     <Search size={16} className="text-[#9CA3AF] shrink-0" />
                     <input
                       ref={appsSearchInputRef}
                       value={appsSearchQuery}
                       onChange={(e) => setAppsSearchQuery(e.target.value)}
                       placeholder="Search by company, role, keyword..."
-                      className="flex-1 bg-transparent outline-none text-sm font-medium text-[#1C1C1E] placeholder:text-[#9CA3AF]"
+                      className="flex-1 bg-transparent outline-none text-sm font-medium text-[#0F172A] placeholder:text-[#9CA3AF]"
                       onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                         if (e.key === 'Escape') {
                           setAppsSearchQuery('');
@@ -2548,12 +2548,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     {appsSearchQuery.trim() ? (
                       <button
                         onClick={() => { setAppsSearchQuery(''); appsSearchInputRef.current?.focus(); }}
-                        className="px-3 py-1.5 rounded-xl border border-[#E5E5E0] text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:bg-[#FAFAF8] transition-colors shrink-0"
+                        className="px-3 py-1.5 rounded-xl border border-[#E2E8F0] text-[10px] font-bold uppercase tracking-widest text-[#0F172A] hover:bg-[#F8FAFC] transition-colors shrink-0"
                       >
                         Clear
                       </button>
                     ) : (
-                      <kbd className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-[#E5E5E0] bg-[#F5F5F0] px-2 py-1 text-[10px] font-mono font-bold text-[#9CA3AF] shrink-0">
+                      <kbd className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-[#E2E8F0] bg-[#F1F5F9] px-2 py-1 text-[10px] font-mono font-bold text-[#9CA3AF] shrink-0">
                         ESC
                       </kbd>
                     )}
@@ -2561,21 +2561,21 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 </motion.div>
               )}
               {appsStageFocus && (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E5E5E0] bg-[#F5F5F0] px-4 py-3">
-                  <p className="text-sm font-medium text-[#1C1C1E]">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E2E8F0] bg-[#F1F5F9] px-4 py-3">
+                  <p className="text-sm font-medium text-[#0F172A]">
                     Showing focus: <span className="font-bold">{appsStageFocus}</span>
                     <span className="text-[#6B6B6B]"> — from Application Funnel</span>
                   </p>
                   <button
                     type="button"
                     onClick={() => setAppsStageFocus(null)}
-                    className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:bg-[#FAFAF8] transition-colors"
+                    className="rounded-xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
                   >
                     Clear focus
                   </button>
                 </div>
               )}
-              <div className="overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
                 {/* Reminders Panel */}
                 {followUpReminders.length > 0 && (
                   <div className="mx-3 mt-3 p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-lg flex items-start gap-2">
@@ -2590,7 +2590,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           const days = Math.floor((Date.now() - new Date(app.applied_at).getTime()) / (1000 * 60 * 60 * 24));
                           return (
                             <div key={idx} className="bg-white border border-amber-200/80 px-2 py-0.5 rounded-md text-[11px] font-medium text-stone-700 flex items-center gap-1.5 shadow-xs">
-                              <span className="font-bold text-[#1C1C1E]">{app.company}</span>
+                              <span className="font-bold text-[#0F172A]">{app.company}</span>
                               <span className="text-stone-300">|</span>
                               <span className="text-stone-600 truncate max-w-[160px]">{app.role}</span>
                               <span className="bg-amber-100 text-amber-800 caps-mono px-1.5 py-0.2 rounded text-[10px] font-semibold">{days}d ago</span>
@@ -2604,9 +2604,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
                 {appsViewMode === 'table' ? (
                   <div className="p-2.5 sm:p-3">
-                    <div className="h-[min(70dvh,calc(100dvh-12rem))] min-h-[16rem] sm:min-h-[22rem] overflow-auto rounded-xl border border-[#E5E5E0] bg-white">
+                    <div className="h-[min(70dvh,calc(100dvh-12rem))] min-h-[16rem] sm:min-h-[22rem] overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
                       <table className="w-full min-w-[56rem] text-left">
-                        <thead className="sticky top-0 z-10 bg-[#FAFAF8] border-b border-[#E5E5E0] shadow-[0_1px_0_#E5E5E0]">
+                        <thead className="sticky top-0 z-10 bg-[#F8FAFC] border-b border-[#E2E8F0] shadow-[0_1px_0_#E5E5E0]">
                           <tr className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
                             <th className="w-10 px-3 py-2.5">#</th>
                             <th className="px-3.5 py-2.5">Company</th>
@@ -2622,14 +2622,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             const displayStatus = formatApplicationStatus(app);
                             const isAppliedStage = ['APPLIED', 'RESPONDED', 'SENT', 'INTERVIEW', 'ENTREVISTA', 'OFFER', 'OFERTA', 'REJECTED', 'DISCARDED', 'SKIP'].includes(displayStatus);
                             return (
-                            <tr key={i} className="hover:bg-[#FAFAF8] transition-colors group">
+                            <tr key={i} className="hover:bg-[#F8FAFC] transition-colors group">
                               <td className="px-3 py-2.5 font-mono text-[11px] font-bold tabular-nums text-[#C4C4BE]">
                                 {formatRowNumber(i, sortedApplications.length)}
                               </td>
                               <td className="px-3.5 py-2.5">
                                 <div className="flex items-center gap-2">
                                   <JobAvatar company={app.company} url={app.url} source={app.source} logoUrl={app.logo_url} portalKey={app.portal_key} logoSource={app.logo_source} size="sm" />
-                                  <span className="font-bold text-xs text-[#1C1C1E] max-w-[12rem] break-words">{app.company}</span>
+                                  <span className="font-bold text-xs text-[#0F172A] max-w-[12rem] break-words">{app.company}</span>
                                 </div>
                               </td>
                               <td className="px-3.5 py-2.5 text-[#6B6B6B] text-xs font-medium max-w-[14rem] break-words">{app.role}</td>
@@ -2653,14 +2653,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             <td className="px-3.5 py-2.5">
                                <AiScoreBadge score={app.score} />
                             </td>
-                            <td className="px-3.5 py-2.5 text-[#1C1C1E]">
+                            <td className="px-3.5 py-2.5 text-[#0F172A]">
                               <div className="flex items-center gap-1.5">
                                 <button
                                   type="button"
                                   disabled={stealthBusyAppId === Number(app.app_id)}
                                   onClick={() => copyStealthLink(Number(app.app_id))}
                                   title="Copy stealth companion link"
-                                  className="p-1.5 border border-[#E5E5E0] rounded-lg hover:bg-[#F5F5F0] transition-all text-[#6B6B6B] hover:text-[#1C1C1E]"
+                                  className="p-1.5 border border-[#E2E8F0] rounded-lg hover:bg-[#F1F5F9] transition-all text-[#6B6B6B] hover:text-[#0F172A]"
                                 >
                                   {stealthBusyAppId === Number(app.app_id) ? (
                                     <Loader2 size={13} className="animate-spin" />
@@ -2680,8 +2680,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   title={isAppliedStage ? 'Already applied — tailor disabled' : 'Run tailor/apply'}
                                   className={`p-1.5 border rounded-lg transition-all ${
                                     isAppliedStage
-                                      ? 'border-[#E5E5E0] bg-[#F5F5F0] text-[#9CA3AF] cursor-not-allowed'
-                                      : 'border-[#E5E5E0] hover:bg-[#1C1C1E] hover:text-white'
+                                      ? 'border-[#E2E8F0] bg-[#F1F5F9] text-[#9CA3AF] cursor-not-allowed'
+                                      : 'border-[#E2E8F0] hover:bg-[#0066FE] hover:text-white'
                                   }`}
                                 >
                                   <Play size={13} />
@@ -2692,7 +2692,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                     runCommand(`interview-prep "${app.company}" "${app.role}"`);
                                   }}
                                   title="Run Interview Prep & Question Probability"
-                                  className="p-1.5 border border-[#E5E5E0] rounded-lg hover:bg-[#1C1C1E] hover:text-white transition-all text-[#1C1C1E]"
+                                  className="p-1.5 border border-[#E2E8F0] rounded-lg hover:bg-[#0066FE] hover:text-white transition-all text-[#0F172A]"
                                 >
                                   <Sparkles size={13} />
                                 </button>
@@ -2701,7 +2701,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                     href={app.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-1.5 border border-[#E5E5E0] rounded-lg hover:bg-[#F5F5F0] transition-all"
+                                    className="p-1.5 border border-[#E2E8F0] rounded-lg hover:bg-[#F1F5F9] transition-all"
                                     title="Open posting"
                                   >
                                     <ExternalLink size={13} />
@@ -2710,7 +2710,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 {app?.job_id && (
                                   <button
                                     onClick={() => openJobDetails(Number(app.job_id))}
-                                    className="p-1.5 border border-[#E5E5E0] rounded-lg hover:bg-[#F5F5F0] transition-all"
+                                    className="p-1.5 border border-[#E2E8F0] rounded-lg hover:bg-[#F1F5F9] transition-all"
                                     title="Details"
                                   >
                                     <FileText size={13} />
@@ -2726,7 +2726,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                         String(app.role || 'Unknown role')
                                       )
                                     }
-                                    className="p-1.5 border border-[#E5E5E0] rounded-lg text-[#9CA3AF] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                                    className="p-1.5 border border-[#E2E8F0] rounded-lg text-[#9CA3AF] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
                                     title="Delete application and job record"
                                   >
                                     <Trash2 size={13} />
@@ -2771,16 +2771,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           }}
                           className={`flex min-h-0 flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-all ${
                             appsStageFocus === col.id
-                              ? 'border-[#1C1C1E] ring-2 ring-[#1C1C1E]/15 shadow-md'
+                              ? 'border-[#0066FE] ring-2 ring-[#1C1C1E]/15 shadow-md'
                               : appsStageFocus
-                                ? 'border-[#E5E5E0] opacity-40'
-                                : 'border-[#E5E5E0]'
+                                ? 'border-[#E2E8F0] opacity-40'
+                                : 'border-[#E2E8F0]'
                           } ${col.color}`}
                         >
                           <div className={`h-1 shrink-0 ${col.bar}`} />
                           <div className="flex shrink-0 items-center justify-between border-b border-[#F5F5F0] px-2.5 py-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#1C1C1E]">{col.label}</span>
-                            <span className="flex h-4.5 min-w-[1.15rem] items-center justify-center rounded-full bg-[#1C1C1E] px-1 font-mono text-[9px] font-semibold text-white">{colApps.length}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#0F172A]">{col.label}</span>
+                            <span className="flex h-4.5 min-w-[1.15rem] items-center justify-center rounded-full bg-[#0066FE] px-1 font-mono text-[9px] font-semibold text-white">{colApps.length}</span>
                           </div>
 
                           <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-2">
@@ -2798,7 +2798,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   onDragStart={(e) => {
                                     e.dataTransfer.setData('text/plain', String(app.app_id));
                                   }}
-                                  className="group relative shrink-0 cursor-grab rounded-lg border border-[#E5E5E0] bg-white p-2.5 transition-all hover:border-[#1C1C1E]/20 hover:shadow-sm active:cursor-grabbing"
+                                  className="group relative shrink-0 cursor-grab rounded-lg border border-[#E2E8F0] bg-white p-2.5 transition-all hover:border-[#0066FE]/20 hover:shadow-sm active:cursor-grabbing"
                                 >
                                   <div className="mb-1.5 flex items-start justify-between gap-1.5">
                                     <div className="flex items-center gap-2 min-w-0">
@@ -2809,7 +2809,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                     </div>
                                     <AiScoreBadge score={app.score} />
                                   </div>
-                                  <h4 className="mb-0.5 line-clamp-2 break-words text-sm font-bold leading-snug text-[#1C1C1E]">{app.company}</h4>
+                                  <h4 className="mb-0.5 line-clamp-2 break-words text-sm font-bold leading-snug text-[#0F172A]">{app.company}</h4>
                                   <p className="mb-2 line-clamp-2 break-words text-xs text-[#6B6B6B]">{app.role}</p>
                                   <div className="mb-2">{renderEngagementBadge(app)}</div>
 
@@ -2837,7 +2837,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                         type="button"
                                         disabled={stealthBusyAppId === Number(app.app_id)}
                                         onClick={() => copyStealthLink(Number(app.app_id))}
-                                        className="p-1 border border-[#E5E5E0] rounded hover:bg-[#F5F5F0] text-[#6B6B6B] transition-all"
+                                        className="p-1 border border-[#E2E8F0] rounded hover:bg-[#F1F5F9] text-[#6B6B6B] transition-all"
                                         title="Copy stealth companion link"
                                       >
                                         {stealthBusyAppId === Number(app.app_id) ? (
@@ -2854,7 +2854,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                           setActiveTab('terminal');
                                           runCommand(`interview-prep "${app.company}" "${app.role}"`);
                                         }}
-                                        className="p-1 border border-[#E5E5E0] rounded hover:bg-[#1C1C1E] hover:text-white text-[#6B6B6B] transition-all"
+                                        className="p-1 border border-[#E2E8F0] rounded hover:bg-[#0066FE] hover:text-white text-[#6B6B6B] transition-all"
                                         title="Interview Prep & Probability Matrix"
                                       >
                                         <Sparkles size={10} />
@@ -2864,7 +2864,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                           href={app.url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="p-1 border border-[#E5E5E0] rounded hover:bg-[#F5F5F0] text-[#6B6B6B] transition-all"
+                                          className="p-1 border border-[#E2E8F0] rounded hover:bg-[#F1F5F9] text-[#6B6B6B] transition-all"
                                           title="Open posting"
                                         >
                                           <ExternalLink size={10} />
@@ -2873,7 +2873,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                       {app?.job_id && (
                                         <button
                                           onClick={() => openJobDetails(Number(app.job_id))}
-                                          className="p-1 border border-[#E5E5E0] rounded hover:bg-[#F5F5F0] text-[#6B6B6B] transition-all"
+                                          className="p-1 border border-[#E2E8F0] rounded hover:bg-[#F1F5F9] text-[#6B6B6B] transition-all"
                                           title="Details"
                                         >
                                           <FileText size={10} />
@@ -2885,7 +2885,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               );
                             })}
                             {colApps.length === 0 && (
-                              <div className="flex flex-1 min-h-[80px] items-center justify-center rounded-lg border border-dashed border-[#E5E5E0]">
+                              <div className="flex flex-1 min-h-[80px] items-center justify-center rounded-lg border border-dashed border-[#E2E8F0]">
                                 <span className="caps-mono tracking-widest text-[#9CA3AF]">Empty</span>
                               </div>
                             )}
@@ -2909,14 +2909,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 subtitle={`AI-ranked opportunities · ${pipelineTotal} job${pipelineTotal === 1 ? '' : 's'} in pipeline`}
                 actions={
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-0.5">
+                    <div className="flex items-center rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-0.5">
                       <button
                         type="button"
                         onClick={() => setPipelineViewMode('studio')}
                         className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
                           pipelineViewMode === 'studio'
-                            ? 'bg-[#1C1C1E] text-white shadow-sm'
-                            : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                            ? 'bg-[#0066FE] text-white shadow-sm'
+                            : 'text-[#6B6B6B] hover:text-[#0F172A]'
                         }`}
                       >
                         <Columns size={12} /> Studio 3-Col
@@ -2926,8 +2926,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         onClick={() => setPipelineViewMode('table')}
                         className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
                           pipelineViewMode === 'table'
-                            ? 'bg-[#1C1C1E] text-white shadow-sm'
-                            : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                            ? 'bg-[#0066FE] text-white shadow-sm'
+                            : 'text-[#6B6B6B] hover:text-[#0F172A]'
                         }`}
                       >
                         <List size={12} /> Table View
@@ -2971,17 +2971,17 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   onClear={openClearPipelineModal}
                 />
               ) : (
-                <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-white shadow-sm">
-              <div className="flex flex-col gap-4 border-b border-[#E5E5E0] bg-gradient-to-r from-[#FAFAF8] to-white p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="overflow-hidden rounded-[1.5rem] border border-[#E2E8F0] bg-white shadow-sm">
+              <div className="flex flex-col gap-4 border-b border-[#E2E8F0] bg-gradient-to-r from-[#FAFAF8] to-white p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-[#1C1C1E]">Live Job Pipeline</h2>
+                  <h2 className="text-lg font-bold text-[#0F172A]">Live Job Pipeline</h2>
                   <p className="mt-0.5 text-xs font-medium text-[#6B6B6B]">CRM view · ranked by AI match score</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <button
                     type="button"
                     onClick={() => { setActiveTab('terminal'); runCommand('scan --deep'); }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#27272a]"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#0066FE] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#0052CC]"
                   >
                     <Zap size={14} />
                     Scan
@@ -2997,7 +2997,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-px border-b border-[#E5E5E0] bg-[#E5E5E0] sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-px border-b border-[#E2E8F0] bg-[#E5E5E0] sm:grid-cols-4">
                 {[
                   { label: 'Total roles', value: filteredPipeline.length },
                   { label: 'Open', value: pipelineOpenCount },
@@ -3006,13 +3006,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 ].map((stat) => (
                   <div key={stat.label} className="bg-white px-4 py-2.5">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">{stat.label}</p>
-                    <p className="mt-0.5 font-mono text-xl font-extrabold tabular-nums text-[#1C1C1E]">{stat.value}</p>
+                    <p className="mt-0.5 font-mono text-xl font-extrabold tabular-nums text-[#0F172A]">{stat.value}</p>
                   </div>
                 ))}
               </div>
               <div className="max-h-[640px] overflow-x-auto text-sm">
                 <table className="w-full text-left">
-                  <thead className="sticky top-0 z-10 border-b border-[#E5E5E0] bg-[#FAFAF8] shadow-[0_1px_0_#E5E5E0]">
+                  <thead className="sticky top-0 z-10 border-b border-[#E2E8F0] bg-[#F8FAFC] shadow-[0_1px_0_#E5E5E0]">
                     <tr className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]">
                       <th className="w-10 px-3 py-2.5">#</th>
                       <th className="px-3.5 py-2.5">Target / Company</th>
@@ -3028,7 +3028,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       return (
                       <tr
                         key={job.pipeline_id ?? i}
-                        className={`transition-colors hover:bg-[#FAFAF8] ${jobIsApplied(job) ? 'bg-emerald-50/40' : ''}`}
+                        className={`transition-colors hover:bg-[#F8FAFC] ${jobIsApplied(job) ? 'bg-emerald-50/40' : ''}`}
                       >
                         <td className="px-3 py-2.5 font-mono text-[11px] font-bold tabular-nums text-[#C4C4BE]">
                           {formatRowNumber(i, filteredPipeline.length)}
@@ -3037,7 +3037,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           <div className="flex items-center gap-2.5">
                             <JobAvatar company={job.company} url={job.url} source={job.source} logoUrl={job.logo_url} portalKey={job.portal_key} logoSource={job.logo_source} size="sm" />
                             <div className="min-w-0 flex items-center gap-1.5">
-                              <div className="truncate text-xs font-bold text-[#1C1C1E]">{job.company}</div>
+                              <div className="truncate text-xs font-bold text-[#0F172A]">{job.company}</div>
                               {job.company_type === 'GCC' && (
                                 <span className="px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md">
                                   GCC
@@ -3082,7 +3082,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               {displayStatus}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center rounded-full border border-[#E5E5E0] bg-[#FAFAF8] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6B6B6B]">Open</span>
+                            <span className="inline-flex items-center rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6B6B6B]">Open</span>
                           )}
                         </td>
                         <td className="px-3.5 py-2.5">
@@ -3092,7 +3092,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => openJobDetails(Number(job.pipeline_id))}
-                              className="rounded-lg border border-[#E5E5E0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
+                              className="rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#0F172A] transition-all hover:bg-[#F8FAFC]"
                             >
                               Evaluate
                             </button>
@@ -3121,8 +3121,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               title={jobIsApplied(job) ? 'Already applied — Tailor disabled' : 'Tailor resume for this role'}
                               className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold transition-all ${
                                 jobIsApplied(job)
-                                  ? 'border-[#E5E5E0] bg-[#F5F5F0] text-[#9CA3AF] cursor-not-allowed'
-                                  : 'border-[#E5E5E0] bg-white text-[#1C1C1E] hover:bg-[#FAFAF8]'
+                                  ? 'border-[#E2E8F0] bg-[#F1F5F9] text-[#9CA3AF] cursor-not-allowed'
+                                  : 'border-[#E2E8F0] bg-white text-[#0F172A] hover:bg-[#F8FAFC]'
                               }`}
                             >
                               Tailor
@@ -3137,7 +3137,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   url: String(job.url || ''),
                                 })
                               }
-                              className="rounded-lg border border-[#E5E5E0] bg-white px-2 py-1 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
+                              className="rounded-lg border border-[#E2E8F0] bg-white px-2 py-1 text-xs font-bold text-[#0F172A] transition-all hover:bg-[#F8FAFC]"
                               title="Research company and draft outreach email"
                             >
                               <Mail size={13} className="inline" />
@@ -3156,7 +3156,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                   has_resume_pdf: Boolean(job.has_resume_pdf || job.is_tailored),
                                 })
                               }
-                              className="rounded-lg border border-[#E5E5E0] bg-white px-2 py-1 text-xs font-bold text-[#1C1C1E] transition-all hover:bg-[#FAFAF8]"
+                              className="rounded-lg border border-[#E2E8F0] bg-white px-2 py-1 text-xs font-bold text-[#0F172A] transition-all hover:bg-[#F8FAFC]"
                               title="Open in Resume Studio"
                             >
                               <Sparkles size={13} className="inline" />
@@ -3193,14 +3193,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     {filteredPipeline.length === 0 && (
                       <tr>
                         <td colSpan={6} className="px-4 py-10 text-center">
-                          <p className="text-sm font-semibold text-[#1C1C1E]">No jobs in pipeline yet</p>
+                          <p className="text-sm font-semibold text-[#0F172A]">No jobs in pipeline yet</p>
                           <p className="mt-1.5 text-xs font-medium text-[#6B6B6B]">
                             Run a scan to discover roles, then open Resume Studio to match a JD.
                           </p>
                           <button
                             type="button"
                             onClick={() => { setActiveTab('terminal'); runCommand('scan --deep'); }}
-                            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#1C1C1E] px-4 py-2 text-xs font-bold text-white hover:bg-[#27272a]"
+                            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#0066FE] px-4 py-2 text-xs font-bold text-white hover:bg-[#0052CC]"
                           >
                             <Zap size={13} />
                             Scan jobs
@@ -3367,45 +3367,45 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
           {activeTab === 'cv' && (
             <motion.div key="cv" className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                <div className="lg:col-span-2 space-y-5">
-                <div className="bg-[#F5F5F0] p-5 sm:p-6 border border-[#E5E5E0] rounded-2xl">
-                   <h3 className="text-base font-bold mb-4 text-[#1C1C1E] border-b border-[#E5E5E0] pb-3">Profile Narrative</h3>
+                <div className="bg-[#F1F5F9] p-5 sm:p-6 border border-[#E2E8F0] rounded-2xl">
+                   <h3 className="text-base font-bold mb-4 text-[#0F172A] border-b border-[#E2E8F0] pb-3">Profile Narrative</h3>
                    {data?.profile?.narrative?.exit_story ? (
-                     <p className="text-[#1C1C1E] leading-relaxed font-medium italic pl-4 border-l-3 border-emerald-500/40 text-xs sm:text-sm">
+                     <p className="text-[#0F172A] leading-relaxed font-medium italic pl-4 border-l-3 border-emerald-500/40 text-xs sm:text-sm">
                         "{data?.profile?.narrative?.exit_story}"
                      </p>
                    ) : (
                      <div className="py-3">
                        <p className="text-[#9CA3AF] font-medium italic text-xs">No narrative defined yet.</p>
-                       <button onClick={() => setActiveTab('settings')} className="mt-2 text-[#1C1C1E] text-xs font-bold uppercase tracking-widest hover:underline underline-offset-4">Configure Story →</button>
+                       <button onClick={() => setActiveTab('settings')} className="mt-2 text-[#0F172A] text-xs font-bold uppercase tracking-widest hover:underline underline-offset-4">Configure Story →</button>
                      </div>
                    )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {data?.profile?.narrative?.superpowers?.length > 0 ? (
                     data.profile.narrative.superpowers.map((s: any, i: number) => (
-                      <div key={i} className="p-3.5 bg-white border border-[#E5E5E0] rounded-xl text-xs font-bold uppercase tracking-wider text-[#9CA3AF] hover:text-[#1C1C1E] transition-colors">
+                      <div key={i} className="p-3.5 bg-white border border-[#E2E8F0] rounded-xl text-xs font-bold uppercase tracking-wider text-[#9CA3AF] hover:text-[#0F172A] transition-colors">
                          {s}
                       </div>
                     ))
                   ) : (
-                    <div className="col-span-1 sm:col-span-2 p-4 bg-white/50 border border-dashed border-[#E5E5E0] rounded-xl text-center">
+                    <div className="col-span-1 sm:col-span-2 p-4 bg-white/50 border border-dashed border-[#E2E8F0] rounded-xl text-center">
                        <p className="text-[#9CA3AF] text-xs font-bold uppercase tracking-widest">Awaiting Superpower Sync</p>
                     </div>
                   )}
                 </div>
                </div>
-               <div className="bg-[#FAFAF8] border border-[#E5E5E0] rounded-2xl p-4 sm:p-5 flex flex-col shadow-sm">
+               <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-4 sm:p-5 flex flex-col shadow-sm">
                   <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-[#1C1C1E] rounded-xl">
+                      <div className="p-2 bg-[#0066FE] rounded-xl">
                         <FileText size={16} className="text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-[#1C1C1E] text-sm sm:text-base">Generated Documents</h3>
+                        <h3 className="font-bold text-[#0F172A] text-sm sm:text-base">Generated Documents</h3>
                         <p className="text-[10px] text-[#9CA3AF] hidden sm:block">Tailored resumes and cover letters</p>
                       </div>
                     </div>
-                    <span className="px-3 py-1 bg-white border border-[#E5E5E0] rounded-full text-[10px] sm:text-xs font-bold text-[#6B6B6B]">
+                    <span className="px-3 py-1 bg-white border border-[#E2E8F0] rounded-full text-[10px] sm:text-xs font-bold text-[#6B6B6B]">
                       {filteredDocs.length} {filteredDocs.length === 1 ? 'item' : 'items'}
                     </span>
                   </div>
@@ -3413,7 +3413,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   <div className="space-y-3 overflow-y-auto flex-1">
                     {filteredDocs.length === 0 ? (
                       <div className="text-center py-12 px-4">
-                        <div className="w-16 h-16 mx-auto mb-4 bg-[#F5F5F0] rounded-2xl flex items-center justify-center">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-[#F1F5F9] rounded-2xl flex items-center justify-center">
                           <FileText size={24} className="text-[#9CA3AF]" />
                         </div>
                         <p className="text-sm font-medium text-[#6B6B6B]">No documents yet</p>
@@ -3423,7 +3423,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       filteredDocs.map((doc: any, i: number) => (
                         <div
                           key={i}
-                          className="group bg-white rounded-2xl border border-[#E5E5E0] hover:border-[#1C1C1E] hover:shadow-lg transition-all duration-200 overflow-hidden"
+                          className="group bg-white rounded-2xl border border-[#E2E8F0] hover:border-[#0066FE] hover:shadow-lg transition-all duration-200 overflow-hidden"
                         >
                           {/* Card Header */}
                           <div className="p-3 sm:p-4 border-b border-[#F5F5F0] bg-gradient-to-r from-white to-[#FAFAF8]">
@@ -3431,7 +3431,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                  <span className="truncate text-sm font-bold text-[#1C1C1E]">
+                                  <span className="truncate text-sm font-bold text-[#0F172A]">
                                     {doc.company}
                                   </span>
                                 </div>
@@ -3445,7 +3445,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                     href={doc.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-2 rounded-lg hover:bg-[#F5F5F0] transition-all text-[#6B6B6B] hover:text-[#1C1C1E]"
+                                    className="p-2 rounded-lg hover:bg-[#F1F5F9] transition-all text-[#6B6B6B] hover:text-[#0F172A]"
                                     title="Open job posting"
                                   >
                                     <ExternalLink size={14} />
@@ -3469,14 +3469,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               {doc.has_resume_pdf ? (
                                 <a
                                   href={`/api/view/${doc.id}?format=pdf&download=1`}
-                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1C1C1E] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
+                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#0066FE] text-white text-xs font-bold hover:bg-[#0052CC] hover:shadow-md transition-all"
                                   title="Download Resume PDF"
                                 >
                                   <FileText size={14} />
                                   <span>Resume PDF</span>
                                 </a>
                               ) : (
-                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F5F5F0] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
+                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F1F5F9] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
                                   <FileText size={14} />
                                   <span>—</span>
                                 </span>
@@ -3486,14 +3486,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               {doc.has_resume_html || doc.has_resume_pdf ? (
                                 <a
                                   href={`/api/job/${doc.id}/resume-docx`}
-                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1C1C1E] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
+                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#0066FE] text-white text-xs font-bold hover:bg-[#0052CC] hover:shadow-md transition-all"
                                   title="Download ATS-optimized Word / Google Docs (.docx)"
                                 >
                                   <FileText size={14} />
                                   <span>Resume DOCX</span>
                                 </a>
                               ) : (
-                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F5F5F0] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
+                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F1F5F9] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
                                   <FileText size={14} />
                                   <span>—</span>
                                 </span>
@@ -3503,14 +3503,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                               {doc.has_cover_letter_pdf ? (
                                 <a
                                   href={`/api/view/${doc.id}?type=cl&format=pdf&download=1`}
-                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1C1C1E] text-white text-xs font-bold hover:bg-[#27272a] hover:shadow-md transition-all"
+                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#0066FE] text-white text-xs font-bold hover:bg-[#0052CC] hover:shadow-md transition-all"
                                   title="Download Cover Letter PDF"
                                 >
                                   <FileText size={14} />
                                   <span>Cover PDF</span>
                                 </a>
                               ) : (
-                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F5F5F0] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
+                                <span className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#F1F5F9] text-[#9CA3AF] text-xs font-bold cursor-not-allowed">
                                   <FileText size={14} />
                                   <span>—</span>
                                 </span>
@@ -3521,7 +3521,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                 href={`/api/view/${doc.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[#E5E5E0] text-[#6B6B6B] text-xs font-bold hover:bg-[#F5F5F0] hover:text-[#1C1C1E] hover:border-[#1C1C1E] transition-all"
+                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[#E2E8F0] text-[#6B6B6B] text-xs font-bold hover:bg-[#F1F5F9] hover:text-[#0F172A] hover:border-[#0066FE] transition-all"
                                 title="View document in browser"
                               >
                                 <ExternalLink size={14} />
@@ -3559,9 +3559,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 onRefresh={() => { void loadAdminData(); }}
               />
 
-              <div className="border-t border-[#E5E5E0] pt-6 space-y-4">
+              <div className="border-t border-[#E2E8F0] pt-6 space-y-4">
               <div>
-                <h2 className="text-lg font-bold mb-0.5 text-[#1C1C1E]">Visitor Analytics</h2>
+                <h2 className="text-lg font-bold mb-0.5 text-[#0F172A]">Visitor Analytics</h2>
                 <p className="text-xs text-[#9CA3AF] font-medium">Track unique visitors to your Career-Ops dashboard</p>
               </div>
 
@@ -3573,9 +3573,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   { label: 'Last 30 Days', views: visitorStats?.month?.total_views, unique: visitorStats?.month?.unique_visitors },
                   { label: 'All Time', views: visitorStats?.allTime?.total_views, unique: visitorStats?.allTime?.unique_visitors },
                 ].map((s) => (
-                  <div key={s.label} className="p-3.5 bg-white border border-[#E5E5E0] rounded-xl hover:border-[#1C1C1E] hover:shadow-md transition-all">
+                  <div key={s.label} className="p-3.5 bg-white border border-[#E2E8F0] rounded-xl hover:border-[#0066FE] hover:shadow-md transition-all">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] mb-1.5">{s.label}</div>
-                    <div className="text-2xl font-bold text-[#1C1C1E]">{s.unique ?? '—'}</div>
+                    <div className="text-2xl font-bold text-[#0F172A]">{s.unique ?? '—'}</div>
                     <div className="text-[11px] text-[#9CA3AF] mt-0.5">{s.views ?? 0} total views</div>
                   </div>
                 ))}
@@ -3583,15 +3583,15 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
               {/* Daily Chart */}
               {visitorStats?.daily && visitorStats.daily.length > 0 && (
-                <div className="bg-white border border-[#E5E5E0] rounded-xl p-4 sm:p-5">
-                  <h3 className="text-sm font-bold text-[#1C1C1E] mb-4 flex items-center gap-2"><TrendingUp size={16} /> Daily Visitors (Last 14 Days)</h3>
+                <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 sm:p-5">
+                  <h3 className="text-sm font-bold text-[#0F172A] mb-4 flex items-center gap-2"><TrendingUp size={16} /> Daily Visitors (Last 14 Days)</h3>
                   <div className="flex items-end gap-2 h-48">
                     {[...visitorStats.daily].reverse().map((d: any) => {
                       const maxVisitors = Math.max(...visitorStats.daily.map((dd: any) => dd.unique_visitors || 1));
                       const heightPct = Math.max(((d.unique_visitors || 0) / maxVisitors) * 100, 4);
                       return (
                         <div key={d.date} className="flex-1 flex flex-col items-center gap-2">
-                          <span className="text-[10px] font-bold text-[#1C1C1E]">{d.unique_visitors}</span>
+                          <span className="text-[10px] font-bold text-[#0F172A]">{d.unique_visitors}</span>
                           <div
                             className="w-full bg-purple-500 rounded-t-lg transition-all hover:bg-purple-600"
                             style={{ height: `${heightPct}%` }}
@@ -3608,17 +3608,17 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
                 {/* Top Pages */}
                 {visitorStats?.topPages && visitorStats.topPages.length > 0 && (
-                  <div className="bg-white border border-[#E5E5E0] rounded-xl p-4 sm:p-5">
-                    <h3 className="text-sm font-bold text-[#1C1C1E] mb-3 flex items-center gap-2"><FileText size={16} /> Top Pages</h3>
+                  <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 sm:p-5">
+                    <h3 className="text-sm font-bold text-[#0F172A] mb-3 flex items-center gap-2"><FileText size={16} /> Top Pages</h3>
                     <div className="space-y-2">
                       {visitorStats.topPages.map((p: any, i: number) => (
-                        <div key={p.path} className="flex items-center justify-between p-2.5 rounded-lg bg-[#FAFAF8]">
+                        <div key={p.path} className="flex items-center justify-between p-2.5 rounded-lg bg-[#F8FAFC]">
                           <div className="flex items-center gap-2.5">
                             <span className="text-[10px] font-bold text-[#9CA3AF] w-4">{i + 1}.</span>
-                            <span className="text-xs font-bold text-[#1C1C1E] font-mono">{p.path}</span>
+                            <span className="text-xs font-bold text-[#0F172A] font-mono">{p.path}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-xs font-bold text-[#1C1C1E]">{p.unique_visitors}</span>
+                            <span className="text-xs font-bold text-[#0F172A]">{p.unique_visitors}</span>
                             <span className="text-[10px] text-[#9CA3AF] ml-1">unique</span>
                           </div>
                         </div>
@@ -3629,16 +3629,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
                 {/* Top Countries */}
                 {visitorStats?.topCountries && visitorStats.topCountries.length > 0 && (
-                  <div className="bg-white border border-[#E5E5E0] rounded-xl p-4 sm:p-5">
-                    <h3 className="text-sm font-bold text-[#1C1C1E] mb-3 flex items-center gap-2"><Globe size={16} /> Top Countries</h3>
+                  <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 sm:p-5">
+                    <h3 className="text-sm font-bold text-[#0F172A] mb-3 flex items-center gap-2"><Globe size={16} /> Top Countries</h3>
                     <div className="space-y-2">
                       {visitorStats.topCountries.map((c: any, i: number) => (
-                        <div key={c.country} className="flex items-center justify-between p-2.5 rounded-lg bg-[#FAFAF8]">
+                        <div key={c.country} className="flex items-center justify-between p-2.5 rounded-lg bg-[#F8FAFC]">
                           <div className="flex items-center gap-2.5">
                             <span className="text-[10px] font-bold text-[#9CA3AF] w-4">{i + 1}.</span>
-                            <span className="text-xs font-bold text-[#1C1C1E]">{c.country}</span>
+                            <span className="text-xs font-bold text-[#0F172A]">{c.country}</span>
                           </div>
-                          <span className="text-xs font-bold text-[#1C1C1E]">{c.unique_visitors}</span>
+                          <span className="text-xs font-bold text-[#0F172A]">{c.unique_visitors}</span>
                         </div>
                       ))}
                     </div>
@@ -3666,8 +3666,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               {/* Grid Layout: Intro and Deep Flag */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
                 {/* Intro Card */}
-                <div className="bg-[#F5F5F0] p-4 sm:p-5 border border-[#E5E5E0] rounded-xl space-y-4">
-                  <h3 className="text-base font-bold text-[#1C1C1E] flex items-center gap-2">
+                <div className="bg-[#F1F5F9] p-4 sm:p-5 border border-[#E2E8F0] rounded-xl space-y-4">
+                  <h3 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
                     <Zap size={18} className="text-amber-500" />
                     How Career-Ops Works
                   </h3>
@@ -3683,11 +3683,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       { step: '5', title: 'Tailor & Apply', text: 'Resume Studio or tailor <id> --deep for ATS PDFs; apply when ready.' },
                     ].map((s) => (
                       <div key={s.step} className="flex gap-3">
-                        <div className="h-6 w-6 rounded-full bg-white border border-[#E5E5E0] text-[#1C1C1E] flex items-center justify-center font-bold text-[11px] shrink-0 shadow-sm">
+                        <div className="h-6 w-6 rounded-full bg-white border border-[#E2E8F0] text-[#0F172A] flex items-center justify-center font-bold text-[11px] shrink-0 shadow-sm">
                           {s.step}
                         </div>
                         <div>
-                          <h4 className="text-xs font-bold text-[#1C1C1E]">{s.title}</h4>
+                          <h4 className="text-xs font-bold text-[#0F172A]">{s.title}</h4>
                           <p className="text-[11px] text-[#9CA3AF] font-medium mt-0.5">{s.text}</p>
                         </div>
                       </div>
@@ -3696,13 +3696,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 </div>
 
                 {/* Deep Flag Card */}
-                <div className="bg-white p-4 sm:p-5 border border-[#E5E5E0] rounded-xl space-y-3.5 shadow-sm">
-                  <h3 className="text-base font-bold text-[#1C1C1E] flex items-center gap-2">
+                <div className="bg-white p-4 sm:p-5 border border-[#E2E8F0] rounded-xl space-y-3.5 shadow-sm">
+                  <h3 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
                     <ShieldCheck size={18} className="text-emerald-600" />
-                    Understanding the <code className="bg-[#F5F5F0] px-1.5 py-0.5 rounded text-xs font-mono font-bold text-emerald-700">--deep</code> Flag
+                    Understanding the <code className="bg-[#F1F5F9] px-1.5 py-0.5 rounded text-xs font-mono font-bold text-emerald-700">--deep</code> Flag
                   </h3>
                   <p className="text-xs text-[#6B6B6B] leading-relaxed font-medium">
-                    The <code className="bg-[#F5F5F0] px-1 py-0.5 rounded text-xs font-mono font-bold">--deep</code> flag overrides the default, fast heuristic mode to run intensive, highly accurate agent workflows.
+                    The <code className="bg-[#F1F5F9] px-1 py-0.5 rounded text-xs font-mono font-bold">--deep</code> flag overrides the default, fast heuristic mode to run intensive, highly accurate agent workflows.
                   </p>
                   
                   <div className="space-y-2.5 text-xs font-medium">
@@ -3738,7 +3738,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
               {/* Command Cheat Sheet */}
               <div className="space-y-6">
-                <h3 className="text-xl font-bold text-[#1C1C1E] flex items-center gap-2">
+                <h3 className="text-xl font-bold text-[#0F172A] flex items-center gap-2">
                   <TerminalIcon size={20} />
                   Interactive Command Reference
                 </h3>
@@ -3823,10 +3823,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                       badgeColor: 'stone'
                     }
                   ].map((c) => (
-                    <div key={c.cmd} className="bg-white border border-[#E5E5E0] rounded-xl p-4 hover:shadow-md transition-all flex flex-col justify-between space-y-3">
+                    <div key={c.cmd} className="bg-white border border-[#E2E8F0] rounded-xl p-4 hover:shadow-md transition-all flex flex-col justify-between space-y-3">
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <code className="text-sm font-mono font-bold text-[#1C1C1E] bg-[#F5F5F0] px-2.5 py-1 rounded-xl">
+                          <code className="text-sm font-mono font-bold text-[#0F172A] bg-[#F1F5F9] px-2.5 py-1 rounded-xl">
                             {c.cmd}
                           </code>
                           <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-${c.badgeColor}-50 text-${c.badgeColor}-700 border border-${c.badgeColor}-200`}>
@@ -3844,7 +3844,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             setToast({ show: true, message: `[OK] ✔ Copied: "${c.cmd}"` });
                             setTimeout(() => setToast({ show: false, message: '' }), 2000);
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#E5E5E0] hover:bg-[#F5F5F0] transition-colors rounded-xl text-xs font-bold text-[#1C1C1E]"
+                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#E2E8F0] hover:bg-[#F1F5F9] transition-colors rounded-xl text-xs font-bold text-[#0F172A]"
                         >
                           <Copy size={13} />
                           <span>Copy</span>
@@ -3854,7 +3854,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             setCmdInput(c.cmd);
                             setActiveTab('terminal');
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#E5E5E0] hover:bg-[#F5F5F0] transition-colors rounded-xl text-xs font-bold text-[#1C1C1E]"
+                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white border border-[#E2E8F0] hover:bg-[#F1F5F9] transition-colors rounded-xl text-xs font-bold text-[#0F172A]"
                         >
                           <TerminalIcon size={13} />
                           <span>Populate</span>
@@ -3864,7 +3864,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                             setActiveTab('terminal');
                             runCommand(c.cmd.replace(' <job_id>', '').replace(' <url>', ''));
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-[#1C1C1E] text-white hover:bg-[#27272a] transition-all rounded-xl text-xs font-bold"
+                          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-[#0066FE] text-white hover:bg-[#0052CC] transition-all rounded-xl text-xs font-bold"
                         >
                           <Play size={13} />
                           <span>Execute</span>
@@ -3926,7 +3926,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                        localStorage.removeItem(`${ONBOARDING_STORAGE_KEY}:${session?.user?.email || session?.user?.id || 'default'}`);
                        setWalkthroughStep(0);
                      }}
-                     className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-[#6B6B6B] transition-all hover:bg-[#F5F5F0] hover:text-[#1C1C1E]"
+                     className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-[#6B6B6B] transition-all hover:bg-[#F1F5F9] hover:text-[#0F172A]"
                    >
                      <Play size={13} />
                      Restart Tour
@@ -3934,7 +3934,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    <button
                      onClick={handleSaveSettings}
                      disabled={isSaving}
-                     className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all shadow-sm ${saveStatus === 'success' ? 'bg-emerald-500 text-white' : 'bg-[#1C1C1E] text-white hover:bg-[#27272a]'}`}
+                     className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all shadow-sm ${saveStatus === 'success' ? 'bg-emerald-500 text-white' : 'bg-[#0066FE] text-white hover:bg-[#0052CC]'}`}
                    >
                      {saveStatus === 'saving' ? 'Syncing...' : saveStatus === 'success' ? <><CheckCircle2 size={16} /> Profile Locked</> : 'Save Changes'}
                    </button>
@@ -3944,7 +3944,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
               {/* Masonry layout: prevents tall-right/short-left whitespace gaps */}
               <div className="columns-1 xl:columns-2 gap-5 [column-fill:_balance]">
-                 <ConfigSection id="config-security" title="Account Security" icon={<Shield size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection id="config-security" title="Account Security" icon={<Shield size={18} className="text-[#0F172A]" />}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <Input label="Login Email" value={accountInfo.email} onChange={(v) => setAccountInfo({...accountInfo, email: v})} />
                      <div className="hidden md:block" />
@@ -3953,26 +3953,26 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    </div>
                  </ConfigSection>
 
-                 <ConfigSection title="Monthly Email & Referrals" icon={<Mail size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection title="Monthly Email & Referrals" icon={<Mail size={18} className="text-[#0F172A]" />}>
                    <div className="space-y-4">
                      <label className="flex items-start gap-3 cursor-pointer select-none">
                        <input
                          type="checkbox"
                          checked={accountInfo.newsletter_opt_in}
                          onChange={(e) => setAccountInfo({ ...accountInfo, newsletter_opt_in: e.target.checked })}
-                         className="mt-1 h-4 w-4 rounded border-[#E5E5E0]"
+                         className="mt-1 h-4 w-4 rounded border-[#E2E8F0]"
                        />
                        <span>
-                         <span className="block text-sm font-bold text-[#1C1C1E]">Monthly Career-Ops email</span>
+                         <span className="block text-sm font-bold text-[#0F172A]">Monthly Career-Ops email</span>
                          <span className="block text-xs text-[#6B6B6B] mt-1 leading-relaxed">
                            One email per month with a check-in and your personal referral link. Turn off anytime.
                          </span>
                        </span>
                      </label>
-                     <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 space-y-2">
+                     <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 space-y-2">
                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">Your referral link</div>
                        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                         <code className="text-xs font-semibold text-[#1C1C1E] break-all flex-1">
+                         <code className="text-xs font-semibold text-[#0F172A] break-all flex-1">
                            {accountInfo.referral_url || 'Save settings to generate your link'}
                          </code>
                          <button
@@ -3987,7 +3987,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                setToast({ show: true, message: 'Could not copy — select the link manually' });
                              }
                            }}
-                           className="shrink-0 rounded-xl bg-[#1C1C1E] px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+                           className="shrink-0 rounded-xl bg-[#0066FE] px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
                          >
                            Copy
                          </button>
@@ -4001,21 +4001,21 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
                  <ProductFeedbackCard context="settings" />
 
-                 <ConfigSection title="Candidate Identity" icon={<LayoutDashboard size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection title="Candidate Identity" icon={<LayoutDashboard size={18} className="text-[#0F172A]" />}>
                    {/* Profile Completion Indicator */}
                    {(() => {
                      const fields = ['full_name', 'email', 'location', 'phone', 'linkedin'];
                      const filled = fields.filter(f => profileFormData.candidate?.[f]?.trim()).length;
                      const percent = Math.round((filled / fields.length) * 100);
                      return (
-                       <div className="mb-5 bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
+                       <div className="mb-5 bg-[#F8FAFC] rounded-2xl p-4 border border-[#E2E8F0]">
                          <div className="flex items-center justify-between mb-2">
-                           <span className="text-xs font-bold text-[#1C1C1E] uppercase tracking-wider">Profile Completion</span>
+                           <span className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">Profile Completion</span>
                            <span className={`text-xs font-bold ${percent === 100 ? 'text-emerald-600' : 'text-[#6B6B6B]'}`}>{percent}%</span>
                          </div>
                          <div className="h-2 bg-[#E5E5E0] rounded-full overflow-hidden">
                            <div
-                             className={`h-full rounded-full transition-all duration-500 ${percent === 100 ? 'bg-emerald-500' : 'bg-[#1C1C1E]'}`}
+                             className={`h-full rounded-full transition-all duration-500 ${percent === 100 ? 'bg-emerald-500' : 'bg-[#0066FE]'}`}
                              style={{ width: `${percent}%` }}
                            />
                          </div>
@@ -4027,12 +4027,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    })()}
 
                    {/* Essential Info Card */}
-                   <div className="bg-white rounded-2xl border border-[#E5E5E0] p-4 mb-4">
+                   <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 mb-4">
                      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#F5F5F0]">
-                       <div className="w-8 h-8 bg-[#1C1C1E] rounded-lg flex items-center justify-center">
+                       <div className="w-8 h-8 bg-[#0066FE] rounded-lg flex items-center justify-center">
                          <span className="text-white text-xs font-bold">01</span>
                        </div>
-                       <span className="text-sm font-bold text-[#1C1C1E]">Essential Information</span>
+                       <span className="text-sm font-bold text-[#0F172A]">Essential Information</span>
                        <span className="text-[10px] text-rose-500 font-medium ml-auto">Required</span>
                      </div>
 
@@ -4072,12 +4072,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    </div>
 
                    {/* Online Presence Card */}
-                   <div className="bg-white rounded-2xl border border-[#E5E5E0] p-4">
+                   <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4">
                      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#F5F5F0]">
                        <div className="w-8 h-8 bg-[#6B6B6B] rounded-lg flex items-center justify-center">
                          <span className="text-white text-xs font-bold">02</span>
                        </div>
-                       <span className="text-sm font-bold text-[#1C1C1E]">Online Presence</span>
+                       <span className="text-sm font-bold text-[#0F172A]">Online Presence</span>
                        <span className="text-[10px] text-[#9CA3AF] font-medium ml-auto">Recommended</span>
                      </div>
 
@@ -4101,9 +4101,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
                    {/* Quick Preview */}
                    {profileFormData.candidate.full_name && (
-                     <div className="mt-4 bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
+                     <div className="mt-4 bg-[#F8FAFC] rounded-2xl p-4 border border-[#E2E8F0]">
                        <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-2">Resume Header Preview</p>
-                       <div className="text-sm font-bold text-[#1C1C1E]">{profileFormData.candidate.full_name}</div>
+                       <div className="text-sm font-bold text-[#0F172A]">{profileFormData.candidate.full_name}</div>
                        <div className="text-xs text-[#6B6B6B] mt-1">
                          {[
                            profileFormData.candidate.location,
@@ -4123,7 +4123,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    )}
                  </ConfigSection>
 
-                 <ConfigSection title="Resume Import" icon={<Upload size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection title="Resume Import" icon={<Upload size={18} className="text-[#0F172A]" />}>
                    <div className="space-y-5">
                      {/* Upload Area - Drop Zone Style */}
                      <div
@@ -4134,7 +4134,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                              ? 'border-rose-400 bg-rose-50'
                              : resumeImportStatus === 'ready'
                                ? 'border-emerald-500 bg-emerald-50'
-                               : 'border-[#E5E5E0] hover:border-[#1C1C1E] hover:bg-[#FAFAF8]'
+                               : 'border-[#E2E8F0] hover:border-[#0066FE] hover:bg-[#F8FAFC]'
                        }`}
                      >
                        <div className="text-center">
@@ -4143,7 +4143,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                              ? 'bg-emerald-100'
                              : resumeImportStatus === 'error'
                                ? 'bg-rose-100'
-                               : 'bg-[#F5F5F0]'
+                               : 'bg-[#F1F5F9]'
                          }`}>
                            {resumeImportStatus === 'uploading' ? (
                              <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
@@ -4156,7 +4156,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                            )}
                          </div>
 
-                         <p className="text-sm font-bold text-[#1C1C1E] mb-1">
+                         <p className="text-sm font-bold text-[#0F172A] mb-1">
                            {resumeImportStatus === 'uploading' && 'Analyzing resume...'}
                            {resumeImportStatus === 'ready' && 'Resume analyzed successfully'}
                            {resumeImportStatus === 'error' && 'Import failed'}
@@ -4182,7 +4182,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                          </p>
 
                          {resumeImportStatus !== 'uploading' && (
-                           <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1C1C1E] text-white text-xs font-bold rounded-xl hover:bg-[#27272a] transition-colors cursor-pointer">
+                           <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0066FE] text-white text-xs font-bold rounded-xl hover:bg-[#0052CC] transition-colors cursor-pointer">
                              <Upload size={14} />
                              <span>{resumeImportStatus === 'ready' ? 'Upload different resume' : 'Choose file'}</span>
                              <input
@@ -4202,10 +4202,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                      </div>
 
                      {/* Import Mode Selection */}
-                     <div className="bg-[#FAFAF8] rounded-2xl p-4 border border-[#E5E5E0]">
+                     <div className="bg-[#F8FAFC] rounded-2xl p-4 border border-[#E2E8F0]">
                        <div className="flex items-center justify-between mb-3">
-                         <span className="text-xs font-bold text-[#1C1C1E] uppercase tracking-wider">Import Mode</span>
-                         <span className="text-[10px] text-[#9CA3AF] bg-white px-2 py-1 rounded-lg border border-[#E5E5E0]">
+                         <span className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">Import Mode</span>
+                         <span className="text-[10px] text-[#9CA3AF] bg-white px-2 py-1 rounded-lg border border-[#E2E8F0]">
                            {resumeImportMode === 'merge' ? 'Add to existing' : 'Replace all'}
                          </span>
                        </div>
@@ -4217,17 +4217,17 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                            onClick={() => setResumeImportMode('merge')}
                            className={`p-4 rounded-xl border text-left transition-all ${
                              resumeImportMode === 'merge'
-                               ? 'bg-white border-[#1C1C1E] shadow-sm'
-                               : 'bg-white border-[#E5E5E0] hover:border-[#1C1C1E]'
+                               ? 'bg-white border-[#0066FE] shadow-sm'
+                               : 'bg-white border-[#E2E8F0] hover:border-[#0066FE]'
                            }`}
                          >
                            <div className="flex items-center gap-2 mb-2">
                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                               resumeImportMode === 'merge' ? 'border-[#1C1C1E] bg-[#1C1C1E]' : 'border-[#E5E5E0]'
+                               resumeImportMode === 'merge' ? 'border-[#0066FE] bg-[#0066FE]' : 'border-[#E2E8F0]'
                              }`}>
                                {resumeImportMode === 'merge' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                              </div>
-                             <span className="text-sm font-bold text-[#1C1C1E]">Merge</span>
+                             <span className="text-sm font-bold text-[#0F172A]">Merge</span>
                            </div>
                            <p className="text-[10px] text-[#6B6B6B] leading-relaxed">
                              Keep existing entries and add new ones from resume. No duplicates. Default — safer.
@@ -4241,16 +4241,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                            className={`p-4 rounded-xl border text-left transition-all ${
                              resumeImportMode === 'replace'
                                ? 'bg-white border-rose-500 shadow-sm'
-                               : 'bg-white border-[#E5E5E0] hover:border-rose-400'
+                               : 'bg-white border-[#E2E8F0] hover:border-rose-400'
                            }`}
                          >
                            <div className="flex items-center gap-2 mb-2">
                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                               resumeImportMode === 'replace' ? 'border-rose-500 bg-rose-500' : 'border-[#E5E5E0]'
+                               resumeImportMode === 'replace' ? 'border-rose-500 bg-rose-500' : 'border-[#E2E8F0]'
                              }`}>
                                {resumeImportMode === 'replace' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                              </div>
-                             <span className="text-sm font-bold text-[#1C1C1E]">Replace</span>
+                             <span className="text-sm font-bold text-[#0F172A]">Replace</span>
                            </div>
                            <p className="text-[10px] text-[#6B6B6B] leading-relaxed">
                              Delete all existing entries. Blocked if the parse looks incomplete vs your current profile.
@@ -4345,11 +4345,11 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                    </div>
                  </ConfigSection>
 
-                 <ConfigSection title="Experience" icon={<Briefcase size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection title="Experience" icon={<Briefcase size={18} className="text-[#0F172A]" />}>
                    <div className="space-y-3">
                      <div className="max-h-[min(60dvh,calc(100dvh-16rem))] overflow-y-auto pr-1 space-y-3">
                      {(profileFormData.experience || []).map((exp: any, idx: number) => (
-                       <div key={idx} className="p-3.5 bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-xl space-y-2">
+                       <div key={idx} className="p-3.5 bg-[#F8FAFC]/60 border border-[#E2E8F0] rounded-xl space-y-2">
                          <div className="flex items-start justify-between gap-4">
                            <div className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">
                              Role {idx + 1}
@@ -4424,7 +4424,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                                next[idx] = { ...(next[idx] || {}), bullets };
                                setProfileFormData({ ...profileFormData, experience: next });
                              }}
-                             className="w-full bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-lg p-2.5 outline-none focus:border-[#1C1C1E] transition-all text-xs font-medium leading-relaxed"
+                             className="w-full bg-[#F8FAFC]/60 border border-[#E2E8F0] rounded-lg p-2.5 outline-none focus:border-[#0066FE] transition-all text-xs font-medium leading-relaxed"
                            />
                          </div>
                        </div>
@@ -4441,18 +4441,18 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                            ],
                          })
                        }
-                       className="w-full px-4 py-2 rounded-lg border border-[#E5E5E0] bg-white hover:bg-[#F5F5F0] transition-colors text-xs font-bold text-[#1C1C1E]"
+                       className="w-full px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white hover:bg-[#F1F5F9] transition-colors text-xs font-bold text-[#0F172A]"
                      >
                        Add Experience
                      </button>
                    </div>
                  </ConfigSection>
 
-                 <ConfigSection title="Education" icon={<FileText size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection title="Education" icon={<FileText size={18} className="text-[#0F172A]" />}>
                    <div className="space-y-3">
                      <div className="max-h-[min(50dvh,calc(100dvh-18rem))] overflow-y-auto pr-1 space-y-3">
                      {(profileFormData.education || []).map((edu: any, idx: number) => (
-                       <div key={idx} className="p-3.5 bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-xl space-y-2">
+                       <div key={idx} className="p-3.5 bg-[#F8FAFC]/60 border border-[#E2E8F0] rounded-xl space-y-2">
                          <div className="flex items-start justify-between gap-4">
                            <div className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">
                              Entry {idx + 1}
@@ -4519,14 +4519,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                            education: [...(profileFormData.education || []), { school: '', degree: '', period: '' }],
                          })
                        }
-                       className="w-full px-4 py-2 rounded-lg border border-[#E5E5E0] bg-white hover:bg-[#F5F5F0] transition-colors text-xs font-bold text-[#1C1C1E]"
+                       className="w-full px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white hover:bg-[#F1F5F9] transition-colors text-xs font-bold text-[#0F172A]"
                      >
                        Add Education
                      </button>
                    </div>
                  </ConfigSection>
 
-                 <ConfigSection id="config-narrative" title="Core Narrative" icon={<FileText size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection id="config-narrative" title="Core Narrative" icon={<FileText size={18} className="text-[#0F172A]" />}>
                     <Input label="Strategic Headline" value={profileFormData.narrative.headline} onChange={(v) => setProfileFormData({...profileFormData, narrative: {...profileFormData.narrative, headline: v}})} />
                     <div>
                        <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1 block pl-0.5">Executive Story</label>
@@ -4534,12 +4534,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                          rows={3}
                          value={profileFormData.narrative.exit_story}
                          onChange={(e) => setProfileFormData({...profileFormData, narrative: {...profileFormData.narrative, exit_story: e.target.value}})}
-                         className="w-full bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-lg p-2.5 outline-none focus:border-[#1C1C1E] transition-all text-xs font-medium leading-relaxed"
+                         className="w-full bg-[#F8FAFC]/60 border border-[#E2E8F0] rounded-lg p-2.5 outline-none focus:border-[#0066FE] transition-all text-xs font-medium leading-relaxed"
                        />
                     </div>
                  </ConfigSection>
 
-                 <ConfigSection id="config-targeting" title="Targeting Parameters" icon={<Search size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection id="config-targeting" title="Targeting Parameters" icon={<Search size={18} className="text-[#0F172A]" />}>
                     <div className="space-y-6">
                       <TagInput
                         label="Targeted Roles & Skills"
@@ -4551,7 +4551,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         onRemove={(i) => setProfileFormData({...profileFormData, targeting_keywords: {...profileFormData.targeting_keywords, positive: (profileFormData.targeting_keywords?.positive ?? []).filter((_: string, idx: number) => idx !== i)}})}
                         color="emerald"
                       />
-                      <div className="pt-6 border-t border-[#E5E5E0]">
+                      <div className="pt-6 border-t border-[#E2E8F0]">
                         <TagInput
                           label="Exclusion Keywords"
                           placeholder="Type a keyword to exclude, press Enter..."
@@ -4566,7 +4566,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     </div>
                  </ConfigSection>
 
-                 <ConfigSection title="Portal Sources (Per User)" icon={<TerminalIcon size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection title="Portal Sources (Per User)" icon={<TerminalIcon size={18} className="text-[#0F172A]" />}>
                     <TagInput
                       label="Enabled Portals"
                       placeholder="linkedin, naukri, indeed, instahyre, flexiple..."
@@ -4594,7 +4594,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     </p>
                  </ConfigSection>
 
-                 <ConfigSection title="GitHub Automation Integration" icon={<TerminalIcon size={18} className="text-[#1C1C1E]" />}>
+                 <ConfigSection title="GitHub Automation Integration" icon={<TerminalIcon size={18} className="text-[#0F172A]" />}>
                     <div className="space-y-4">
                       <Input
                         label="GitHub Personal Access Token (PAT)"
@@ -4630,16 +4630,16 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 15 }}
               transition={{ duration: 0.25 }}
-              className={`flex min-h-0 flex-1 flex-col ${PANE_WIDTH} mx-auto bg-white border border-[#E5E5E0] rounded-[1.25rem] sm:rounded-[2rem] overflow-hidden shadow-sm`}
+              className={`flex min-h-0 flex-1 flex-col ${PANE_WIDTH} mx-auto bg-white border border-[#E2E8F0] rounded-[1.25rem] sm:rounded-[2rem] overflow-hidden shadow-sm`}
             >
               {/* Header */}
-              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E5E5E0] px-4 py-3 sm:px-6 sm:py-4 bg-[#FAFAF8]">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E2E8F0] px-4 py-3 sm:px-6 sm:py-4 bg-[#F8FAFC]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#1C1C1E] flex items-center justify-center text-white">
+                  <div className="w-10 h-10 rounded-xl bg-[#0066FE] flex items-center justify-center text-white">
                     <Bot size={20} />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-[#1C1C1E]">Career Copilot</h2>
+                    <h2 className="text-sm font-bold text-[#0F172A]">Career Copilot</h2>
                     <p className="text-[11px] font-medium text-[#6B6B6B]">Always synced with your profile & target goals</p>
                   </div>
                 </div>
@@ -4665,7 +4665,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               </div>
 
               {copilotLimitHit && !hasPro && billing && (
-                <div className="border-b border-[#E5E5E0] bg-[#FAFAF8]">
+                <div className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
                   <ProPaywall
                     feature="copilot"
                     planDisplay={billing.plan.display}
@@ -4677,7 +4677,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               )}
 
               {/* Message List */}
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 space-y-4 bg-[#FAFAF8]/40">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 space-y-4 bg-[#F8FAFC]/40">
                 {chatMessages.map((msg, i) => (
                   <div
                     key={i}
@@ -4686,8 +4686,8 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     <div
                       className={`max-w-[92%] sm:max-w-[80%] rounded-2xl px-4 py-3.5 sm:px-5 sm:py-4 text-sm leading-relaxed ${
                         msg.role === 'user'
-                          ? 'bg-[#1C1C1E] text-white shadow-sm font-medium whitespace-pre-wrap'
-                          : 'bg-white text-[#1C1C1E] border border-[#E5E5E0] shadow-sm'
+                          ? 'bg-[#0066FE] text-white shadow-sm font-medium whitespace-pre-wrap'
+                          : 'bg-white text-[#0F172A] border border-[#E2E8F0] shadow-sm'
                       }`}
                     >
                       {msg.role === 'user' ? (
@@ -4701,10 +4701,10 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 
                 {chatLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-white text-[#1C1C1E] border border-[#E5E5E0] rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
-                      <span className="flex h-2 w-2 rounded-full bg-[#1C1C1E] animate-bounce [animation-delay:-0.3s]"></span>
-                      <span className="flex h-2 w-2 rounded-full bg-[#1C1C1E] animate-bounce [animation-delay:-0.15s]"></span>
-                      <span className="flex h-2 w-2 rounded-full bg-[#1C1C1E] animate-bounce"></span>
+                    <div className="bg-white text-[#0F172A] border border-[#E2E8F0] rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
+                      <span className="flex h-2 w-2 rounded-full bg-[#0066FE] animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="flex h-2 w-2 rounded-full bg-[#0066FE] animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="flex h-2 w-2 rounded-full bg-[#0066FE] animate-bounce"></span>
                     </div>
                   </div>
                 )}
@@ -4714,7 +4714,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
 
               {/* Suggestions Panel */}
               {chatMessages.length === 1 && (
-                <div className="px-4 py-3 sm:px-6 border-t border-[#E5E5E0]/60 bg-[#FAFAF8]/50">
+                <div className="px-4 py-3 sm:px-6 border-t border-[#E2E8F0]/60 bg-[#F8FAFC]/50">
                   <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-2">Suggested Prompts</p>
                   <div className="flex flex-wrap gap-2">
                     {[
@@ -4727,7 +4727,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                         key={promptText}
                         type="button"
                         onClick={() => handleSendChatMessage(promptText)}
-                        className="text-xs font-bold text-[#1C1C1E] bg-white border border-[#E5E5E0] hover:border-[#1C1C1E] hover:bg-[#FAFAF8] px-3 py-2 rounded-xl transition-all shadow-sm"
+                        className="text-xs font-bold text-[#0F172A] bg-white border border-[#E2E8F0] hover:border-[#0066FE] hover:bg-[#F8FAFC] px-3 py-2 rounded-xl transition-all shadow-sm"
                       >
                         {promptText}
                       </button>
@@ -4737,7 +4737,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
               )}
 
               {/* Input Form */}
-              <div className="border-t border-[#E5E5E0] px-4 py-3 sm:px-6 sm:py-4 bg-white shrink-0">
+              <div className="border-t border-[#E2E8F0] px-4 py-3 sm:px-6 sm:py-4 bg-white shrink-0">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -4751,12 +4751,12 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Ask Career Copilot anything about your career..."
                     disabled={chatLoading}
-                    className="flex-1 bg-[#FAFAF8] border border-[#E5E5E0] rounded-xl px-4 py-3 text-sm text-[#1C1C1E] placeholder:text-[#9CA3AF] outline-none focus:border-[#1C1C1E] transition-all disabled:opacity-50"
+                    className="flex-1 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-3 text-sm text-[#0F172A] placeholder:text-[#9CA3AF] outline-none focus:border-[#0066FE] transition-all disabled:opacity-50"
                   />
                   <button
                     type="submit"
                     disabled={chatLoading || !chatInput.trim()}
-                    className="h-11 w-11 shrink-0 rounded-xl bg-[#1C1C1E] hover:bg-[#27272a] text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="h-11 w-11 shrink-0 rounded-xl bg-[#0066FE] hover:bg-[#0052CC] text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Send size={16} />
                   </button>
@@ -5086,7 +5086,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[100] max-w-[min(24rem,calc(100vw-1.5rem))] bg-[#1C1C1E] text-white px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3 border border-white/10"
+            className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[100] max-w-[min(24rem,calc(100vw-1.5rem))] bg-[#0066FE] text-white px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3 border border-white/10"
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <CheckCircle2 size={18} className="text-[#f59e0b] shrink-0" />
@@ -5130,7 +5130,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="bg-white rounded-2xl border border-[#E5E5E0] shadow-2xl max-w-md w-full p-5 sm:p-6 relative pointer-events-auto transition-all duration-500 max-h-[calc(100vh-2rem)] overflow-y-auto"
+                className="bg-white rounded-2xl border border-[#E2E8F0] shadow-2xl max-w-md w-full p-5 sm:p-6 relative pointer-events-auto transition-all duration-500 max-h-[calc(100vh-2rem)] overflow-y-auto"
                 style={spotlightRect ? {
                     position: 'absolute',
                     top: Math.min(window.innerHeight - 480, Math.max(20, spotlightRect.top + spotlightRect.height + 20)),
@@ -5138,7 +5138,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                 } : {}}
               >
                 <div className="absolute top-0 right-0 p-4">
-                  <button onClick={completeOnboarding} className="text-[#9CA3AF] hover:text-[#1C1C1E] transition-colors">
+                  <button onClick={completeOnboarding} className="text-[#9CA3AF] hover:text-[#0F172A] transition-colors">
                     <span className="text-[10px] font-bold uppercase tracking-widest">Skip Tour</span>
                   </button>
                 </div>
@@ -5148,9 +5148,9 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">
                     Step {walkthroughStep + 1} of {steps.length}
                   </span>
-                  <div className="flex-1 h-1 bg-[#F5F5F0] rounded-full overflow-hidden">
+                  <div className="flex-1 h-1 bg-[#F1F5F9] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#1C1C1E] transition-all duration-300"
+                      className="h-full bg-[#0066FE] transition-all duration-300"
                       style={{ width: `${((walkthroughStep + 1) / steps.length) * 100}%` }}
                     />
                   </div>
@@ -5162,13 +5162,13 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   </div>
 
                   {steps[walkthroughStep].actionHint && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 border border-stone-200 text-[#1C1C1E] text-[11px] font-semibold mb-3">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 border border-stone-200 text-[#0F172A] text-[11px] font-semibold mb-3">
                       <Sparkles size={12} className="text-amber-600" />
                       <span>{steps[walkthroughStep].actionHint}</span>
                     </div>
                   )}
 
-                  <h2 className="text-xl font-bold text-[#1C1C1E] mb-2.5 tracking-tight leading-tight">{steps[walkthroughStep].title}</h2>
+                  <h2 className="text-xl font-bold text-[#0F172A] mb-2.5 tracking-tight leading-tight">{steps[walkthroughStep].title}</h2>
                   <p className="text-[#6B6B6B] leading-relaxed text-sm">{steps[walkthroughStep].content}</p>
                 </div>
 
@@ -5176,7 +5176,7 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                   <div className="flex items-center gap-3">
                     <div className="flex gap-1.5">
                       {steps.map((_, s) => (
-                        <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${walkthroughStep === s ? 'bg-[#1C1C1E] w-6' : 'bg-[#E5E5E0] w-1.5'}`} />
+                        <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${walkthroughStep === s ? 'bg-[#0066FE] w-6' : 'bg-[#E5E5E0] w-1.5'}`} />
                       ))}
                     </div>
                     <span className="text-[10px] text-stone-400 font-mono hidden sm:inline">Use ← → arrow keys</span>
@@ -5185,14 +5185,14 @@ export default function Dashboard({ initialData }: { initialData?: any }) {
                     {walkthroughStep > 0 && (
                       <button
                         onClick={() => setWalkthroughStep(walkthroughStep - 1)}
-                        className="px-4 py-2.5 text-[#6B6B6B] hover:text-[#1C1C1E] rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                        className="px-4 py-2.5 text-[#6B6B6B] hover:text-[#0F172A] rounded-xl font-bold text-xs transition-colors cursor-pointer"
                       >
                         Back
                       </button>
                     )}
                     <button
                       onClick={() => walkthroughStep < steps.length - 1 ? setWalkthroughStep(walkthroughStep + 1) : completeOnboarding()}
-                      className="px-5 py-2.5 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#27272a] transition-all shadow-lg shadow-black/10 cursor-pointer"
+                      className="px-5 py-2.5 bg-[#0066FE] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#0052CC] transition-all shadow-lg shadow-black/10 cursor-pointer"
                     >
                       {walkthroughStep === steps.length - 1 ? 'Finish tour' : 'Next'}
                       <ChevronRight size={14} />
@@ -5233,7 +5233,7 @@ function NavItem({
       onClick={onClick}
       className={`w-full flex items-center rounded-xl transition-all ${
         collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
-      } ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-md' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}
+      } ${active ? 'bg-[#0066FE] text-white font-bold shadow-md' : 'text-[#6B6B6B] hover:text-[#0F172A] hover:bg-white/50'}`}
     >
       <span className="relative shrink-0">
         {icon}
@@ -5270,7 +5270,7 @@ function NavItemSoon({ id, icon, label, active, collapsed, onClick }: { id?: str
       onClick={onClick}
       className={`relative w-full flex items-center rounded-xl transition-all ${
         collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
-      } ${active ? 'bg-[#1C1C1E] text-white font-bold shadow-md' : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white/50'}`}
+      } ${active ? 'bg-[#0066FE] text-white font-bold shadow-md' : 'text-[#6B6B6B] hover:text-[#0F172A] hover:bg-white/50'}`}
     >
       <span className="relative shrink-0">
         {icon}
@@ -5302,7 +5302,7 @@ function StatCard({ icon, label, value, color = 'stone' }: { icon: any, label: s
   };
 
   return (
-    <div className="bg-white border border-[#E5E5E0] rounded-2xl p-6 hover:shadow-md hover:border-[#D4D4CE] transition-all duration-200 cursor-default">
+    <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 hover:shadow-md hover:border-[#D4D4CE] transition-all duration-200 cursor-default">
       <div className="flex items-start justify-between">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colorClasses[color] }}>
           {icon}
@@ -5318,8 +5318,8 @@ function StatCard({ icon, label, value, color = 'stone' }: { icon: any, label: s
 
 function ConfigSection({ id, title, icon, children }: { id?: string, title: string, icon: any, children: React.ReactNode }) {
   return (
-    <div id={id} className="mb-4 break-inside-avoid h-fit bg-white border border-[#E5E5E0] rounded-xl p-3.5 space-y-2.5 scroll-mt-8 shadow-xs">
-      <h3 className="font-bold text-sm flex items-center gap-2 text-[#1C1C1E] border-b border-[#F5F5F0] pb-2">{icon} {title}</h3>
+    <div id={id} className="mb-4 break-inside-avoid h-fit bg-white border border-[#E2E8F0] rounded-xl p-3.5 space-y-2.5 scroll-mt-8 shadow-xs">
+      <h3 className="font-bold text-sm flex items-center gap-2 text-[#0F172A] border-b border-[#F5F5F0] pb-2">{icon} {title}</h3>
       {children}
     </div>
   );
@@ -5355,8 +5355,8 @@ function Input({
         type={type}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full bg-[#FAFAF8]/60 border rounded-lg px-3 py-1.5 outline-none focus:border-[#1C1C1E] transition-all text-xs font-semibold text-[#1C1C1E] ${
-          (value ?? '').trim() ? 'border-[#E5E5E0]' : required ? 'border-rose-200 focus:border-rose-400' : 'border-[#E5E5E0]'
+        className={`w-full bg-[#F8FAFC]/60 border rounded-lg px-3 py-1.5 outline-none focus:border-[#0066FE] transition-all text-xs font-semibold text-[#0F172A] ${
+          (value ?? '').trim() ? 'border-[#E2E8F0]' : required ? 'border-rose-200 focus:border-rose-400' : 'border-[#E2E8F0]'
         }`}
         placeholder={placeholder}
         required={required}
@@ -5404,7 +5404,7 @@ function TagInput({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
     <div className="space-y-1">
       <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider block pl-0.5">{label}</label>
       <div
-        className="min-h-[38px] w-full bg-[#FAFAF8]/60 border border-[#E5E5E0] rounded-lg px-2.5 py-1.5 flex flex-wrap gap-1.5 items-center cursor-text focus-within:border-[#1C1C1E] transition-all"
+        className="min-h-[38px] w-full bg-[#F8FAFC]/60 border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 flex flex-wrap gap-1.5 items-center cursor-text focus-within:border-[#0066FE] transition-all"
         onClick={() => inputRef.current?.focus()}
       >
         {tags.map((tag, i) => (
@@ -5444,10 +5444,10 @@ function TagInput({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
           onKeyDown={handleKey}
           onBlur={commit}
           placeholder={tags.length === 0 ? placeholder : '+ Add more'}
-          className="flex-1 min-w-[120px] bg-transparent outline-none text-sm font-bold text-[#1C1C1E] placeholder:text-[#9CA3AF]/60"
+          className="flex-1 min-w-[120px] bg-transparent outline-none text-sm font-bold text-[#0F172A] placeholder:text-[#9CA3AF]/60"
         />
       </div>
-      <p className="text-[10px] text-[#9CA3AF] pl-1">Press <kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">Enter</kbd> or <kbd className="px-1 py-0.5 bg-[#F5F5F0] border border-[#E5E5E0] rounded text-[9px]">,</kbd> to add a tag</p>
+      <p className="text-[10px] text-[#9CA3AF] pl-1">Press <kbd className="px-1 py-0.5 bg-[#F1F5F9] border border-[#E2E8F0] rounded text-[9px]">Enter</kbd> or <kbd className="px-1 py-0.5 bg-[#F1F5F9] border border-[#E2E8F0] rounded text-[9px]">,</kbd> to add a tag</p>
     </div>
   );
 }
