@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CareerOps Cloud ATS Auto-Fill</title>
+  <title>CareerOps ATS Auto-Fill</title>
   <style>
     body {
-      width: 330px;
+      width: 340px;
       margin: 0;
       padding: 16px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -53,13 +53,16 @@
       font-size: 11px;
       margin-bottom: 6px;
     }
+    .field-row:last-child {
+      margin-bottom: 0;
+    }
     .field-label {
       color: #94A3B8;
     }
     .field-val {
       font-weight: 600;
       color: #F1F5F9;
-      max-width: 180px;
+      max-width: 190px;
       text-overflow: ellipsis;
       overflow: hidden;
       white-space: nowrap;
@@ -129,12 +132,12 @@
   <div class="header">
     <div class="brand">
       <h2>CareerOps</h2>
-      <span class="badge">Cloud Synced</span>
+      <span class="badge">Verified Profile</span>
     </div>
   </div>
 
   <div class="cloud-status" id="cloud-status-banner">
-    <span>☁️ Connected to Cloud API</span>
+    <span>✅ Real Profile: Akash Kaintura</span>
   </div>
 
   <div class="card">
@@ -151,13 +154,17 @@
       <span class="field-val" id="profile-phone">+91 8979594537</span>
     </div>
     <div class="field-row">
-      <span class="field-label">Cloud Target</span>
-      <span class="field-val" id="profile-role">Lead / Senior Backend Engineer</span>
+      <span class="field-label">Target Role</span>
+      <span class="field-val" id="profile-role">Lead Backend Engineer</span>
+    </div>
+    <div class="field-row">
+      <span class="field-label">Portfolio</span>
+      <span class="field-val" id="profile-portfolio">akashkaintura.is-a.dev</span>
     </div>
   </div>
 
   <button class="btn-sync" id="btn-sync-cloud">
-    🔄 Sync Profile from Cloud API
+    🔄 Re-Sync / Reset Profile
   </button>
 
   <button class="btn-fill" id="btn-trigger-fill">
@@ -165,7 +172,7 @@
   </button>
 
   <div class="supported-tags">
-    Supported ATS: Greenhouse, Lever, Workday, Ashby, BambooHR, LinkedIn
+    Supported ATS: Ashby, Greenhouse, Lever, Workday, BambooHR, LinkedIn
   </div>
 
   <script src="popup.js"></script>

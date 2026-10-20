@@ -1,21 +1,15 @@
 {
   "manifest_version": 3,
   "name": "CareerOps — 1-Click ATS Auto-Fill",
-  "version": "1.0.0",
-  "description": "Auto-fills job application forms on Greenhouse, Lever, Workday, Ashby, and LinkedIn using your CareerOps profile.",
+  "version": "1.0.1",
+  "description": "Auto-fills job application forms on Ashby, Greenhouse, Lever, Workday, and LinkedIn using your CareerOps profile.",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "scripting"
   ],
   "host_permissions": [
-    "*://*.greenhouse.io/*",
-    "*://*.lever.co/*",
-    "*://*.myworkdayjobs.com/*",
-    "*://*.ashbyhq.com/*",
-    "*://*.bamboohr.com/*",
-    "*://*.smartrecruiters.com/*",
-    "*://*.linkedin.com/*",
-    "http://localhost:3000/*"
+    "*://*/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -24,16 +18,22 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*.greenhouse.io/*",
-        "*://*.lever.co/*",
-        "*://*.myworkdayjobs.com/*",
-        "*://*.ashbyhq.com/*",
-        "*://*.bamboohr.com/*",
-        "*://*.smartrecruiters.com/*",
-        "*://*.linkedin.com/*"
+        "*://*/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "resume.pdf"
+      ],
+      "matches": [
+        "*://*/*"
+      ]
     }
   ]
 }
