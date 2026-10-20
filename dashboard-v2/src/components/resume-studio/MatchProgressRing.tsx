@@ -56,7 +56,7 @@ export function MatchProgressRing({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-base font-bold text-[#1C1C1E] leading-none">
+        <span className="text-base font-bold text-[#0F172A] leading-none">
           {label ?? `${Math.round(pct)}%`}
         </span>
         {sublabel ? (

@@ -13,10 +13,10 @@ export default function StatusPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#1C1C1E] p-8 md:p-24 selection:bg-[#1C1C1E]/10 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] p-8 md:p-24 selection:bg-[#0066FE]/10 font-sans">
       <Link
         href="/"
-        className="inline-flex items-center gap-2 text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors mb-12 group font-bold text-sm uppercase tracking-widest"
+        className="inline-flex items-center gap-2 text-[#6B6B6B] hover:text-[#0F172A] transition-colors mb-12 group font-bold text-sm uppercase tracking-widest"
       >
         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
         Back home
@@ -24,7 +24,7 @@ export default function StatusPage() {
 
       <div className="max-w-4xl">
         <h1 className="text-4xl md:text-7xl font-bold tracking-tighter mb-6">Status</h1>
-        <p className="text-[#6B6B6B] text-xl mb-20 max-w-2xl font-medium leading-relaxed border-l-4 border-[#E5E5E0] pl-8">
+        <p className="text-[#6B6B6B] text-xl mb-20 max-w-2xl font-medium leading-relaxed border-l-4 border-[#E2E8F0] pl-8">
           Current health of Career-Ops services. Updated on page load.
         </p>
 
@@ -35,10 +35,10 @@ export default function StatusPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white border border-[#E5E5E0] p-8 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-2xl hover:shadow-black/[0.02] transition-all"
+              className="bg-white border border-[#E2E8F0] p-8 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-2xl hover:shadow-black/[0.02] transition-all"
             >
               <div className="flex items-center gap-6">
-                <div className="p-4 bg-[#F5F5F0] rounded-2xl text-[#1C1C1E]">{s.icon}</div>
+                <div className="p-4 bg-[#F1F5F9] rounded-2xl text-[#0F172A]">{s.icon}</div>
                 <div>
                   <h3 className="font-bold text-xl">{s.name}</h3>
                   <div className="flex gap-6 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF] mt-2">
@@ -47,7 +47,7 @@ export default function StatusPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 px-6 py-3 bg-[#FAFAF8] rounded-full border border-[#E5E5E0]">
+              <div className="flex items-center gap-3 px-6 py-3 bg-[#F8FAFC] rounded-full border border-[#E2E8F0]">
                 <div
                   className={`h-2.5 w-2.5 rounded-full ${s.status === 'Operational' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]'}`}
                 />
@@ -61,7 +61,7 @@ export default function StatusPage() {
           ))}
         </div>
 
-        <div className="mt-24 p-8 border-t border-[#E5E5E0] flex flex-col md:flex-row items-center justify-between gap-6 opacity-40 text-sm font-bold uppercase tracking-widest text-[#6B6B6B]">
+        <div className="mt-24 p-8 border-t border-[#E2E8F0] flex flex-col md:flex-row items-center justify-between gap-6 opacity-40 text-sm font-bold uppercase tracking-widest text-[#6B6B6B]">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} />
             Core services operational

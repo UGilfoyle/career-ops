@@ -21,7 +21,7 @@ export function AuthMobileBrand() {
     <div className="mb-8 flex flex-col items-center text-center lg:hidden">
       <Link href="/" className="mb-4 inline-flex items-center gap-2.5">
         <CareerOpsLogoMark size={36} />
-        <span className="text-lg font-bold tracking-tight text-[#1C1C1E]">
+        <span className="text-lg font-bold tracking-tight text-[#0F172A]">
           Career-Ops{' '}
           <span className="text-[9px] font-mono uppercase tracking-widest text-[#6B6B6B]">v3</span>
         </span>
@@ -32,7 +32,7 @@ export function AuthMobileBrand() {
 
 export default function AuthBrandPanel() {
   return (
-    <aside className="relative hidden min-h-screen w-full flex-col justify-between overflow-hidden bg-[#1C1C1E] p-10 text-white lg:flex lg:max-w-[480px] lg:shrink-0 xl:max-w-[520px]">
+    <aside className="relative hidden min-h-screen w-full flex-col justify-between overflow-hidden bg-[#0066FE] p-10 text-white lg:flex lg:max-w-[480px] lg:shrink-0 xl:max-w-[520px]">
       <div className="absolute top-[-20%] right-[-30%] h-[60%] w-[80%] rounded-full bg-[#f59e0b]/10 blur-[100px]" />
       <div className="absolute bottom-[-10%] left-[-20%] h-[40%] w-[60%] rounded-full bg-white/5 blur-[80px]" />
 

@@ -63,19 +63,19 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#1C1C1E] flex flex-col relative overflow-hidden font-sans selection:bg-[#E5E5E0]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col relative overflow-hidden font-sans selection:bg-blue-100">
       {/* ── Ambient Radial Glows ── */}
       <div className="absolute top-[5%] right-[-5%] w-[420px] h-[420px] bg-[#F59E0B]/15 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[10%] left-[-5%] w-[450px] h-[450px] bg-[#3B82F6]/12 rounded-full blur-[110px] pointer-events-none" />
 
       {/* ── Floating Pill Navbar (exact mockup style) ── */}
       <div className="sticky top-4 z-40 px-4 w-full flex justify-center">
-        <header className="w-full max-w-4xl bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-full border border-[#E5E5E0] shadow-sm px-5 sm:px-6 py-2.5 flex justify-between items-center">
+        <header className="w-full max-w-4xl bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-full border border-[#E2E8F0] shadow-sm px-5 sm:px-6 py-2.5 flex justify-between items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
             <CareerOpsLogoMark size={32} className="group-hover:scale-105" />
             <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-extrabold tracking-tight text-[#1C1C1E]">Career-Ops</span>
+              <span className="text-base font-extrabold tracking-tight text-[#0F172A]">Career-Ops</span>
               <span className="text-xs font-semibold text-[#8E8E93]">v3</span>
             </div>
           </Link>
@@ -85,23 +85,23 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => { setTourTab('flow'); setShowTourModal(true); }}
-              className="text-xs font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors cursor-pointer hidden sm:block"
+              className="text-xs font-bold text-[#6B6B6B] hover:text-[#0F172A] transition-colors cursor-pointer hidden sm:block"
             >
               How it works
             </button>
             <button
               type="button"
               onClick={() => { setTourTab('new'); setShowTourModal(true); }}
-              className="text-xs font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors cursor-pointer hidden sm:block"
+              className="text-xs font-bold text-[#6B6B6B] hover:text-[#0F172A] transition-colors cursor-pointer hidden sm:block"
             >
               What&apos;s New
             </button>
-            <Link href="/login" className="text-xs font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors">
+            <Link href="/login" className="text-xs font-bold text-[#6B6B6B] hover:text-[#0F172A] transition-colors">
               Sign In
             </Link>
             <Link
               href="/signup"
-              className="px-4 py-2 bg-[#1C1C1E] text-white text-xs font-bold rounded-xl sm:rounded-full hover:bg-[#27272a] transition-all shadow-sm active:scale-95"
+              className="px-4 py-2 bg-[#0066FE] text-white text-xs font-bold rounded-xl sm:rounded-full hover:bg-[#0052CC] transition-all shadow-sm active:scale-95"
             >
               Sign up
             </Link>
@@ -120,9 +120,9 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={() => { setTourTab('flow'); setShowTourModal(true); }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50/90 border border-emerald-300/80 text-emerald-800 text-[11px] font-bold uppercase tracking-wider mb-6 hover:bg-emerald-100 transition-colors shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-bold uppercase tracking-wider mb-6 hover:bg-blue-100 transition-colors shadow-xs cursor-pointer"
           >
-            <Sparkles size={13} className="text-emerald-600" />
+            <Sparkles size={13} className="text-blue-600" />
             <span>v3 RELEASE: COPILOT &amp; RESUME STUDIO</span>
           </button>
         </motion.div>
@@ -134,9 +134,9 @@ export default function LandingPage() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-center space-y-4 max-w-3xl"
         >
-          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight leading-[1.08] text-[#1C1C1E]">
+          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight leading-[1.08] text-[#081929]">
             Run your job search <br />
-            <span className="text-[#8E8E93]">from one place</span>
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">automated from one place</span>
           </h1>
 
           <p className="text-[#6B6B6B] text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-normal pt-1">
@@ -148,7 +148,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-3">
             <Link
               href="/signup"
-              className="w-full sm:w-auto px-7 py-3.5 bg-[#1C1C1E] text-white font-bold text-sm rounded-full flex items-center justify-center gap-2 hover:bg-[#27272a] transition-all shadow-md active:scale-95 group"
+              className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-sm rounded-full flex items-center justify-center gap-2 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 active:scale-95 group"
             >
               <span>Get started free</span>
               <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform text-white/70" />
@@ -156,7 +156,7 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => { setTourTab('video'); setShowTourModal(true); }}
-              className="w-full sm:w-auto px-6 py-3.5 bg-white border border-[#E5E5E0] text-[#1C1C1E] font-bold text-sm rounded-full flex items-center justify-center gap-2 hover:bg-[#F5F5F0] transition-all shadow-xs active:scale-95 cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3.5 bg-white border border-[#E2E8F0] text-[#0F172A] font-bold text-sm rounded-full flex items-center justify-center gap-2 hover:bg-[#F1F5F9] transition-all shadow-xs active:scale-95 cursor-pointer"
             >
               <Play size={13} fill="currentColor" />
               <span>Watch demo</span>
@@ -175,7 +175,7 @@ export default function LandingPage() {
                 key={activeSeekers}
                 initial={{ opacity: 0.7, y: -1 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-[#1C1C1E] font-bold font-mono"
+                className="text-[#0F172A] font-bold font-mono"
               >
                 {activeSeekers.toLocaleString()}
               </motion.strong>{' '}
@@ -188,34 +188,34 @@ export default function LandingPage() {
         <div className="w-full mt-12 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Card 1: Smart Scoring */}
-            <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all">
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-xl hover:border-blue-300 hover:-translate-y-1 transition-all duration-300 text-center flex flex-col items-center space-y-3.5">
               <div className="h-12 w-12 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-sm">
                 <Target size={22} strokeWidth={2.2} />
               </div>
-              <h3 className="text-base font-extrabold text-[#1C1C1E]">Smart Scoring</h3>
+              <h3 className="text-base font-extrabold text-[#0F172A]">Smart Scoring</h3>
               <p className="text-xs text-[#6B6B6B] leading-relaxed max-w-xs font-normal">
                 AI evaluates every offer against your profile, priorities, and deal-breakers
               </p>
             </div>
 
             {/* Card 2: Resume Studio */}
-            <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all">
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-xl hover:border-blue-300 hover:-translate-y-1 transition-all duration-300 text-center flex flex-col items-center space-y-3.5">
               <div className="h-12 w-12 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-sm">
                 <Eye size={22} strokeWidth={2.2} />
               </div>
-              <h3 className="text-base font-extrabold text-[#1C1C1E]">Resume Studio</h3>
+              <h3 className="text-base font-extrabold text-[#0F172A]">Resume Studio</h3>
               <p className="text-xs text-[#6B6B6B] leading-relaxed max-w-xs font-normal">
                 Tailor your resume per JD with live ATS scoring and competency badges
               </p>
             </div>
 
             {/* Card 3: Voice Mock & Practice */}
-            <div className="rounded-3xl border border-[#E5E5E0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all relative overflow-hidden">
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-xl hover:border-blue-300 hover:-translate-y-1 transition-all duration-300 text-center flex flex-col items-center space-y-3.5 relative overflow-hidden">
               <div className="h-12 w-12 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-sm">
                 <Mic size={22} strokeWidth={2.2} />
               </div>
               <div className="flex items-center gap-1.5">
-                <h3 className="text-base font-extrabold text-[#1C1C1E]">Voice Mock Interviews</h3>
+                <h3 className="text-base font-extrabold text-[#0F172A]">Voice Mock Interviews</h3>
                 <span className="px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[9px] font-bold uppercase tracking-wider border border-purple-200">
                   New
                 </span>
@@ -231,13 +231,13 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="w-full bg-white rounded-3xl border border-[#E5E5E0] shadow-sm p-5 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-6"
+            className="w-full bg-white rounded-3xl border border-[#E2E8F0] shadow-sm p-5 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-6"
           >
             {/* Left label */}
             <div className="text-center md:text-left space-y-1">
               <div className="flex items-center justify-center md:justify-start gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <h4 className="text-sm font-extrabold text-[#1C1C1E]">Premium Walkthrough</h4>
+                <h4 className="text-sm font-extrabold text-[#0F172A]">Premium Walkthrough</h4>
               </div>
               <p className="text-xs text-[#8E8E93]">How Career-Ops powers your search in 4 continuous steps</p>
             </div>
@@ -249,7 +249,7 @@ export default function LandingPage() {
                 <div className="h-11 w-11 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shadow-xs">
                   <Search size={18} />
                 </div>
-                <span className="text-[11px] font-bold text-[#1C1C1E]">Scan</span>
+                <span className="text-[11px] font-bold text-[#0F172A]">Scan</span>
               </div>
 
               <ChevronRight size={15} className="text-[#C7C7CC] shrink-0" />
@@ -259,7 +259,7 @@ export default function LandingPage() {
                 <div className="h-11 w-11 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center shadow-xs">
                   <BarChart3 size={18} />
                 </div>
-                <span className="text-[11px] font-bold text-[#1C1C1E]">Score</span>
+                <span className="text-[11px] font-bold text-[#0F172A]">Score</span>
               </div>
 
               <ChevronRight size={15} className="text-[#C7C7CC] shrink-0" />
@@ -269,7 +269,7 @@ export default function LandingPage() {
                 <div className="h-11 w-11 rounded-2xl bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center shadow-xs">
                   <FileText size={18} />
                 </div>
-                <span className="text-[11px] font-bold text-[#1C1C1E]">Tailor</span>
+                <span className="text-[11px] font-bold text-[#0F172A]">Tailor</span>
               </div>
 
               <ChevronRight size={15} className="text-[#C7C7CC] shrink-0" />
@@ -279,7 +279,7 @@ export default function LandingPage() {
                 <div className="h-11 w-11 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shadow-xs">
                   <TrendingUp size={18} />
                 </div>
-                <span className="text-[11px] font-bold text-[#1C1C1E]">Track</span>
+                <span className="text-[11px] font-bold text-[#0F172A]">Track</span>
               </div>
             </div>
 
@@ -290,7 +290,7 @@ export default function LandingPage() {
                 setTourTab('flow');
                 setShowTourModal(true);
               }}
-              className="px-6 py-2.5 bg-[#1C1C1E] text-white text-xs font-bold rounded-full hover:bg-[#27272a] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+              className="px-6 py-2.5 bg-[#0066FE] text-white text-xs font-bold rounded-full hover:bg-[#0052CC] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
             >
               <span>Get Started</span>
               <ArrowRight size={13} />
@@ -300,20 +300,20 @@ export default function LandingPage() {
 
         {/* Visitor Activity Metric Footer Pill */}
         {visitorStats && (
-          <div className="mt-12 inline-flex items-center gap-4 px-5 py-2.5 bg-white border border-[#E5E5E0] rounded-full shadow-xs text-xs">
-            <div className="flex items-center gap-1.5 text-[#6B6B6B] font-semibold border-r border-[#E5E5E0] pr-3">
+          <div className="mt-12 inline-flex items-center gap-4 px-5 py-2.5 bg-white border border-[#E2E8F0] rounded-full shadow-xs text-xs">
+            <div className="flex items-center gap-1.5 text-[#6B6B6B] font-semibold border-r border-[#E2E8F0] pr-3">
               <Eye size={14} /> Platform Activity
             </div>
             <div className="flex items-center gap-3">
               <div>
-                <span className="font-bold text-[#1C1C1E]">
+                <span className="font-bold text-[#0F172A]">
                   {30 + (visitorStats.today?.unique_visitors ?? 1)}
                 </span>
                 <span className="text-[10px] text-[#8E8E93] ml-1">Today</span>
               </div>
               <div className="w-1 h-1 rounded-full bg-[#E5E5E0]" />
               <div>
-                <span className="font-bold text-[#1C1C1E]">
+                <span className="font-bold text-[#0F172A]">
                   {(2500 + (visitorStats.allTime?.unique_visitors ?? 0)).toLocaleString()}
                 </span>
                 <span className="text-[10px] text-[#8E8E93] ml-1">All Time</span>
@@ -324,15 +324,15 @@ export default function LandingPage() {
       </main>
 
       {/* ── Footer ── */}
-      <footer className="z-10 border-t border-[#E5E5E0] bg-[#F5F5F0] py-8 px-6 sm:px-10">
+      <footer className="z-10 border-t border-[#E2E8F0] bg-[#F1F5F9] py-8 px-6 sm:px-10">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
           <div className="font-bold text-[#6B6B6B] uppercase tracking-wider font-mono text-[11px]">
             Career-Ops v3.0
           </div>
           <div className="flex gap-6 text-[#6B6B6B] font-bold text-xs">
-            <Link href="/privacy" className="hover:text-[#1C1C1E] transition-colors">Privacy</Link>
-            <Link href="/status" className="hover:text-[#1C1C1E] transition-colors">Status</Link>
-            <a href="https://github.com/UGilfoyle" target="_blank" rel="noreferrer" className="hover:text-[#1C1C1E] transition-colors">GitHub</a>
+            <Link href="/privacy" className="hover:text-[#0F172A] transition-colors">Privacy</Link>
+            <Link href="/status" className="hover:text-[#0F172A] transition-colors">Status</Link>
+            <a href="https://github.com/UGilfoyle" target="_blank" rel="noreferrer" className="hover:text-[#0F172A] transition-colors">GitHub</a>
           </div>
         </div>
       </footer>
@@ -345,18 +345,18 @@ export default function LandingPage() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-4xl bg-white rounded-3xl border border-[#E5E5E0] shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+              className="relative w-full max-w-4xl bg-white rounded-3xl border border-[#E2E8F0] shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
             >
               {/* Modal Top Bar */}
-              <div className="flex items-center justify-between px-6 py-3.5 border-b border-[#E5E5E0] bg-[#FAFAF8]">
+              <div className="flex items-center justify-between px-6 py-3.5 border-b border-[#E2E8F0] bg-[#F8FAFC]">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setTourTab('video')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       tourTab === 'video'
-                        ? 'bg-[#1C1C1E] text-white shadow-sm'
-                        : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white'
+                        ? 'bg-[#0066FE] text-white shadow-sm'
+                        : 'text-[#6B6B6B] hover:text-[#0F172A] hover:bg-white'
                     }`}
                   >
                     <Play size={11} fill="currentColor" />
@@ -367,8 +367,8 @@ export default function LandingPage() {
                     onClick={() => setTourTab('flow')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       tourTab === 'flow'
-                        ? 'bg-[#1C1C1E] text-white shadow-sm'
-                        : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white'
+                        ? 'bg-[#0066FE] text-white shadow-sm'
+                        : 'text-[#6B6B6B] hover:text-[#0F172A] hover:bg-white'
                     }`}
                   >
                     Interactive Flow Tour
@@ -378,8 +378,8 @@ export default function LandingPage() {
                     onClick={() => setTourTab('new')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       tourTab === 'new'
-                        ? 'bg-[#1C1C1E] text-white shadow-sm'
-                        : 'text-[#6B6B6B] hover:text-[#1C1C1E] hover:bg-white'
+                        ? 'bg-[#0066FE] text-white shadow-sm'
+                        : 'text-[#6B6B6B] hover:text-[#0F172A] hover:bg-white'
                     }`}
                   >
                     What&apos;s New in v3
@@ -389,7 +389,7 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => setShowTourModal(false)}
-                  className="rounded-xl border border-[#E5E5E0] p-1.5 text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors cursor-pointer"
+                  className="rounded-xl border border-[#E2E8F0] p-1.5 text-[#6B6B6B] hover:text-[#0F172A] transition-colors cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -401,14 +401,14 @@ export default function LandingPage() {
                   <div className="space-y-4">
                     {/* Format switcher pills */}
                     <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                      <div className="flex items-center gap-1.5 rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-1">
+                      <div className="flex items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-1">
                         <button
                           type="button"
                           onClick={() => setVideoFormat('16x9')}
                           className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                             videoFormat === '16x9'
-                              ? 'bg-[#1C1C1E] text-white shadow-xs'
-                              : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                              ? 'bg-[#0066FE] text-white shadow-xs'
+                              : 'text-[#6B6B6B] hover:text-[#0F172A]'
                           }`}
                         >
                           <Monitor size={13} strokeWidth={2} />
@@ -419,8 +419,8 @@ export default function LandingPage() {
                           onClick={() => setVideoFormat('9x16')}
                           className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                             videoFormat === '9x16'
-                              ? 'bg-[#1C1C1E] text-white shadow-xs'
-                              : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                              ? 'bg-[#0066FE] text-white shadow-xs'
+                              : 'text-[#6B6B6B] hover:text-[#0F172A]'
                           }`}
                         >
                           <Smartphone size={13} strokeWidth={2} />
@@ -435,7 +435,7 @@ export default function LandingPage() {
 
                     {/* Responsive Video Canvas */}
                     <div
-                      className={`relative mx-auto overflow-hidden rounded-2xl shadow-xl border border-[#E5E5E0] bg-black flex items-center justify-center transition-all ${
+                      className={`relative mx-auto overflow-hidden rounded-2xl shadow-xl border border-[#E2E8F0] bg-black flex items-center justify-center transition-all ${
                         videoFormat === '16x9'
                           ? 'w-full aspect-video'
                           : 'w-full max-w-[340px] aspect-[9/16]'
@@ -458,7 +458,7 @@ export default function LandingPage() {
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-[#6B6B6B] px-1">
-                      <span className="font-semibold text-[#1C1C1E]">
+                      <span className="font-semibold text-[#0F172A]">
                         {videoFormat === '16x9' ? 'Full Product Walkthrough • 1080p 60fps' : 'Mobile Showcase Reel • 1080x1920 60fps'}
                       </span>
                       <span className="font-mono">Career-Ops v3.0</span>

@@ -75,11 +75,11 @@ export default function ResumeStudioTeaser({
       className="max-w-4xl mx-auto space-y-10"
     >
       <div className="text-center space-y-4 pt-4">
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#E5E5E0] bg-[#F5F5F0] px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
-          <Sparkles size={12} className="text-[#1C1C1E]" />
+        <div className="inline-flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-[#F1F5F9] px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
+          <Sparkles size={12} className="text-[#0F172A]" />
           Most requested · Phase 2
         </div>
-        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1C1C1E]">Resume Studio</h2>
+        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A]">Resume Studio</h2>
         <p className="text-[#6B6B6B] text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
           Edit, preview, and export resumes without leaving scan, score, tailor, and track. In development — your current workflow is unchanged.
         </p>
@@ -89,12 +89,12 @@ export default function ResumeStudioTeaser({
         {comingFeatures.map((f) => (
           <div
             key={f.title}
-            className="p-6 bg-white border border-[#E5E5E0] rounded-2xl hover:border-[#D4D4CE] transition-colors"
+            className="p-6 bg-white border border-[#E2E8F0] rounded-2xl hover:border-[#D4D4CE] transition-colors"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F0] text-[#1C1C1E] mb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1F5F9] text-[#0F172A] mb-4">
               {f.icon}
             </div>
-            <h3 className="font-bold text-[#1C1C1E] mb-1">{f.title}</h3>
+            <h3 className="font-bold text-[#0F172A] mb-1">{f.title}</h3>
             <p className="text-sm text-[#6B6B6B] leading-relaxed">{f.desc}</p>
             <span className="inline-block mt-3 text-[10px] font-bold uppercase tracking-widest text-amber-700">
               Coming soon
@@ -103,8 +103,8 @@ export default function ResumeStudioTeaser({
         ))}
       </div>
 
-      <div className="rounded-2xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 sm:p-5">
-        <h3 className="text-base font-bold text-[#1C1C1E] mb-1.5">What works today</h3>
+      <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 sm:p-5">
+        <h3 className="text-base font-bold text-[#0F172A] mb-1.5">What works today</h3>
         <p className="text-xs text-[#6B6B6B] mb-3.5">
           You don&apos;t need to wait — run the pipeline now and generated PDFs land in Resume Manager.
         </p>
@@ -117,10 +117,10 @@ export default function ResumeStudioTeaser({
                 if (item.action === 'terminal') onOpenTerminal?.();
                 else onOpenSettings?.();
               }}
-              className="text-left p-3 rounded-xl bg-white border border-[#E5E5E0] hover:border-[#1C1C1E] hover:shadow-sm transition-all group"
+              className="text-left p-3 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#0066FE] hover:shadow-sm transition-all group"
             >
-              <div className="flex items-center gap-2 text-[#1C1C1E] font-bold text-xs mb-1">
-                <span className="text-[#9CA3AF] group-hover:text-[#1C1C1E] transition-colors">{item.icon}</span>
+              <div className="flex items-center gap-2 text-[#0F172A] font-bold text-xs mb-1">
+                <span className="text-[#9CA3AF] group-hover:text-[#0F172A] transition-colors">{item.icon}</span>
                 {item.label}
               </div>
               <p className="text-[10px] font-mono text-[#9CA3AF]">{item.hint}</p>
@@ -131,7 +131,7 @@ export default function ResumeStudioTeaser({
           <button
             type="button"
             onClick={onOpenResumeManager}
-            className="mt-6 text-xs font-bold uppercase tracking-widest text-[#1C1C1E] hover:underline underline-offset-4"
+            className="mt-6 text-xs font-bold uppercase tracking-widest text-[#0F172A] hover:underline underline-offset-4"
           >
             Open Resume Manager →
           </button>

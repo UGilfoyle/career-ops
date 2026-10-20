@@ -185,7 +185,7 @@ export function CoverLetterEditor({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-2xl border border-[#E5E5E0] bg-white px-4 py-16 text-sm text-[#6B6B6B]">
+      <div className="flex items-center justify-center gap-2 rounded-2xl border border-[#E2E8F0] bg-white px-4 py-16 text-sm text-[#6B6B6B]">
         <Loader2 size={16} className="animate-spin" />
         Loading cover letter…
       </div>
@@ -201,13 +201,13 @@ export function CoverLetterEditor({
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-[#E5E5E0] bg-white p-4">
+    <div className="space-y-3 rounded-2xl border border-[#E2E8F0] bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
             Edit cover letter
           </div>
-          <p className="mt-0.5 text-sm font-semibold text-[#1C1C1E]">
+          <p className="mt-0.5 text-sm font-semibold text-[#0F172A]">
             {company || 'Company'}
           </p>
         </div>
@@ -215,7 +215,7 @@ export function CoverLetterEditor({
           <button
             type="button"
             onClick={applyProfileName}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:border-[#1C1C1E]"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#0F172A] hover:border-[#0066FE]"
           >
             <Wand2 size={12} />
             Use profile name
@@ -224,7 +224,7 @@ export function CoverLetterEditor({
             type="button"
             disabled={saving || !draftHtml}
             onClick={() => void save()}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#1C1C1E] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-[#27272a] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#0066FE] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-[#0052CC] disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
             Save
@@ -240,7 +240,7 @@ export function CoverLetterEditor({
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-sm font-medium text-[#1C1C1E] outline-none focus:border-[#1C1C1E]"
+          className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#0066FE]"
           placeholder="Your full name"
         />
       </label>
@@ -253,7 +253,7 @@ export function CoverLetterEditor({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={14}
-          className="w-full resize-y rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-sm font-normal leading-relaxed text-[#1C1C1E] outline-none focus:border-[#1C1C1E]"
+          className="w-full resize-y rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm font-normal leading-relaxed text-[#0F172A] outline-none focus:border-[#0066FE]"
           placeholder="Paragraphs separated by a blank line…"
         />
         <span className="block text-[11px] text-[#9CA3AF]">

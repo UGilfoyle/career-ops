@@ -9,7 +9,7 @@ type AuthShellProps = {
 
 export default function AuthShell({ children }: AuthShellProps) {
   return (
-    <div className="min-h-screen bg-[#FAFAF8] font-sans text-[#1C1C1E] lg:flex">
+    <div className="min-h-screen bg-[#F8FAFC] font-sans text-[#0F172A] lg:flex">
       <AuthBrandPanel />
       <div className="relative flex flex-1 flex-col justify-center overflow-hidden p-6 sm:p-8 lg:p-12 xl:p-16">
         <div className="pointer-events-none absolute top-[-20%] right-[-10%] h-[50%] w-[50%] rounded-full bg-[#f59e0b]/5 blur-[150px]" />

@@ -28,11 +28,11 @@ export default function HandbookCard() {
   }
 
   return (
-    <div className="min-w-0 rounded-2xl border border-[#E5E5E0] bg-white p-3 shadow-sm sm:rounded-[1.5rem] sm:p-5">
+    <div className="min-w-0 rounded-2xl border border-[#E2E8F0] bg-white p-3 shadow-sm sm:rounded-[1.5rem] sm:p-5">
       <div className="flex items-start gap-2">
-        <BookOpen className="mt-0.5 shrink-0 text-[#1C1C1E]" size={16} />
+        <BookOpen className="mt-0.5 shrink-0 text-[#0F172A]" size={16} />
         <div className="min-w-0">
-          <h3 className="text-sm font-bold text-[#1C1C1E]">AI + DSA 4-week handbook</h3>
+          <h3 className="text-sm font-bold text-[#0F172A]">AI + DSA 4-week handbook</h3>
           <p className="mt-1 text-xs font-medium leading-relaxed text-[#6B6B6B]">
             Gemini Pro must draw mermaid charts + whiteboard images, then Hindi caption. JD{' '}
             <span className="font-semibold text-[#475569]">Generate pack</span> is the drill.
@@ -43,7 +43,7 @@ export default function HandbookCard() {
       <ol className="mt-3 space-y-1.5 text-[11px] font-medium leading-snug text-[#475569]">
         {HANDBOOK_WEEKS.map((w) => (
           <li key={w.week}>
-            <span className="font-bold text-[#1C1C1E]">W{w.week} {w.title}.</span> {w.focus}
+            <span className="font-bold text-[#0F172A]">W{w.week} {w.title}.</span> {w.focus}
           </li>
         ))}
       </ol>
@@ -51,7 +51,7 @@ export default function HandbookCard() {
         <button
           type="button"
           onClick={() => void copy('main')}
-          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-[#1C1C1E] px-3 py-2.5 text-xs font-bold text-white sm:w-auto"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-[#0066FE] px-3 py-2.5 text-xs font-bold text-white sm:w-auto"
         >
           {copied === 'main' ? <Check size={14} /> : <Copy size={14} />}
           {copied === 'main' ? 'Copied' : 'Copy Gemini prompt'}
@@ -59,7 +59,7 @@ export default function HandbookCard() {
         <button
           type="button"
           onClick={() => void copy('visuals')}
-          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E0] px-3 py-2.5 text-xs font-bold text-[#1C1C1E] sm:w-auto"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2.5 text-xs font-bold text-[#0F172A] sm:w-auto"
         >
           {copied === 'visuals' ? <Check size={14} /> : <Image size={14} />}
           {copied === 'visuals' ? 'Copied' : 'Copy charts follow-up'}

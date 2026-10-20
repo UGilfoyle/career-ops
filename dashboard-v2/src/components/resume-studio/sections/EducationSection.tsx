@@ -18,7 +18,7 @@ export function EducationSection({
   return (
     <div className="space-y-4">
       {education.map((edu, index) => (
-        <div key={index} className="rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-4 space-y-3">
+        <div key={index} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
               Education {index + 1}
@@ -42,7 +42,7 @@ export function EducationSection({
       <button
         type="button"
         onClick={() => onChange([...education, { degree: '', school: '', period: '', location: '' }])}
-        className="w-full rounded-xl border border-dashed border-[#E5E5E0] bg-white py-3 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:border-[#1C1C1E] hover:text-[#1C1C1E] transition-colors inline-flex items-center justify-center gap-1.5"
+        className="w-full rounded-xl border border-dashed border-[#E2E8F0] bg-white py-3 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:border-[#0066FE] hover:text-[#0F172A] transition-colors inline-flex items-center justify-center gap-1.5"
       >
         <Plus size={14} /> Add education
       </button>

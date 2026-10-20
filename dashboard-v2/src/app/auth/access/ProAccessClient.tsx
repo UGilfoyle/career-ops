@@ -38,15 +38,15 @@ export default function ProAccessClient() {
   }, [token, router]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white border border-[#E5E5E0] rounded-3xl p-8 text-center shadow-sm">
-        <div className="w-12 h-12 rounded-xl bg-[#1C1C1E] text-white flex items-center justify-center mx-auto mb-4">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-white border border-[#E2E8F0] rounded-3xl p-8 text-center shadow-sm">
+        <div className="w-12 h-12 rounded-xl bg-[#0066FE] text-white flex items-center justify-center mx-auto mb-4">
           {status === 'loading' ? <Loader2 size={22} className="animate-spin" /> : <Sparkles size={22} />}
         </div>
-        <h1 className="text-lg font-bold text-[#1C1C1E] mb-2">Career-Ops Pro</h1>
+        <h1 className="text-lg font-bold text-[#0F172A] mb-2">Career-Ops Pro</h1>
         <p className="text-sm text-[#6B6B6B] mb-6">{message}</p>
         {status === 'error' && (
-          <Link href="/login" className="text-sm font-semibold text-[#1C1C1E] underline">
+          <Link href="/login" className="text-sm font-semibold text-[#0F172A] underline">
             Log in to continue
           </Link>
         )}

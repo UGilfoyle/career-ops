@@ -532,7 +532,7 @@ export default function ResumeStudio({
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-[#E5E5E0] bg-[#FAFAF8] shadow-sm">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-[#E2E8F0] bg-[#F8FAFC] shadow-sm">
       <StudioToolbar
         saveStatus={saveStatus}
         saveError={saveError}
@@ -556,23 +556,23 @@ export default function ResumeStudio({
       />
 
       {banner ? (
-        <div className="border-b border-[#E5E5E0] bg-[#F5F5F0] px-4 py-2 text-xs font-medium text-[#1C1C1E]">
+        <div className="border-b border-[#E2E8F0] bg-[#F1F5F9] px-4 py-2 text-xs font-medium text-[#0F172A]">
           {banner}
         </div>
       ) : null}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
-        <div className="min-h-0 overflow-y-auto border-b border-[#E5E5E0] lg:border-b-0 lg:border-r">
+        <div className="min-h-0 overflow-y-auto border-b border-[#E2E8F0] lg:border-b-0 lg:border-r">
           <div className="space-y-3 p-4">
             {/* ── Left Pane Sub-Navigation ── */}
-            <div className="flex flex-wrap rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-0.5 gap-0.5">
+            <div className="flex flex-wrap rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-0.5 gap-0.5">
               <button
                 type="button"
                 onClick={() => setLeftTab('jd')}
                 className={`min-w-0 flex-1 rounded-lg py-2 px-2 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   leftTab === 'jd'
-                    ? 'bg-[#1C1C1E] text-white shadow-sm'
-                    : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                    ? 'bg-[#0066FE] text-white shadow-sm'
+                    : 'text-[#6B6B6B] hover:text-[#0F172A]'
                 }`}
               >
                 <Sparkles size={13} />
@@ -584,8 +584,8 @@ export default function ResumeStudio({
                   onClick={() => setLeftTab('cover')}
                   className={`min-w-0 flex-1 rounded-lg py-2 px-2 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     leftTab === 'cover'
-                      ? 'bg-[#1C1C1E] text-white shadow-sm'
-                      : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                      ? 'bg-[#0066FE] text-white shadow-sm'
+                      : 'text-[#6B6B6B] hover:text-[#0F172A]'
                   }`}
                 >
                   <Files size={13} />
@@ -597,8 +597,8 @@ export default function ResumeStudio({
                 onClick={() => setLeftTab('editor')}
                 className={`min-w-0 flex-1 rounded-lg py-2 px-2 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   leftTab === 'editor'
-                    ? 'bg-[#1C1C1E] text-white shadow-sm'
-                    : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                    ? 'bg-[#0066FE] text-white shadow-sm'
+                    : 'text-[#6B6B6B] hover:text-[#0F172A]'
                 }`}
               >
                 <Files size={13} />
@@ -683,17 +683,17 @@ export default function ResumeStudio({
 
             {leftTab === 'editor' ? (
               <div className="space-y-3">
-                <div className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 text-xs text-[#6B6B6B]">
+                <div className="rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 text-xs text-[#6B6B6B]">
                   {editingJobId
                     ? 'This editor is the resume for the open job. Save overwrites that generated resume and refreshes its PDF. Your base CV stays separate.'
                     : 'This editor is your base CV. Paste a JD on the JD tab to score it. Open a job that already has a tailored resume to edit that file here.'}
                 </div>
                 {isEmpty ? (
-                  <div className="rounded-2xl border border-dashed border-[#E5E5E0] bg-white p-8 text-center space-y-3">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C1C1E] text-white">
+                  <div className="rounded-2xl border border-dashed border-[#E2E8F0] bg-white p-8 text-center space-y-3">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0066FE] text-white">
                       <Sparkles size={20} />
                     </div>
-                    <h3 className="text-lg font-bold text-[#1C1C1E]">Start your master resume</h3>
+                    <h3 className="text-lg font-bold text-[#0F172A]">Start your master resume</h3>
                     <p className="text-sm text-[#6B6B6B] max-w-md mx-auto">
                       Import a PDF/DOCX or fill the sections below. Paste any job description to match keywords and tailor a resume.
                     </p>
@@ -758,7 +758,7 @@ export default function ResumeStudio({
               <button
                 type="button"
                 onClick={onOpenGeneratedDocs}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-[#E5E5E0] bg-white px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#1C1C1E] hover:border-[#1C1C1E]/30 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:text-[#0F172A] hover:border-[#0066FE]/30 transition-colors"
               >
                 <Files size={14} />
                 Open Generated Docs
@@ -770,8 +770,8 @@ export default function ResumeStudio({
         <div className="min-h-[320px] lg:min-h-0">
           {leftTab === 'cover' && reviewJob &&
           (coverPreviewHtml || reviewJob.has_cover_letter_html || reviewJob.has_cover_letter_pdf) ? (
-            <div className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-2xl border border-[#E5E5E0] bg-white lg:min-h-0">
-              <div className="flex items-center justify-between border-b border-[#E5E5E0] bg-[#FAFAF8] px-4 py-3">
+            <div className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white lg:min-h-0">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
                     Live Preview · Cover letter
@@ -784,7 +784,7 @@ export default function ResumeStudio({
                   href={`/api/view/${reviewJob.jobId}?type=cl`}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-xl border border-[#E5E5E0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:border-[#1C1C1E]"
+                  className="rounded-xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#0F172A] hover:border-[#0066FE]"
                 >
                   Open
                 </a>

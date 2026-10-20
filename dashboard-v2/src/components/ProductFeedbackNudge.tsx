@@ -45,8 +45,8 @@ export default function ProductFeedbackNudge({
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-lg pointer-events-none">
-      <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-[#E5E5E0] bg-white px-4 py-3 shadow-lg">
-        <p className="text-xs text-[#1C1C1E] flex-1 leading-relaxed">
+      <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 shadow-lg">
+        <p className="text-xs text-[#0F172A] flex-1 leading-relaxed">
           Enjoying Career-Ops?{' '}
           <button
             type="button"
@@ -62,7 +62,7 @@ export default function ProductFeedbackNudge({
         <button
           type="button"
           onClick={dismiss}
-          className="shrink-0 p-1 text-[#9CA3AF] hover:text-[#1C1C1E]"
+          className="shrink-0 p-1 text-[#9CA3AF] hover:text-[#0F172A]"
           aria-label="Dismiss"
         >
           <X size={16} />

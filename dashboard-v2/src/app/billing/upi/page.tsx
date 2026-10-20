@@ -121,17 +121,17 @@ export default function UpiCheckoutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#1C1C1E]" size={32} />
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <Loader2 className="animate-spin text-[#0F172A]" size={32} />
       </div>
     );
   }
 
   if (data?.hasPro) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
         <div className="text-center">
-          <p className="text-[#1C1C1E] font-semibold">Pro is already active.</p>
+          <p className="text-[#0F172A] font-semibold">Pro is already active.</p>
           <Link href="/?tab=resume-studio" className="text-sm underline mt-2 inline-block">Open Resume Studio</Link>
         </div>
       </div>
@@ -139,16 +139,16 @@ export default function UpiCheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] py-8 px-4">
+    <div className="min-h-screen bg-[#F8FAFC] py-8 px-4">
       <div className="max-w-md mx-auto">
         <Link
           href="/"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#6B6B6B] mb-5 hover:text-[#1C1C1E]"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[#6B6B6B] mb-5 hover:text-[#0F172A]"
         >
           <ArrowLeft size={14} /> Back
         </Link>
 
-        <div className="bg-white border border-[#E5E5E0] rounded-3xl shadow-[0_1px_3px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] overflow-hidden">
+        <div className="bg-white border border-[#E2E8F0] rounded-3xl shadow-[0_1px_3px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] overflow-hidden">
           {/* Header */}
           <div className="relative px-6 pt-6 pb-7 bg-[#0B1B34] text-white overflow-hidden">
             <div
@@ -211,14 +211,14 @@ export default function UpiCheckoutPage() {
                   type="button"
                   onClick={() => void refreshStatus()}
                   disabled={checking}
-                  className="w-full flex items-center justify-center gap-2 border border-[#E5E5E0] rounded-xl py-3 text-sm font-semibold text-[#1C1C1E] hover:bg-[#FAFAF8] disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 border border-[#E2E8F0] rounded-xl py-3 text-sm font-semibold text-[#0F172A] hover:bg-[#F8FAFC] disabled:opacity-60"
                 >
                   {checking ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
                   Check verification status
                 </button>
                 <Link
                   href="/"
-                  className="block text-center text-xs font-semibold text-[#6B6B6B] hover:text-[#1C1C1E]"
+                  className="block text-center text-xs font-semibold text-[#6B6B6B] hover:text-[#0F172A]"
                 >
                   Back to dashboard
                 </Link>
@@ -228,7 +228,7 @@ export default function UpiCheckoutPage() {
                 {/* QR — the only place the real UPI ID travels */}
                 {data?.qrUrl && (
                   <div className="flex flex-col items-center">
-                    <div className="relative p-3 bg-white rounded-2xl border border-[#E5E5E0]">
+                    <div className="relative p-3 bg-white rounded-2xl border border-[#E2E8F0]">
                       <span className="absolute top-1.5 left-1.5 w-4 h-4 border-t-2 border-l-2 border-[#F26522] rounded-tl-md" />
                       <span className="absolute top-1.5 right-1.5 w-4 h-4 border-t-2 border-r-2 border-[#0F9D58] rounded-tr-md" />
                       <span className="absolute bottom-1.5 left-1.5 w-4 h-4 border-b-2 border-l-2 border-[#0F9D58] rounded-bl-md" />
@@ -242,7 +242,7 @@ export default function UpiCheckoutPage() {
                         className="block rounded-lg"
                       />
                     </div>
-                    <p className="flex items-center gap-1.5 text-xs font-semibold text-[#1C1C1E] mt-3">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-[#0F172A] mt-3">
                       <ScanLine size={14} /> Scan to pay {data?.display || '₹99'}
                     </p>
                     <div className="mt-2.5">
@@ -262,22 +262,22 @@ export default function UpiCheckoutPage() {
                 )}
 
                 {/* Payee — handle stays masked on screen */}
-                <div className="bg-[#FAFAF8] border border-[#E5E5E0] rounded-2xl px-4 py-3.5 space-y-2">
+                <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl px-4 py-3.5 space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
                       Paying to
                     </span>
-                    <span className="text-sm font-semibold text-[#1C1C1E]">{data?.payeeName}</span>
+                    <span className="text-sm font-semibold text-[#0F172A]">{data?.payeeName}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
                       UPI ID
                     </span>
-                    <span className="font-mono text-sm font-semibold text-[#1C1C1E] tracking-tight">
+                    <span className="font-mono text-sm font-semibold text-[#0F172A] tracking-tight">
                       {data?.vpaMasked}
                     </span>
                   </div>
-                  <p className="flex items-start gap-1.5 text-[11px] text-[#6B6B6B] leading-relaxed pt-1 border-t border-[#E5E5E0]">
+                  <p className="flex items-start gap-1.5 text-[11px] text-[#6B6B6B] leading-relaxed pt-1 border-t border-[#E2E8F0]">
                     <EyeOff size={12} className="mt-0.5 shrink-0" />
                     Hidden for security. The full UPI ID appears inside your payment app after you
                     scan the QR.
@@ -289,11 +289,11 @@ export default function UpiCheckoutPage() {
                   )}
                 </div>
 
-                <form onSubmit={submitUtr} className="pt-4 border-t border-[#E5E5E0] space-y-3">
+                <form onSubmit={submitUtr} className="pt-4 border-t border-[#E2E8F0] space-y-3">
                   {data?.claim?.status === 'rejected' && (
                     <p className="text-xs text-red-600 leading-relaxed">{data.claim.message}</p>
                   )}
-                  <p className="text-sm font-semibold text-[#1C1C1E]">Already paid?</p>
+                  <p className="text-sm font-semibold text-[#0F172A]">Already paid?</p>
                   <p className="text-xs text-[#6B6B6B] leading-relaxed">
                     Paste the 12-digit UPI transaction ID from PhonePe, GPay, or your bank SMS. We
                     verify manually and activate Pro (usually within a few hours).
@@ -302,13 +302,13 @@ export default function UpiCheckoutPage() {
                     value={utr}
                     onChange={(e) => setUtr(e.target.value)}
                     placeholder="UPI transaction ID / UTR"
-                    className="w-full border border-[#E5E5E0] rounded-xl px-4 py-3 text-sm font-mono outline-none focus:border-[#1C1C1E]"
+                    className="w-full border border-[#E2E8F0] rounded-xl px-4 py-3 text-sm font-mono outline-none focus:border-[#0066FE]"
                     maxLength={22}
                   />
                   <button
                     type="submit"
                     disabled={submitting || !utr.trim()}
-                    className="w-full bg-[#1C1C1E] text-white font-semibold text-sm py-3 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-[#0066FE] text-white font-semibold text-sm py-3 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
                     Submit payment for verification
@@ -319,7 +319,7 @@ export default function UpiCheckoutPage() {
           </div>
 
           {/* Trust strip */}
-          <div className="grid grid-cols-3 border-t border-[#E5E5E0] bg-[#FAFAF8]/60 divide-x divide-[#E5E5E0]">
+          <div className="grid grid-cols-3 border-t border-[#E2E8F0] bg-[#F8FAFC]/60 divide-x divide-[#E5E5E0]">
             {[
               { icon: BadgePercent, label: 'Zero gateway fees' },
               { icon: InfinityIcon, label: 'QR never expires' },

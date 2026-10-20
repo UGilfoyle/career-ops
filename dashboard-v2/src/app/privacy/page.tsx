@@ -27,10 +27,10 @@ export default function PrivacyPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#1C1C1E] p-8 md:p-24 selection:bg-[#1C1C1E]/10 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] p-8 md:p-24 selection:bg-[#0066FE]/10 font-sans">
       <Link
         href="/"
-        className="inline-flex items-center gap-2 text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors mb-12 group font-bold text-sm uppercase tracking-widest"
+        className="inline-flex items-center gap-2 text-[#6B6B6B] hover:text-[#0F172A] transition-colors mb-12 group font-bold text-sm uppercase tracking-widest"
       >
         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
         Back home
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
 
       <div className="max-w-4xl">
         <h1 className="text-4xl md:text-7xl font-bold tracking-tighter mb-6">Privacy</h1>
-        <p className="text-[#6B6B6B] text-xl mb-20 max-w-2xl font-medium leading-relaxed border-l-4 border-[#E5E5E0] pl-8">
+        <p className="text-[#6B6B6B] text-xl mb-20 max-w-2xl font-medium leading-relaxed border-l-4 border-[#E2E8F0] pl-8">
           What we store, how we use it, and what we do not do with your career data.
         </p>
 
@@ -51,7 +51,7 @@ export default function PrivacyPage() {
               transition={{ delay: i * 0.1 }}
               className="flex gap-10 items-start"
             >
-              <div className="p-5 bg-white rounded-2xl border border-[#E5E5E0] text-[#1C1C1E] shrink-0">{p.icon}</div>
+              <div className="p-5 bg-white rounded-2xl border border-[#E2E8F0] text-[#0F172A] shrink-0">{p.icon}</div>
               <div className="pt-2">
                 <h3 className="text-3xl font-bold mb-3 tracking-tight">{p.title}</h3>
                 <p className="text-[#6B6B6B] leading-relaxed max-w-xl font-medium">{p.content}</p>
@@ -60,8 +60,8 @@ export default function PrivacyPage() {
           ))}
         </div>
 
-        <div className="p-10 bg-white border border-[#E5E5E0] rounded-[2.5rem] flex items-center gap-8 shadow-2xl shadow-black/[0.02]">
-          <Key className="text-[#1C1C1E] shrink-0" size={40} />
+        <div className="p-10 bg-white border border-[#E2E8F0] rounded-[2.5rem] flex items-center gap-8 shadow-2xl shadow-black/[0.02]">
+          <Key className="text-[#0F172A] shrink-0" size={40} />
           <div>
             <h4 className="font-bold text-xl mb-1">Encrypted API keys</h4>
             <p className="text-[#6B6B6B] font-medium leading-relaxed">

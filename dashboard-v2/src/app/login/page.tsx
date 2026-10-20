@@ -226,7 +226,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#FAFAF8]">
+        <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
           <LoadingOutlined style={{ fontSize: 28 }} spin />
         </div>
       }

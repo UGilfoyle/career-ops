@@ -538,23 +538,23 @@ export function JdMatchPanel({
     && ((mode === 'pipeline' && selectedJobId) || (mode === 'paste' && pastedReady));
 
   return (
-    <div className="space-y-3 rounded-2xl border border-[#E5E5E0] bg-white p-4">
+    <div className="space-y-3 rounded-2xl border border-[#E2E8F0] bg-white p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Target size={16} className="text-[#1C1C1E]" />
-          <h4 className="text-sm font-bold text-[#1C1C1E]">JD Matcher</h4>
+          <Target size={16} className="text-[#0F172A]" />
+          <h4 className="text-sm font-bold text-[#0F172A]">JD Matcher</h4>
         </div>
         {state.loading || ingesting || uploading ? (
           <Loader2 size={14} className="animate-spin text-[#9CA3AF]" />
         ) : null}
       </div>
 
-      <div className="flex rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] p-0.5">
+      <div className="flex rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-0.5">
         <button
           type="button"
           onClick={() => setMode('paste')}
           className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-            mode === 'paste' ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+            mode === 'paste' ? 'bg-[#0066FE] text-white' : 'text-[#6B6B6B] hover:text-[#0F172A]'
           }`}
         >
           Paste JD
@@ -563,7 +563,7 @@ export function JdMatchPanel({
           type="button"
           onClick={() => setMode('pipeline')}
           className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-            mode === 'pipeline' ? 'bg-[#1C1C1E] text-white' : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+            mode === 'pipeline' ? 'bg-[#0066FE] text-white' : 'text-[#6B6B6B] hover:text-[#0F172A]'
           }`}
         >
           Pipeline job
@@ -589,7 +589,7 @@ export function JdMatchPanel({
                 }}
                 rows={7}
                 placeholder="Paste the full job description here — responsibilities, requirements, qualifications…"
-                className="w-full resize-y rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#1C1C1E]"
+                className="w-full resize-y rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm text-[#0F172A] outline-none focus:border-[#0066FE]"
               />
             )}
           </label>
@@ -609,7 +609,7 @@ export function JdMatchPanel({
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5E0] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:bg-[#F5F5F0] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#0F172A] hover:bg-[#F1F5F9] disabled:opacity-50"
             >
               <FileUp size={12} />
               Upload .txt / .pdf / .docx
@@ -618,7 +618,7 @@ export function JdMatchPanel({
               <button
                 type="button"
                 onClick={() => setPreviewPasted((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5E0] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E] hover:bg-[#F5F5F0]"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#0F172A] hover:bg-[#F1F5F9]"
               >
                 {previewPasted ? 'Edit Raw JD' : 'Structured Preview'}
               </button>
@@ -636,7 +636,7 @@ export function JdMatchPanel({
           <select
             value={selectedJobId ?? ''}
             onChange={(e) => onSelectJob(e.target.value ? Number(e.target.value) : null)}
-            className="w-full rounded-xl border border-[#E5E5E0] bg-[#FAFAF8] px-3 py-2.5 text-sm font-medium text-[#1C1C1E] outline-none focus:border-[#1C1C1E]"
+            className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#0066FE]"
           >
             <option value="">Select a job…</option>
             {options.map((j) => {
@@ -708,7 +708,7 @@ export function JdMatchPanel({
               <button
                 type="button"
                 onClick={() => onShowLiveDraft()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5E0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E]"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#0F172A]"
               >
                 Open Edit Resume
               </button>
@@ -735,7 +735,7 @@ export function JdMatchPanel({
               <button
                 type="button"
                 onClick={() => onTailor(selectedJobId)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#1C1C1E] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0066FE] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white"
               >
                 <Zap size={12} />
                 Re-tailor this job
@@ -760,7 +760,7 @@ export function JdMatchPanel({
       {showResults ? (
         <>
           {/* ── Score overview with progress ring ── */}
-          <div className="flex items-center gap-4 rounded-2xl border border-[#E5E5E0] bg-gradient-to-r from-[#F5F5F0] to-white p-4">
+          <div className="flex items-center gap-4 rounded-2xl border border-[#E2E8F0] bg-gradient-to-r from-[#F5F5F0] to-white p-4">
             <MatchProgressRing
               value={state.coveragePct}
               size={72}
@@ -769,7 +769,7 @@ export function JdMatchPanel({
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="rounded-full bg-[#1C1C1E] px-2.5 py-0.5 font-mono text-[10px] text-white">
+                <span className="rounded-full bg-[#0066FE] px-2.5 py-0.5 font-mono text-[10px] text-white">
                   JD ATS {state.atsScore ?? '—'}%
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B]">
@@ -796,17 +796,17 @@ export function JdMatchPanel({
           {/* ── JD Requirements — color-coded chips with interactive filters ── */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E]">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#0F172A]">
                 JD Requirements & Gaps
               </div>
-              <div className="flex rounded-lg border border-[#E5E5E0] bg-white p-0.5 text-[9px] font-bold">
+              <div className="flex rounded-lg border border-[#E2E8F0] bg-white p-0.5 text-[9px] font-bold">
                 <button
                   type="button"
                   onClick={() => setKeywordFilter('all')}
                   className={`rounded-md px-2 py-0.5 transition-colors cursor-pointer ${
                     keywordFilter === 'all'
-                      ? 'bg-[#1C1C1E] text-white'
-                      : 'text-[#6B6B6B] hover:text-[#1C1C1E]'
+                      ? 'bg-[#0066FE] text-white'
+                      : 'text-[#6B6B6B] hover:text-[#0F172A]'
                   }`}
                 >
                   All ({state.honest.length + state.partial.length + state.gaps.length})
@@ -940,7 +940,7 @@ export function JdMatchPanel({
           {state.suggestions.length > 0 ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#1C1C1E]">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#0F172A]">
                   <Lightbulb size={12} className="text-amber-500" />
                   Suggested Improvements
                 </div>
@@ -948,9 +948,9 @@ export function JdMatchPanel({
               {state.suggestions.map((s, i) => (
                 <div
                   key={i}
-                  className="group flex items-center gap-2 rounded-xl border border-[#E5E5E0] bg-white px-3 py-2.5 transition-colors hover:border-[#1C1C1E]/30"
+                  className="group flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 transition-colors hover:border-[#0066FE]/30"
                 >
-                  <p className="flex-1 text-xs font-medium text-[#1C1C1E]">{s.text}</p>
+                  <p className="flex-1 text-xs font-medium text-[#0F172A]">{s.text}</p>
                   <button
                     type="button"
                     disabled={!onApplyMirroredProfile || !s.keyword}
@@ -958,7 +958,7 @@ export function JdMatchPanel({
                       if (!onApplyMirroredProfile || !s.keyword) return;
                       void handlePatchKeywords([s.keyword]);
                     }}
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#E5E5E0] bg-[#FAFAF8] text-[#9CA3AF] transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#9CA3AF] transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
                     title="Weave keyword into skills & experience"
                   >
                     <Plus size={12} />
@@ -973,7 +973,7 @@ export function JdMatchPanel({
               type="button"
               onClick={mode === 'paste' ? () => void handleTailorPastedJd() : () => onTailor(activeJobId!)}
               disabled={ingesting || (mode === 'pipeline' && !selectedJobId)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C1C1E] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#27272a] disabled:opacity-50 transition-colors active:scale-[0.98]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0066FE] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#0052CC] disabled:opacity-50 transition-colors active:scale-[0.98]"
             >
               <Zap size={14} />
               {mode === 'paste'

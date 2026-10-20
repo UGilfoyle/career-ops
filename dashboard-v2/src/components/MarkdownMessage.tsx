@@ -16,7 +16,7 @@ function renderInline(text: string): React.ReactNode[] {
       parts.push(
         <code
           key={key++}
-          className="rounded bg-[#F5F5F0] border border-[#E5E5E0] px-1.5 py-0.5 font-mono text-[11px] font-semibold text-emerald-800"
+          className="rounded bg-[#F1F5F9] border border-[#E2E8F0] px-1.5 py-0.5 font-mono text-[11px] font-semibold text-emerald-800"
         >
           {codeMatch[1]}
         </code>
@@ -29,7 +29,7 @@ function renderInline(text: string): React.ReactNode[] {
     const boldItalicMatch = remaining.match(/^(\*\*\*|___)(.*?)\1/);
     if (boldItalicMatch) {
       parts.push(
-        <strong key={key++} className="font-bold italic text-[#1C1C1E]">
+        <strong key={key++} className="font-bold italic text-[#0F172A]">
           {renderInline(boldItalicMatch[2])}
         </strong>
       );
@@ -41,7 +41,7 @@ function renderInline(text: string): React.ReactNode[] {
     const boldMatch = remaining.match(/^(\*\*|__)(.*?)\1/);
     if (boldMatch) {
       parts.push(
-        <strong key={key++} className="font-bold text-[#1C1C1E]">
+        <strong key={key++} className="font-bold text-[#0F172A]">
           {renderInline(boldMatch[2])}
         </strong>
       );
@@ -199,7 +199,7 @@ export function MarkdownMessage({ content }: { content: string }) {
       // 3. Horizontal Rule
       if (/^(\*\*\*|---|___)$/.test(line.trim())) {
         flushList();
-        elements.push(<hr key={`hr-${elements.length}`} className="my-3 border-t border-[#E5E5E0]" />);
+        elements.push(<hr key={`hr-${elements.length}`} className="my-3 border-t border-[#E2E8F0]" />);
         continue;
       }
 
@@ -207,7 +207,7 @@ export function MarkdownMessage({ content }: { content: string }) {
       if (line.startsWith('### ')) {
         flushList();
         elements.push(
-          <h3 key={`h3-${elements.length}`} className="mt-3.5 mb-1.5 text-sm font-bold text-[#1C1C1E]">
+          <h3 key={`h3-${elements.length}`} className="mt-3.5 mb-1.5 text-sm font-bold text-[#0F172A]">
             {renderInline(line.slice(4))}
           </h3>
         );
@@ -216,7 +216,7 @@ export function MarkdownMessage({ content }: { content: string }) {
       if (line.startsWith('## ')) {
         flushList();
         elements.push(
-          <h2 key={`h2-${elements.length}`} className="mt-4 mb-2 text-base font-extrabold text-[#1C1C1E] tracking-tight">
+          <h2 key={`h2-${elements.length}`} className="mt-4 mb-2 text-base font-extrabold text-[#0F172A] tracking-tight">
             {renderInline(line.slice(3))}
           </h2>
         );
@@ -225,7 +225,7 @@ export function MarkdownMessage({ content }: { content: string }) {
       if (line.startsWith('# ')) {
         flushList();
         elements.push(
-          <h1 key={`h1-${elements.length}`} className="mt-4 mb-2 text-lg font-extrabold text-[#1C1C1E] tracking-tight">
+          <h1 key={`h1-${elements.length}`} className="mt-4 mb-2 text-lg font-extrabold text-[#0F172A] tracking-tight">
             {renderInline(line.slice(2))}
           </h1>
         );

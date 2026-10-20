@@ -27,10 +27,10 @@ export default function DocsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#1C1C1E] p-8 md:p-24 selection:bg-[#1C1C1E]/10 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] p-8 md:p-24 selection:bg-[#0066FE]/10 font-sans">
       <Link
         href="/"
-        className="inline-flex items-center gap-2 text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors mb-12 group font-bold text-sm uppercase tracking-widest"
+        className="inline-flex items-center gap-2 text-[#6B6B6B] hover:text-[#0F172A] transition-colors mb-12 group font-bold text-sm uppercase tracking-widest"
       >
         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
         Back home
@@ -38,7 +38,7 @@ export default function DocsPage() {
 
       <div className="max-w-4xl">
         <h1 className="text-4xl md:text-7xl font-bold tracking-tighter mb-6">Documentation</h1>
-        <p className="text-[#6B6B6B] text-xl mb-20 max-w-2xl font-medium leading-relaxed border-l-4 border-[#E5E5E0] pl-8">
+        <p className="text-[#6B6B6B] text-xl mb-20 max-w-2xl font-medium leading-relaxed border-l-4 border-[#E2E8F0] pl-8">
           How Career-Ops works: scan, score, tailor, and track your applications.
         </p>
 
@@ -51,16 +51,16 @@ export default function DocsPage() {
               transition={{ delay: i * 0.1 }}
               className="space-y-6"
             >
-              <div className="p-4 bg-[#F5F5F0] w-fit rounded-2xl border border-[#E5E5E0] text-[#1C1C1E]">{s.icon}</div>
+              <div className="p-4 bg-[#F1F5F9] w-fit rounded-2xl border border-[#E2E8F0] text-[#0F172A]">{s.icon}</div>
               <h3 className="text-3xl font-bold tracking-tight">{s.title}</h3>
               <p className="text-[#6B6B6B] leading-relaxed font-medium">{s.content}</p>
             </motion.div>
           ))}
         </div>
 
-        <div className="mt-32 p-12 bg-white border border-[#E5E5E0] rounded-[2.5rem] shadow-2xl shadow-black/[0.02]">
+        <div className="mt-32 p-12 bg-white border border-[#E2E8F0] rounded-[2.5rem] shadow-2xl shadow-black/[0.02]">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-            <Cpu className="text-[#1C1C1E]" size={24} />
+            <Cpu className="text-[#0F172A]" size={24} />
             AI features
           </h2>
           <p className="text-[#6B6B6B] text-lg leading-relaxed font-medium">

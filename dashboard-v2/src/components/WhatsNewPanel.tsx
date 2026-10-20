@@ -30,8 +30,8 @@ const BADGE_STYLES: Record<string, string> = {
   Flagship: 'bg-amber-50 text-amber-800 border-amber-200',
   Improved: 'bg-sky-50 text-sky-700 border-sky-200',
   Security: 'bg-violet-50 text-violet-700 border-violet-200',
-  Live: 'bg-[#1C1C1E] text-white border-[#1C1C1E]',
-  Bonus: 'bg-[#F5F5F0] text-[#6B6B6B] border-[#E5E5E0]',
+  Live: 'bg-[#0066FE] text-white border-[#0066FE]',
+  Bonus: 'bg-[#F1F5F9] text-[#6B6B6B] border-[#E2E8F0]',
 };
 
 type Props = {
@@ -46,8 +46,8 @@ export function WhatsNewPanel({ variant = 'modal', onDismiss, showCta = true }: 
 
   if (variant === 'signup') {
     return (
-      <div className="mb-8 rounded-[1.75rem] border border-[#E5E5E0] bg-[#FAFAF8] overflow-hidden">
-        <div className="px-6 py-4 bg-[#1C1C1E] text-white flex items-start justify-between gap-3">
+      <div className="mb-8 rounded-[1.75rem] border border-[#E2E8F0] bg-[#F8FAFC] overflow-hidden">
+        <div className="px-6 py-4 bg-[#0066FE] text-white flex items-start justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-white/70 mb-1">
               <Sparkles size={10} />
@@ -65,7 +65,7 @@ export function WhatsNewPanel({ variant = 'modal', onDismiss, showCta = true }: 
         <div className="px-5 pb-4">
           <Link
             href="/"
-            className="text-[10px] font-bold text-[#6B6B6B] hover:text-[#1C1C1E] uppercase tracking-wider"
+            className="text-[10px] font-bold text-[#6B6B6B] hover:text-[#0F172A] uppercase tracking-wider"
           >
             See all features on homepage →
           </Link>
@@ -76,7 +76,7 @@ export function WhatsNewPanel({ variant = 'modal', onDismiss, showCta = true }: 
 
   return (
     <>
-      <div className="bg-[#1C1C1E] p-8 text-white relative overflow-hidden">
+      <div className="bg-[#0066FE] p-8 text-white relative overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[150%] bg-emerald-500/10 rounded-full blur-[60px]" />
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-[9px] font-bold uppercase tracking-widest mb-3">
           <Sparkles size={10} />
@@ -96,12 +96,12 @@ export function WhatsNewPanel({ variant = 'modal', onDismiss, showCta = true }: 
       </div>
 
       {(showCta || onDismiss) && (
-        <div className="p-6 bg-[#FAFAF8] border-t border-[#E5E5E0] flex items-center justify-between gap-4">
+        <div className="p-6 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between gap-4">
           {onDismiss ? (
             <button
               type="button"
               onClick={onDismiss}
-              className="text-xs font-bold text-[#6B6B6B] hover:text-[#1C1C1E] transition-colors cursor-pointer"
+              className="text-xs font-bold text-[#6B6B6B] hover:text-[#0F172A] transition-colors cursor-pointer"
             >
               Dismiss
             </button>
@@ -111,7 +111,7 @@ export function WhatsNewPanel({ variant = 'modal', onDismiss, showCta = true }: 
           {showCta ? (
             <Link
               href="/signup"
-              className="px-6 py-3 bg-[#1C1C1E] text-white text-xs font-bold rounded-xl hover:bg-[#27272a] transition-all shadow-md active:scale-95 flex items-center gap-2"
+              className="px-6 py-3 bg-[#0066FE] text-white text-xs font-bold rounded-xl hover:bg-[#0052CC] transition-all shadow-md active:scale-95 flex items-center gap-2"
             >
               Create free account
               <ArrowRight size={12} />
@@ -129,11 +129,11 @@ function FeatureRow({ feature, compact }: { feature: ProductFeature; compact?: b
 
   return (
     <div className="flex gap-4">
-      <div className="h-10 w-10 bg-[#FAFAF8] border border-[#E5E5E0] rounded-xl flex items-center justify-center text-[#1C1C1E] shrink-0 shadow-sm">
+      <div className="h-10 w-10 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl flex items-center justify-center text-[#0F172A] shrink-0 shadow-sm">
         {icon}
       </div>
       <div className="min-w-0">
-        <h4 className="text-sm font-bold text-[#1C1C1E] flex items-center gap-2 flex-wrap">
+        <h4 className="text-sm font-bold text-[#0F172A] flex items-center gap-2 flex-wrap">
           {feature.title}
           <span
             className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${badgeClass}`}
