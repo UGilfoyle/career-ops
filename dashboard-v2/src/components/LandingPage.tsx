@@ -120,9 +120,9 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={() => { setTourTab('flow'); setShowTourModal(true); }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50/90 border border-emerald-300/80 text-emerald-800 text-[11px] font-bold uppercase tracking-wider mb-6 hover:bg-emerald-100 transition-colors shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-bold uppercase tracking-wider mb-6 hover:bg-blue-100 transition-colors shadow-xs cursor-pointer"
           >
-            <Sparkles size={13} className="text-emerald-600" />
+            <Sparkles size={13} className="text-blue-600" />
             <span>v3 RELEASE: COPILOT &amp; RESUME STUDIO</span>
           </button>
         </motion.div>
@@ -134,9 +134,9 @@ export default function LandingPage() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-center space-y-4 max-w-3xl"
         >
-          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight leading-[1.08] text-[#0F172A]">
+          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight leading-[1.08] text-[#081929]">
             Run your job search <br />
-            <span className="text-[#8E8E93]">from one place</span>
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">automated from one place</span>
           </h1>
 
           <p className="text-[#6B6B6B] text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-normal pt-1">
@@ -148,7 +148,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-3">
             <Link
               href="/signup"
-              className="w-full sm:w-auto px-7 py-3.5 bg-[#0066FE] text-white font-bold text-sm rounded-full flex items-center justify-center gap-2 hover:bg-[#0052CC] transition-all shadow-md active:scale-95 group"
+              className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-sm rounded-full flex items-center justify-center gap-2 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 active:scale-95 group"
             >
               <span>Get started free</span>
               <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform text-white/70" />
@@ -188,7 +188,7 @@ export default function LandingPage() {
         <div className="w-full mt-12 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Card 1: Smart Scoring */}
-            <div className="rounded-3xl border border-[#E2E8F0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all">
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-xl hover:border-blue-300 hover:-translate-y-1 transition-all duration-300 text-center flex flex-col items-center space-y-3.5">
               <div className="h-12 w-12 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-sm">
                 <Target size={22} strokeWidth={2.2} />
               </div>
@@ -199,7 +199,7 @@ export default function LandingPage() {
             </div>
 
             {/* Card 2: Resume Studio */}
-            <div className="rounded-3xl border border-[#E2E8F0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all">
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-xl hover:border-blue-300 hover:-translate-y-1 transition-all duration-300 text-center flex flex-col items-center space-y-3.5">
               <div className="h-12 w-12 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-sm">
                 <Eye size={22} strokeWidth={2.2} />
               </div>
@@ -210,7 +210,7 @@ export default function LandingPage() {
             </div>
 
             {/* Card 3: Voice Mock & Practice */}
-            <div className="rounded-3xl border border-[#E2E8F0] bg-white p-7 shadow-sm text-center flex flex-col items-center space-y-3.5 card-hover-lift transition-all relative overflow-hidden">
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-xl hover:border-blue-300 hover:-translate-y-1 transition-all duration-300 text-center flex flex-col items-center space-y-3.5 relative overflow-hidden">
               <div className="h-12 w-12 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-sm">
                 <Mic size={22} strokeWidth={2.2} />
               </div>

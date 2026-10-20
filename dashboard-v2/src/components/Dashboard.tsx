@@ -5232,8 +5232,8 @@ function NavItem({
       title={collapsed ? (badge ? `${label} (${badge})` : label) : undefined}
       onClick={onClick}
       className={`w-full flex items-center rounded-xl transition-all ${
-        collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
-      } ${active ? 'bg-[#0066FE] text-white font-bold shadow-md' : 'text-[#6B6B6B] hover:text-[#0F172A] hover:bg-white/50'}`}
+        collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'
+      } ${active ? 'bg-blue-50 text-blue-700 font-bold border-l-3 border-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium'}`}
     >
       <span className="relative shrink-0">
         {icon}
