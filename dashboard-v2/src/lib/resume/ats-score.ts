@@ -3,8 +3,10 @@ import { calculateYearsOfExperience, masterSummaryText } from './fill-template';
 import { getCompetencies, setCompetencies } from './types';
 import { runJdMatch, type JdMatchResult } from './jd-match';
 import { extractTailorAtsKeywords } from './tailor-keywords';
+import { evaluateAtsDiagnostic, type AtsDiagnostic } from './ats-diagnostic';
 
 export type AtsScoreResult = {
+  diagnostic?: AtsDiagnostic;
   score: number;
   matched: string[];
   missing: string[];
@@ -18,24 +20,15 @@ export type AtsScoreResult = {
 
 /** Structure completeness (no JD) — kept for empty-job state. */
 export function structureAtsScore(profile: ResumeContext): AtsScoreResult {
-  let score = 20;
-  const c = profile.candidate || {};
-  if (c.full_name?.trim()) score += 10;
-  if (c.email?.trim()) score += 10;
-  if (c.phone?.trim()) score += 5;
-  if (c.linkedin?.trim()) score += 5;
-  if (masterSummaryText(profile).trim().length > 40) score += 15;
-  if ((profile.narrative?.superpowers || []).length >= 3) score += 10;
-  if ((profile.experience || []).length >= 1) score += 15;
-  if ((profile.experience || []).some((e) => (e.bullets || []).length >= 2)) score += 10;
-  if ((profile.education || []).length >= 1) score += 10;
+  const diagnostic = evaluateAtsDiagnostic(profile, null);
   return {
-    score: Math.min(100, score),
+    score: diagnostic.overallScore,
     matched: [],
     missing: [],
     total: 0,
     source: 'structure',
     scoredFrom: 'structure',
+    diagnostic,
   };
 }
 
@@ -157,6 +150,7 @@ export async function scoreMasterAgainstJd(
         { summary: tailoredText, core_competencies: [], experience: {} },
         keywords,
       ) as { score: number; matched: string[]; missing: string[] };
+      const diag = evaluateAtsDiagnostic(profile, { matched: tailoredMeasured.matched, missing: tailoredMeasured.missing, total: keywords.length });
       return {
         score: tailoredMeasured.score,
         matched: tailoredMeasured.matched,
@@ -165,6 +159,7 @@ export async function scoreMasterAgainstJd(
         source: 'jd',
         scoredFrom: 'tailored',
         jdMatch: { ...jdMatch, coveragePct: tailoredMeasured.score },
+        diagnostic: diag,
       };
     }
 
@@ -173,6 +168,7 @@ export async function scoreMasterAgainstJd(
       matched: string[];
       missing: string[];
     };
+    const diag = evaluateAtsDiagnostic(profile, { matched: measured.matched, missing: measured.missing, total: keywords.length });
     return {
       score: measured.score,
       matched: measured.matched,
@@ -184,6 +180,7 @@ export async function scoreMasterAgainstJd(
         ...jdMatch,
         coveragePct: measured.score,
       },
+      diagnostic: diag,
     };
   } catch {
     return {

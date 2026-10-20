@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CareerOps ATS Auto-Fill</title>
+  <style>
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0F172A;
+      color: #F8FAFC;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid #1E293B;
+      padding-bottom: 10px;
+    }
+    .header h2 {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    .badge {
+      background: #10B981;
+      color: #FFFFFF;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+    }
+    .card {
+      background: #1E293B;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+    .field-label {
+      color: #94A3B8;
+    }
+    .field-val {
+      font-weight: 600;
+      color: #F1F5F9;
+      max-width: 180px;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .btn-fill {
+      width: 100%;
+      background: #3B82F6;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .btn-fill:hover {
+      background: #2563EB;
+    }
+    .supported-tags {
+      font-size: 10px;
+      color: #64748B;
+      text-align: center;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>CareerOps</h2>
+    <span class="badge">ATS Fill</span>
+  </div>
+
+  <div class="card">
+    <div class="field-row">
+      <span class="field-label">Candidate</span>
+      <span class="field-val" id="profile-name">Candidate</span>
+    </div>
+    <div class="field-row">
+      <span class="field-label">Email</span>
+      <span class="field-val" id="profile-email">candidate@example.com</span>
+    </div>
+    <div class="field-row">
+      <span class="field-label">Phone</span>
+      <span class="field-val" id="profile-phone">+1 555-0199</span>
+    </div>
+    <div class="field-row">
+      <span class="field-label">Target Role</span>
+      <span class="field-val" id="profile-role">Software Engineer</span>
+    </div>
+  </div>
+
+  <button class="btn-fill" id="btn-trigger-fill">
+    ⚡ 1-Click Auto-Fill Page
+  </button>
+
+  <div class="supported-tags">
+    Supported ATS: Greenhouse, Lever, Workday, Ashby, BambooHR, LinkedIn Easy Apply
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
