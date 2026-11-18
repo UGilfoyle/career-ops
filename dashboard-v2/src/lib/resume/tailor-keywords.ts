@@ -8,7 +8,7 @@ import type { ResumeContext } from './types';
 async function importTailoringPlan() {
   const candidates = [
     join(/* turbopackIgnore: true */ process.cwd(), '..', 'resume-tailoring-plan.mjs'),
-    join(/* turbopackIgnore: true */ process.cwd(), 'runtime-assets', '..', '..', 'resume-tailoring-plan.mjs'),
+    join(/* turbopackIgnore: true */ process.cwd(), 'runtime-assets', 'resume-tailoring-plan.mjs'),
   ];
   let lastErr: unknown;
   for (const file of candidates) {

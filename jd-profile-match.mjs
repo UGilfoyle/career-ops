@@ -117,7 +117,20 @@ const PROFILE_SYNONYMS = {
   'ci/cd': ['continuous deployment', 'continuous integration', 'github actions', 'pre-flight validation', 'deployment workflow'],
   react: ['react.js'],
   redux: ['redux'],
-  'restful api': ['restful apis', 'backend api', 'high-throughput backend', 'fastapi'],
+  'rest api': ['rest', 'restful', 'restful api', 'restful apis', 'backend api', 'apis'],
+  'restful api': ['restful apis', 'backend api', 'high-throughput backend', 'fastapi', 'rest api'],
+  middleware: ['service integration', 'microservice', 'express', 'node.js', 'middleware'],
+  webhooks: ['webhook', 'api', 'event', 'integration'],
+  webhook: ['webhook', 'api', 'event', 'integration'],
+  'operational metrics': ['metric', 'metrics', 'monitoring', 'cloudwatch', 'telemetry', 'datadog', 'latency'],
+  'monitoring & alerting': ['monitoring', 'cloudwatch', 'alarms', 'elk', 'tracing', 'logging', 'datadog'],
+  'incident management': ['incident', 'rca', 'troubleshoot', 'triage', 'l3', 'uptime'],
+  sla: ['uptime', '99.9%', 'latency', 'p99', 'incident', 'sla'],
+  'batch processing': ['batch', 'etl', 'ingestion', 'pipeline', 'migration', 'worker'],
+  'transformation logic': ['etl', 'schema', 'migration', 'validation', 'ingestion'],
+  'data platforms': ['postgresql', 'etl', 'telemetry', 'pipeline', 'warehouse'],
+  'enterprise architecture': ['architecture', 'microservices', 'distributed', 'system design', 'standards'],
+  'production triage': ['triage', 'troubleshoot', 'incident', 'rca', 'l3', 'production support'],
   llm: ['gpt', 'claude', 'openai', 'chromadb', 'query-rewriting', 'text-embedding', 'pydantic'],
   cursor: ['cursor', 'claude code', 'ai-native tool', 'ai-assisted'],
   copilot: ['copilot', 'github copilot', 'ai-native', 'ai-assisted', 'claude code', 'gpt'],
@@ -367,6 +380,13 @@ export function extractJdPostedTitle(jdText) {
     if (cleaned) return cleaned;
   }
 
+  // 1b. Common JD opener: [Company] is seeking/looking for an [experienced/senior/lead] [Role Title]
+  const seekingMatch = t.match(/(?:seeking|looking for)\s+(?:an?|our next)?\s+(?:experienced|senior|lead|talented|exceptional)?\s*([A-Za-z0-9/\s-]{4,60}?\s*(?:Engineer|Developer|Architect|Specialist|Consultant|Manager|Lead))\b/i);
+  if (seekingMatch) {
+    const cleaned = cleanExtractedTitle(seekingMatch[1]);
+    if (cleaned && isRoleLikeTitle(cleaned)) return cleaned;
+  }
+
   // 2. Markdown H1 or lines with company separator (e.g. # Title — Company, Title @ Company)
   const lines = t.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 6);
   for (const line of lines) {
@@ -391,8 +411,10 @@ function seniorizePostedTitle(title, years) {
   t = t.replace(/\s+I\s*\/\s*II\b/i, '');
   t = t.replace(/\s+I{1,3}\b/i, '');
   if (/\b(senior|staff|principal|lead|junior|associate|intern)\b/i.test(t)) return t;
-  if ((Number(years) || 0) >= 5 && /^(?:software\s+)?(?:engineer|developer)\b/i.test(t)) {
-    return t.replace(/^(?:software\s+)?(?:engineer|developer)/i, (m) => `Senior ${m}`);
+  if ((Number(years) || 0) >= 5 && /(?:engineer|developer|architect)\b/i.test(t)) {
+    return t.replace(/^(?:software\s+)?(?:engineer|developer)/i, (m) => `Senior ${m}`).startsWith('Senior ')
+      ? t.replace(/^(?:software\s+)?(?:engineer|developer)/i, (m) => `Senior ${m}`)
+      : `Senior ${t}`;
   }
   return t;
 }
@@ -818,10 +840,13 @@ const CORE_CLOUD_INFRA = new Set([
   const iotShape = /\biot\b|\btelemetry\b|\bderms?\b/i.test(jdLower);
   const lines = [];
 
+  const isIntegrationRole = /\b(integration engineer|integration developer|ipaas|mulesoft|workato|boomi)\b/i.test(jdLower);
   const domainClause =
     /\bdata engineer|databricks|pyspark|data factory|snowflake\b/i.test(jdLower)
       ? 'data platforms, pipelines, and cloud analytics systems'
-      : embedded
+      : isIntegrationRole
+        ? 'enterprise integrations, API systems, and event-driven workflows'
+        : embedded
         ? 'Linux services, multi-process systems, and communications software'
         : iotShape
           ? 'event-driven integrations, IoT telemetry pipelines, and cloud APIs'
@@ -839,9 +864,12 @@ const CORE_CLOUD_INFRA = new Set([
                       ? 'Python backend services, RESTful APIs, and scalable SQL/NoSQL data layers'
                     : 'backends, cloud platforms, and API systems';
 
+  const leadFirst = String(leadTerms[0] || '').toLowerCase().trim();
+  const usesIn = CORE_LANGUAGES.has(leadFirst) || CORE_FRAMEWORKS.has(leadFirst);
+  const prep = usesIn ? 'in' : 'with expertise in';
   lines.push(
     lead
-      ? `${title} with ${yearsLabel} owning production ${domainClause} in ${lead}.`
+      ? `${title} with ${yearsLabel} owning production ${domainClause} ${prep} ${lead}.`
       : `${title} with ${yearsLabel} owning production ${domainClause}.`,
   );
 
@@ -853,6 +881,8 @@ const CORE_CLOUD_INFRA = new Set([
     lines.push('Own Python-based ETL validation, source-to-target checks, and SQL-backed data reconciliation across warehouse layers.');
   } else if (embedded) {
     lines.push('Design and ship Linux services in Agile/Scrum: multi-process applications, Jenkins CI/CD, automated tests, and production troubleshooting, with AWS/Azure where the platform needs it.');
+  } else if (isIntegrationRole) {
+    lines.push('Design and maintain reliable API connectors, event-driven message pipelines, and automated monitoring across enterprise platforms.');
   } else if (workShape) {
     lines.push(workShape);
   } else if (/\b(web scrap|scraping|puppeteer|playwright|cheerio|selenium)\b/i.test(jdLower)) {

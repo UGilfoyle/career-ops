@@ -231,6 +231,8 @@ const HARD_SKILLS = new Set([
   'webpack', 'vite', 'llm', 'rag', 'langchain', 'pytorch', 'tensorflow',
   'chromadb', 'openai', 'claude', 'gpt', 'cursor', 'copilot',
   'github copilot', 'snowflake', 'spark', 'airflow', 'dbt', 'databricks',
+  'salesforce', 'workday', 'netsuite', 'workato', 'mulesoft', 'boomi', 'ipaas',
+  'soap', 'webhooks',
 ]);
 
 function normalizedSkill(gap) {

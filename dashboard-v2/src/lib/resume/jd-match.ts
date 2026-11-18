@@ -16,7 +16,7 @@ export type JdMatchResult = {
 async function importJdProfileMatch() {
   const candidates = [
     join(/* turbopackIgnore: true */ process.cwd(), '..', 'jd-profile-match.mjs'),
-    join(/* turbopackIgnore: true */ process.cwd(), 'runtime-assets', '..', '..', 'jd-profile-match.mjs'),
+    join(/* turbopackIgnore: true */ process.cwd(), 'runtime-assets', 'jd-profile-match.mjs'),
   ];
   let lastErr: unknown;
   for (const file of candidates) {

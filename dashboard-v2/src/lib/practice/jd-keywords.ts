@@ -11,7 +11,7 @@ type JdKeywordMod = {
 async function importJdKeywordAlign(): Promise<JdKeywordMod> {
   const candidates = [
     join(/* turbopackIgnore: true */ process.cwd(), '..', 'jd-keyword-align.mjs'),
-    join(/* turbopackIgnore: true */ process.cwd(), 'runtime-assets', '..', '..', 'jd-keyword-align.mjs'),
+    join(/* turbopackIgnore: true */ process.cwd(), 'runtime-assets', 'jd-keyword-align.mjs'),
   ];
   let lastErr: unknown;
   for (const file of candidates) {

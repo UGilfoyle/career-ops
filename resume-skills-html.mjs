@@ -51,6 +51,7 @@ const TECH_PATTERNS = [
   /\b(kafka|rabbitmq|nats|pulsar|flink|spark|pyspark|airflow|dbt|snowflake|redshift|bigquery|databricks|azure\s?data\s?factory|\badf\b|mlflow|sagemaker|pytorch|tensorflow|langchain|openai|hugging\s?face|llm|rag|vector\s?db|pinecone|weaviate|qdrant|milvus|chromadb|apache\s*camel)\b/i,
   /\b(jest|mocha|pytest|cypress|playwright|puppeteer|cheerio|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack|gdb|valgrind|uml|3gpp|module\s*federation)\b/i,
   /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet|tcp\/ip|mqtt|iot)\b/i,
+  /\b(workato|mulesoft|boomi|ipaas|celigo|zapier|salesforce|workday|netsuite|servicenow|soap|webhooks?|middleware|runbooks?|sla)\b/i,
   /\b(microservices?|system\s?design|system\s?architecture|software\s?architecture|backend\s?architecture|cloud\s?architecture|data\s?modeling|database\s?design|api\s?design|event-?driven(?:\s+architecture)?|distributed\s+systems|observability|ci\/cd|devops|sre|etl|orm|scd|unit\s+testing|integration\s+testing|agile|scrum|kanban|infrastructure\s+as\s+code|continuous\s+integration|decision\s+intelligence|industrial\s+systems|prompt\s*engineering)\b/i,
 ];
 
@@ -83,6 +84,10 @@ export function expandSkillTokens(items) {
     // Split on commas
     const commaParts = stripped.split(',').map((x) => x.trim()).filter(Boolean);
     for (const cp of commaParts) {
+      if (isDomainSkillPhrase(cp)) {
+        out.push(cp);
+        continue;
+      }
       // Split on slashes, ampersand, 'and', or 'with' between tools e.g. "Docker / LXC / Kubernetes", "Bun / Node.js", "Redis & PostgreSQL", "C# and .NET Core", "messaging with Kafka & RabbitMQ"
       if (cp.includes('/') || cp.includes('&') || /\b(?:and|with)\b/i.test(cp)) {
         const slashParts = cp.split(/\s*(?:[/&]|\b(?:and|with)\b)\s*/).map((x) => x.trim()).filter(Boolean);
@@ -164,6 +169,24 @@ const SKILL_CANONICAL = new Map([
   ['sql server', 'SQL Server'],
   ['scala', 'Scala'],
   ['scala a plus', 'Scala'],
+  ['mulesoft', 'MuleSoft'],
+  ['netsuite', 'NetSuite'],
+  ['ipaas', 'iPaaS'],
+  ['servicenow', 'ServiceNow'],
+  ['workato', 'Workato'],
+  ['workday', 'Workday'],
+  ['salesforce', 'Salesforce'],
+  ['boomi', 'Boomi'],
+  ['dell boomi', 'Dell Boomi'],
+  ['soap', 'SOAP'],
+  ['sla', 'SLA'],
+  ['bi platforms', 'BI Platforms'],
+  ['data platforms', 'Data Platforms'],
+  ['cloudformation', 'CloudFormation'],
+  ['cloudwatch', 'CloudWatch'],
+  ['monitoring & alerting', 'Monitoring & Alerting'],
+  ['event-driven architecture', 'Event-Driven Architecture'],
+  ['event-driven', 'Event-Driven Architecture'],
 ]);
 
 export function normalizeSkillLabel(text) {
@@ -256,6 +279,7 @@ function skillsCategoryLines(items, jdText = '') {
   if (!unique.length) return '';
 
   const buckets = {
+    Integrations: [],
     Languages: [],
     Frameworks: [],
     Databases: [],
@@ -269,6 +293,7 @@ function skillsCategoryLines(items, jdText = '') {
   const jdLower = String(jdText || '').toLowerCase();
   const isJava = /\bjava\b/i.test(jdLower);
   const isDotNet = /(?:^|[^\w])(?:\.net|dotnet|c#|asp\.net)(?=[^\w]|$)/i.test(jdLower) || /\bcsharp\b/i.test(jdLower);
+  const isIntegration = /\b(integration engineer|integration developer|ipaas|mulesoft|workato|boomi)\b/i.test(jdLower);
 
   // Base tech stack foundation: foundational categories must never be completely empty
   const CORE_FOUNDATION_STACK = {
@@ -290,21 +315,27 @@ function skillsCategoryLines(items, jdText = '') {
     }
   }
 
-  let order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
+  let order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Integrations', 'Other'];
   const isFullstack = /\b(full[-\s]?stack|frontend|front[-\s]?end|ui engineer|web developer)\b/i.test(jdLower);
-  if (isFullstack || isJava || isDotNet) {
-    order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
+  if (isIntegration) {
+    order = ['Integrations', 'Languages', 'Frameworks', 'Databases', 'Cloud', 'Other'];
+  } else if (isFullstack || isJava || isDotNet) {
+    order = ['Languages', 'Frameworks', 'Databases', 'Cloud', 'Integrations', 'Other'];
   } else if (/\b(devops|sre|site reliability|cloud engineer|platform engineer|infrastructure engineer|aws platform)\b/i.test(jdLower)) {
-    order = ['Cloud', 'Languages', 'Frameworks', 'Databases', 'Other'];
+    order = ['Cloud', 'Languages', 'Frameworks', 'Databases', 'Integrations', 'Other'];
   } else if (/\b(data engineer|etl|data platform|data warehouse|databricks|snowflake|pyspark|bigquery)\b/i.test(jdLower)) {
-    order = ['Databases', 'Languages', 'Cloud', 'Frameworks', 'Other'];
+    order = ['Databases', 'Languages', 'Cloud', 'Frameworks', 'Integrations', 'Other'];
   } else if (/\b(ai engineer|llm|machine learning|ml engineer|rag|generative ai)\b/i.test(jdLower)) {
-    order = ['Frameworks', 'Languages', 'Cloud', 'Databases', 'Other'];
+    order = ['Frameworks', 'Languages', 'Cloud', 'Databases', 'Integrations', 'Other'];
   }
   return order
     .filter((name) => buckets[name].length)
     .map((name) => {
-      const displayLabel = name === 'Other' ? 'Architecture & Practices' : name;
+      const displayLabel = name === 'Other'
+        ? 'Architecture & Practices'
+        : name === 'Integrations'
+          ? 'Integrations & Platforms'
+          : name;
       return `<div class="skill-line"><span class="skill-label">${displayLabel}:</span> ${escapeHtml(buckets[name].join(', '))}</div>`;
     })
     .join('');
@@ -312,6 +343,11 @@ function skillsCategoryLines(items, jdText = '') {
 
 function skillCategory(label) {
   const k = String(label || '').toLowerCase().replace(/\.js$/i, 'js');
+  if (
+    /^(workato|mulesoft|boomi|dell\s*boomi|ipaas|celigo|zapier|salesforce|workday|netsuite|servicenow|soap|webhooks?|middleware|bi\s*platforms|data\s*platforms)$/i.test(k)
+  ) {
+    return 'Integrations';
+  }
   if (
     /^(javascript|typescript|python|java|go|golang|rust|ruby|php|c\+\+|c#|csharp|kotlin|swift|scala|sql|html|css|sass|less)$/i.test(k)
     || /^(javascript|typescript|python|java)\b/.test(k)
@@ -418,7 +454,7 @@ export function renderCategorizedSkills(profileSuperpowers, tailoredCompetencies
   }
 
   // Explicit / weaved competencies first so Technical Skills match the candidate's chosen stack, then backfill with extracted tech
-  const uniqueTech = sanitizeCompetencyList([...fromProfile, ...competencies], jdText).slice(0, 26);
+  const uniqueTech = sanitizeCompetencyList([...fromProfile, ...competencies], jdText).slice(0, 30);
   if (uniqueTech.length) return skillsCategoryLines(uniqueTech, jdText);
 
   const fallback = sanitizeCompetencyList([...fromProfile, ...competencies, ...superpowers], jdText).slice(0, 24);

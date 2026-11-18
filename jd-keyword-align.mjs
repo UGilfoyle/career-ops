@@ -29,6 +29,10 @@ const KNOWN_TECH = [
   // Microsoft / Azure full-stack (Interra-style JDs)
   'SQL Server', 'Microsoft SQL Server', 'Telerik', 'DevExpress', 'jQuery', 'MVC',
   'ASP.NET', 'Azure Functions', 'Azure Service Bus', 'Event Hub', 'MQTT', 'IoT', 'OpenAI API', 'Prompt Engineering', 'OAuth2', 'OIDC', 'SAML', '.NET Aspire',
+  // Enterprise integrations & iPaaS platforms
+  'Workato', 'MuleSoft', 'Boomi', 'Dell Boomi', 'iPaaS', 'Celigo', 'Zapier',
+  'Salesforce', 'Workday', 'NetSuite', 'ServiceNow',
+  'SOAP', 'Webhooks', 'Webhook', 'Middleware', 'Runbooks', 'OpenAPI', 'Swagger', 'SLA',
 ];
 
 /**
@@ -95,6 +99,23 @@ const DOMAIN_PHRASES = [
   'message brokers',
   'decision intelligence',
   'industrial systems',
+  // Enterprise Integration & Operations
+  'enterprise integration',
+  'enterprise architecture',
+  'integration architecture',
+  'API integrations',
+  'third-party integrations',
+  'data platforms',
+  'BI platforms',
+  'monitoring & alerting',
+  'incident management',
+  'production support',
+  'production triage',
+  'root cause analysis',
+  'operational metrics',
+  'incident resolution',
+  'file-based interfaces',
+  'batch processing',
   // Frontend / fullstack
   'state management',
   'component libraries',
@@ -150,6 +171,19 @@ export function normalizeJdTechAliases(text) {
     [/\bdata\s*modeling\b/gi, 'Data Modeling'],
     [/\betl\s*\/\s*elt\b/gi, 'ETL ELT'],
     [/\belt\b/gi, 'ELT'],
+    [/\brest\s*\/\s*soap\s*apis?\b/gi, 'REST API SOAP'],
+    [/\bipaas\b/gi, 'iPaaS'],
+    [/\bmulesoft\b/gi, 'MuleSoft'],
+    [/\bworkato\b/gi, 'Workato'],
+    [/\bboomi\b/gi, 'Boomi'],
+    [/\bworkday\b/gi, 'Workday'],
+    [/\bnetsuite\b/gi, 'NetSuite'],
+    [/\bwebhooks?\b/gi, 'Webhooks'],
+    [/\bmonitoring\s*,\s*alerting\b/gi, 'monitoring & alerting'],
+    [/\bbatch\s*,\s*and\s+file-based\b/gi, 'batch processing and file-based'],
+    [/\bbi\s*\/\s*analytics\b/gi, 'BI platforms'],
+    [/\bdata\s+and\s+bi\s+platforms\b/gi, 'data platforms and BI platforms'],
+    [/\bmanage\s+integration\s+incidents\b/gi, 'incident management'],
   ];
   for (const [re, rep] of rules) t = t.replace(re, rep);
   return t;
@@ -441,7 +475,7 @@ const MID_CLAUSE_RE = /\b(?:and|or|but|so|yet)\s+(?:the|a|an|that|this|these|tho
 
 /** Employer / brand names that appear in JD chrome — never skills. */
 const EMPLOYER_BRAND_RE =
-  /^(american express|amex|american|oracle cloud|oracle hcm|google|microsoft|amazon|meta|facebook|apple|netflix|salesforce|ibm|uber|airbnb|spotify|twitter|linkedin|indeed|naukri|glassdoor|quest global|intverse|glidewell|srijan|nec|nec india|supersourcing)$/i;
+  /^(american express|amex|american|oracle cloud|oracle hcm|google|microsoft|amazon|meta|facebook|apple|netflix|ibm|uber|airbnb|spotify|twitter|linkedin|indeed|naukri|glassdoor|quest global|intverse|glidewell|srijan|nec|nec india|supersourcing)$/i;
 
 /**
  * Pull employer-looking names from JD chrome ("@ Acme", "at Acme Corp", "Job at Acme").
@@ -535,7 +569,7 @@ export function isJunkKeyword(kw) {
   if (/\b(domain|area)$/.test(k) && k.includes(' ')) return true;
   if (/^(tracking|handling|reducing|ensuring|guiding|raising|models|pipelines with|cost and)\b/.test(k) && k.includes(' ')) return true;
   // Incomplete tails cut mid-phrase from JD prose
-  if (/\b(and|with|for|into|onto|from|the|a|an|high|query|retry|quality|logic|overall|async)$/.test(k) && k.includes(' ')) return true;
+  if (/\b(and|with|for|into|onto|from|the|a|an|high|query|retry|quality|logic|overall|async)$/.test(k) && k.includes(' ') && !isDomainSkillPhrase(k)) return true;
   // "Design Kafka" style crumbs — real skill is "Kafka" / "Design Patterns" stays
   {
     const m = k.match(/^design\s+(.+)$/i);
@@ -576,6 +610,9 @@ export const DOMAIN_EVIDENCE_STEMS = [
   { match: /state management|component librar|responsive design|react|typescript/i, stems: ['react', 'typescript', 'redux', 'frontend', 'ui'] },
   { match: /vector|embedding|rag|prompt engineering|agentic|langchain|llm/i, stems: ['llm', 'embedding', 'rag', 'openai', 'langchain', 'vector', 'chromadb'] },
   { match: /embedded|satellite|3gpp|gdb|valgrind|multi-threaded|multi-process|interrupt handling|sockets programming/i, stems: ['linux', 'python', 'jenkins', 'ci/cd', 'aws', 'azure', 'thread', 'process', 'socket'] },
+  { match: /integration|ipaas|webhooks?|middleware|rest\/soap|connectors?|enterprise architecture/i, stems: ['integrat', 'api', 'webhook', 'gateway', 'middleware', 'rest', 'graphql', 'endpoint', 'service', 'microservice', 'architect'] },
+  { match: /production triage|incident (resolution|response|management)|root cause|operational metrics|monitoring & alerting|runbooks?|\bsla\b/i, stems: ['incident', 'troubleshoot', 'triage', 'rca', 'tracing', 'logging', 'cloudwatch', 'elk', 'sla', 'uptime', 'monitor', 'alert', 'latency'] },
+  { match: /batch processing|data platforms|bi platforms|file-based interfaces/i, stems: ['batch', 'etl', 'ingest', 'pipeline', 'migrat', 'postgresql', 'schema', 'data', 'worker'] },
 ];
 
 /** Outcome/problem prose — what the JD wants reduced, never a candidate skill. */

@@ -96,12 +96,12 @@ export function htmlToPlainText(html: string): string {
     .trim();
 }
 
-async function importJdKeywordAlign() {
+async function importRootModule(filename: string) {
   const { pathToFileURL } = await import('url');
   const { join } = await import('path');
   const candidates = [
-    join(/* turbopackIgnore: true */ process.cwd(), '..', 'jd-keyword-align.mjs'),
-    join(/* turbopackIgnore: true */ process.cwd(), 'runtime-assets', '..', '..', 'jd-keyword-align.mjs'),
+    join(/* turbopackIgnore: true */ process.cwd(), '..', filename),
+    join(/* turbopackIgnore: true */ process.cwd(), 'runtime-assets', filename),
   ];
   let lastErr: unknown;
   for (const file of candidates) {
@@ -111,7 +111,11 @@ async function importJdKeywordAlign() {
       lastErr = e;
     }
   }
-  throw lastErr || new Error('jd-keyword-align.mjs not found');
+  throw lastErr || new Error(`${filename} not found`);
+}
+
+async function importJdKeywordAlign() {
+  return importRootModule('jd-keyword-align.mjs');
 }
 
 /**
@@ -225,10 +229,7 @@ export async function mirrorJdKeywordsIntoProfile(
 
   // Primary path: full deterministic tailor plan (same as agentic-tailor).
   try {
-    const { pathToFileURL } = await import('url');
-    const { join } = await import('path');
-    const planPath = join(/* turbopackIgnore: true */ process.cwd(), '..', 'resume-tailoring-plan.mjs');
-    const planMod = await import(/* webpackIgnore: true */ pathToFileURL(planPath).href);
+    const planMod = await importRootModule('resume-tailoring-plan.mjs');
     const plan = planMod.buildTailoringPlan(jdText, profile);
     const executed = planMod.executeTailoringPlan(plan, profile, {
       jdText,
@@ -246,8 +247,7 @@ export async function mirrorJdKeywordsIntoProfile(
         return { ...role, bullets: bullets.map(String) };
       });
     }
-    const rqPath = join(/* turbopackIgnore: true */ process.cwd(), '..', 'resume-quality.mjs');
-    const rq = await import(/* webpackIgnore: true */ pathToFileURL(rqPath).href);
+    const rq = await importRootModule('resume-quality.mjs');
     const cleaned = rq.stripUnsolicitedAiFromResume(
       {
         summary: String(executed.resume?.summary || ''),
@@ -301,10 +301,7 @@ export async function mirrorJdKeywordsIntoProfile(
   // Seed from honest JD summary — never raw exit_story (paren keyword spam).
   let seedShape = profileToResumeShape(profile);
   try {
-    const { pathToFileURL } = await import('url');
-    const { join } = await import('path');
-    const matchPath = join(/* turbopackIgnore: true */ process.cwd(), '..', 'jd-profile-match.mjs');
-    const matchMod = await import(/* webpackIgnore: true */ pathToFileURL(matchPath).href);
+    const matchMod = await importRootModule('jd-profile-match.mjs');
     const years = calculateYearsOfExperience(profile?.experience) || 7;
     const fit = matchMod.analyzeJdProfileFit(jdText, profile);
     seedShape = {

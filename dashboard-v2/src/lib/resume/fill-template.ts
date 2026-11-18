@@ -11,6 +11,7 @@ import { renderContactBarHtml } from '@/lib/resume/contact-bar';
 import { getTemplateHtml } from './ats-professional-template';
 import { DEFAULT_TEMPLATE_ID, type ExperienceEntry, type ResumeContext } from './types';
 import { formatPeriodDisplay } from './date-range';
+import { extractJdKeywords } from '../../../../jd-keyword-align.mjs';
 import { buildHonestSummary } from '../../../../jd-profile-match.mjs';
 import { detectPersonaTrack, applyPersonaTrackToProfile } from '../../../../resume-persona-track.mjs';
 
@@ -354,8 +355,18 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   const templateHtml = options.templateHtml || getTemplateHtml(templateId);
 
   const jd = String(options.jdText || '').trim();
+  const jdKeywords = jd.length >= 40 ? (extractJdKeywords(jd, 25) as string[]) : [];
+  const rawSuperpowers = Array.isArray(profile.narrative?.superpowers)
+    ? profile.narrative.superpowers.map((s) => String(s || '').trim()).filter(Boolean)
+    : [];
+  const jdKwLower = new Set(jdKeywords.map((k) => String(k).toLowerCase()));
+  const mirroredOverlap = jdKeywords.length > 0
+    ? rawSuperpowers.filter((s) => jdKwLower.has(s.toLowerCase())).length
+    : 0;
+  const hasMirroredDraft = jdKeywords.length > 0 && mirroredOverlap >= Math.min(3, jdKeywords.length);
+
   let tailoredProfile = profile;
-  if (jd.length >= 40) {
+  if (jd.length >= 40 && !hasMirroredDraft) {
     const persona = detectPersonaTrack(jd, undefined, profile);
     tailoredProfile = applyPersonaTrackToProfile(profile, persona.trackId) as ResumeContext;
   }
@@ -403,10 +414,13 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
       ? tailoredProfile.experience.flatMap((e) => [e?.role, ...(e?.bullets || [])])
       : []),
   ], yearsExp >= 7 ? 18 : 14);
+  const explicitCompetencies = hasMirroredDraft
+    ? [...rawSuperpowers, ...profileTech]
+    : profileTech;
   const skillsLines = renderSkillsLines(
     tailoredProfile.narrative?.superpowers,
     yearsExp >= 7 ? 22 : 16,
-    profileTech,
+    explicitCompetencies,
     options.jdText || '',
   );
   const experienceHtml = renderExperienceHtml(experience, maxPages, yearsExp, options.jdText || '');
@@ -424,9 +438,12 @@ export function fillAtsTemplate(profile: ResumeContext, options: FillAtsOptions 
   const hasEducation = Boolean(educationHtml && educationHtml.trim().length > 0);
 
   const displayName = String(c.full_name || '').trim() || 'Your Name';
-  const summarySource = jd.length >= 40
-    ? buildHonestSummary('', yearsExp, [], jd)
-    : masterSummaryText(tailoredProfile);
+  const existingSummary = masterSummaryText(tailoredProfile);
+  const summarySource = hasMirroredDraft && existingSummary.length >= 40
+    ? existingSummary
+    : jd.length >= 40
+      ? buildHonestSummary('', yearsExp, jdKeywords, jd)
+      : existingSummary;
 
   const reps: Record<string, string> = {
     NAME: escapeHtml(displayName),

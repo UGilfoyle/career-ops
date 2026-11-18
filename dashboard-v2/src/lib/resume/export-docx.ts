@@ -332,9 +332,11 @@ export async function generateResumeDocx(
     docChildren.push(createSectionHeader(skillsHeader, theme));
 
     if (categoryMatches.length > 0) {
+      const decodeHtml = (s: string) =>
+        s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
       for (const match of categoryMatches) {
-        const label = match[1].trim();
-        const items = match[2].trim();
+        const label = decodeHtml(match[1].trim());
+        const items = decodeHtml(match[2].trim());
         docChildren.push(
           new Paragraph({
             spacing: { before: 30, after: 30 },

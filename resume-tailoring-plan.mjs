@@ -254,7 +254,7 @@ export function buildTailoringPlan(jdText, profile, opts = {}) {
         .slice(0, 6),
     },
     // Gaps allowed only when they are real tech tools (NestJS/Azure) — prose never lands in skills
-    competencies: { min: 10, max: 20, includeGaps: true },
+    competencies: { min: 10, max: Math.max(20, Math.min(28, atsMirror.length)), includeGaps: true },
     coverLetter: {
       maxWords: 150,
       jdHooks: [...new Set([...domain, ...jdTech, ...(fit.honest || [])])].slice(0, 5),
@@ -477,6 +477,8 @@ export function stripGapMention(bullet, gap) {
   t = t.replace(/\busing\s*,\s*([a-z]+ing\b)/gi, (m, p1) => p1 + " ");
   t = t.replace(/\busing\s*,/gi, "");
   t = t.replace(/\busing\s+using\b/gi, "using");
+  t = t.replace(/\b(?:in|using|via|through)\s+(with|for|to|across|on|from)\b/gi, "$1");
+  t = t.replace(/\b(with|in|using|for)\s+\1\b/gi, "$1");
   t = t.replace(/\b(in|using|with|via|through|across|for|from|to|of)\s*,/gi, "");
   return t.replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").replace(/,\s*,/g, ",").replace(/\s+\./g, ".").trim();
 }
