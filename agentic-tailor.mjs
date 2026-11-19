@@ -491,8 +491,11 @@ function renderExperience(exp, tailoredBullets, jdText = '', maxPages = 2) {
     const filtered = jdLower.length > 40
       ? rawStack.filter(techMatchesJd)
       : rawStack;
-    const techLine = filtered.length
-      ? `\n      <div class="job-tech">${escapeHtml(filtered.join(', '))}</div>`
+    const displayStack = (filtered.length > 0 && filtered.length < 3 && rawStack.length >= 3)
+      ? [...filtered, ...rawStack.filter((t) => !filtered.includes(t))].slice(0, 6)
+      : filtered;
+    const techLine = displayStack.length
+      ? `\n      <div class="job-tech">${escapeHtml(displayStack.join(', '))}</div>`
       : '';
 
     return `
