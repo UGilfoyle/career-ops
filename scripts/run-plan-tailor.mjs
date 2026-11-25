@@ -24,7 +24,7 @@ import { buildApplicationDocumentPaths } from '../document-filename.mjs';
 import { buildHtml as buildCoverHtml } from '../generate-cover-letter.mjs';
 import { renderContactBarHtml } from '../resume-contact-html.mjs';
 import { renderCategorizedSkills } from '../resume-skills-html.mjs';
-import { formatPeriodDisplay, filterProofPointsAlreadyInExperience, selectJdAlignedProofPoints } from '../resume-quality.mjs';
+import { formatPeriodDisplay, filterProofPointsAlreadyInExperience, selectJdAlignedProofPoints, normalizeExperienceBulletList } from '../resume-quality.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -72,7 +72,8 @@ function renderExperience(profile, resume, jdText = '') {
   const jobs = profile.experience || [];
   const jdLower = String(jdText || '').toLowerCase();
   return jobs.map((job, idx) => {
-    const bullets = resume.experience?.[String(idx)] || job.bullets || [];
+    const rawBullets = resume.experience?.[String(idx)] || job.bullets || [];
+    const bullets = normalizeExperienceBulletList(rawBullets);
     const li = bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('');
     // Filter tech_stack to JD-relevant items; show all if no JD
     const rawStack = Array.isArray(job.tech_stack) ? job.tech_stack : [];

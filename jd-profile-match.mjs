@@ -302,14 +302,19 @@ function enhanceBulletHonest(bullet, honestKeywords, company = '') {
 
   const lower = text.toLowerCase();
 
-  // Prefer RESTful API phrasing when APIs are mentioned — never mash with GraphQL/gRPC
+  // Prefer RESTful API phrasing only on standalone plural "APIs" — never mangle noun adjuncts
+  // ("OpenAI API endpoints", "API throughput", "API delivery", "API rate limits").
   if (
-    /\bapis?\b/i.test(text) &&
+    /\bAPIs\b/.test(text) &&
     !/restful/i.test(lower) &&
     !/\bgraphql\b/i.test(lower) &&
-    !/\bgrpc\b/i.test(lower)
+    !/\bgrpc\b/i.test(lower) &&
+    !/\b(?:OpenAI|Stripe|Adyen|PayPal|OEM|third-party)\s+APIs?\b/i.test(text)
   ) {
-    text = text.replace(/\bAPIs?\b/i, 'RESTful APIs');
+    text = text.replace(
+      /\bAPIs\b(?!\s+(?:throughput|endpoints?|delivery|contracts?|rate|latency|calls?|requests?|responses?|gateway|keys?|design|layers?|integrations?|specs?|schemas?|clients?))/i,
+      'RESTful APIs',
+    );
   }
   // Undo accidental GraphQL + RESTful mashups from older polish passes
   text = text
@@ -756,9 +761,9 @@ const CORE_CLOUD_INFRA = new Set([
   const jdLower = String(jdText || '').toLowerCase();
   const isFullstack = /\b(full[-\s]?stack|frontend|front[-\s]?end|ui engineer|web developer)\b/i.test(jdLower);
   const isJavaRole = /\bjava\b/i.test(jdLower);
-  const isCloudRole = /\b(devops|sre|site reliability|platform engineer|aws platform|infrastructure engineer|cloud engineer|cloud architect)\b/i.test(jdLower) && !isFullstack && !isJavaRole;
+  const isAiRole = /\b(large language model|\bllms?\b|\brag\b|generative ai|ai engineer|agentic|mcp|model context protocol|langgraph|langchain|vector (?:db|database))\b/i.test(jdLower);
+  const isCloudRole = /\b(devops|sre|site reliability|platform engineer|aws platform|infrastructure engineer|cloud engineer|cloud architect)\b/i.test(jdLower) && !isFullstack && !isJavaRole && !isAiRole;
   const isDataRole = /\b(data engineer|etl|warehouse|databricks|snowflake|pyspark)\b/i.test(jdLower);
-  const isAiRole = /\b(large language model|\bllms?\b|\brag\b|generative ai|ai engineer)\b/i.test(jdLower);
   const isPythonBackend = /\bpython\b/i.test(jdLower) && /\b(django|flask|backend|microservice|restful)\b/i.test(jdLower) && !isJavaRole;
 
   function prioritizeSummaryTechTerms(terms) {
@@ -828,12 +833,21 @@ const CORE_CLOUD_INFRA = new Set([
     seenLead.add(key);
     rawLeadTerms.push(term);
   }
-  const leadTerms = prioritizeSummaryTechTerms(rawLeadTerms).slice(0, 8);
+  const NON_LEAD_SUMMARY_TOKENS = /^(?:runbooks?|sla|middleware|ipaas|unit testing|integration testing|agile|scrum|kanban|code review)$/i;
+  const filteredLeadTerms = prioritizeSummaryTechTerms(rawLeadTerms)
+    .filter((t) => !NON_LEAD_SUMMARY_TOKENS.test(t));
+  const leadTerms = (filteredLeadTerms.length >= 2 ? filteredLeadTerms : prioritizeSummaryTechTerms(rawLeadTerms))
+    .slice(0, 5);
   const embedded = isEmbeddedSystemsJd(jdText);
   const dotnetAzure = isDotnetAzureJd(jdText);
   const workShape = inferJdWorkShapeLine(jdText);
+  const formatLeadList = (items) => {
+    if (items.length <= 1) return items[0] || '';
+    if (items.length === 2) return `${items[0]} and ${items[1]}`;
+    return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+  };
   const lead = leadTerms.length
-    ? leadTerms.join(', ')
+    ? formatLeadList(leadTerms)
     : (embedded ? 'Linux, Python, Jenkins, AWS, and Azure' : '');
   const title = inferRoleTitleFromJd(jdText, y);
   const yearsLabel = y > 0 ? `${y}+ years` : 'years';
@@ -852,12 +866,12 @@ const CORE_CLOUD_INFRA = new Set([
           ? 'event-driven integrations, IoT telemetry pipelines, and cloud APIs'
           : dotnetAzure
             ? 'event-driven integrations, cloud APIs, and message-driven services'
-            : /\b(devops|sre|site reliability|platform engineer|aws platform)\b/i.test(jdLower)
-              ? 'cloud infrastructure, CI/CD pipelines, and high-availability platforms'
-              : /\b(web scrap|scraping|puppeteer|playwright)\b/i.test(jdLower)
-                ? 'automated data extraction, browser pipelines, and production APIs'
-                : /\b(large language model|\bllms?\b|\brag\b|generative ai)\b/i.test(jdLower)
-                  ? 'AI-enabled services, LLM pipelines, and backend architectures'
+            : isAiRole
+              ? 'AI-enabled services, LLM pipelines, and backend architectures'
+              : /\b(devops|sre|site reliability|platform engineer|aws platform)\b/i.test(jdLower)
+                ? 'cloud infrastructure, CI/CD pipelines, and high-availability platforms'
+                : /\b(web scrap|scraping|puppeteer|playwright)\b/i.test(jdLower)
+                  ? 'automated data extraction, browser pipelines, and production APIs'
                   : /\b(full[-\s]?stack|react|frontend)\b/i.test(jdLower) && /\b(node|backend|api)\b/i.test(jdLower)
                     ? 'full-stack web applications, resilient backend APIs, and modern UIs'
                     : /\bpython\b/i.test(jdLower) && /\b(django|flask|backend|restful|microservice)\b/i.test(jdLower)
@@ -889,7 +903,7 @@ const CORE_CLOUD_INFRA = new Set([
     lines.push('Ship JavaScript services for data extraction and browser automation with solid REST APIs, Postgres, and cloud delivery.');
   } else if (
     // Core AI/ML roles only — NOT "AI-assisted coding" / Copilot / agentic productivity niceties
-    /\b(large language model|\bllms?\b|\brag\b|retrieval[- ]augmented|vector (?:db|database|search)|langchain|machine learning engineer|ml engineer|generative ai engineer|ai platform|llmops|chromadb|pinecone|embedding model)\b/i.test(jdLower)
+    /\b(large language model|\bllms?\b|\brag\b|retrieval[- ]augmented|vector (?:db|database|search)|pgvector|langgraph|langchain|model context protocol|\bmcp\b|vllm|agentic workflows?|machine learning engineer|ml engineer|generative ai engineer|ai platform|llmops|chromadb|pinecone|embedding model)\b/i.test(jdLower)
   ) {
     lines.push('Lead LLM-backed features and AI-assisted delivery with production-grade API reliability and validation loops.');
   } else if (/\bpython\b/i.test(jdLower) && /\b(django|flask)\b/i.test(jdLower)) {
@@ -910,23 +924,17 @@ const CORE_CLOUD_INFRA = new Set([
     lines.push('Lead scalable service design, high-throughput RESTful APIs, and cloud performance work with measurable delivery outcomes.');
   }
 
-  // Line 3 — senior operating model: architecture + reliability + SDLC (never soft "collaborate")
+  // Line 3 — senior operating model: architecture + reliability + SDLC (natural, non-robotic prose)
   if (/\bobservability|high-traffic|latency|sre|incident\b/i.test(jdLower)) {
-    lines.push('Hold the line on reliability: observability, incident response, latency tuning, and production hardening.');
+    lines.push('Focused on production reliability, observability, incident response, and latency tuning across high-traffic workloads.');
   } else if (/\bl3|l4|root cause|capacity planning|principal\b/i.test(jdLower)) {
-    lines.push('Lead L3/L4 incident RCA, architecture reviews, and capacity planning so platforms stay stable under load.');
+    lines.push('Lead L3/L4 incident root-cause analysis, architecture reviews, and capacity planning so platforms stay stable under load.');
   } else if (/\bmentor|tech lead|staff|principal|cross-functional\b/i.test(jdLower)) {
-    lines.push('Set engineering bar through design ownership, peer review, and mentoring: from architecture decisions through launch.');
+    lines.push('Own architecture decisions, peer code reviews, and engineering mentoring from early design through launch.');
   } else if (/\bdata engineer|databricks|pyspark|etl|adf\b/i.test(jdLower)) {
-    lines.push('Own pipeline reliability, data quality checks, CI/CD for data jobs, and clear handoffs from raw ingest through curated models.');
+    lines.push('Own pipeline reliability, data quality checks, CI/CD for data jobs, and clean handoffs from raw ingest through curated models.');
   } else {
-    lines.push('Own architecture decisions, code review, tests, CI, and mentoring so teams ship reliable software faster.');
-  }
-
-  // Line 4 — concrete stack / impact closer when JD is tech-dense
-  if (lines.length < 4 && leadTerms.length >= 3) {
-    const stack = leadTerms.slice(0, 4).join(', ');
-    lines.push(`Day-to-day production stack: ${stack}.`);
+    lines.push('Own architecture decisions, code reviews, automated tests, CI/CD, and mentoring so teams ship reliable software faster.');
   }
 
   // Strip banned clichés / soft filler (defense in depth)
@@ -940,10 +948,9 @@ const CORE_CLOUD_INFRA = new Set([
       .replace(/\bcutting-edge\b/gi, 'modern')
       .replace(/\brobust\b/gi, 'reliable')
       .replace(/\bCollaborate with product and engineering partners[^.]*\./gi,
-        'Own architecture decisions, SDLC quality, and mentoring through launch.')
-      .replace(/\bComfortable day-to-day with\b/gi, 'Day-to-day production stack:'))
+        'Own architecture decisions, SDLC quality, and mentoring through launch.'))
     .filter((l) => l && !/collaborate with product partners/i.test(l))
-    .slice(0, 4);
+    .slice(0, 3);
 
   return cleaned.join('\n');
 }

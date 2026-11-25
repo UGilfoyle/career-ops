@@ -45,10 +45,10 @@ export function isUnprovenLanguageSkill(text) {
 const TECH_PATTERNS = [
   /\b(java(?:script)?|python|typescript|go(?:lang)?|rust|ruby|c\+\+|c#|\.net|kotlin|swift|scala|php|perl|elixir|haskell|dart|r\b|sql|graphql|html|css|sass|less)\b/i,
   /\b(react|angular|vue|svelte|next\.?js|nuxt|nest\.?js|express|fastapi|flask|django|spring|rails|laravel|gin|echo|fiber|fastify|hono|remix|gatsby|astro|node\.?js|deno|bun)\b/i,
-  /\b(postgres|postgresql|mysql|mariadb|mongo(?:db)?|redis|dynamodb|aurora|cockroach|cassandra|elastic|opensearch|sqlite|supabase|neon|firebase|firestore|couchdb|neo4j|memcached|influxdb)\b/i,
+  /\b(postgres|postgresql|mysql|mariadb|mongo(?:db)?|redis|dynamodb|aurora|cockroach|cassandra|elastic|opensearch|sqlite|supabase|neon|firebase|firestore|couchdb|neo4j|memcached|influxdb|pgvector|vector\s*(?:db|databases?))\b/i,
   /\b(aws|gcp|azure|cloudflare|vercel|heroku|digital\s?ocean|ecs|ec2|lambda|fargate|s3|cloudfront|route\s?53|iam|vpc|sqs|sns|step\s?functions|api\s?gateway|cloud\s?run|cloud\s?functions|bigquery|pubsub|terraform|pulumi|cdk|cloudformation|cloudwatch|cloudtrail|boto3|ansible)\b/i,
   /\b(docker|kubernetes|k8s|helm|istio|envoy|nginx|haproxy|traefik|ci\/cd|jenkins|github\s?actions|gitlab\s?ci|circle\s?ci|argo\s?cd|flux|buildkite|drone|prometheus|grafana|datadog|new\s?relic|pagerduty|splunk|elk|loki|jaeger|opentelemetry|codepipeline|codebuild|secrets\s?manager|guardduty)\b/i,
-  /\b(kafka|rabbitmq|nats|pulsar|flink|spark|pyspark|airflow|dbt|snowflake|redshift|bigquery|databricks|azure\s?data\s?factory|\badf\b|mlflow|sagemaker|pytorch|tensorflow|langchain|openai|hugging\s?face|llm|rag|vector\s?db|pinecone|weaviate|qdrant|milvus|chromadb|apache\s*camel)\b/i,
+  /\b(kafka|rabbitmq|nats|pulsar|flink|spark|pyspark|airflow|dbt|snowflake|redshift|bigquery|databricks|azure\s?data\s?factory|\badf\b|mlflow|sagemaker|pytorch|tensorflow|langchain|langgraph|llamaindex|openai|hugging\s?face|llms?|rag|mcp|model\s?context\s?protocol|vllm|ray|embeddings?|tool\s*calling|agentic\s*workflows?|evals?|rlhf|pinecone|weaviate|qdrant|milvus|chromadb|apache\s*camel)\b/i,
   /\b(jest|mocha|pytest|cypress|playwright|puppeteer|cheerio|selenium|postman|swagger|openapi|storybook|webpack|vite|esbuild|turbopack|rollup|parcel|pnpm|yarn|npm|git|jira|confluence|linear|notion|figma|slack|gdb|valgrind|uml|3gpp|module\s*federation)\b/i,
   /\b(rest\s?api|grpc|websocket|oauth|jwt|saml|sso|rbac|rls|cors|cdn|dns|tls|ssl|http\/2|http\/3|protobuf|avro|parquet|tcp\/ip|mqtt|iot)\b/i,
   /\b(workato|mulesoft|boomi|ipaas|celigo|zapier|salesforce|workday|netsuite|servicenow|soap|webhooks?|middleware|runbooks?|sla)\b/i,
@@ -88,14 +88,42 @@ export function expandSkillTokens(items) {
         out.push(cp);
         continue;
       }
+      // Protect compound slash terms before splitting "/" separators (otherwise "CI/CD" splits into "Ci, Cd")
+      const PROTECTED_SLASH_TERMS = [
+        ['CI/CD', '__SLASH_CICD__'],
+        ['TCP/IP', '__SLASH_TCPIP__'],
+        ['ETL/ELT', '__SLASH_ETLELT__'],
+        ['REST/SOAP', '__SLASH_RESTSOAP__'],
+        ['RTO/RPO', '__SLASH_RTORPO__'],
+        ['UI/UX', '__SLASH_UIUX__'],
+        ['SQL/NoSQL', '__SLASH_SQLNOSQL__'],
+        ['HTML/CSS', '__SLASH_HTMLCSS__'],
+        ['shadcn/ui', '__SLASH_SHADCN__'],
+        ['HTTP/2', '__SLASH_HTTP2__'],
+        ['HTTP/3', '__SLASH_HTTP3__'],
+        ['Pub/Sub', '__SLASH_PUBSUB__'],
+      ];
+      let masked = cp;
+      for (const [term, token] of PROTECTED_SLASH_TERMS) {
+        const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        masked = masked.replace(re, token);
+      }
+      const restoreSlash = (val) => {
+        let res = val;
+        for (const [term, token] of PROTECTED_SLASH_TERMS) {
+          res = res.split(token).join(term);
+        }
+        return res;
+      };
       // Split on slashes, ampersand, 'and', or 'with' between tools e.g. "Docker / LXC / Kubernetes", "Bun / Node.js", "Redis & PostgreSQL", "C# and .NET Core", "messaging with Kafka & RabbitMQ"
-      if (cp.includes('/') || cp.includes('&') || /\b(?:and|with)\b/i.test(cp)) {
-        const slashParts = cp.split(/\s*(?:[/&]|\b(?:and|with)\b)\s*/).map((x) => x.trim()).filter(Boolean);
+      if (masked.includes('/') || masked.includes('&') || /\b(?:and|with)\b/i.test(masked)) {
+        const slashParts = masked.split(/\s*(?:[/&]|\b(?:and|with)\b)\s*/).map((x) => restoreSlash(x.trim())).filter(Boolean);
         for (const sp of slashParts) {
           if (sp.length >= 2 && sp.length <= 35) out.push(sp);
         }
       } else {
-        if (cp.length >= 2 && cp.length <= 35) out.push(cp);
+        const restored = restoreSlash(masked);
+        if (restored.length >= 2 && restored.length <= 35) out.push(restored);
       }
     }
   }
@@ -150,6 +178,44 @@ const SKILL_CANONICAL = new Map([
   ['firebase auth', 'Firebase Auth'],
   ['jwt', 'JWT'],
   ['rbac', 'RBAC'],
+  ['iot', 'IoT'],
+  ['mqtt', 'MQTT'],
+  ['tcp/ip', 'TCP/IP'],
+  ['etl', 'ETL'],
+  ['elt', 'ELT'],
+  ['etl/elt', 'ETL/ELT'],
+  ['scd', 'SCD'],
+  ['tdd', 'TDD'],
+  ['orm', 'ORM'],
+  ['sql', 'SQL'],
+  ['nosql', 'NoSQL'],
+  ['iam', 'IAM'],
+  ['vpc', 'VPC'],
+  ['llm', 'LLM'],
+  ['llms', 'LLMs'],
+  ['rag', 'RAG'],
+  ['sso', 'SSO'],
+  ['oauth', 'OAuth'],
+  ['oauth2', 'OAuth2'],
+  ['oidc', 'OIDC'],
+  ['saml', 'SAML'],
+  ['grpc', 'gRPC'],
+  ['websocket', 'WebSockets'],
+  ['websockets', 'WebSockets'],
+  ['sre', 'SRE'],
+  ['devops', 'DevOps'],
+  ['rest/soap', 'REST/SOAP'],
+  ['rto/rpo', 'RTO/RPO'],
+  ['ui/ux', 'UI/UX'],
+  ['github actions', 'GitHub Actions'],
+  ['gitlab ci', 'GitLab CI'],
+  ['airflow', 'Apache Airflow'],
+  ['apache airflow', 'Apache Airflow'],
+  ['openai', 'OpenAI API'],
+  ['openai api', 'OpenAI API'],
+  ['typescript frontend', 'TypeScript'],
+  ['node.js services', 'Node.js'],
+  ['nodejs services', 'Node.js'],
   ['langchain', 'LangChain'],
   ['langgraph', 'LangGraph'],
   ['llamaindex', 'LlamaIndex'],
@@ -184,7 +250,29 @@ const SKILL_CANONICAL = new Map([
   ['data platforms', 'Data Platforms'],
   ['cloudformation', 'CloudFormation'],
   ['cloudwatch', 'CloudWatch'],
+  ['ec2', 'EC2'],
+  ['ecs', 'ECS'],
+  ['pytorch', 'PyTorch'],
+  ['pyspark', 'PySpark'],
+  ['dbt', 'dbt'],
+  ['mcp', 'MCP'],
+  ['model context protocol', 'MCP'],
+  ['pgvector', 'pgvector'],
+  ['vllm', 'vLLM'],
+  ['ray', 'Ray'],
+  ['opentelemetry', 'OpenTelemetry'],
+  ['vector db', 'Vector Databases'],
+  ['vector databases', 'Vector Databases'],
+  ['agentic workflows', 'Agentic Workflows'],
+  ['tool calling', 'Tool Calling'],
+  ['embeddings', 'Embeddings'],
+  ['rlhf', 'RLHF'],
+  ['evals', 'Evals'],
+  ['infrastructure as code', 'Infrastructure as Code'],
+  ['source-to-target validation', 'Source-to-Target Validation'],
   ['monitoring & alerting', 'Monitoring & Alerting'],
+  ['event-driven architecture microservices', 'Event-Driven Architecture'],
+  ['event-driven microservices', 'Event-Driven Architecture'],
   ['event-driven architecture', 'Event-Driven Architecture'],
   ['event-driven', 'Event-Driven Architecture'],
 ]);
@@ -201,9 +289,15 @@ export function normalizeSkillLabel(text) {
   if (s.split(/\s+/).length <= 4 && !/[A-Z]{2,}/.test(s.slice(1))) {
     return s
       .split(/\s+/)
-      .map((w) => {
+      .map((w, idx) => {
         const wl = w.toLowerCase();
-        if (SKILL_CANONICAL.has(wl)) return SKILL_CANONICAL.get(wl);
+        if (SKILL_CANONICAL.has(wl)) {
+          const canon = SKILL_CANONICAL.get(wl);
+          // Only apply single-word canonical maps inside multi-word phrases so "event-driven" does not expand twice
+          if (!canon.includes(' ')) return canon;
+        }
+        if (wl === 'event-driven') return 'Event-Driven';
+        if (idx > 0 && /^(?:as|and|or|of|for|in|to|the|with)$/i.test(wl)) return wl;
         if (wl === 'api') return 'API';
         if (wl === 'apis') return 'APIs';
         return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
@@ -278,6 +372,19 @@ function skillsCategoryLines(items, jdText = '') {
   }
   if (!unique.length) return '';
 
+  // Drop subsumed generic/duplicate labels when a cleaner equivalent is already listed
+  const lowerSet = new Set(unique.map((u) => u.toLowerCase()));
+  const dedupedUnique = unique.filter((label) => {
+    const k = label.toLowerCase();
+    if (k === 'microservices' && lowerSet.has('microservices architecture')) return false;
+    if (k === 'ci/cd pipelines' && lowerSet.has('ci/cd')) return false;
+    if (k === 'restful api design' && lowerSet.has('restful apis')) return false;
+    if (k === 'scd handling' && lowerSet.has('scd')) return false;
+    if (k === 'redux state management' && lowerSet.has('redux')) return false;
+    if (k === 'redis caching' && lowerSet.has('redis')) return false;
+    return true;
+  });
+
   const buckets = {
     Integrations: [],
     Languages: [],
@@ -286,7 +393,7 @@ function skillsCategoryLines(items, jdText = '') {
     Cloud: [],
     Other: [],
   };
-  for (const label of unique) {
+  for (const label of dedupedUnique) {
     buckets[skillCategory(label)].push(label);
   }
 
@@ -355,18 +462,18 @@ function skillCategory(label) {
     return 'Languages';
   }
   if (
-    /^(nodejs|node\.js|react|reactjs|react\.js|vue|vuejs|vue\.js|angular|angularjs|angular\.js|express|fastapi|flask|django|spring|spring\s*boot|spring\s*framework|\.?net|\.?net\s*core|asp\.net|asp\.net\s*core|entity\s*framework|nextjs|next\.js|nestjs|nest\.js|rails|laravel|fastify|hono|remix|svelte|puppeteer|cheerio|playwright|selenium|apache\s*camel|graphql|apollo|redux|mobx|tailwind|tailwind\s*css|bootstrap|material\s*ui|mui)$/i.test(k)
+    /^(nodejs|node\.js|react|reactjs|react\.js|vue|vuejs|vue\.js|angular|angularjs|angular\.js|express|fastapi|flask|django|spring|spring\s*boot|spring\s*framework|\.?net|\.?net\s*core|asp\.net|asp\.net\s*core|entity\s*framework|nextjs|next\.js|nestjs|nest\.js|rails|laravel|fastify|hono|remix|svelte|puppeteer|cheerio|playwright|selenium|apache\s*camel|graphql|apollo|redux|mobx|tailwind|tailwind\s*css|bootstrap|material\s*ui|mui|langchain|langgraph|llamaindex|pytorch|tensorflow|vllm|ray)$/i.test(k)
     || /^(node\.?js|react|express|fastapi|django|flask|next|nest|spring|vue|angular|\.?net\b|asp\.net|entity\s*framework)/i.test(k)
   ) {
     return 'Frameworks';
   }
   if (
-    /^(postgres|postgresql|mysql|mariadb|mongo|mongodb|redis|oracle|dynamodb|sqlite|chromadb|cassandra|elasticsearch|opensearch|supabase|firestore|sql\s*server|mssql|azure\s*sql)$/i.test(k)
+    /^(postgres|postgresql|mysql|mariadb|mongo|mongodb|redis|oracle|dynamodb|sqlite|chromadb|cassandra|elasticsearch|opensearch|supabase|firestore|sql\s*server|mssql|azure\s*sql|pgvector|vector\s*(?:db|databases?))$/i.test(k)
   ) {
     return 'Databases';
   }
   if (
-    /^(aws|gcp|azure|docker|kubernetes|k8s|terraform|cloudformation|cloudwatch|iam|vpc|boto3|jenkins|linux|ci\/cd|ecs|ec2|lambda|s3|openshift|webpack|parcel|vite|git|github\s*actions|gitlab\s*ci)$/i.test(k)
+    /^(aws|gcp|azure|docker|kubernetes|k8s|terraform|cloudformation|cloudwatch|iam|vpc|boto3|jenkins|linux|ci\/cd|ecs|ec2|lambda|s3|openshift|webpack|parcel|vite|git|github\s*actions|gitlab\s*ci|prometheus|grafana|opentelemetry)$/i.test(k)
     || /^(aws|azure|gcp|docker|kubernetes|terraform|cloudformation|cloudwatch|infrastructure\s*as\s*code|continuous\s*integration)\b/.test(k)
   ) {
     return 'Cloud';

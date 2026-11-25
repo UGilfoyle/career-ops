@@ -37,9 +37,27 @@ function sanitizeBulletParens(text: string): string {
   return clean;
 }
 
+function bulletTopicScore(bullet: string, kw: string): number {
+  const b = bullet.toLowerCase();
+  const k = kw.toLowerCase();
+  let score = 0;
+  if (/(langgraph|langchain|llamaindex|mcp|openai|llm|rag|pytorch|tensorflow|vllm|evals?|rlhf|embeddings?|pgvector|vector)/.test(k)) {
+    if (/(openai|llm|document|ingestion|python|validation|metadata|ai\b|pipeline)/.test(b)) score += 10;
+  } else if (/(pyspark|databricks|snowflake|dbt|airflow|etl|sql|postgres|redis|mongodb)/.test(k)) {
+    if (/(postgres|sql|pipeline|ingestion|query|index|cache|caching|schema|partition)/.test(b)) score += 10;
+  } else if (/(kubernetes|terraform|docker|aws|ec2|ecs|lambda|iam|vpc|prometheus|grafana|opentelemetry|cloudwatch|linux|ci\/cd|github actions)/.test(k)) {
+    if (/(aws|terraform|cloudformation|docker|container|ci\/cd|jenkins|linux|cloud|deploy|monitoring|rca|logging)/.test(b)) score += 10;
+  } else if (/(stripe|adyen|webhook|mulesoft|workato|salesforce|netsuite|oauth|soap|kafka|rabbitmq|mqtt|grpc)/.test(k)) {
+    if (/(integration|retry|backoff|kafka|rabbitmq|mqtt|fedex|ups|dhl|rate limit|messaging|queue|api)/.test(b)) score += 10;
+  } else if (/(react|next\.js|typescript|redux|angular|vue|ui|frontend)/.test(k)) {
+    if (/(react|ui|component|frontend|web|interface)/.test(b)) score += 10;
+  }
+  return score;
+}
+
 /**
  * Weave missing keywords into job experience bullets cleanly and naturally.
- * Spreads keywords across recent roles and bullets without piling everything into one place.
+ * Prefers bullets with strong topical alignment before falling back round-robin.
  */
 export function weaveKeywordsIntoExperience(
   experience: ExperienceEntry[] | undefined,
@@ -84,63 +102,98 @@ export function weaveKeywordsIntoExperience(
     }
     if (alreadyPresent) continue;
 
-    // 2. Find a suitable bullet across recent roles (top 3 roles)
-    let weaved = false;
+    // 2. Score all eligible bullets across top 3 roles by topic affinity + freshness
     const rolesToSearch = Math.min(cloned.length, 3);
-
-    for (let attempt = 0; attempt < rolesToSearch * 5; attempt++) {
-      const ri = (targetRoleIdx + Math.floor(attempt / 5)) % rolesToSearch;
+    const candidates: Array<{ ri: number; bi: number; score: number }> = [];
+    for (let rOff = 0; rOff < rolesToSearch; rOff++) {
+      const ri = (targetRoleIdx + rOff) % rolesToSearch;
       const role = cloned[ri];
       if (!role.bullets || !role.bullets.length) continue;
       if (isBulletAnachronisticForPeriod(cleanKw, role.period)) continue;
 
-      const bi = (targetBulletIdx + (attempt % 5)) % role.bullets.length;
+      for (let bOff = 0; bOff < role.bullets.length; bOff++) {
+        const bi = (targetBulletIdx + bOff) % role.bullets.length;
+        const bullet = sanitizeBulletParens(role.bullets[bi]);
+        if (/(?:%|\b\d+\s*(?:ms|s|x))\s*\.?$/i.test(bullet)) continue;
+        if (/\b(?:and|the|to|for|with|by|or|,)\s*$/i.test(bullet.replace(/\.$/, ''))) continue;
+        const bulletKey = `${ri}:${bi}`;
+        const freshBonus = modifiedBullets.has(bulletKey) ? 0 : 100;
+        const topic = bulletTopicScore(bullet, cleanKw);
+        candidates.push({ ri, bi, score: freshBonus + topic });
+      }
+    }
+    candidates.sort((a, b) => b.score - a.score);
+
+    let weaved = false;
+    for (const cand of candidates) {
+      const { ri, bi } = cand;
+      const role = cloned[ri];
+      const roleBullets = role.bullets!;
       const bulletKey = `${ri}:${bi}`;
+      const bullet = sanitizeBulletParens(roleBullets[bi]);
 
-      if (modifiedBullets.has(bulletKey) && attempt < rolesToSearch * 4) continue;
-
-      let bullet = sanitizeBulletParens(role.bullets[bi]);
-      // Skip bullets ending with strict percentage or metric to keep stats crisp
-      if (/(?:%|\b\d+\s*(?:ms|s|x))\s*\.?$/i.test(bullet)) continue;
-      // Skip broken/truncated fragments
-      if (/\b(?:and|the|to|for|with|by|or|,)\s*$/i.test(bullet.replace(/\.$/, ''))) continue;
-
-      // If bullet has a tools parenthetical e.g. (WebSockets, RESTful API)
-      const parenMatch = bullet.match(/\(([^)]{2,80})\)/);
+      // If bullet has a legacy trailing tools parenthetical e.g. "(CI/CD)." unwrap it into natural prose
+      const parenMatch = bullet.match(/\s*\(([^)]{2,80})\)\s*\.?$/);
       if (parenMatch && !/\d{4}/.test(parenMatch[1])) {
         const items = parenMatch[1].split(',').map((s) => s.trim()).filter(Boolean);
         if (items.length < 5 && !items.some((i) => i.toLowerCase() === kwLower)) {
           items.push(cleanKw);
-          role.bullets[bi] = sanitizeBulletParens(
-            bullet.replace(parenMatch[0], `(${items.join(', ')})`)
-          );
+          const beforeParen = bullet.slice(0, parenMatch.index).replace(/\.$/, '').trim();
+          const listStr = items.length <= 2 ? items.join(' and ') : `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+          const joiner = /\busing\b/i.test(beforeParen) ? 'with' : 'using';
+          roleBullets[bi] = sanitizeBulletParens(`${beforeParen} ${joiner} ${listStr}.`);
           modifiedBullets.add(bulletKey);
           weaved = true;
-          targetBulletIdx = (bi + 1) % role.bullets.length;
+          targetBulletIdx = (bi + 1) % roleBullets.length;
           targetRoleIdx = (ri + 1) % rolesToSearch;
           break;
         }
       }
 
-      // Otherwise append tool/skill parenthetical before trailing period
+      // If bullet already ends with "using X" or "using X and Y", extend the list smoothly instead of tagging parens
       const base = bullet.replace(/\.$/, '').trim();
+      const usingTail = base.match(/\s+(using|with)\s+([A-Za-z0-9.+/#-]+(?:\s*,\s*[A-Za-z0-9.+/#-]+)*(?:\s*,?\s*and\s+[A-Za-z0-9.+/#-]+)?)$/i);
+      if (base.length < 240 && usingTail && !base.endsWith(')')) {
+        const prefix = base.slice(0, usingTail.index).trim();
+        const prep = usingTail[1];
+        const existingItems = usingTail[2]
+          .split(/\s*,\s*and\s+|\s*,\s*|\s+and\s+/i)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (existingItems.length < 5 && !existingItems.some((x) => x.toLowerCase() === kwLower)) {
+          existingItems.push(cleanKw);
+          const listStr = existingItems.length <= 2
+            ? existingItems.join(' and ')
+            : `${existingItems.slice(0, -1).join(', ')}, and ${existingItems[existingItems.length - 1]}`;
+          roleBullets[bi] = sanitizeBulletParens(`${prefix} ${prep} ${listStr}.`);
+          modifiedBullets.add(bulletKey);
+          weaved = true;
+          targetBulletIdx = (bi + 1) % roleBullets.length;
+          targetRoleIdx = (ri + 1) % rolesToSearch;
+          break;
+        }
+      }
+
+      // Otherwise weave naturally into prose before trailing period
       if (base.length < 240 && !base.endsWith(')')) {
-        role.bullets[bi] = sanitizeBulletParens(`${base} (${cleanKw}).`);
+        const joiner = /\busing\b/i.test(base) ? 'with' : 'using';
+        roleBullets[bi] = sanitizeBulletParens(`${base} ${joiner} ${cleanKw}.`);
         modifiedBullets.add(bulletKey);
         weaved = true;
-        targetBulletIdx = (bi + 1) % role.bullets.length;
+        targetBulletIdx = (bi + 1) % roleBullets.length;
         targetRoleIdx = (ri + 1) % rolesToSearch;
         break;
       }
     }
 
-    // Fallback: if all had metrics/long, append to first bullet of role 0 (if not anachronistic)
+    // Fallback: if all had metrics/long, weave naturally on first bullet of role 0 (if not anachronistic)
     if (!weaved && cloned[0]?.bullets?.length) {
       if (!isBulletAnachronisticForPeriod(cleanKw, cloned[0].period)) {
-        let b0 = sanitizeBulletParens(cloned[0].bullets[0]);
+        const b0 = sanitizeBulletParens(cloned[0].bullets[0]);
         const base = b0.replace(/\.$/, '').trim();
         if (!base.endsWith(')')) {
-          cloned[0].bullets[0] = sanitizeBulletParens(`${base} (${cleanKw}).`);
+          const joiner = /\busing\b/i.test(base) ? 'with' : 'using';
+          cloned[0].bullets[0] = sanitizeBulletParens(`${base} ${joiner} ${cleanKw}.`);
         }
       }
     }

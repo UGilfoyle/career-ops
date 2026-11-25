@@ -15,6 +15,13 @@ import {
 import type { ResumeContext, ExperienceEntry, EducationEntry } from './types';
 import { extractTechFromTexts, renderCategorizedSkills } from './skills-html-bridge';
 import { formatEducationLine } from '../education-format';
+import {
+  normalizeExperienceBulletList,
+  sanitizeExperienceEntries,
+  formatPeriodDisplay,
+  unwrapResumeParens,
+  flattenResumeDashes,
+} from '@/lib/resume/bullet-pipeline';
 
 interface TemplateTheme {
   font: string;
@@ -101,11 +108,14 @@ function getTheme(templateId?: string): TemplateTheme {
 
 function cleanText(raw?: string): string {
   if (!raw) return '';
-  return String(raw)
+  const basic = String(raw)
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/^[•\-*▸►▶]\s*/, '')
     .replace(/[\u00ad\u200b-\u200d\uFEFF\uFFFD]/g, '')
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
     .trim();
+  return flattenResumeDashes(basic).trim();
 }
 
 /**
@@ -146,7 +156,9 @@ export async function generateResumeDocx(
 
   const candidate = ctx.candidate || {};
   const narrative = ctx.narrative || {};
-  const experience = (ctx.experience || []).filter((e) => e && (e.role || e.company));
+  const experience = sanitizeExperienceEntries(
+    (ctx.experience || []).filter((e) => e && (e.role || e.company)) as any
+  ) as ExperienceEntry[];
   const education = (ctx.education || []).filter((e) => e && (e.degree || e.school));
 
   const docChildren: (Paragraph | Table)[] = [];
@@ -294,23 +306,28 @@ export async function generateResumeDocx(
   }
 
   // ── 3. SUMMARY SECTION ──
-  const summaryText = narrative.exit_story || '';
-  if (summaryText.trim()) {
+  const summaryLines = String(narrative.exit_story || '')
+    .split(/\n+/)
+    .map((line) => cleanText(unwrapResumeParens(line)))
+    .filter(Boolean);
+  if (summaryLines.length > 0) {
     const summaryHeader = theme.isExecutive ? 'Executive Profile & Strategic Vision' : 'Professional Summary';
     docChildren.push(createSectionHeader(summaryHeader, theme));
-    docChildren.push(
-      new Paragraph({
-        spacing: { before: 40, after: 120 },
-        children: [
-          new TextRun({
-            text: cleanText(summaryText),
-            font: theme.font,
-            size: 19, // 9.5pt
-            color: '374151',
-          }),
-        ],
-      })
-    );
+    for (let i = 0; i < summaryLines.length; i++) {
+      docChildren.push(
+        new Paragraph({
+          spacing: { before: i === 0 ? 40 : 20, after: i === summaryLines.length - 1 ? 120 : 30 },
+          children: [
+            new TextRun({
+              text: summaryLines[i],
+              font: theme.font,
+              size: 19, // 9.5pt
+              color: '374151',
+            }),
+          ],
+        })
+      );
+    }
   }
 
   // ── 4. TECHNICAL SKILLS & COMPETENCIES ──
@@ -387,10 +404,10 @@ export async function generateResumeDocx(
     docChildren.push(createSectionHeader('Professional Experience', theme));
 
     for (const exp of experience) {
-      const role = exp.role || 'Role';
-      const company = exp.company || 'Company';
-      const period = exp.period || '';
-      const location = exp.location || '';
+      const role = cleanText(exp.role) || 'Role';
+      const company = cleanText(exp.company) || 'Company';
+      const period = cleanText(formatPeriodDisplay(exp.period || ''));
+      const location = cleanText(exp.location || '');
 
       // Two-column single-row table without borders (Left: Role & Company, Right: Period & Location)
       const noBorder = {
@@ -426,7 +443,7 @@ export async function generateResumeDocx(
                         color: '111827',
                       }),
                       new TextRun({
-                        text: `  —  ${company}`,
+                        text: `  -  ${company}`,
                         font: theme.font,
                         size: 19,
                         color: '4B5563',
@@ -461,7 +478,7 @@ export async function generateResumeDocx(
       docChildren.push(expHeaderTable);
 
       // Bullets
-      const bullets = exp.bullets || [];
+      const bullets = normalizeExperienceBulletList(exp.bullets || []);
       for (const bullet of bullets) {
         const cleaned = cleanText(bullet);
         if (!cleaned) continue;
@@ -532,7 +549,7 @@ export async function generateResumeDocx(
           spacing: { before: 40, after: 40 },
           children: [
             new TextRun({
-              text: formatted || `${edu.degree || ''} — ${edu.school || ''} (${edu.period || ''})`,
+              text: cleanText(formatted || `${edu.degree || ''} - ${edu.school || ''} (${edu.period || ''})`),
               font: theme.font,
               size: 18, // 9pt
               color: '374151',

@@ -18,7 +18,9 @@ const KNOWN_TECH = [
   'Webpack', 'Vite', 'Material UI', 'HTML5', 'CSS3',
   'Git', 'Agile', 'Scrum', 'Microservices', 'System Design', 'Unit Testing', 'Integration Testing',
   'GDB', 'Valgrind', '3GPP', 'TCP/IP', 'UML', 'Sockets',
-  'Machine Learning', 'ML', 'LLM', 'RAG', 'LangChain', 'PyTorch', 'TensorFlow',
+  'Machine Learning', 'ML', 'LLM', 'LLMs', 'RAG', 'LangChain', 'LangGraph', 'LlamaIndex', 'MCP', 'Model Context Protocol',
+  'pgvector', 'Vector Databases', 'Vector DB', 'Embeddings', 'Tool Calling', 'Agentic Workflows', 'vLLM', 'Ray', 'Evals', 'RLHF',
+  'PyTorch', 'TensorFlow', 'OpenTelemetry',
   // NOTE: never list Cursor / Copilot / ChatGPT / Claude Code here — IDE assistants are not tech-stack skills
   '.NET Core', '.NET', 'C#',
   'Snowflake', 'Spark', 'Apache Spark', 'PySpark', 'Airflow', 'dbt', 'Databricks', 'Azure Databricks',
@@ -712,7 +714,8 @@ const WEAVE_HOST_NOUNS = new Set([
  */
 export function upgradePartialMention(base, kw) {
   const tokens = normalizeKeyword(kw).split(/\s+/);
-  if (tokens.length < 2) return null;
+  if (tokens.length < 2 || tokens.length > 3) return null;
+  if (tokens.some((t) => /^(?:as|a|an|the|primary|language|optional|essential|required|preferred)$/i.test(t))) return null;
   const mod = tokens[0];
   const target = tokens[tokens.length - 1];
   if (!mod || !target || mod.toLowerCase() === target.toLowerCase()) return null;
@@ -1229,10 +1232,11 @@ function weaveKeywordsIntoSummary(summary, keywords, minCount = 4) {
   if (lines.length === 0) lines.push(text);
   if (lines.some((l) => /\([^)]{8,}\)/.test(l))) return text;
 
-  const inject = toAdd.join(', ');
-  if (lines.length < 4) {
-    lines.push(`Production stack: ${inject}.`);
-  }
+  // Preserve clean 3-4 line summaries without appending a redundant keyword dump line
+  if (lines.length >= 3) return lines.slice(0, 4).join('\n');
+
+  const inject = toAdd.length <= 2 ? toAdd.join(' and ') : `${toAdd.slice(0, -1).join(', ')}, and ${toAdd[toAdd.length - 1]}`;
+  lines.push(`Core production stack includes ${inject}.`);
   return lines.slice(0, 4).join('\n');
 }
 

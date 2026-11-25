@@ -45,19 +45,20 @@ function run() {
   ];
   const out3 = weaveKeywordsIntoExperience(metricExp, ['Docker']);
   assert.equal(out3[0]!.bullets![0], 'Reduced database CPU utilization by 35%.');
-  assert.match(out3[0]!.bullets![1]!, /\(Docker\)\.$/);
+  assert.match(out3[0]!.bullets![1]!, /\busing Docker\.$/);
 
-  // 5. MC/DC: Appending to bullet with existing tools paren -> merge into single paren, no double parens
+  // 5. MC/DC: Unwrap legacy tools paren into natural prose when weaving next tool
   const parenExp: ExperienceEntry[] = [
     {
       role: 'Dev',
       company: 'Co',
       period: '2024',
-      bullets: ['Optimized RESTful APIs throughput and response times (CI/CD).'],
+      bullets: ['Optimized RESTful API throughput and response times (CI/CD).'],
     },
   ];
   const out4 = weaveKeywordsIntoExperience(parenExp, ['Kafka']);
-  assert.match(out4[0]!.bullets![0]!, /\(CI\/CD, Kafka\)\.$/);
+  assert.match(out4[0]!.bullets![0]!, /\busing CI\/CD and Kafka\.$/);
+  assert.ok(!/\(CI\/CD, Kafka\)/.test(out4[0]!.bullets![0]!), 'Must not append bot-style parenthetical tags');
   assert.ok(!out4[0]!.bullets![0]!.includes('))'), 'Must not contain double closing parens');
   assert.ok(!out4[0]!.bullets![0]!.includes(')('), 'Must not contain adjacent parens');
 

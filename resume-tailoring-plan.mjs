@@ -354,9 +354,43 @@ export function selectWeaveKeywords(plan, profile) {
 }
 
 /**
+ * Integrate a JD keyword cleanly in-place inside an existing bullet without
+ * appending parenthetical tags like "(Webhooks)" or "(Kafka)".
+ */
+function weaveNaturalTechPhrase(base, kw) {
+  const k = String(kw || '').trim();
+  const kl = k.toLowerCase();
+  if (!k || keywordCoveredInText(base, k)) return null;
+
+  // 1. In-place grammatical upgrades where the bullet already covers the domain
+  if ((kl === 'kafka' || kl === 'rabbitmq') && /\bmessage queues\b/i.test(base) && !new RegExp(`\\b${escapeGapRegex(k)}\\b`, 'i').test(base)) {
+    return base.replace(/\bmessage queues\b/i, `${k} message queues`);
+  }
+  if (kl === 'redis' && /\b(?:multi-layer|multi-tier)\s+caching\b/i.test(base) && !/\bredis\b/i.test(base)) {
+    return base.replace(/\b(multi-layer|multi-tier)\s+caching\b/i, '$1 Redis caching');
+  }
+  if ((kl === 'kubernetes' || kl === 'docker') && /\bcontainer orchestration\b/i.test(base) && !new RegExp(`\\b${escapeGapRegex(k)}\\b`, 'i').test(base)) {
+    return base.replace(/\bcontainer orchestration\b/i, `${k} container orchestration`);
+  }
+  if ((kl === 'github actions' || kl === 'gitlab ci' || kl === 'jenkins') && /\bCI\/CD pipelines?\b/i.test(base) && !new RegExp(`\\b${escapeGapRegex(k)}\\b`, 'i').test(base)) {
+    return base.replace(/\bCI\/CD pipelines?\b/i, (m) => `${k} ${m}`);
+  }
+  if ((kl === 'postgresql' || kl === 'mysql' || kl === 'oracle' || kl === 'sql server') && /\brelational databases?\b/i.test(base)) {
+    return base.replace(/\brelational databases?\b/i, (m) => `${k} ${m}`);
+  }
+  if ((kl === 'playwright' || kl === 'puppeteer' || kl === 'cypress' || kl === 'jest' || kl === 'pytest') && /\b(?:unit testing|integration testing|automated testing|end-to-end testing|browser automation)\b/i.test(base)) {
+    return base.replace(/\b(unit testing|integration testing|automated testing|end-to-end testing|browser automation)\b/i, `$1 with ${k}`);
+  }
+  if (kl === 'webhooks' && /\bthird-party (?:apis?|integrations?|payment gateways?)\b/i.test(base)) {
+    return base.replace(/\b(third-party (?:apis?|integrations?|payment gateways?))\b/i, '$1 and webhooks');
+  }
+  return null;
+}
+
+/**
  * Weave JD terms into mutable roles only where they integrate grammatically:
- * in-place mention upgrades, tool parentheticals, or "in a/an X" clauses.
- * Keywords without a natural home in a role are skipped for that role.
+ * in-place mention upgrades or natural contextual English phrases.
+ * Never appends context-free parenthetical tags like "(Webhooks)" or "(Kafka)".
  */
 export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerRole = 2, profile = null) {
   if (!resume?.experience || !plan?.tailorIndices?.length || !weaveKeywords?.length) return resume;
@@ -376,7 +410,6 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
 
   let cursor = 0;
   for (const idx of plan.tailorIndices) {
-    const source = (profile?.experience?.[idx]?.bullets || []).join('\n');
     const key = String(idx);
     const bullets = Array.isArray(copy.experience[key]) ? copy.experience[key].map(stripInjectNoise) : [];
     if (!bullets.length) continue;
@@ -393,8 +426,6 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
       const jdOwnsKw = jdBlob.length >= 40 && keywordAppearsInJd(kw, jdBlob);
       if (sourceDigest && !keywordCoveredInText(sourceDigest, kw) && !jdOwnsKw) continue;
 
-      // Rank candidate bullets: skip metric tails and saturated bullets, prefer
-      // upgradeable partial mentions, then bullets adjacent to the keyword.
       let target = -1;
       let best = -1;
       for (let bi = 0; bi < bullets.length; bi++) {
@@ -402,9 +433,9 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
         const base = String(bullets[bi] || '').replace(/\.$/, '').trim();
         if (!base || keywordCoveredInText(base, kw) || endsWithMetricTail(base)) continue;
         let score = 0;
-        if (upgradePartialMention(base, kw)) score = 3;
-        else if (weaveAdjacencyScore(base, kw) === 2) score = 2;
-        else if (weaveAdjacencyScore(base, kw) === 1 && bulletHasTechContext(base)) score = 1;
+        if (upgradePartialMention(base, kw)) score = 4;
+        else if (weaveNaturalTechPhrase(base, kw)) score = 3;
+        else if (weaveAdjacencyScore(base, kw) === 2 && bulletHasTechContext(base)) score = 2;
         else continue;
         if (score > best) {
           best = score;
@@ -418,14 +449,18 @@ export function injectWeaveIntoMutableRoles(resume, plan, weaveKeywords, maxPerR
       if (upgraded) {
         bullets[target] = `${upgraded.replace(/\.$/, '')}.`;
       } else {
-        const form = weaveSuffixForm(kw);
-        if (!form) continue;
-        if (form.startsWith('(')) {
-          if (!bulletHasTechContext(base)) continue;
-          bullets[target] = `${appendToolToTrailingParen(base, kw)}.`;
+        const natural = weaveNaturalTechPhrase(base, kw);
+        if (natural) {
+          bullets[target] = `${natural.replace(/\.$/, '')}.`;
         } else {
-          if (/\b(with|in|across|via|on)\s+[^,.]{2,40}$/i.test(base) || base.length > 190) continue;
-          bullets[target] = `${base}, ${form}.`;
+          // Only weave via natural "using X" when the bullet already shares strong topic context
+          // and does not end in a trailing prepositional phrase or parenthetical.
+          const isConcreteTech = !isMethodologySkillPhrase(kw)
+            && !/\b(architecture|runbooks?|sla|middleware|ipaas)\b/i.test(kw)
+            && kw.split(/\s+/).length <= 2;
+          if (!isConcreteTech) continue;
+          if (/\)\s*$/.test(base) || /\b(with|in|across|via|on|using)\s+[^,.]{2,40}$/i.test(base) || base.length > 175) continue;
+          bullets[target] = `${base}, using ${kw}.`;
         }
       }
       usedBullet.add(target);
@@ -769,10 +804,16 @@ export function buildJdAlignedCoverLetter(plan, profile, companyName, jdText = '
     ...(plan?.keywords?.honest || []),
   ]
     .filter((k) => isWeavableKeyword(k) && !isMethodologySkillPhrase(k) && (!jdBlob || keywordAppearsInJd(k, jdBlob)))
-    .slice(0, 6);
-  const hooks = honest.length
-    ? honest.join(', ')
-    : (plan?.keywords?.atsMirror || []).slice(0, 4).join(', ') || 'the technical requirements in your posting';
+    .filter((k, idx, arr) => arr.findIndex((x) => x.toLowerCase() === k.toLowerCase()) === idx)
+    .slice(0, 4);
+  const rawHooks = honest.length
+    ? honest
+    : (plan?.keywords?.atsMirror || []).slice(0, 4);
+  const hooks = rawHooks.length === 0
+    ? 'the technical requirements in your posting'
+    : rawHooks.length <= 2
+      ? rawHooks.join(' and ')
+      : `${rawHooks.slice(0, -1).join(', ')}, and ${rawHooks[rawHooks.length - 1]}`;
   const years = Number(profile?.candidate?.years_experience) || estimateYears(profile?.experience) || 7;
   const recent = (profile?.experience || [])[0] || {};
   const recentCo = String(recent.company || 'my current employer').trim();
@@ -782,13 +823,13 @@ export function buildJdAlignedCoverLetter(plan, profile, companyName, jdText = '
     ...(profile?.experience || []).flatMap((e) => e?.bullets || []),
     resume?.summary || '',
   ].join(' ');
-  const metric = (digest.match(/\b\d+(?:\.\d+)?%|\bp99\b|\bp95\b|\b99\.\d+%\b/i) || [])[0];
-  const metricBit = metric
-    ? ` Recent work includes measurable outcomes such as ${metric} in production.`
+  const metricPhrase = (digest.match(/\b\d+(?:\.\d+)?%\s+(?:uptime|availability|SLA|reduction|decrease|increase|improvement|faster|lower)\b|\bp(?:99|95)\s+latency\s+(?:under|below|<)?\s*\d+\s*ms\b/i) || [])[0];
+  const metricBit = metricPhrase
+    ? ` Recent production systems delivered measurable results such as ${metricPhrase.trim()}.`
     : '';
 
-  let para1 = `I am applying for the ${role} position at ${company}. Your posting emphasizes ${hooks}, which matches the production systems I have designed, tested, and operated.`;
-  let para2 = `I bring ${years}+ years owning backend platforms, APIs, and cloud delivery.${metricBit} In my recent role as ${recentRole} at ${recentCo}, I owned architecture, reliability, CI/CD, and mentoring mapped to the stack in your posting.`;
+  let para1 = `I am applying for the ${role} position at ${company}. Your posting emphasizes ${hooks}, which aligns closely with the production systems I have designed, tested, and operated.`;
+  let para2 = `I bring ${years}+ years owning backend platforms, APIs, and cloud delivery.${metricBit} Most recently as ${recentRole} at ${recentCo}, I led system architecture, reliability improvements, CI/CD automation, and mentoring across the core stack.`;
 
   if (family === 'embedded_systems') {
     para1 = `I am applying for the ${role} position at ${company}. The posting emphasizes ${hooks}.`;
